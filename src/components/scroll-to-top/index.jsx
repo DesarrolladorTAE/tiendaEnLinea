@@ -1,3 +1,4 @@
+import React from "react";
 import useScrollTop from "../../hooks/use-scroll-top";
 
 const ScrollToTop = () => {
