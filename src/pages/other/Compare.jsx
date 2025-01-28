@@ -60,7 +60,6 @@ const Compare = () => {
                                   </div>
                                   <Link
                                     to={
-                                      process.env.PUBLIC_URL +
                                       "/product/" +
                                       compareItem.id
                                     }
@@ -69,7 +68,6 @@ const Compare = () => {
                                     <img
                                       className="img-fluid"
                                       src={
-                                        process.env.PUBLIC_URL +
                                         compareItem.image[0]
                                       }
                                       alt=""
@@ -78,7 +76,6 @@ const Compare = () => {
                                   <div className="product-title">
                                     <Link
                                       to={
-                                        process.env.PUBLIC_URL +
                                         "/product/" +
                                         compareItem.id
                                       }
@@ -99,7 +96,7 @@ const Compare = () => {
                                     ) : compareItem.variation &&
                                       compareItem.variation.length >= 1 ? (
                                       <Link
-                                        to={`${process.env.PUBLIC_URL}/product/${compareItem.id}`}
+                                        to={`/product/${compareItem.id}`}
                                       >
                                         Select Option
                                       </Link>

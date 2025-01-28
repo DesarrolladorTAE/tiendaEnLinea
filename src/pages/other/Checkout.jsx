@@ -1,3 +1,4 @@
+import React from "react";
 import { Fragment } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -23,8 +24,8 @@ const Checkout = () => {
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: process.env.PUBLIC_URL + "/" },
-            {label: "Checkout", path: process.env.PUBLIC_URL + pathname }
+            {label: "Home", path: "/" },
+            {label: "Checkout", path: pathname }
           ]} 
         />
         <div className="checkout-area pt-95 pb-100">
@@ -211,7 +212,7 @@ const Checkout = () => {
                     </div>
                     <div className="item-empty-area__text">
                       No items found in cart to checkout <br />{" "}
-                      <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                      <Link to={"/shop-grid-standard"}>
                         Shop Now
                       </Link>
                     </div>

@@ -8,7 +8,7 @@ const BlogPost = () => {
         <div className="blog-details-img">
           <img
             alt=""
-            src={process.env.PUBLIC_URL + "/assets/img/blog/blog-5.jpg"}
+            src={"/assets/img/blog/blog-5.jpg"}
           />
         </div>
         <div className="blog-details-content">
@@ -16,7 +16,7 @@ const BlogPost = () => {
             <ul>
               <li>22 April, 2018</li>
               <li>
-                <Link to={process.env.PUBLIC_URL + "/blog-details-standard"}>
+                <Link to={"/blog-details-standard"}>
                   4 <i className="fa fa-comments-o" />
                 </Link>
               </li>
@@ -56,7 +56,7 @@ const BlogPost = () => {
               <img
                 alt=""
                 src={
-                  process.env.PUBLIC_URL + "/assets/img/blog/blog-details.jpg"
+                  "/assets/img/blog/blog-details.jpg"
                 }
               />
             </div>
@@ -66,7 +66,7 @@ const BlogPost = () => {
               <img
                 alt=""
                 src={
-                  process.env.PUBLIC_URL + "/assets/img/blog/blog-details-2.jpg"
+                  "/assets/img/blog/blog-details-2.jpg"
                 }
               />
             </div>
@@ -84,17 +84,17 @@ const BlogPost = () => {
         <div className="dec-tag">
           <ul>
             <li>
-              <Link to={process.env.PUBLIC_URL + "/blog-standard"}>
+              <Link to={"/blog-standard"}>
                 lifestyle ,
               </Link>
             </li>
             <li>
-              <Link to={process.env.PUBLIC_URL + "/blog-standard"}>
+              <Link to={"/blog-standard"}>
                 interior ,
               </Link>
             </li>
             <li>
-              <Link to={process.env.PUBLIC_URL + "/blog-standard"}>
+              <Link to={"/blog-standard"}>
                 outdoor
               </Link>
             </li>
@@ -124,11 +124,11 @@ const BlogPost = () => {
         </div>
       </div>
       <div className="next-previous-post">
-        <Link to={process.env.PUBLIC_URL + "/blog-details-standard"}>
+        <Link to={"/blog-details-standard"}>
           {" "}
           <i className="fa fa-angle-left" /> prev post
         </Link>
-        <Link to={process.env.PUBLIC_URL + "/blog-details-standard"}>
+        <Link to={"/blog-details-standard"}>
           next post <i className="fa fa-angle-right" />
         </Link>
       </div>

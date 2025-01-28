@@ -8,7 +8,7 @@ const BlogComment = () => {
         <div className="single-comment-wrapper mt-35">
           <div className="blog-comment-img">
             <img
-              src={process.env.PUBLIC_URL + "/assets/img/blog/comment-1.jpg"}
+              src={"/assets/img/blog/comment-1.jpg"}
               alt=""
             />
           </div>
@@ -25,7 +25,7 @@ const BlogComment = () => {
         <div className="single-comment-wrapper mt-50 ml-120">
           <div className="blog-comment-img">
             <img
-              src={process.env.PUBLIC_URL + "/assets/img/blog/comment-2.jpg"}
+              src={"/assets/img/blog/comment-2.jpg"}
               alt=""
             />
           </div>
