@@ -1,3 +1,4 @@
+import React from "react";
 import { Fragment, useState } from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
@@ -12,7 +13,7 @@ const ProductImageGalleryLeftThumb = ({ product, thumbPosition }) => {
   const [thumbsSwiper, setThumbsSwiper] = useState(null);
   const [index, setIndex] = useState(-1);
   const slides = product?.image.map((img, i) => ({
-      src: process.env.PUBLIC_URL + img,
+      src: img,
       key: i,
   }));
 
@@ -90,7 +91,7 @@ const ProductImageGalleryLeftThumb = ({ product, thumbPosition }) => {
                     </button>
                     <div className="single-image">
                       <img
-                        src={process.env.PUBLIC_URL + single}
+                        src={single}
                         className="img-fluid"
                         alt=""
                       />
@@ -120,7 +121,7 @@ const ProductImageGalleryLeftThumb = ({ product, thumbPosition }) => {
                   <SwiperSlide key={key}>
                     <div className="single-image">
                       <img
-                        src={process.env.PUBLIC_URL + single}
+                        src={single}
                         className="img-fluid"
                         alt=""
                       />
