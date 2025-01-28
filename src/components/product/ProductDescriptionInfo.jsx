@@ -1,5 +1,6 @@
+import React from "react";
 import PropTypes from "prop-types";
-import React, { Fragment, useState } from "react";
+import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { getProductCartQuantity } from "../../helpers/product";
@@ -233,7 +234,7 @@ const ProductDescriptionInfo = ({
             {product.category.map((single, key) => {
               return (
                 <li key={key}>
-                  <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                  <Link to={"/shop-grid-standard"}>
                     {single}
                   </Link>
                 </li>
@@ -251,7 +252,7 @@ const ProductDescriptionInfo = ({
             {product.tag.map((single, key) => {
               return (
                 <li key={key}>
-                  <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                  <Link to={"/shop-grid-standard"}>
                     {single}
                   </Link>
                 </li>
