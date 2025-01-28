@@ -36,6 +36,7 @@ const HomeFashion = () => {
           dateTime="November 13, 2023 12:12:00"
           countDownImage="/assets/img/banner/deal-4.jpg"
         />
+        {/* hola */}
         {/* testimonial */}
         <TestimonialOne
           spaceTopClass="pt-95"
