@@ -1,3 +1,4 @@
+import React from "react";
 import { Fragment, useState, useEffect } from "react";
 import Paginator from "react-hooks-paginator"; 
 import { useSelector } from "react-redux";
@@ -62,8 +63,8 @@ const ShopGridTwoColumn = () => {
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: process.env.PUBLIC_URL + "/" },
-            {label: "Shop", path: process.env.PUBLIC_URL + pathname }
+            {label: "Home", path: "/" },
+            {label: "Shop", path: pathname }
           ]} 
         />
 

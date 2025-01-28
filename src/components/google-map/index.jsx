@@ -1,3 +1,4 @@
+import React from 'react';
 import PropTypes from "prop-types";
 import GoogleMapReact from 'google-map-react';
 
@@ -39,4 +40,4 @@ GoogleMap.defaultProps = {
 
 export default GoogleMap;
 
-const Marker = ({ text }) => <div className="map-marker"><img src={`${process.env.PUBLIC_URL + "/assets/img/icon-img/2.png"}`} alt={text}/></div>;
+const Marker = ({ text }) => <div className="map-marker"><img src={`"/assets/img/icon-img/2.png"}`} alt={text}/></div>;

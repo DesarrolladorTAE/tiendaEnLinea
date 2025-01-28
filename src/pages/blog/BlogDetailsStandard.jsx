@@ -1,3 +1,4 @@
+import React from "react";
 import { Fragment } from "react";
 import { useLocation } from "react-router-dom"; 
 import SEO from "../../components/seo";
@@ -20,8 +21,8 @@ const BlogDetailsStandard = () => {
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: process.env.PUBLIC_URL + "/" },
-            {label: "Blog Post", path: process.env.PUBLIC_URL + pathname }
+            {label: "Home", path: "/" },
+            {label: "Blog Post", path: pathname }
           ]} 
         />
         <div className="blog-area pt-100 pb-100">

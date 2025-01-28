@@ -1,3 +1,4 @@
+import React from "react";
 import { Fragment } from "react"; 
 import { useLocation } from "react-router-dom";
 import SEO from "../../components/seo";
@@ -18,9 +19,9 @@ const Contact = () => {
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: process.env.PUBLIC_URL + "/" },
-            {label: "Contact", path: process.env.PUBLIC_URL + pathname }
-          ]} 
+            {label: "Home", path: '/' },
+            {label: "Contact", path: pathname }
+          ]}          
         />
         <div className="contact-area pt-100 pb-100">
           <div className="container">

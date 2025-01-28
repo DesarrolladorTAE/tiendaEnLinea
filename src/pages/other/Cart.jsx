@@ -1,3 +1,4 @@
+import React from "react";
 import { Fragment, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
@@ -29,8 +30,8 @@ const Cart = () => {
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: process.env.PUBLIC_URL + "/" },
-            {label: "Cart", path: process.env.PUBLIC_URL + pathname }
+            {label: "Home", path: "/" },
+            {label: "Cart", path: pathname }
           ]} 
         />
         <div className="cart-main-area pt-90 pb-100">
@@ -75,7 +76,6 @@ const Cart = () => {
                                 <td className="product-thumbnail">
                                   <Link
                                     to={
-                                      process.env.PUBLIC_URL +
                                       "/product/" +
                                       cartItem.id
                                     }
@@ -83,7 +83,6 @@ const Cart = () => {
                                     <img
                                       className="img-fluid"
                                       src={
-                                        process.env.PUBLIC_URL +
                                         cartItem.image[0]
                                       }
                                       alt=""
@@ -94,7 +93,6 @@ const Cart = () => {
                                 <td className="product-name">
                                   <Link
                                     to={
-                                      process.env.PUBLIC_URL +
                                       "/product/" +
                                       cartItem.id
                                     }
@@ -209,7 +207,7 @@ const Cart = () => {
                     <div className="cart-shiping-update-wrapper">
                       <div className="cart-shiping-update">
                         <Link
-                          to={process.env.PUBLIC_URL + "/shop-grid-standard"}
+                          to={"/shop-grid-standard"}
                         >
                           Continue Shopping
                         </Link>
@@ -307,7 +305,7 @@ const Cart = () => {
                           {currency.currencySymbol + cartTotalPrice.toFixed(2)}
                         </span>
                       </h4>
-                      <Link to={process.env.PUBLIC_URL + "/checkout"}>
+                      <Link to={"/checkout"}>
                         Proceed to Checkout
                       </Link>
                     </div>
@@ -323,7 +321,7 @@ const Cart = () => {
                     </div>
                     <div className="item-empty-area__text">
                       No items found in cart <br />{" "}
-                      <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                      <Link to={"/shop-grid-standard"}>
                         Shop Now
                       </Link>
                     </div>
