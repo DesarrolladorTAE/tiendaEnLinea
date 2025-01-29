@@ -17,7 +17,7 @@ const HeroSliderFiveSingle = ({ data }) => {
               <div className="slider-btn btn-hover">
                 <Link
                   className="animated"
-                  to={ data.url}
+                  to={data.url}
                 >
                   SHOP NOW
                 </Link>
