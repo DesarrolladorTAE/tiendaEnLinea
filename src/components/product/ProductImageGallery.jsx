@@ -11,7 +11,7 @@ const ProductImageGallery = ({ product }) => {
   const [thumbsSwiper, setThumbsSwiper] = useState(null);
   const [index, setIndex] = useState(-1);
   const slides = product?.image.map((img, i) => ({
-      src: process.env.PUBLIC_URL + img,
+      src: img,
       key: i,
   }));
 
@@ -62,7 +62,7 @@ const ProductImageGallery = ({ product }) => {
                 </button>
                 <div className="single-image">
                   <img
-                    src={process.env.PUBLIC_URL + single}
+                    src={single}
                     className="img-fluid"
                     alt=""
                   />
@@ -87,7 +87,7 @@ const ProductImageGallery = ({ product }) => {
               <SwiperSlide key={key}>
                 <div className="single-image">
                   <img
-                    src={process.env.PUBLIC_URL + single}
+                    src={single}
                     className="img-fluid"
                     alt=""
                   />

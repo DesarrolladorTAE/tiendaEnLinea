@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 
 
@@ -20,7 +21,7 @@ const ProductImageFixed = ({ product }) => {
       <div className="product-fixed-image">
         {product.image ? (
           <img
-            src={process.env.PUBLIC_URL + product.image[0]}
+            src={product.image[0]}
             alt=""
             className="img-fluid"
           />

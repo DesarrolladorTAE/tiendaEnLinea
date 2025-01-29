@@ -1,3 +1,4 @@
+import React from "react";
 import { Fragment } from "react"; 
 import { useSelector } from "react-redux";
 import { useParams, useLocation } from "react-router-dom";
@@ -25,8 +26,8 @@ const ProductSlider = () => {
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: process.env.PUBLIC_URL + "/" },
-            {label: "Shop Product", path: process.env.PUBLIC_URL + pathname }
+            {label: "Home", path: "/" },
+            {label: "Shop Product", path: pathname }
           ]} 
         />
 
