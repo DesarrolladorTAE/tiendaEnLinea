@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import sliderData from "../../data/hero-sliders/hero-slider-thirty-four.json";
 
@@ -8,7 +9,7 @@ const HeroSliderThirtyFour = () => {
         className="slider-height-5 bg-img d-flex align-items-center"
         style={{
           backgroundImage: `url(${
-            process.env.PUBLIC_URL + sliderData.backgroundImage
+            sliderData.backgroundImage
           })`
         }}
       >
@@ -22,7 +23,7 @@ const HeroSliderThirtyFour = () => {
                 <div className="slider-btn btn-hover">
                   <Link
                     className="animated"
-                    to={process.env.PUBLIC_URL + sliderData.url}
+                    to={sliderData.url}
                   >
                     SHOP NOW
                   </Link>

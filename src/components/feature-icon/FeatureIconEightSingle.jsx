@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 
@@ -5,7 +6,7 @@ const FeatureIconEightSingle = ({ data, spaceBottomClass, textAlignClass }) => {
   return (
       <div className={clsx("support-wrap-7 support-shape", spaceBottomClass, textAlignClass)}>
         <div className="support-icon-7">
-          <img src={process.env.PUBLIC_URL + data.image} alt="" />
+          <img src={data.image} alt="" />
         </div>
         <div className="support-content-7">
           <h5>{data.title}</h5>

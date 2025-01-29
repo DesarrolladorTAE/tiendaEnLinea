@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 
 import { Link } from "react-router-dom";
@@ -17,7 +18,7 @@ const HeroSliderThreeSingle = ({ data }) => {
               <div className="slider-btn-9 btn-hover">
                 <Link
                   className="animated"
-                  to={process.env.PUBLIC_URL + data.url}
+                  to={data.url}
                 >
                   SHOP NOW
                 </Link>
@@ -28,7 +29,7 @@ const HeroSliderThreeSingle = ({ data }) => {
             <div className="slider-singleimg-hm9 slider-animated-1">
               <img
                 className="animated"
-                src={process.env.PUBLIC_URL + data.image}
+                src={data.image}
                 alt=""
               />
             </div>

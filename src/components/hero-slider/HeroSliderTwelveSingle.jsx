@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
@@ -6,7 +7,7 @@ const HeroSliderTwelveSingle = ({ data }) => {
   return (
     <div
       className={clsx("slider-height-4 d-flex align-items-center bg-img")}
-      style={{ backgroundImage: `url(${process.env.PUBLIC_URL + data.image})` }}
+      style={{ backgroundImage: `url(${data.image})` }}
     >
       <div className="container">
         <div className="row">
@@ -18,7 +19,7 @@ const HeroSliderTwelveSingle = ({ data }) => {
               <div className="slider-btn-5 btn-hover">
                 <Link
                   className="animated"
-                  to={process.env.PUBLIC_URL + data.url}
+                  to={data.url}
                 >
                   SHOP NOW
                 </Link>

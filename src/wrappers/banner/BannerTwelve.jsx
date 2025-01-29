@@ -1,7 +1,8 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import bannerData from "../../data/banner/banner-twelve.json";
-import BannerTwelveSingle from "../../components/banner/BannerTwelveSingle.js";
+import BannerTwelveSingle from "../../components/banner/BannerTwelveSingle.jsx";
 
 const BannerTwelve = ({ spaceBottomClass }) => {
   return (

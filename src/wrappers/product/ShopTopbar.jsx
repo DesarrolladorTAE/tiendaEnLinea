@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import React, { Fragment } from "react";
 import ShopTopAction from "../../components/product/ShopTopAction";

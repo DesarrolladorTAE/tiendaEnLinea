@@ -1,7 +1,8 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import featureIconData from "../../data/feature-icons/feature-icon-four.json";
-import FeatureIconFourSingle from "../../components/feature-icon/FeatureIconFourSingle.js";
+import FeatureIconFourSingle from "../../components/feature-icon/FeatureIconFourSingle.jsx";
 
 const FeatureIconFour = ({
   spaceTopClass,
@@ -16,7 +17,7 @@ const FeatureIconFour = ({
       className={clsx("support-area hm9-section-padding", spaceTopClass, spaceBottomClass, responsiveClass)}
       style={
         bgImg
-          ? { backgroundImage: `url(${process.env.PUBLIC_URL + bgImg})` }
+          ? { backgroundImage: `url(${bgImg})` }
           : {}
       }
     >

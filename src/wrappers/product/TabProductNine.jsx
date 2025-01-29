@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
@@ -75,7 +76,7 @@ const TabProductNine = ({
         <div className="view-more round-btn text-center mt-20 toggle-btn6 col-12">
           <Link
             className="loadMore6"
-            to={process.env.PUBLIC_URL + "/shop-grid-standard"}
+            to={"/shop-grid-standard"}
           >
             Discover More
           </Link>

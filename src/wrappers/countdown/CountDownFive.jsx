@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import { Link } from "react-router-dom";
@@ -13,7 +14,7 @@ const CountDownFive = ({
   return (
     <div
       className={clsx("funfact-area", spaceTopClass, spaceBottomClass)}
-      style={{ backgroundImage: `url(${process.env.PUBLIC_URL + bgImg})` }}
+      style={{ backgroundImage: `url(${bgImg})` }}
     >
       <div className="container">
         <div className="row align-items-center">
@@ -24,7 +25,7 @@ const CountDownFive = ({
                 <CountdownTimer date={dateTime} />
               </div>
               <div className="funfact-btn funfact-btn-brown btn-hover">
-                <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                <Link to={"/shop-grid-standard"}>
                   SHOP NOW
                 </Link>
               </div>
@@ -33,7 +34,7 @@ const CountDownFive = ({
           <div className="col-lg-6">
             <div className="funfact-image text-center text-lg-end">
               <img
-                src={process.env.PUBLIC_URL + image}
+                src={image}
                 alt=""
                 className="img-fluid"
               />

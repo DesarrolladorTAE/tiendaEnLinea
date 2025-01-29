@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 
@@ -7,7 +8,7 @@ const FeatureIconFiveSingle = ({ data, spaceBottomClass }) => {
         <div className="support-icon-4">
           <img
             className="animated"
-            src={process.env.PUBLIC_URL + data.image}
+            src={data.image}
             alt=""
           />
         </div>

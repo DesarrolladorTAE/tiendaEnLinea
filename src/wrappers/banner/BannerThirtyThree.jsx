@@ -1,7 +1,8 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import bannerData from "../../data/banner/banner-thirty-three.json";
-import BannerThirtyThreeSingle from "../../components/banner/BannerThirtyThreeSingle.js";
+import BannerThirtyThreeSingle from "../../components/banner/BannerThirtyThreeSingle.jsx";
 
 const BannerThirtyThree = ({ spaceBottomClass, bgColorClass }) => {
   return (

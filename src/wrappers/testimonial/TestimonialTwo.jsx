@@ -1,8 +1,9 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import testimonialData from "../../data/testimonial/testimonial-one.json";
-import TestimonialTwoSingle from "../../components/testimonial/TestimonialTwoSingle.js";
+import TestimonialTwoSingle from "../../components/testimonial/TestimonialTwoSingle.jsx";
 
 // swiper slider settings
 const settings = {
@@ -23,7 +24,7 @@ const TestimonialTwo = ({
     <div
       className={clsx("testimonial-area bg-img", spaceTopClass, spaceBottomClass, spaceLeftClass, spaceRightClass, bgColorClass)}
       style={{
-        backgroundImage: `url(${process.env.PUBLIC_URL + backgroundImage})`
+        backgroundImage: `url(${backgroundImage})`
       }}
     >
       <div className="container">

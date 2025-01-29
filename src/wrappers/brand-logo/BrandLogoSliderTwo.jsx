@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import BrandLogoOneSingle from "../../components/brand-logo/BrandLogoOneSingle";

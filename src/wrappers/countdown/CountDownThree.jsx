@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
@@ -20,7 +21,7 @@ const CountDownThree = ({
                 <CountdownTimer date={dateTime} />
               </div>
               <div className="funfact-btn funfact-btn--round-shape funfact-btn-red btn-hover">
-                <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                <Link to={"/shop-grid-standard"}>
                   SHOP NOW
                 </Link>
               </div>
@@ -28,9 +29,9 @@ const CountDownThree = ({
           </div>
           <div className="col-md-4 col-lg-6 order-2 order-lg-1">
             <div className="funfact-image">
-              <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+              <Link to={"/shop-grid-standard"}>
                 <img
-                  src={process.env.PUBLIC_URL + countDownImage}
+                  src={countDownImage}
                   alt=""
                   className="img-fluid"
                 />

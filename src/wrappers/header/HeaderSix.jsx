@@ -1,3 +1,4 @@
+import React from "react";
 import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
@@ -53,10 +54,10 @@ const HeaderSix = ({ layout, headerPaddingClass, headerBgClass }) => {
           <div className="col-xl-2 col-lg-2 col-md-6 col-6">
             {/* header logo */}
             <div className="logo text-center logo-hm5">
-              <Link className="sticky-none" to={process.env.PUBLIC_URL + "/"}>
+              <Link className="sticky-none" to={"/"}>
                 <img alt="" src="assets/img/logo/logo-2.png" />
               </Link>
-              <Link className="sticky-block" to={process.env.PUBLIC_URL + "/"}>
+              <Link className="sticky-block" to={"/"}>
                 <img alt="" src="assets/img/logo/logo.png" />
               </Link>
             </div>

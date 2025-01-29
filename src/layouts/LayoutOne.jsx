@@ -1,4 +1,5 @@
-import React, { Fragment } from "react";
+import React from "react";
+import { Fragment } from "react";
 import PropTypes from "prop-types";
 import HeaderOne from "../wrappers/header/HeaderOne";
 import FooterOne from "../wrappers/footer/FooterOne";

@@ -1,9 +1,10 @@
+import React from "react";
 import PropTypes from "prop-types";
 import { EffectFade } from 'swiper';
 import clsx from "clsx";
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import sliderData from "../../data/hero-sliders/hero-slider-twenty-six.json";
-import HeroSliderTwentySixSingle from "../../components/hero-slider/HeroSliderTwentySixSingle.js";
+import HeroSliderTwentySixSingle from "../../components/hero-slider/HeroSliderTwentySixSingle.jsx";
 
 const params = {
   effect: "fade",

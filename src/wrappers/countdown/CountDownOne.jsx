@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import { Link } from "react-router-dom";
@@ -7,7 +8,7 @@ const CountDownOne = ({ spaceTopClass, spaceBottomClass, bgImg, dateTime }) => {
   return (
     <div
       className={clsx("funfact-area", spaceTopClass, spaceBottomClass)}
-      style={{ backgroundImage: `url(${process.env.PUBLIC_URL + bgImg})` }}
+      style={{ backgroundImage: `url(${bgImg})` }}
     >
       <div className="container">
         <div className="row">
@@ -18,7 +19,7 @@ const CountDownOne = ({ spaceTopClass, spaceBottomClass, bgImg, dateTime }) => {
                 <CountdownTimer date={dateTime} />
               </div>
               <div className="funfact-btn btn-hover">
-                <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                <Link to={"/shop-grid-standard"}>
                   SHOP NOW
                 </Link>
               </div>

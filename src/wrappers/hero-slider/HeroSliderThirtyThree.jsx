@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "react-router-dom";
 import sliderData from "../../data/hero-sliders/hero-slider-thirty-three.json";
 
@@ -8,7 +9,7 @@ const HeroSliderThirtyThree = () => {
         className="body-effect effect-snow"
         style={{
           backgroundImage: `url(${
-            process.env.PUBLIC_URL + "/assets/img/icon-img/snow1.png"
+            "/assets/img/icon-img/snow1.png"
           })`
         }}
       />
@@ -16,7 +17,7 @@ const HeroSliderThirtyThree = () => {
         className="single-slider slider-height-14 bg-img"
         style={{
           backgroundImage: `url(${
-            process.env.PUBLIC_URL + sliderData.backgroundImage
+            sliderData.backgroundImage
           })`
         }}
       >
