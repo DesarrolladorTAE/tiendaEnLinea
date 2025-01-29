@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import { Fragment } from "react"; 
 import { useSelector } from "react-redux";
@@ -26,8 +27,8 @@ const ProductSticky = () => {
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: process.env.PUBLIC_URL + "/" },
-            {label: "Shop Product", path: process.env.PUBLIC_URL + pathname }
+            {label: "Home", path: "/" },
+            {label: "Shop Product", path: pathname }
           ]} 
         />
 

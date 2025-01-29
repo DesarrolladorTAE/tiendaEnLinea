@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
@@ -233,7 +234,7 @@ const ProductDescriptionInfoSlider = ({
             {product.category.map((single, key) => {
               return (
                 <li key={key}>
-                  <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                  <Link to={"/shop-grid-standard"}>
                     {single}
                   </Link>
                 </li>
@@ -251,7 +252,7 @@ const ProductDescriptionInfoSlider = ({
             {product.tag.map((single, key) => {
               return (
                 <li key={key}>
-                  <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                  <Link to={"/shop-grid-standard"}>
                     {single}
                   </Link>
                 </li>

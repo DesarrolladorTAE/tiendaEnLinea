@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 
 import Swiper, { SwiperSlide } from "../../components/swiper";
@@ -32,7 +33,7 @@ const ProductImageGallerySlider = ({ product }) => {
             <SwiperSlide key={key}>
               <div className="single-image">
                 <img
-                  src={process.env.PUBLIC_URL + single}
+                  src={single}
                   className="img-fluid"
                   alt=""
                 />
