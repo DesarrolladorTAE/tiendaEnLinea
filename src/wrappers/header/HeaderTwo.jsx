@@ -1,4 +1,3 @@
-import React from "react";
 import React, { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import Logo from "../../components/header/Logo";

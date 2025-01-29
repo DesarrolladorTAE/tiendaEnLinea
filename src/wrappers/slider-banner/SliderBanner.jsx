@@ -1,4 +1,4 @@
-
+import React from "react";
 import BannerEight from "../banner/BannerEight";
 import HeroSliderSeven from "../hero-slider/HeroSliderSeven";
 

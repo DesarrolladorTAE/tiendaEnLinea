@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import { useSelector } from "react-redux";
 import { getProducts } from "../../helpers/product";
 import ProductGridSingleTen from "../../components/product/ProductGridSingleTen";

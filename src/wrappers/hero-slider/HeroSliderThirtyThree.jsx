@@ -28,7 +28,7 @@ const HeroSliderThirtyThree = () => {
                 <h3>{sliderData.title}</h3>
                 <h1 dangerouslySetInnerHTML={{ __html: sliderData.subtitle }} />
                 <div className="slider-btn btn-hover">
-                  <Link to={process.env.PUBLIC_URL + sliderData.url}>
+                  <Link to={sliderData.url}>
                     SHOP NOW
                   </Link>
                 </div>
@@ -36,7 +36,7 @@ const HeroSliderThirtyThree = () => {
             </div>
             <div className="col-xl-6 col-lg-6 col-md-6 col-12 col-sm-6">
               <div className="slider-single-img-14">
-                <img src={process.env.PUBLIC_URL + sliderData.image} alt="" />
+                <img src={sliderData.image} alt="" />
               </div>
             </div>
           </div>

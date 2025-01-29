@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import React, { Fragment } from "react";
 import { Link } from "react-router-dom";
 import SEO from "../../components/seo";
 import sliderData from "../../data/hero-sliders/scroll-slider.json";
@@ -57,7 +57,7 @@ const HomeOnepageScroll = () => {
                             <div className="slider-btn-11 btn-hover">
                               <Link
                                 className="animated"
-                                to={process.env.PUBLIC_URL + single.url}
+                                to={single.url}
                               >
                                 SHOP NOW
                               </Link>
@@ -69,7 +69,7 @@ const HomeOnepageScroll = () => {
                             <img
                               className="animated"
                               alt=""
-                              src={process.env.PUBLIC_URL + single.image}
+                              src={single.image}
                             />
                           </div>
                         </div>

@@ -1,4 +1,4 @@
-
+import React from "react";
 import SEO from "../../components/seo";
 import LayoutFour from "../../layouts/LayoutFour";
 import NewsletterTwo from "../../wrappers/newsletter/NewsletterTwo";

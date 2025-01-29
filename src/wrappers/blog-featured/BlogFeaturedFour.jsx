@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import blogFeaturedData from "../../data/blog-featured/blog-featured-two.json";

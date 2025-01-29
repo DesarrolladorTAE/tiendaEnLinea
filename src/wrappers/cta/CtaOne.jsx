@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
@@ -9,13 +10,13 @@ const CtaOne = ({ spaceTopClass, backgroundImage }) => {
         <div
           className="bg-img pt-100 pb-100"
           style={{
-            backgroundImage: `url(${process.env.PUBLIC_URL + backgroundImage})`
+            backgroundImage: `url(${backgroundImage})`
           }}
         >
           <div className="save-money-content">
             <h2>Shop and save money</h2>
             <div className="save-money-btn">
-              <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+              <Link to={"/shop-grid-standard"}>
                 Buy $97.09
               </Link>
             </div>

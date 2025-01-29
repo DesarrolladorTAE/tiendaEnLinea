@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import { Link } from "react-router-dom";
@@ -8,7 +9,7 @@ const CtaTwo = ({ spaceTopClass, spaceBottomClass }) => {
       className={clsx("cta-area bg-img", spaceTopClass, spaceBottomClass)}
       style={{
         backgroundImage: `url(${
-          process.env.PUBLIC_URL + "/assets/img/bg/cta-bg.jpg"
+          "/assets/img/bg/cta-bg.jpg"
         })`
       }}
     >
@@ -24,7 +25,7 @@ const CtaTwo = ({ spaceTopClass, spaceBottomClass }) => {
               </p>
               <Link
                 className="cta-btn"
-                to={process.env.PUBLIC_URL + "/shop-grid-standard"}
+                to={"/shop-grid-standard"}
               >
                 SHOP NOW
               </Link>
