@@ -1,9 +1,10 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import categoryData from "../../data/category/category-two.json";
-import CategoryTwoSingle from "../../components/category/CategoryTwoSingle.js";
-import SectionTitleFour from "../../components/section-title/SectionTitleFour.js";
+import CategoryTwoSingle from "../../components/category/CategoryTwoSingle.jsx";
+import SectionTitleFour from "../../components/section-title/SectionTitleFour.jsx";
 
 const settings = {
   loop: false,

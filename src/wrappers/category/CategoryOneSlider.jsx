@@ -1,8 +1,9 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import categoryData from "../../data/category/category-one.json";
-import CategoryOneSingle from "../../components/category/CategoryOneSingle.js";
+import CategoryOneSingle from "../../components/category/CategoryOneSingle.jsx";
 
 // swiper slider settings
 const settings = {
