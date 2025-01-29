@@ -1,7 +1,8 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import featureIconData from "../../data/feature-icons/feature-icon-three.json";
-import FeatureIconThreeSingle from "../../components/feature-icon/FeatureIconThreeSingle.js";
+import FeatureIconThreeSingle from "../../components/feature-icon/FeatureIconThreeSingle.jsx";
 
 const FeatureIconThree = ({
   bgColorClass,

@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import { Fragment, useState } from "react";
 import clsx from "clsx";
@@ -31,16 +32,16 @@ const ProductGridSingleEleven = ({
     <Fragment>
         <div className={clsx("product-wrap-10", spaceBottomClass, colorClass, productGridStyleClass)}>
           <div className="product-img">
-            <Link to={process.env.PUBLIC_URL + "/product/" + product.id}>
+            <Link to={"/product/" + product.id}>
               <img
                 className="default-img img-fluid"
-                src={process.env.PUBLIC_URL + product.image[0]}
+                src={product.image[0]}
                 alt=""
               />
               {product.image.length > 1 ? (
                 <img
                   className="hover-img img-fluid"
-                  src={process.env.PUBLIC_URL + product.image[1]}
+                  src={product.image[1]}
                   alt=""
                 />
               ) : (
@@ -69,7 +70,7 @@ const ProductGridSingleEleven = ({
                 </a>
               ) : product.variation && product.variation.length >= 1 ? (
                 <Link
-                  to={`${process.env.PUBLIC_URL}/product/${product.id}`}
+                  to={`/product/${product.id}`}
                   title="Select options"
                 >
                   <i className="fa fa-cog"></i>
@@ -129,7 +130,7 @@ const ProductGridSingleEleven = ({
           <div className="product-content-2">
             <div className="title-price-wrap-2">
               <h3>
-                <Link to={process.env.PUBLIC_URL + "/product/" + product.id}>
+                <Link to={"/product/" + product.id}>
                   {product.name}
                 </Link>
               </h3>

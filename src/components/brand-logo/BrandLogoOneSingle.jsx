@@ -1,10 +1,11 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 
 const BrandLogoOneSingle = ({ data, spaceBottomClass }) => {
   return (
     <div className={clsx("single-brand-logo", spaceBottomClass)}>
-      <img src={process.env.PUBLIC_URL + data.image} alt="" />
+      <img src={data.image} alt="" />
     </div>
   );
 };

@@ -1,8 +1,9 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx"
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import testimonialData from "../../data/testimonial/testimonial-one.json";
-import TestimonialOneSingle from "../../components/testimonial/TestimonialOneSingle.js";
+import TestimonialOneSingle from "../../components/testimonial/TestimonialOneSingle.jsx";
 
 // swiper slider settings
 const settings = {

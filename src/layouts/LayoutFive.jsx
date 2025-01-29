@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import HeaderFour from "../wrappers/header/HeaderFour";
 import FooterTwo from "../wrappers/footer/FooterTwo";

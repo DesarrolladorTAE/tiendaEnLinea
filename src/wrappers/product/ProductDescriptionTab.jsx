@@ -54,7 +54,7 @@ const ProductDescriptionTab = ({ spaceBottomClass, productFullDesc }) => {
                         <div className="review-img">
                           <img
                             src={
-                              "/assets/img/testimonial/1.jpg"
+                               "/assets/img/testimonial/1.jpg"
                             }
                             alt=""
                           />
@@ -91,7 +91,7 @@ const ProductDescriptionTab = ({ spaceBottomClass, productFullDesc }) => {
                         <div className="review-img">
                           <img
                             src={
-                              "/assets/img/testimonial/2.jpg"
+                               "/assets/img/testimonial/2.jpg"
                             }
                             alt=""
                           />

@@ -1,7 +1,8 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import bannerData from "../../data/banner/banner-thirty-eight.json";
-import BannerThirtyEightSingle from "../../components/banner/BannerThirtyEightSingle.js";
+import BannerThirtyEightSingle from "../../components/banner/BannerThirtyEightSingle.jsx";
 
 const BannerThirtyEight = ({ spaceTopClass, spaceBottomClass }) => {
   return (

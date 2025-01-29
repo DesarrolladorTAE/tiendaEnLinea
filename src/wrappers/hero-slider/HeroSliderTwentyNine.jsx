@@ -1,7 +1,8 @@
+import React from "react";
 import { EffectFade } from 'swiper';
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import sliderData from "../../data/hero-sliders/hero-slider-twenty-nine.json";
-import HeroSliderTwentyNineSingle from "../../components/hero-slider/HeroSliderTwentyNineSingle.js";
+import HeroSliderTwentyNineSingle from "../../components/hero-slider/HeroSliderTwentyNineSingle.jsx";
 
 const params = {
   effect: "fade",

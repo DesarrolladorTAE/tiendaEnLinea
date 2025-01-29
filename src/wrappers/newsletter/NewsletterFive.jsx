@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import SubscribeEmailTwo from "../../components/newsletter/SubscribeEmailTwo";
@@ -14,7 +15,7 @@ const NewsletterFive = ({
     <div
       className={clsx("subscribe-area-3 bg-img", spaceTopClass, spaceBottomClass, spaceLeftClass, spaceRightClass)}
       style={{
-        backgroundImage: `url(${process.env.PUBLIC_URL + newsletterBg})`
+        backgroundImage: `url(${newsletterBg})`
       }}
     >
       <div className="container-fluid">

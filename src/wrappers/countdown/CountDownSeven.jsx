@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
@@ -13,7 +14,7 @@ const CountDownSeven = ({ bgColorClass, spaceTopClass, dateTime }) => {
             <CountdownTimer date={dateTime} />
           </div>
           <div className="slider-btn-12 btn-hover">
-            <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+            <Link to={"/shop-grid-standard"}>
               MORE OFFER
             </Link>
           </div>

@@ -1,7 +1,8 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import featureIconData from "../../data/feature-icons/feature-icon-nine.json";
-import FeatureIconNineSingle from "../../components/feature-icon/FeatureIconNineSingle.js";
+import FeatureIconNineSingle from "../../components/feature-icon/FeatureIconNineSingle.jsx";
 
 const FeatureIconNine = ({
   spaceTopClass,
@@ -17,7 +18,7 @@ const FeatureIconNine = ({
       className={clsx("support-area hm9-section-padding", bgColorClass, spaceTopClass, spaceBottomClass, responsiveClass)}
       style={
         bgImg
-          ? { backgroundImage: `url(${process.env.PUBLIC_URL + bgImg})` }
+          ? { backgroundImage: `url(${bgImg})` }
           : {}
       }
     >

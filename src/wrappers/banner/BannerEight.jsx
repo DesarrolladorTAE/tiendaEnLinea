@@ -1,6 +1,6 @@
-
+import React from "react";
 import bannerData from "../../data/banner/banner-eight.json";
-import BannerEightSingle from "../../components/banner/BannerEightSingle.js";
+import BannerEightSingle from "../../components/banner/BannerEightSingle.jsx";
 
 const BannerEight = () => {
   return (

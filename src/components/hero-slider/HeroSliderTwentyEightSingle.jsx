@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 
@@ -5,7 +6,7 @@ const HeroSliderTwentyEightSingle = ({ data }) => {
   return (
     <div
       className="single-slider-2 slider-height-2 d-flex align-items-center bg-img"
-      style={{ backgroundImage: `url(${process.env.PUBLIC_URL + data.image})` }}
+      style={{ backgroundImage: `url(${data.image})` }}
     >
       <div className="container">
         <div className="row">
@@ -19,7 +20,7 @@ const HeroSliderTwentyEightSingle = ({ data }) => {
               <div className="slider-btn-red btn-hover">
                 <Link
                   className="animated"
-                  to={process.env.PUBLIC_URL + data.url}
+                  to={data.url}
                 >
                   Shop Now
                 </Link>

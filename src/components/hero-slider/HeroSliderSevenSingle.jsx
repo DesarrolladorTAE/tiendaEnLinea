@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 
@@ -6,7 +7,7 @@ const HeroSliderSevenSingle = ({ data }) => {
     <div
       className="single-slider-2 slider-height-18 d-flex align-items-center slider-overly-res bg-cover"
       style={{
-        backgroundImage: `url(${process.env.PUBLIC_URL + data.image})`
+        backgroundImage: `url(${data.image})`
       }}
     >
       <div className="slider-content-7 slider-animated-1 ml-70">

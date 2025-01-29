@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
@@ -12,7 +13,7 @@ const BannerTwentySix = ({ spaceBottomClass }) => {
               <a href="product-details.html">
                 <img
                   src={
-                    process.env.PUBLIC_URL + "/assets/img/banner/banner-43.png"
+                    "/assets/img/banner/banner-43.png"
                   }
                   alt=""
                 />
@@ -23,7 +24,7 @@ const BannerTwentySix = ({ spaceBottomClass }) => {
                   Medix Mask <br />
                   Up To 40% Off
                 </h2>
-                <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                <Link to={"/shop-grid-standard"}>
                   Shop Now
                 </Link>
               </div>
@@ -34,7 +35,7 @@ const BannerTwentySix = ({ spaceBottomClass }) => {
               <a href="product-details.html">
                 <img
                   src={
-                    process.env.PUBLIC_URL + "/assets/img/banner/banner-44.png"
+                    "/assets/img/banner/banner-44.png"
                   }
                   alt=""
                 />
@@ -44,7 +45,7 @@ const BannerTwentySix = ({ spaceBottomClass }) => {
                   Hand Gloves <br />
                   Up To 30% Off
                 </h2>
-                <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                <Link to={"/shop-grid-standard"}>
                   Shop Now
                 </Link>
               </div>
@@ -55,7 +56,7 @@ const BannerTwentySix = ({ spaceBottomClass }) => {
               <a href="product-details.html">
                 <img
                   src={
-                    process.env.PUBLIC_URL + "/assets/img/banner/banner-45.png"
+                    "/assets/img/banner/banner-45.png"
                   }
                   alt=""
                 />
@@ -66,7 +67,7 @@ const BannerTwentySix = ({ spaceBottomClass }) => {
                   Hand Sanitizer <br />
                   Up To 40% Off
                 </h2>
-                <Link to={process.env.PUBLIC_URL + "/shop-grid-standard"}>
+                <Link to={"/shop-grid-standard"}>
                   Shop Now
                 </Link>
               </div>

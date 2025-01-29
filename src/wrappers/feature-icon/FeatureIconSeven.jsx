@@ -1,7 +1,9 @@
+import React from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import featureIconData from "../../data/feature-icons/feature-icon-seven.json";
-import FeatureIconSevenSingle from "../../components/feature-icon/FeatureIconSevenSingle.js";
+import FeatureIconSevenSingle from "../../components/feature-icon/FeatureIconSevenSingle.jsx";
 
 const FeatureIconSeven = ({ spaceTopClass, spaceBottomClass }) => {
   return (

@@ -1,3 +1,4 @@
+import React from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 
@@ -6,7 +7,7 @@ const TeamMemberOneSingle = ({ data, spaceBottomClass }) => {
       <div className={clsx("team-wrapper", spaceBottomClass)}>
         <div className="team-img">
           <img
-            src={process.env.PUBLIC_URL + data.image}
+            src={data.image}
             alt=""
             className="img-fluid"
           />

@@ -1,4 +1,4 @@
-
+import React from "react";
 import Swiper, { SwiperSlide } from "../../components/swiper";
 import ImageSliderOneSingle from "../../components/image-slider/ImageSliderOneSingle";
 import imageData from "../../data/image-slider/image-slider-two.json";

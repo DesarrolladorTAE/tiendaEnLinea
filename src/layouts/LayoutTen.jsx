@@ -1,5 +1,6 @@
+import React from "react";
 import PropTypes from "prop-types";
-import React, { Fragment } from "react";
+import { Fragment } from "react";
 import HeaderSix from "../wrappers/header/HeaderSix";
 import FooterFour from "../wrappers/footer/FooterFour";
 import ScrollToTop from "../components/scroll-to-top"
