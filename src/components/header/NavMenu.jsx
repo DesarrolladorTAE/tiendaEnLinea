@@ -15,18 +15,18 @@ const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
     >
       <nav>
         <ul>
-          <li>
-            <Link to={"/"}>
+          {/* <li> */}
+            <Link to={"/home-fashion-three"}>
               {t("home")}
-              {sidebarMenu ? (
+              {/* {sidebarMenu ? (
                 <span>
                   <i className="fa fa-angle-right"></i>
                 </span>
               ) : (
                 <i className="fa fa-angle-down" />
-              )}
+              )} */}
             </Link>
-            <ul className="mega-menu mega-menu-padding">
+            {/* <ul className="mega-menu mega-menu-padding">
               <li>
                 <ul>
                   <li className="mega-menu-title">
@@ -253,9 +253,19 @@ const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
                 </ul>
               </li>
             </ul>
-          </li>
+          </li> */}
           <li>
-            <Link to={"/shop-grid-standard"}>
+          <Link to={"/shop-grid-right-sidebar"}>
+              {t("shop")}
+              {/* {sidebarMenu ? (
+                <span>
+                  <i className="fa fa-angle-right"></i>
+                </span>
+              ) : (
+                <i className="fa fa-angle-down" />
+              )} */}
+            </Link>
+            {/* <Link to={"/shop-grid-standard"}>
               {" "}
               {t("shop")}
               {sidebarMenu ? (
@@ -394,8 +404,8 @@ const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
                   </li>
                 </ul>
               </li>
-            </ul>
-          </li>
+            </ul>*/}
+          </li> 
           <li>
             <Link to={"/shop-grid-standard"}>
               {t("collection")}

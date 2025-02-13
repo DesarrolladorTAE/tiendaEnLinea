@@ -3,85 +3,85 @@ import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 // home pages
-const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
-const HomeFashionTwo = lazy(() => import("./pages/home/HomeFashionTwo.jsx"));
+ const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
+ const HomeFashionTwo = lazy(() => import("./pages/home/HomeFashionTwo.jsx"));
 const HomeFashionThree = lazy(() => import("./pages/home/HomeFashionThree.jsx"));
-const HomeFashionFour = lazy(() => import("./pages/home/HomeFashionFour.jsx"));
-const HomeFashionFive = lazy(() => import("./pages/home/HomeFashionFive.jsx"));
-const HomeFashionSix = lazy(() => import("./pages/home/HomeFashionSix.jsx"));
-const HomeFashionSeven = lazy(() => import("./pages/home/HomeFashionSeven.jsx"));
-const HomeFashionEight = lazy(() => import("./pages/home/HomeFashionEight.jsx"));
-const HomeKidsFashion = lazy(() => import("./pages/home/HomeKidsFashion.jsx"));
-const HomeCosmetics = lazy(() => import("./pages/home/HomeCosmetics.jsx"));
-const HomeFurniture = lazy(() => import("./pages/home/HomeFurniture.jsx"));
-const HomeFurnitureTwo = lazy(() => import("./pages/home/HomeFurnitureTwo.jsx"));
-const HomeFurnitureThree = lazy(() =>
-  import("./pages/home/HomeFurnitureThree.jsx")
-);
-const HomeFurnitureFour = lazy(() => import("./pages/home/HomeFurnitureFour.jsx"));
-const HomeFurnitureFive = lazy(() => import("./pages/home/HomeFurnitureFive.jsx"));
-const HomeFurnitureSix = lazy(() => import("./pages/home/HomeFurnitureSix.jsx"));
-const HomeFurnitureSeven = lazy(() =>
-  import("./pages/home/HomeFurnitureSeven.jsx")
-);
-const HomeElectronics = lazy(() => import("./pages/home/HomeElectronics.jsx"));
-const HomeElectronicsTwo = lazy(() =>
-  import("./pages/home/HomeElectronicsTwo.jsx")
-);
-const HomeElectronicsThree = lazy(() =>
-  import("./pages/home/HomeElectronicsThree.jsx")
-);
-const HomeBookStore = lazy(() => import("./pages/home/HomeBookStore.jsx"));
-const HomeBookStoreTwo = lazy(() => import("./pages/home/HomeBookStoreTwo.jsx"));
-const HomePlants = lazy(() => import("./pages/home/HomePlants.jsx"));
-const HomeFlowerShop = lazy(() => import("./pages/home/HomeFlowerShop.jsx"));
-const HomeFlowerShopTwo = lazy(() => import("./pages/home/HomeFlowerShopTwo.jsx"));
-const HomeOrganicFood = lazy(() => import("./pages/home/HomeOrganicFood.jsx"));
-const HomeOrganicFoodTwo = lazy(() =>
-  import("./pages/home/HomeOrganicFoodTwo.jsx")
-);
-const HomeOnepageScroll = lazy(() => import("./pages/home/HomeOnepageScroll.jsx"));
-const HomeGridBanner = lazy(() => import("./pages/home/HomeGridBanner.jsx"));
-const HomeAutoParts = lazy(() => import("./pages/home/HomeAutoParts.jsx"));
-const HomeCakeShop = lazy(() => import("./pages/home/HomeCakeShop.jsx"));
-const HomeHandmade = lazy(() => import("./pages/home/HomeHandmade.jsx"));
-const HomePetFood = lazy(() => import("./pages/home/HomePetFood.jsx"));
-const HomeMedicalEquipment = lazy(() =>
-  import("./pages/home/HomeMedicalEquipment.jsx")
-);
-const HomeChristmas = lazy(() => import("./pages/home/HomeChristmas.jsx"));
-const HomeBlackFriday = lazy(() => import("./pages/home/HomeBlackFriday.jsx"));
-const HomeBlackFridayTwo = lazy(() =>
-  import("./pages/home/HomeBlackFridayTwo.jsx")
-);
-const HomeValentinesDay = lazy(() => import("./pages/home/HomeValentinesDay.jsx"));
+/* const HomeFashionFour = lazy(() => import("./pages/home/HomeFashionFour.jsx"));
+ const HomeFashionFive = lazy(() => import("./pages/home/HomeFashionFive.jsx"));
+ const HomeFashionSix = lazy(() => import("./pages/home/HomeFashionSix.jsx"));
+ const HomeFashionSeven = lazy(() => import("./pages/home/HomeFashionSeven.jsx"));
+ const HomeFashionEight = lazy(() => import("./pages/home/HomeFashionEight.jsx"));
+ const HomeKidsFashion = lazy(() => import("./pages/home/HomeKidsFashion.jsx"));
+ const HomeCosmetics = lazy(() => import("./pages/home/HomeCosmetics.jsx"));
+ const HomeFurniture = lazy(() => import("./pages/home/HomeFurniture.jsx"));
+ const HomeFurnitureTwo = lazy(() => import("./pages/home/HomeFurnitureTwo.jsx"));
+ const HomeFurnitureThree = lazy(() =>
+   import("./pages/home/HomeFurnitureThree.jsx")
+  );
+ const HomeFurnitureFour = lazy(() => import("./pages/home/HomeFurnitureFour.jsx"));
+ const HomeFurnitureFive = lazy(() => import("./pages/home/HomeFurnitureFive.jsx"));
+ const HomeFurnitureSix = lazy(() => import("./pages/home/HomeFurnitureSix.jsx"));
+ const HomeFurnitureSeven = lazy(() =>
+   import("./pages/home/HomeFurnitureSeven.jsx")
+ );
+ const HomeElectronics = lazy(() => import("./pages/home/HomeElectronics.jsx"));
+ const HomeElectronicsTwo = lazy(() =>
+   import("./pages/home/HomeElectronicsTwo.jsx")
+ );
+ const HomeElectronicsThree = lazy(() =>
+   import("./pages/home/HomeElectronicsThree.jsx")
+ );
+ const HomeBookStore = lazy(() => import("./pages/home/HomeBookStore.jsx"));
+ const HomeBookStoreTwo = lazy(() => import("./pages/home/HomeBookStoreTwo.jsx"));
+ const HomePlants = lazy(() => import("./pages/home/HomePlants.jsx"));
+ const HomeFlowerShop = lazy(() => import("./pages/home/HomeFlowerShop.jsx"));
+ const HomeFlowerShopTwo = lazy(() => import("./pages/home/HomeFlowerShopTwo.jsx"));
+ const HomeOrganicFood = lazy(() => import("./pages/home/HomeOrganicFood.jsx"));
+ const HomeOrganicFoodTwo = lazy(() =>
+   import("./pages/home/HomeOrganicFoodTwo.jsx")
+ );
+ const HomeOnepageScroll = lazy(() => import("./pages/home/HomeOnepageScroll.jsx"));
+ const HomeGridBanner = lazy(() => import("./pages/home/HomeGridBanner.jsx"));
+ const HomeAutoParts = lazy(() => import("./pages/home/HomeAutoParts.jsx"));
+ const HomeCakeShop = lazy(() => import("./pages/home/HomeCakeShop.jsx"));
+ const HomeHandmade = lazy(() => import("./pages/home/HomeHandmade.jsx"));
+ const HomePetFood = lazy(() => import("./pages/home/HomePetFood.jsx"));
+ const HomeMedicalEquipment = lazy(() =>
+   import("./pages/home/HomeMedicalEquipment.jsx")
+ );
+ const HomeChristmas = lazy(() => import("./pages/home/HomeChristmas.jsx"));
+ const HomeBlackFriday = lazy(() => import("./pages/home/HomeBlackFriday.jsx"));
+ const HomeBlackFridayTwo = lazy(() =>
+   import("./pages/home/HomeBlackFridayTwo.jsx")
+ );
+ const HomeValentinesDay = lazy(() => import("./pages/home/HomeValentinesDay.jsx"));*/
 
 // shop pages
-const ShopGridStandard = lazy(() => import("./pages/shop/ShopGridStandard.jsx"));
-const ShopGridFilter = lazy(() => import("./pages/shop/ShopGridFilter.jsx"));
-const ShopGridTwoColumn = lazy(() => import("./pages/shop/ShopGridTwoColumn.jsx"));
-const ShopGridNoSidebar = lazy(() => import("./pages/shop/ShopGridNoSidebar.jsx"));
-const ShopGridFullWidth = lazy(() => import("./pages/shop/ShopGridFullWidth.jsx"));
+ /* const ShopGridStandard = lazy(() => import("./pages/shop/ShopGridStandard.jsx"));
+ const ShopGridFilter = lazy(() => import("./pages/shop/ShopGridFilter.jsx"));
+ const ShopGridTwoColumn = lazy(() => import("./pages/shop/ShopGridTwoColumn.jsx"));
+ const ShopGridNoSidebar = lazy(() => import("./pages/shop/ShopGridNoSidebar.jsx"));
+ const ShopGridFullWidth = lazy(() => import("./pages/shop/ShopGridFullWidth.jsx")); */
 const ShopGridRightSidebar = lazy(() =>
   import("./pages/shop/ShopGridRightSidebar.jsx")
 );
-const ShopListStandard = lazy(() => import("./pages/shop/ShopListStandard.jsx"));
-const ShopListFullWidth = lazy(() => import("./pages/shop/ShopListFullWidth.jsx"));
-const ShopListTwoColumn = lazy(() => import("./pages/shop/ShopListTwoColumn.jsx"));
-
+ /* const ShopListStandard = lazy(() => import("./pages/shop/ShopListStandard.jsx"));
+ const ShopListFullWidth = lazy(() => import("./pages/shop/ShopListFullWidth.jsx"));
+ const ShopListTwoColumn = lazy(() => import("./pages/shop/ShopListTwoColumn.jsx"));
+ */
 // product pages
 const Product = lazy(() => import("./pages/shop-product/Product.jsx"));
-const ProductTabLeft = lazy(() =>
-  import("./pages/shop-product/ProductTabLeft.jsx")
-);
-const ProductTabRight = lazy(() =>
-  import("./pages/shop-product/ProductTabRight.jsx")
-);
-const ProductSticky = lazy(() => import("./pages/shop-product/ProductSticky.jsx"));
-const ProductSlider = lazy(() => import("./pages/shop-product/ProductSlider.jsx"));
-const ProductFixedImage = lazy(() =>
-  import("./pages/shop-product/ProductFixedImage.jsx")
-);
+/* const ProductTabLeft = lazy(() =>
+//   import("./pages/shop-product/ProductTabLeft.jsx")
+// );
+// const ProductTabRight = lazy(() =>
+//   import("./pages/shop-product/ProductTabRight.jsx")
+// );
+// const ProductSticky = lazy(() => import("./pages/shop-product/ProductSticky.jsx"));
+// const ProductSlider = lazy(() => import("./pages/shop-product/ProductSlider.jsx"));
+// const ProductFixedImage = lazy(() =>
+//   import("./pages/shop-product/ProductFixedImage.jsx")
+ );*/
 
 // blog pages
 const BlogStandard = lazy(() => import("./pages/blog/BlogStandard.jsx"));
@@ -121,30 +121,30 @@ const App = () => {
             <Routes>
               <Route
                 path="/"
-                element={<HomeFashion/>}
+                element={<HomeFashionThree/>}
               />
 
               {/* Homepages */}
-              <Route
+              {/* <Route
                 path={  "/home-fashion"}
                 element={<HomeFashion/>}
               />
               <Route
                 path={  "/home-fashion-two"}
                 element={<HomeFashionTwo/>}
-              />
+              /> */}
               <Route
                 path={  "/home-fashion-three"}
                 element={<HomeFashionThree/>}
               />
-              <Route
+              {/* <Route
                 path={  "/home-fashion-four"}
                 element={<HomeFashionFour/>}
               />
-              <Route
+              { <Route
                 path={  "/home-fashion-five"}
                 element={<HomeFashionFive/>}
-              />
+              /> }
               <Route
                 path={  "/home-fashion-six"}
                 element={<HomeFashionSix/>}
@@ -276,10 +276,10 @@ const App = () => {
               <Route
                 path={  "/home-valentines-day"}
                 element={<HomeValentinesDay/>}
-              />
+              /> */}
 
               {/* Shop pages */}
-              <Route
+             {/*  <Route
                 path={  "/shop-grid-standard"}
                 element={<ShopGridStandard/>}
               />
@@ -298,12 +298,12 @@ const App = () => {
               <Route
                 path={  "/shop-grid-full-width"}
                 element={<ShopGridFullWidth/>}
-              />
+              /> */}
               <Route
                 path={  "/shop-grid-right-sidebar"}
                 element={<ShopGridRightSidebar/>}
               />
-              <Route
+              {/* <Route
                 path={  "/shop-list-standard"}
                 element={<ShopListStandard/>}
               />
@@ -314,14 +314,14 @@ const App = () => {
               <Route
                 path={  "/shop-list-two-column"}
                 element={<ShopListTwoColumn/>}
-              />
+              /> */}
 
               {/* Shop product pages */}
               <Route
                 path={  "/product/:id"}
                 element={<Product />}
               />
-              <Route
+             {/*  <Route
                 path={  "/product-tab-left/:id"}
                 element={<ProductTabLeft/>}
               />
@@ -340,7 +340,7 @@ const App = () => {
               <Route
                 path={  "/product-fixed-image/:id"}
                 element={<ProductFixedImage/>}
-              /> 
+              />  */}
 
               {/* Blog pages */}
               <Route
