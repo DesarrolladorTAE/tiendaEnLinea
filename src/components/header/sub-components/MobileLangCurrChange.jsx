@@ -35,6 +35,7 @@ const MobileLangCurrChange = () => {
           value={i18n.resolvedLanguage}
           onChange={changeLanguageTrigger}
         >
+          <option value="es">Spanish</option>
           <option value="en">English</option>
           <option value="fn">French</option>
           <option value="de">Germany</option>
