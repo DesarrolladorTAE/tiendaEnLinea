@@ -22,13 +22,13 @@ const LanguageCurrencyChanger = ({ currency }) => {
       <div className="same-language-currency language-style">
         <span>
           {i18n.resolvedLanguage === "es"
-            ? "Spanish"
+            ? "Español"
             : i18n.resolvedLanguage === "en"
             ? "English"
             : i18n.resolvedLanguage === "fn"
-            ? "French"
+            ? "Français"
             : i18n.resolvedLanguage === "de"
-            ? "Germany"
+            ? "Deutsch"
             : ""}{" "}
           <i className="fa fa-angle-down" />
         </span>
@@ -36,7 +36,7 @@ const LanguageCurrencyChanger = ({ currency }) => {
           <ul>
             <li>
               <button value="es" onClick={e => changeLanguageTrigger(e)}>
-                Spanish
+                Español
               </button>
             </li>
             <li>
@@ -46,12 +46,12 @@ const LanguageCurrencyChanger = ({ currency }) => {
             </li>
             <li>
               <button value="fn" onClick={e => changeLanguageTrigger(e)}>
-                French
+              Français
               </button>
             </li>
             <li>
               <button value="de" onClick={e => changeLanguageTrigger(e)}>
-                Germany
+              Deutsch
               </button>
             </li>
           </ul>
@@ -63,6 +63,11 @@ const LanguageCurrencyChanger = ({ currency }) => {
         </span>
         <div className="lang-car-dropdown">
           <ul>
+          <li>
+              <button value="MXN" onClick={e => setCurrencyTrigger(e)}>
+                MXN
+              </button>
+            </li>  
             <li>
               <button value="USD" onClick={e => setCurrencyTrigger(e)}>
                 USD

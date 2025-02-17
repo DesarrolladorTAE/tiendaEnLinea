@@ -3,8 +3,8 @@ import { createSlice } from '@reduxjs/toolkit'; // Importación correcta para ES
 const currencySlice = createSlice({
     name: "currency",
     initialState: {
-        currencySymbol: "€",
-        currencyName: "EUR",
+        currencySymbol: "$",
+        currencyName: "MXN",
         currencyRate: 1
     },
     reducers: {
@@ -13,6 +13,11 @@ const currencySlice = createSlice({
 
             // Actualiza el estado de forma inmutable
             switch (currencyName) {
+                case "MXN":
+                    state.currencySymbol = "$";
+                    state.currencyRate = 1;
+                    state.currencyName = currencyName;
+                    break;
                 case "USD":
                     state.currencySymbol = "$";
                     state.currencyRate = 1;
