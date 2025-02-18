@@ -12,12 +12,11 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "title": {
+    "sku": {
       "type": "string"
     },
-    "blocks": {
-      "type": "dynamiczone",
-      "components": ["shared.media", "shared.quote", "shared.rich-text", "shared.slider"]
+    "name": {
+      "type": "string"
     }
   }
 }

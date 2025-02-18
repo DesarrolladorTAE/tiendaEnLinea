@@ -31,7 +31,26 @@ export interface SharedRichText extends Struct.ComponentSchema {
     icon: 'align-justify';
   };
   attributes: {
-    body: Schema.Attribute.RichText;
+    category: Schema.Attribute.String;
+    color: Schema.Attribute.String;
+    discount: Schema.Attribute.Decimal;
+    fullDescription: Schema.Attribute.Text;
+    imagen: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios',
+      true
+    >;
+    name: Schema.Attribute.String;
+    new: Schema.Attribute.Boolean;
+    offerEnd: Schema.Attribute.DateTime;
+    price: Schema.Attribute.Decimal;
+    rating: Schema.Attribute.Integer;
+    saleCount: Schema.Attribute.Integer;
+    shortDescription: Schema.Attribute.Text;
+    size: Schema.Attribute.Relation<'oneToMany', 'api::article.article'>;
+    skn: Schema.Attribute.String;
+    stock: Schema.Attribute.Integer;
+    tag: Schema.Attribute.String;
+    variation: Schema.Attribute.JSON;
   };
 }
 

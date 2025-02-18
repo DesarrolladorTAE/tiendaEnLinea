@@ -13,19 +13,15 @@
   "pluginOptions": {},
   "attributes": {
     "name": {
-      "type": "string"
+      "type": "string",
+      "required": true,
+      "unique": true
     },
-    "slug": {
-      "type": "uid"
-    },
-    "articles": {
+    "products": {
       "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::article.article",
+      "relation": "manyToMany",
+      "target": "api::product.product",
       "mappedBy": "category"
-    },
-    "description": {
-      "type": "text"
     }
   }
 }
