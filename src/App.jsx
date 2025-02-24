@@ -1,6 +1,6 @@
 import React, { Suspense, lazy } from 'react';
 import ScrollToTop from "./helpers/scroll-top";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 // home pages
 
@@ -15,12 +15,13 @@ const ShopGridRightSidebar = lazy(() =>
 
 // product pages
 const Product = lazy(() => import("./pages/shop-product/Product.jsx"));
- 
+
 // other pages
 const About = lazy(() => import("./pages/other/About.jsx"));
 const Contact = lazy(() => import("./pages/other/Contact.jsx"));
 const MyAccount = lazy(() => import("./pages/other/MyAccount.jsx"));
 const LoginRegister = lazy(() => import("./pages/other/LoginRegister.jsx"));
+const Login = lazy(() => import("./pages/other/Login.jsx"));
 
 const Cart = lazy(() => import("./pages/other/Cart.jsx"));
 const Wishlist = lazy(() => import("./pages/other/Wishlist.jsx"));
@@ -31,87 +32,60 @@ const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 
 const App = () => {
   return (
-      <Router>
-        <ScrollToTop>
-          <Suspense
-            fallback={
-              <div className="flone-preloader-wrapper">
-                <div className="flone-preloader">
-                  <span></span>
-                  <span></span>
-                </div>
+    <Router>
+      <ScrollToTop>
+        <Suspense
+          fallback={
+            <div className="flone-preloader-wrapper">
+              <div className="flone-preloader">
+                <span></span>
+                <span></span>
               </div>
-            }
-          >
-            <Routes>
-              <Route
-                path="/"
-                element={<HomeFashionThree/>}
-              />
+            </div>
+          }
+        >
+          <Routes>
+            {/*
+              Redirige la raíz ("/") a la ruta "/login-register"
+              de modo que la primera página mostrada sea LoginRegister.
+            */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
 
-              {/* Homepages */}
-           
-              <Route
-                path={  "/home-fashion-three"}
-                element={<HomeFashionThree/>}
-              />
-          
+            {/* Homepages */}
+            <Route
+              path="/home-fashion-three"
+              element={<HomeFashionThree />}
+            />
 
-              {/* Shop pages */}
-             
-              <Route
-                path={  "/shop-grid-right-sidebar"}
-                element={<ShopGridRightSidebar/>}
-              />
-              
-              {/* Shop product pages */}
-              <Route
-                path={  "/product/:id"}
-                element={<Product />}
-              />
- 
+            {/* Shop pages */}
+            <Route
+              path="/shop-grid-right-sidebar"
+              element={<ShopGridRightSidebar />}
+            />
 
-              
-              {/* Other pages */}
-              <Route
-                path={  "/about"}
-                element={<About/>}
-              />
-              <Route
-                path={  "/contact"}
-                element={<Contact/>}
-              />
-              <Route
-                path={  "/my-account"}
-                element={<MyAccount/>}
-              />
-              <Route
-                path={  "/login-register"}
-                element={<LoginRegister/>}
-              />
+            {/* Shop product pages */}
+            <Route
+              path="/product/:id"
+              element={<Product />}
+            />
 
-              <Route
-                path={  "/cart"}
-                element={<Cart/>}
-              />
-              <Route
-                path={  "/wishlist"}
-                element={<Wishlist/>}
-              />
-              <Route
-                path={  "/compare"}
-                element={<Compare/>}
-              />
-              <Route
-                path={  "/checkout"}
-                element={<Checkout/>}
-              /> 
+            {/* Other pages */}
+            <Route path="/about" element={<About />} />
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/my-account" element={<MyAccount />} />
+            <Route path="/login-register" element={<LoginRegister />} />
+            <Route path="/login" element={<Login/>} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/compare" element={<Compare />} />
+            <Route path="/checkout" element={<Checkout />} />
 
-              <Route path="*" element={<NotFound/>} />
-            </Routes>
-          </Suspense>
-        </ScrollToTop>
-      </Router>
+            {/* Página no encontrada */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </ScrollToTop>
+    </Router>
   );
 };
 

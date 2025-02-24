@@ -1,7 +1,5 @@
-import React from "react";
-import { Fragment, useState, useEffect } from "react";
-import Paginator from "react-hooks-paginator"; 
-import { useSelector } from "react-redux";
+import React, { Fragment, useState, useEffect } from "react";
+import Paginator from "react-hooks-paginator";
 import { useLocation } from "react-router-dom";
 import { getSortedProducts } from "../../helpers/product";
 import SEO from "../../components/seo";
@@ -11,7 +9,8 @@ import ShopSidebar from "../../wrappers/product/ShopSidebar";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
 import ShopProducts from "../../wrappers/product/ShopProducts";
 
-const ShopGridRightSidebar = ({ location }) => {
+
+const ShopGridRightSidebar = () => {
   const [layout, setLayout] = useState("grid three-column");
   const [sortType, setSortType] = useState("");
   const [sortValue, setSortValue] = useState("");
@@ -21,12 +20,47 @@ const ShopGridRightSidebar = ({ location }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentData, setCurrentData] = useState([]);
   const [sortedProducts, setSortedProducts] = useState([]);
-  const { products } = useSelector((state) => state.product);
+  const [products, setProducts] = useState([]); // Estado local para los productos
 
   const pageLimit = 15;
   let { pathname } = useLocation();
 
-  const getLayout = layout => {
+  // Función para obtener productos desde la API de Strapi
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch("http://localhost:1337/api/products"); // URL de la API de Strapi
+      const data = await response.json();
+      // En tu caso, la API devuelve los datos en el mismo nivel, sin "attributes"
+      if (data && data.data) {
+        setProducts(data.data);
+      } else {
+        console.error("La respuesta de la API no tiene el formato esperado:", data);
+        setProducts([]);
+      }
+    } catch (error) {
+      console.error("Error al obtener los productos:", error);
+    }
+  };
+
+  // Llamar a la API cuando el componente se monte
+  useEffect(() => {
+    fetchProducts();
+  }, []);
+
+  // Actualizar los productos ordenados y paginados
+  useEffect(() => {
+    let sortedProducts = getSortedProducts(products, sortType, sortValue);
+    const filterSortedProducts = getSortedProducts(
+      sortedProducts,
+      filterSortType,
+      filterSortValue
+    );
+    sortedProducts = filterSortedProducts;
+    setSortedProducts(sortedProducts);
+    setCurrentData(sortedProducts.slice(offset, offset + pageLimit));
+  }, [offset, products, sortType, sortValue, filterSortType, filterSortValue]);
+
+  const getLayout = (layout) => {
     setLayout(layout);
   };
 
@@ -40,18 +74,6 @@ const ShopGridRightSidebar = ({ location }) => {
     setFilterSortValue(sortValue);
   };
 
-  useEffect(() => {
-    let sortedProducts = getSortedProducts(products, sortType, sortValue);
-    const filterSortedProducts = getSortedProducts(
-      sortedProducts,
-      filterSortType,
-      filterSortValue
-    );
-    sortedProducts = filterSortedProducts;
-    setSortedProducts(sortedProducts);
-    setCurrentData(sortedProducts.slice(offset, offset + pageLimit));
-  }, [offset, products, sortType, sortValue, filterSortType, filterSortValue]);
-
   return (
     <Fragment>
       <SEO
@@ -60,19 +82,19 @@ const ShopGridRightSidebar = ({ location }) => {
       />
 
       <LayoutOne headerTop="visible">
-        {/* breadcrumb */}
+        {/* Breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: "/" },
-            {label: "Shop", path: pathname }
-          ]} 
+            { label: "Home", path: "/" },
+            { label: "Shop", path: pathname }
+          ]}
         />
 
         <div className="shop-area pt-95 pb-100">
           <div className="container">
             <div className="row">
               <div className="col-lg-3 order-2">
-                {/* shop sidebar */}
+                {/* Shop Sidebar */}
                 <ShopSidebar
                   products={products}
                   getSortParams={getSortParams}
@@ -80,7 +102,7 @@ const ShopGridRightSidebar = ({ location }) => {
                 />
               </div>
               <div className="col-lg-9 order-1">
-                {/* shop topbar default */}
+                {/* Shop Topbar */}
                 <ShopTopbar
                   getLayout={getLayout}
                   getFilterSortParams={getFilterSortParams}
@@ -88,10 +110,10 @@ const ShopGridRightSidebar = ({ location }) => {
                   sortedProductCount={currentData.length}
                 />
 
-                {/* shop page content default */}
+                {/* Shop Products */}
                 <ShopProducts layout={layout} products={currentData} />
 
-                {/* shop product pagination */}
+                {/* Shop Product Pagination */}
                 <div className="pro-pagination-style text-center mt-30">
                   <Paginator
                     totalRecords={sortedProducts.length}

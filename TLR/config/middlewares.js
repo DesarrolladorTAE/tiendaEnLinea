@@ -1,3 +1,4 @@
+
 module.exports = [
   'strapi::logger',
   'strapi::errors',

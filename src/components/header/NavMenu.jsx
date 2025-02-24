@@ -25,7 +25,7 @@ const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
           </Link>
           </li> 
           <li>
-            <Link to={"/shop-grid-standard"}>
+            <Link to={"/login"}>
               {t("collection")}
             </Link>
           </li>

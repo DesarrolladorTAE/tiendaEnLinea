@@ -539,7 +539,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
   collectionName: 'products';
   info: {
     description: '';
-    displayName: 'products';
+    displayName: 'Products';
     pluralName: 'products';
     singularName: 'product';
   };
@@ -553,6 +553,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     discount: Schema.Attribute.Integer;
     fullDescription: Schema.Attribute.Text;
+    image: Schema.Attribute.Media<
+      'images' | 'files' | 'videos' | 'audios',
+      true
+    >;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -568,12 +572,13 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     saleCount: Schema.Attribute.Integer;
     shortDescription: Schema.Attribute.Text;
     skn: Schema.Attribute.String & Schema.Attribute.Unique;
+    stock: Schema.Attribute.Integer;
     tag: Schema.Attribute.Relation<'manyToMany', 'api::tag.tag'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    variations: Schema.Attribute.Relation<
-      'oneToMany',
+    variation: Schema.Attribute.Relation<
+      'manyToMany',
       'api::variation.variation'
     >;
   };
@@ -582,6 +587,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
 export interface ApiSizeSize extends Struct.CollectionTypeSchema {
   collectionName: 'sizes';
   info: {
+    description: '';
     displayName: 'Size';
     pluralName: 'sizes';
     singularName: 'size';
@@ -605,7 +611,7 @@ export interface ApiSizeSize extends Struct.CollectionTypeSchema {
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
     variation: Schema.Attribute.Relation<
-      'manyToOne',
+      'manyToMany',
       'api::variation.variation'
     >;
   };
@@ -665,9 +671,9 @@ export interface ApiVariationVariation extends Struct.CollectionTypeSchema {
       'api::variation.variation'
     > &
       Schema.Attribute.Private;
-    product: Schema.Attribute.Relation<'manyToOne', 'api::product.product'>;
+    products: Schema.Attribute.Relation<'manyToMany', 'api::product.product'>;
     publishedAt: Schema.Attribute.DateTime;
-    size: Schema.Attribute.Relation<'oneToMany', 'api::size.size'>;
+    size: Schema.Attribute.Relation<'manyToMany', 'api::size.size'>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;

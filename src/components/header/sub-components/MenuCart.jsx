@@ -3,13 +3,16 @@ import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { getDiscountPrice } from "../../../helpers/product";
-import { deleteFromCart } from "../../../store/slices/cart-slice"
+import { deleteFromCart } from "../../../store/slices/cart-slice";
 
 const MenuCart = () => {
   const dispatch = useDispatch();
   const currency = useSelector((state) => state.currency);
   const { cartItems } = useSelector((state) => state.cart);
   let cartTotalPrice = 0;
+
+  // Ruta de imagen por defecto (modifica esta ruta según corresponda a tu proyecto)
+  const defaultImage = "/assets/img/product/fashion/2.jpg";
 
   return (
     <div className="shopping-cart-content">
@@ -38,18 +41,19 @@ const MenuCart = () => {
                     <Link to={"/product/" + item.id}>
                       <img
                         alt=""
-                        src={item.image[0]}
                         className="img-fluid"
+                        src={
+                          item.image && item.image.length > 0
+                            ? item.image[0]
+                            : defaultImage
+                        }
                       />
                     </Link>
                   </div>
                   <div className="shopping-cart-title">
                     <h4>
-                      <Link
-                        to={"/product/" + item.id}
-                      >
-                        {" "}
-                        {item.name}{" "}
+                      <Link to={"/product/" + item.id}>
+                        {item.name}
                       </Link>
                     </h4>
                     <h6>Qty: {item.quantity}</h6>
@@ -58,8 +62,7 @@ const MenuCart = () => {
                         ? currency.currencySymbol + finalDiscountedPrice
                         : currency.currencySymbol + finalProductPrice}
                     </span>
-                    {item.selectedProductColor &&
-                    item.selectedProductSize ? (
+                    {item.selectedProductColor && item.selectedProductSize ? (
                       <div className="cart-item-variation">
                         <span>Color: {item.selectedProductColor}</span>
                         <span>Size: {item.selectedProductSize}</span>
@@ -69,7 +72,11 @@ const MenuCart = () => {
                     )}
                   </div>
                   <div className="shopping-cart-delete">
-                    <button onClick={() => dispatch(deleteFromCart(item.cartItemId))}>
+                    <button
+                      onClick={() =>
+                        dispatch(deleteFromCart(item.cartItemId))
+                      }
+                    >
                       <i className="fa fa-times-circle" />
                     </button>
                   </div>
@@ -89,10 +96,7 @@ const MenuCart = () => {
             <Link className="default-btn" to={"/cart"}>
               view cart
             </Link>
-            <Link
-              className="default-btn"
-              to={"/checkout"}
-            >
+            <Link className="default-btn" to={"/checkout"}>
               checkout
             </Link>
           </div>
