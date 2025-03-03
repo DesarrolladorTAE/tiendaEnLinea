@@ -85,8 +85,8 @@ const ShopGridRightSidebar = () => {
         {/* Breadcrumb */}
         <Breadcrumb 
           pages={[
-            { label: "Home", path: "/" },
-            { label: "Shop", path: pathname }
+            { label: "Inicio", path: "/" },
+            { label: "Recargas", path: pathname }
           ]}
         />
 

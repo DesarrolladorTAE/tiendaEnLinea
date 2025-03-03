@@ -10,7 +10,9 @@ const HomeFashionThree = lazy(() => import("./pages/home/HomeFashionThree.jsx"))
 // shop pages
 
 const ShopGridRightSidebar = lazy(() =>
-  import("./pages/shop/ShopGridRightSidebar.jsx")
+  import("./pages/shop/ShopGridRightSidebar.jsx"));
+const ShopGridPaquet = lazy(() =>
+  import("./pages/shop/ShopGridPaquet.jsx")
 );
 
 // product pages
@@ -61,6 +63,10 @@ const App = () => {
             <Route
               path="/shop-grid-right-sidebar"
               element={<ShopGridRightSidebar />}
+            />
+             <Route
+              path="/shop-grid-paquet"
+              element={<ShopGridPaquet />}
             />
 
             {/* Shop product pages */}

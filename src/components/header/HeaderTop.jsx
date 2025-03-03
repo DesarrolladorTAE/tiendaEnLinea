@@ -13,7 +13,7 @@ const HeaderTop = ({ borderStyle }) => {
         <p>
           El saldo de tu Cartera es {" "}
           <span>
-            {currency.currencySymbol + (200 * currency.currencyRate).toFixed(2)}
+            {currency.currencySymbol + (2300 * currency.currencyRate).toFixed(2)}
           </span>
         </p>
       </div>

@@ -139,6 +139,9 @@
 }
 
 .main-menu {
+
+  background-color: #40E0D0; /* Azul turquesa */
+  
   nav {
     ul {
       display: block;
@@ -1328,7 +1331,7 @@
           transform: rotateX(90deg);
           transform-origin: center top 0;
 
-          background: #fff none repeat scroll 0 0;
+          background: #ffffff none repeat scroll 0 0;
           box-shadow: 0 0 7px 0.5px rgba(0, 0, 0, 0.15);
           @media #{$lg-layout} {
             overflow-y: auto;

@@ -15,82 +15,31 @@ const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
     >
       <nav>
         <ul>
-           <Link to={"/home-fashion-three"}>
-              {t("home")}
+          <li>
+             <Link to={"/home-fashion-three"}>
+              {t("Inicio")}
            </Link>
 
+          </li>
+          
           <li>
           <Link to={"/shop-grid-right-sidebar"}>
-              {t("shop")}
+              {t("Recargas")}
           </Link>
           </li> 
           <li>
-            <Link to={"/login"}>
-              {t("collection")}
+            <Link to={"/shop-grid-paquet"}>
+              {t("Paquetes")}
             </Link>
           </li>
           <li>
-            <Link to={"/"}>
-              {t("pages")}
-              {sidebarMenu ? (
-                <span>
-                  <i className="fa fa-angle-right"></i>
-                </span>
-              ) : (
-                <i className="fa fa-angle-down" />
-              )}
+            <Link to={"/about"}>
+              {t("Sobre Nosotros")}
             </Link>
-            <ul className="submenu">
-              <li>
-                <Link to={"/cart"}>
-                  {t("cart")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/checkout"}>
-                  {t("checkout")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/wishlist"}>
-                  {t("wishlist")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/compare"}>
-                  {t("compare")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/my-account"}>
-                  {t("my_account")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/login-register"}>
-                  {t("login_register")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/about"}>
-                  {t("about_us")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/contact"}>
-                  {t("contact_us")}
-                </Link>
-              </li>
-              <li>
-                <Link to={"/not-found"}>
-                  {t("404_page")}
-                </Link>
-              </li>
-            </ul>
-          </li>
+         </li>  
           <li>
           <Link to={"/contact"}>
-              {t("contact_us")}
+              {t("Contactanos")}
           </Link>
           </li>
         </ul>

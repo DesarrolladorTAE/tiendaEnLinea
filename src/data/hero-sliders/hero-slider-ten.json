@@ -1,18 +1,18 @@
 [
   {
     "id": 1,
-    "title": "Stylish",
-    "subtitle": "Male Clothes",
-    "text": "30% off Summer Vacation",
-    "image": "/assets/img/slider/slider-2.jpg",
-    "url": "/shop-grid-standard"
+    "title": "Recargas",
+    "subtitle": "¿Sin Saldo?",
+    "text": "Recarga Ahora, ¡NO LO PIENSES MAS!",
+    "image": "/assets/img/slider/lol.jpg",
+    "url": "/shop-grid-right-sidebar"
   },
   {
     "id": 2,
-    "title": "Stylish",
-    "subtitle": "Female Clothes",
-    "text": "30% off Summer Vacation",
-    "image": "/assets/img/slider/slider-2-2.jpg",
-    "url": "/shop-grid-standard"
+    "title": "Paquetes",
+    "subtitle": "¿Aburrido?",
+    "text": "Vive mas Experiencias",
+    "image": "/assets/img/slider/lol.jpg",
+    "url": "/shop-grid-paquet"
   }
 ]

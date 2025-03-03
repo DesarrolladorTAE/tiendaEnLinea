@@ -10,7 +10,7 @@ const HomeFashionThree = () => {
   return (
     <Fragment>
       <SEO
-        titleTemplate="Fashion Home"
+        titleTemplate="Inicio"
         description="Fashion home of flone react minimalist eCommerce template."
       />
       <LayoutOne

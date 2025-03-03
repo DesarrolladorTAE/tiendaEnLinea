@@ -9,8 +9,8 @@ const NewProductGrid = ({ category, limit }) => {
     <div className="product-area pb-60 section-padding-1">
       <div className="container-fluid">
         <SectionTitleTwo
-          titleText="New Arrival"
-          subTitleText="Lorem ipsum dolor sit amet conse ctetu."
+          titleText="Populares"
+          subTitleText="No lo pienses mas y empieza a ¡Disfrutar!"
           positionClass="text-center"
           spaceClass="mb-60"
         />

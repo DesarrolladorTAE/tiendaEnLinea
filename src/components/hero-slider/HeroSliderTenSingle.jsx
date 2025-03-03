@@ -21,7 +21,7 @@ const HeroSliderTenSingle = ({ data }) => {
                   className="animated"
                   to={data.url}
                 >
-                  SHOP NOW
+                  COMPRA AHORA
                 </Link>
               </div>
             </div>
