@@ -18,19 +18,9 @@ const LoginOverlay = () => {
       >
         <div className="form-container sign-up-container">
           <form action="#">
-            <h1>Crea tu Cuenta</h1>
-            <div className="social-container">
-              <a href="#" className="social">
-                <i className="fab fa-facebook-f"></i>
-              </a>
-              <a href="#" className="social">
-                <i className="fab fa-google" id="red"></i>
-              </a>
-              <a href="#" className="social">
-                <i className="fab fa-linkedin-in"></i>
-              </a>
-            </div>
-            <span>o usa tu teléfono como registro</span>
+            <h1>
+              Crea tu Cuenta
+            </h1>
             <input type="text" placeholder="Nombre" />
             <input type="tel" placeholder="Teléfono" />
             <input type="password" placeholder="Contraseña" />
@@ -42,19 +32,9 @@ const LoginOverlay = () => {
 
         <div className="form-container sign-in-container">
           <form action="#">
-            <h1>Iniciar Sesión</h1>
-            <div className="social-container">
-              <a href="#" className="social">
-                <i className="fab fa-facebook-f"></i>
-              </a>
-              <a href="#" className="social">
-                <i className="fab fa-google" id="red"></i>
-              </a>
-              <a href="#" className="social">
-                <i className="fab fa-linkedin-in"></i>
-              </a>
-            </div>
-            <span>o usa tu teléfono</span>
+            <h1>
+              Iniciar Sesión
+              </h1>
             <input type="tel" placeholder="Teléfono" />
             <input type="password" placeholder="Contraseña" />
             <a href="#">¿Olvidaste tu contraseña?</a>

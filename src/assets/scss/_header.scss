@@ -1,20 +1,24 @@
 /*----- 2. Header style ----*/
 
 .header-area {
+  background-color: #40E0D0; /* Azul turquesa para el encabezado principal */
   position: relative;
+
   &.header-absolute {
     position: absolute;
     z-index: 99;
-
     width: 100%;
 
-    @media #{$md-layout,
-    $xs-layout} {
+    @media #{$md-layout, $xs-layout} {
       position: relative;
-
       width: auto;
     }
   }
+}
+
+.header-top-area {
+  background-color: #ffffff; /* Fondo blanco para la parte superior */
+  padding: 10px 0; /* Ajusta el espaciado según sea necesario */
 }
 
 .sticky-bar.stick {
@@ -29,7 +33,7 @@
   animation: 700ms ease-in-out 0s normal none 1 running fadeInDown;
 
   border-bottom: 0 solid #4a90e2;
-  background-color: #fff;
+  background-color: #40E0D0; /* Azul turquesa */
   box-shadow: 0 0 25px 0 rgba(0, 0, 0, 0.06);
 
   .center-menu-logo {
@@ -139,16 +143,13 @@
 }
 
 .main-menu {
-
-  background-color: #40E0D0; /* Azul turquesa */
-  
+ 
   nav {
     ul {
-      display: block;
-
-      margin-top: -5px;
-
-      text-align: center;
+      display: flex;
+      justify-content: center; // Centrar los elementos del menú
+      list-style: none;
+      padding: 0;
       li {
         position: relative;
 
@@ -243,7 +244,7 @@
           }
           > li {
             display: inline-block;
-            float: left;
+            // float: left;
 
             width: 33.33%;
             margin-left: 0;
@@ -1419,7 +1420,7 @@
           }
           > li {
             display: inline-block;
-            float: left;
+            // float: left;
 
             width: 33.33%;
             margin-left: 0;

@@ -45,16 +45,21 @@ const IconGroup = ({ iconWhiteClass }) => {
         <div className="account-dropdown">
           <ul>
             <li>
-              <Link to={"/login-register"}>Login</Link>
+              <Link to={"/login"}>Login</Link>
             </li>
             <li>
-              <Link to={"/login-register"}>
+              <Link to={"/login"}>
                 Register
               </Link>
             </li>
             <li>
               <Link to={"/my-account"}>
                 my account
+              </Link>
+            </li>
+            <li>
+              <Link to={"/login"}>
+                Cerrar Sesión
               </Link>
             </li>
           </ul>
