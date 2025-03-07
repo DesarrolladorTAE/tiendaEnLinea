@@ -2,8 +2,8 @@ import React from "react";
 import { Fragment } from "react";
 import { Link, useLocation } from "react-router-dom"; 
 import SEO from "../../components/seo";
-import LayoutOne from "../../layouts/LayoutOne";
-import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
+ import LayoutOne from "../../layouts/LayoutOne";
+ import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 
 const NotFound = () => {
   let { pathname } = useLocation();

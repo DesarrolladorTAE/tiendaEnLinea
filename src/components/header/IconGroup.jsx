@@ -11,17 +11,16 @@ const IconGroup = ({ iconWhiteClass }) => {
   };
 
   const triggerMobileMenu = () => {
-    const offcanvasMobileMenu = document.querySelector(
-      "#offcanvas-mobile-menu"
-    );
+    const offcanvasMobileMenu = document.querySelector("#offcanvas-mobile-menu");
     offcanvasMobileMenu.classList.add("active");
   };
+
   const { compareItems } = useSelector((state) => state.compare);
   const { wishlistItems } = useSelector((state) => state.wishlist);
   const { cartItems } = useSelector((state) => state.cart);
 
   return (
-    <div className={clsx("header-right-wrap", iconWhiteClass)} >
+    <div className={clsx("header-right-wrap", iconWhiteClass)}>
       <div className="same-style header-search d-none d-lg-block">
         <button className="search-active" onClick={e => handleClick(e)}>
           <i className="pe-7s-search" />
@@ -33,36 +32,6 @@ const IconGroup = ({ iconWhiteClass }) => {
               <i className="pe-7s-search" />
             </button>
           </form>
-        </div>
-      </div>
-      <div className="same-style account-setting d-none d-lg-block">
-        <button
-          className="account-setting-active"
-          onClick={e => handleClick(e)}
-        >
-          <i className="pe-7s-user-female" />
-        </button>
-        <div className="account-dropdown">
-          <ul>
-            <li>
-              <Link to={"/login"}>Login</Link>
-            </li>
-            <li>
-              <Link to={"/login"}>
-                Register
-              </Link>
-            </li>
-            <li>
-              <Link to={"/my-account"}>
-                my account
-              </Link>
-            </li>
-            <li>
-              <Link to={"/login"}>
-                Cerrar Sesión
-              </Link>
-            </li>
-          </ul>
         </div>
       </div>
       <div className="same-style header-compare">
@@ -100,12 +69,44 @@ const IconGroup = ({ iconWhiteClass }) => {
         </Link>
       </div>
       <div className="same-style mobile-off-canvas d-block d-lg-none">
-        <button
-          className="mobile-aside-button"
-          onClick={() => triggerMobileMenu()}
-        >
+        <button className="mobile-aside-button" onClick={() => triggerMobileMenu()}>
           <i className="pe-7s-menu" />
         </button>
+      </div>
+      {/* Nuevos iconos */}
+      <div className="same-style header-contacts">
+        <Link to={"/contacts"}>
+          <i className="pe-7s-users" /> {/* Icono de Contactos */}
+        </Link>
+      </div>
+      <div className="same-style header-wallet">
+        <Link to={"/wallet"}>
+          <i className="pe-7s-wallet" /> {/* Icono de Cartera Electrónica */}
+        </Link>
+      </div>
+      <div className="same-style account-setting d-none d-lg-block">
+        <button className="account-setting-active" onClick={e => handleClick(e)}>
+          <i className="pe-7s-user-female" />
+        </button>
+        <div className="account-dropdown">
+          <ul>
+            <li>
+              <Link to={"/my-account"}>Mi Cuenta</Link>
+            </li>
+            <li>
+              <Link to={"/*"}>Tarjetas</Link>
+            </li>
+            <li>
+              <Link to={"/*"}>Mis Compras</Link>
+            </li>
+            <li>
+              <Link to={"/login"}>Cerrar Sesión</Link>
+            </li>
+            <li>
+              <Link to={"/login"}>Cerrar Sesión</Link>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );

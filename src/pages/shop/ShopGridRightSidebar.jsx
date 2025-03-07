@@ -1,9 +1,9 @@
 import React, { Fragment, useState, useEffect } from "react";
 import Paginator from "react-hooks-paginator";
-import { useLocation } from "react-router-dom";
-import { getSortedProducts } from "../../helpers/product";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
+import { useLocation } from "react-router-dom";
+import { getSortedProducts } from "../../helpers/product";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopSidebar from "../../wrappers/product/ShopSidebar";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";

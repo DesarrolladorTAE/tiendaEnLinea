@@ -1,10 +1,10 @@
-import { createSlice } from '@reduxjs/toolkit'; // Importación correcta para ESModules
+import { createSlice } from '@reduxjs/toolkit';
 
 const currencySlice = createSlice({
     name: "currency",
     initialState: {
         currencySymbol: "$",
-        currencyName: "MXN",
+        currencyName: "MXN", // Asegúrate de que esto sea "MXN"
         currencyRate: 1
     },
     reducers: {

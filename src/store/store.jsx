@@ -1,4 +1,5 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
+import userReducer from './slices/userSlice'; // Asegúrate de que la ruta sea correcta
 import {
     persistStore,
     persistReducer,
@@ -28,7 +29,8 @@ export const rootReducer = combineReducers({
     currency: currencyReducer,
     cart: cartReducer,
     compare: compareReducer,
-    wishlist: wishlistReducer
+    wishlist: wishlistReducer,
+    user: userReducer // Agrega el reducer de usuario aquí
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
