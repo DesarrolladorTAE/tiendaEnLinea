@@ -8,6 +8,7 @@ import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import { addToCart, decreaseQuantity, deleteFromCart, deleteAllFromCart } from "../../store/slices/cart-slice";
 import { cartItemStock } from "../../helpers/product";
+import withAuth from '../../components/withAuth';
 
 const Cart = () => {
   let cartTotalPrice = 0;
@@ -336,4 +337,5 @@ const Cart = () => {
   );
 };
 
-export default Cart;
+
+export default withAuth(Cart);

@@ -5,6 +5,7 @@ import FeatureIconTwo from "../../wrappers/feature-icon/FeatureIconTwo";
 import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
 import HeroSliderTen from "../../wrappers/hero-slider/HeroSliderTen";
 import NewProductGrid from "../../wrappers/product/NewProductGrid";
+import withAuth from '../../components/withAuth';
 
 const HomeFashionThree = () => {
   return (
@@ -31,4 +32,6 @@ const HomeFashionThree = () => {
   );
 };
 
-export default HomeFashionThree;
+// export default HomeFashionThree;
+export default withAuth(HomeFashionThree);
+

@@ -1,0 +1,152 @@
+.contact-page {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+
+    .form-container {
+        width: 33%;
+        padding: 20px;
+        background-color: #f0f4f8;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        text-align: center;
+
+        .contact-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .avatar-container {
+            margin-bottom: 20px;
+
+            .avatar {
+                width: 80px;
+                height: 80px;
+                border-radius: 50%;
+                background-color: #ccc;
+                margin: 0 auto;
+            }
+
+            .icon-container {
+                margin-top: 10px;
+
+                .icon-button {
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 16px;
+                    color: #007bff;
+                    margin: 0 5px;
+
+                    &:hover {
+                        text-decoration: underline;
+                    }
+                }
+            }
+        }
+
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+
+            input {
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                width: 100%;
+            }
+
+            .button-container {
+                display: flex;
+                justify-content: center;
+
+                button {
+                    padding: 10px 15px;
+                    background-color: #007bff;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    width: 100%;
+
+                    &:hover {
+                        background-color: darken(#007bff, 10%);
+                    }
+                }
+            }
+
+            .error-message {
+                color: red;
+                font-size: 12px;
+                text-align: center;
+                margin-top: -10px;
+            }
+        }
+    }
+
+    .contact-list-container {
+        width: 65%;
+        padding: 20px;
+        max-height: 400px; // Altura máxima para el desplazamiento
+        overflow-y: auto; // Habilitar desplazamiento vertical
+
+        .contact-list-wrapper {
+            max-height: 100%; // Asegurar que el contenedor no exceda el límite
+            overflow-y: auto; // Habilitar desplazamiento en la lista
+
+            .contact-list {
+                list-style: none;
+                padding: 0;
+
+                .contact-item {
+                    display: flex;
+                    align-items: center;
+                    padding: 10px;
+                    border-bottom: 1px solid #ddd;
+
+                    .contact-avatar {
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        background-color: #ccc;
+                        margin-right: 10px;
+                    }
+
+                    .contact-info {
+                        flex-grow: 1; // Permitir que el contenedor crezca
+                        display: flex;
+                        flex-direction: column; // Alinear verticalmente
+                        justify-content: center; // Centrar verticalmente
+
+                        .contact-name {
+                            font-weight: bold; // Resaltar el nombre
+                        }
+
+                        .phone-icon {
+                            margin-top: 5px; // Espacio entre nombre y teléfono
+                        }
+                    }
+
+                    .icon-container {
+                        margin-left: auto;
+
+                        .icon-button {
+                            background: none;
+                            border: none;
+                            cursor: pointer;
+                            font-size: 16px;
+                            color: #007bff;
+
+                            &:hover {
+                                text-decoration: underline;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

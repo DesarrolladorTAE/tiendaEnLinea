@@ -8,6 +8,7 @@ import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import RelatedProductSlider from "../../wrappers/product/RelatedProductSlider";
 import ProductDescriptionTab from "../../wrappers/product/ProductDescriptionTab";
 import ProductImageDescription from "../../wrappers/product/ProductImageDescription";
+import withAuth from '../../components/withAuth';
 
 const Product = () => {
   let { pathname } = useLocation();
@@ -55,4 +56,4 @@ const Product = () => {
   );
 };
 
-export default Product;
+export default withAuth(Product);

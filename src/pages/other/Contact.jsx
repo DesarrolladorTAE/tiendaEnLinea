@@ -5,6 +5,7 @@ import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import GoogleMap from "../../components/google-map"
+import withAuth from '../../components/withAuth';
 
 const Contact = () => {
   let { pathname } = useLocation();
@@ -141,4 +142,4 @@ const Contact = () => {
   );
 };
 
-export default Contact;
+export default withAuth(Contact);

@@ -6,6 +6,7 @@ import { getDiscountPrice } from "../../helpers/product";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
+import withAuth from '../../components/withAuth';
 
 const Checkout = () => {
   let cartTotalPrice = 0;
@@ -227,4 +228,6 @@ const Checkout = () => {
   );
 };
 
-export default Checkout;
+
+export default withAuth(Checkout);
+

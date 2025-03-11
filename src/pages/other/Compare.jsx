@@ -9,6 +9,7 @@ import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import Rating from "../../components/product/sub-components/ProductRating";
 import { addToCart } from "../../store/slices/cart-slice";
 import { deleteFromCompare } from "../../store/slices/compare-slice";
+import withAuth from '../../components/withAuth';
 
 const Compare = () => {
   const dispatch = useDispatch();
@@ -229,5 +230,5 @@ const Compare = () => {
   );
 };
 
-export default Compare;
+export default withAuth(Compare);
 

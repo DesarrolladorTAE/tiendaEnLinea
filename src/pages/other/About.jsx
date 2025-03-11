@@ -10,6 +10,7 @@ import TextGridOne from "../../wrappers/text-grid/TextGridOne";
 import FunFactOne from "../../wrappers/fun-fact/FunFactOne";
 import TeamMemberOne from "../../wrappers/team-member/TeamMemberOne";
 import BrandLogoSliderOne from "../../wrappers/brand-logo/BrandLogoSliderOne";
+import withAuth from '../../components/withAuth';
 
 const About = () => {
   let { pathname } = useLocation();
@@ -55,4 +56,5 @@ const About = () => {
   );
 };
 
-export default About;
+export default withAuth(About);
+

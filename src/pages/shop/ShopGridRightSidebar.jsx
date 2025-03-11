@@ -8,6 +8,7 @@ import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopSidebar from "../../wrappers/product/ShopSidebar";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
 import ShopProducts from "../../wrappers/product/ShopProducts";
+import withAuth from '../../components/withAuth';
 
 
 const ShopGridRightSidebar = () => {
@@ -136,4 +137,4 @@ const ShopGridRightSidebar = () => {
   );
 };
 
-export default ShopGridRightSidebar;
+export default withAuth(ShopGridRightSidebar);

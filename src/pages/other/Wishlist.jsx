@@ -8,6 +8,7 @@ import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import { addToCart } from "../../store/slices/cart-slice";
 import { deleteFromWishlist, deleteAllFromWishlist } from "../../store/slices/wishlist-slice";
+import withAuth from "../../components/withAuth";
 
 const Wishlist = () => {
   const dispatch = useDispatch();
@@ -220,4 +221,4 @@ const Wishlist = () => {
   );
 };
 
-export default Wishlist;
+export default withAuth(Wishlist);

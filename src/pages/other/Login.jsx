@@ -1,33 +1,42 @@
+// src/pages/other/Login.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../axiosConfig"; // Ajusta la ruta según la ubicación de Login.jsx
+import { useDispatch } from 'react-redux';
+import { setUser } from '../../store/slices/userSlice'; // Importa la acción setUser
 
 const LoginOverlay = () => {
   const [rightPanelActive, setRightPanelActive] = useState(false);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [passwordConfirmation, setPasswordConfirmation] = useState(""); // Estado para la confirmación de contraseña
-  const [error, setError] = useState(null); // Estado para manejar errores
-  const [success, setSuccess] = useState(null); // Estado para manejar mensajes de éxito
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const navigate = useNavigate();
+  const dispatch = useDispatch(); // Inicializa el dispatch
 
   const handleLogin = async (event) => {
     event.preventDefault();
     try {
-      const response = await axios.post("login", {
-        phone,
-        password,
-      });
+        const response = await axios.post("login", {
+            phone,
+            password,
+        });
 
-      // Manejar la respuesta de inicio de sesión (por ejemplo, guardar el token)
-      console.log(response.data);
-      navigate("/home-fashion-three");
+        // Manejar la respuesta de inicio de sesión
+        console.log(response.data);
+        
+        // Almacenar el token en localStorage
+        localStorage.setItem("token", response.data.token); // Asegúrate de que el token esté en la respuesta
+
+        dispatch(setUser(response.data.user)); // Establecer el usuario en Redux
+        navigate("/home-fashion-three");
     } catch (error) {
-      setError(error.response ? error.response.data.message : "Error en el inicio de sesión");
-      console.error("Error:", error);
+        setError(error.response ? error.response.data.message : "Error en el inicio de sesión");
+        console.error("Error:", error);
     }
-  };
+};
 
   const handleRegister = async (event) => {
     event.preventDefault();
@@ -36,20 +45,20 @@ const LoginOverlay = () => {
         name,
         phone,
         password,
-        password_confirmation: passwordConfirmation, // Agregar el campo de confirmación
+        password_confirmation: passwordConfirmation,
       });
 
-      // Manejar la respuesta de registro (por ejemplo, redirigir o mostrar un mensaje)
+      // Manejar la respuesta de registro
       console.log(response.data);
-      setSuccess("Registro exitoso"); // Mensaje de éxito
-      setError(null); // Limpiar errores
-      setRightPanelActive(false); // Volver a la vista de inicio de sesión
+      setSuccess("Registro exitoso");
+      setError(null);
+      setRightPanelActive(false);
 
       // Limpiar campos después del registro
       setName("");
       setPhone("");
       setPassword("");
-      setPasswordConfirmation(""); // Limpiar el campo de confirmación
+      setPasswordConfirmation("");
     } catch (error) {
       setError(error.response ? error.response.data.message : "Error en el registro");
       console.error("Error:", error);
@@ -85,7 +94,7 @@ const LoginOverlay = () => {
             />
             <input
               type="password"
-              placeholder="Confirmar Contraseña" // Campo de confirmación de contraseña
+              placeholder="Confirmar Contraseña"
               value={passwordConfirmation}
               onChange={(e) => setPasswordConfirmation(e.target.value)}
               required
@@ -93,8 +102,8 @@ const LoginOverlay = () => {
             <button id="lila" type="submit">
               Registrar
             </button>
-            {error && <p style={{ color: 'red' }}>{error}</p>} {/* Mostrar errores */}
-            {success && <p style={{ color: 'green' }}>{success}</p>} {/* Mostrar éxito */}
+            {error && <p style={{ color: 'red' }}>{error}</p>}
+            {success && <p style={{ color: 'green' }}>{success}</p>}
           </form>
         </div>
 
@@ -119,7 +128,7 @@ const LoginOverlay = () => {
             <button type="submit">
               Iniciar sesión
             </button>
-            {error && <p style={{ color: 'red' }}>{error}</p>} {/* Mostrar errores */}
+            {error && <p style={{ color: 'red' }}>{error}</p>}
           </form>
         </div>
 

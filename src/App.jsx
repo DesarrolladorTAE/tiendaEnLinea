@@ -20,11 +20,11 @@ const Product = lazy(() => import("./pages/shop-product/Product.jsx"));
 
 // other pages
 const About = lazy(() => import("./pages/other/About.jsx"));
-const Contact = lazy(() => import("./pages/other/Contact.jsx"));
+const MyContacts = lazy(() => import("./pages/other/MyContacts.jsx"));
 const MyAccount = lazy(() => import("./pages/other/MyAccount.jsx"));
-const LoginRegister = lazy(() => import("./pages/other/LoginRegister.jsx"));
+const Wallet = lazy(()=> import("./pages/other/Wallet.jsx"));
 const Login = lazy(() => import("./pages/other/Login.jsx"));
-
+const Contact = lazy (()=> import("./pages/other/Contact.jsx"))
 const Cart = lazy(() => import("./pages/other/Cart.jsx"));
 const Wishlist = lazy(() => import("./pages/other/Wishlist.jsx"));
 const Compare = lazy(() => import("./pages/other/Compare.jsx"));
@@ -79,9 +79,10 @@ const App = () => {
             <Route path="/about" element={<About />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/my-account" element={<MyAccount />} />
-            <Route path="/login-register" element={<LoginRegister />} />
+            <Route path="/wallet" element={<Wallet />}/>
             <Route path="/login" element={<Login/>} />
             <Route path="/cart" element={<Cart />} />
+            <Route path="/mycontacts" element={<MyContacts/>}/>
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/checkout" element={<Checkout />} />

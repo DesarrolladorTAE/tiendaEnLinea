@@ -992,20 +992,19 @@
   }
 }
 .header-offer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%; /* Asegúrate de que ocupe todo el ancho */
+  padding: 10px 20px;
+
   p {
     margin: 0;
-
     letter-spacing: 0.8px;
-
     color: #555252;
+
     span {
       color: #ff1c1c;
-    }
-    @media #{$xs-layout} {
-      text-align: center;
-    }
-    @media #{$sm-layout} {
-      text-align: right;
     }
   }
 }

@@ -5,6 +5,7 @@ import Accordion from "react-bootstrap/Accordion";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
+import withAuth from '../../components/withAuth';
 
 const MyAccount = () => {
   let { pathname } = useLocation();
@@ -162,4 +163,4 @@ const MyAccount = () => {
   );
 };
 
-export default MyAccount;
+export default withAuth(MyAccount);

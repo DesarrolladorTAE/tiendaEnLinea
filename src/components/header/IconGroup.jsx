@@ -1,11 +1,16 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { Link, useNavigate } from "react-router-dom";
+import { useSelector, useDispatch } from "react-redux";
 import clsx from "clsx";
 import MenuCart from "./sub-components/MenuCart";
+import { logoutUser } from "../../api"; // Importa la función de cierre de sesión
+import { clearUser } from '../../store/slices/userSlice'; // Importa la acción para limpiar el usuario
 
 const IconGroup = ({ iconWhiteClass }) => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+
   const handleClick = e => {
     e.currentTarget.nextSibling.classList.toggle("active");
   };
@@ -18,6 +23,18 @@ const IconGroup = ({ iconWhiteClass }) => {
   const { compareItems } = useSelector((state) => state.compare);
   const { wishlistItems } = useSelector((state) => state.wishlist);
   const { cartItems } = useSelector((state) => state.cart);
+
+  const handleLogout = async (e) => {
+    e.preventDefault(); // Prevenir el comportamiento por defecto del enlace
+    try {
+      await logoutUser(); // Llama a la función de cierre de sesión
+      localStorage.removeItem("user"); // Elimina el usuario del Local Storage
+      dispatch(clearUser()); // Limpia el estado del usuario en Redux
+      navigate("/login"); // Redirige al login
+    } catch (error) {
+      // console.error("Error al cerrar sesión:", error.response ? error.response.data : error.message);
+    }
+  };
 
   return (
     <div className={clsx("header-right-wrap", iconWhiteClass)}>
@@ -75,7 +92,7 @@ const IconGroup = ({ iconWhiteClass }) => {
       </div>
       {/* Nuevos iconos */}
       <div className="same-style header-contacts">
-        <Link to={"/contacts"}>
+        <Link to={"/mycontacts"}>
           <i className="pe-7s-users" /> {/* Icono de Contactos */}
         </Link>
       </div>
@@ -94,16 +111,16 @@ const IconGroup = ({ iconWhiteClass }) => {
               <Link to={"/my-account"}>Mi Cuenta</Link>
             </li>
             <li>
-              <Link to={"/*"}>Tarjetas</Link>
+              <Link to={"/wallet"}>Tarjetas</Link>
             </li>
             <li>
               <Link to={"/*"}>Mis Compras</Link>
             </li>
             <li>
-              <Link to={"/login"}>Cerrar Sesión</Link>
+              <Link to={"/"}>Librerias</Link>
             </li>
             <li>
-              <Link to={"/login"}>Cerrar Sesión</Link>
+              <Link to="/" onClick={handleLogout}>Cerrar Sesión</Link> {/* Enlace de cerrar sesión */}
             </li>
           </ul>
         </div>
