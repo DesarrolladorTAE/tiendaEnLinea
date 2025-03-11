@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Fragment } from "react"; 
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useParams, useLocation } from "react-router-dom";
+import { fetchProducts } from "../../store/slices/product-slice"; // Importamos la función de Redux
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
@@ -12,23 +13,38 @@ import ProductImageDescription from "../../wrappers/product/ProductImageDescript
 const Product = () => {
   let { pathname } = useLocation();
   let { id } = useParams();
-  const { products } = useSelector((state) => state.product);
-  const product = products.find(product => product.id === id);
-  
+  const dispatch = useDispatch();
+  const { products, loading, error } = useSelector((state) => state.product);
+  const [product, setProduct] = useState(null);
+
+  useEffect(() => {
+    dispatch(fetchProducts(1)); // Carga los productos desde la API, cambiar el ID según la tienda
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      const foundProduct = products.find((product) => product.id === parseInt(id));
+      setProduct(foundProduct);
+    }
+  }, [products, id]);
+
+  if (loading) return <p>Cargando producto...</p>;
+  if (error) return <p>Error: {error}</p>;
+  if (!product) return <p>Producto no encontrado</p>;
 
   return (
     <Fragment>
       <SEO
         titleTemplate="Product Page"
-        description="Product Page of flone react minimalist eCommerce template."
+        description="Product Page of Flone React minimalist eCommerce template."
       />
 
       <LayoutOne headerTop="visible">
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
-            {label: "Home", path: "/" },
-            {label: "Shop Product", path: pathname }
+            { label: "Home", path: "/" },
+            { label: "Shop Product", path: pathname }
           ]} 
         />
 
@@ -48,7 +64,7 @@ const Product = () => {
         {/* related product slider */}
         <RelatedProductSlider
           spaceBottomClass="pb-95"
-          category={product.category[0]}
+          category={product.category ? product.category[0] : ""}
         />
       </LayoutOne>
     </Fragment>
