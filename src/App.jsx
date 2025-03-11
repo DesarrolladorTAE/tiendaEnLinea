@@ -1,4 +1,6 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { useDispatch } from "react-redux";
+import { fetchProducts } from "./store/slices/product-slice";
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
@@ -81,6 +83,12 @@ const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 
 const App = () => {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    dispatch(fetchProducts(1));  // CARGA LOS PRODUCTOS DESDE LA API (puedes cambiar el ID de tienda)
+  }, [dispatch]);
+  
   return (
       <Router>
         <ScrollToTop>
