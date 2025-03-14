@@ -3,118 +3,70 @@ import Paginator from "react-hooks-paginator";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import { useLocation } from "react-router-dom";
-import { getSortedProducts } from "../../helpers/product";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopSidebar from "../../wrappers/product/ShopSidebar";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
 import ShopProducts from "../../wrappers/product/ShopProducts";
 import withAuth from '../../components/withAuth';
-
+import axios from "../../axiosConfig";
 
 const ShopGridRightSidebar = () => {
   const [layout, setLayout] = useState("grid three-column");
-  const [sortType, setSortType] = useState("");
-  const [sortValue, setSortValue] = useState("");
-  const [filterSortType, setFilterSortType] = useState("");
-  const [filterSortValue, setFilterSortValue] = useState("");
   const [offset, setOffset] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentData, setCurrentData] = useState([]);
   const [sortedProducts, setSortedProducts] = useState([]);
-  const [products, setProducts] = useState([]); // Estado local para los productos
+  const [products, setProducts] = useState([]);
 
   const pageLimit = 15;
   let { pathname } = useLocation();
 
-  // Función para obtener productos desde la API de Strapi
   const fetchProducts = async () => {
     try {
-      const response = await fetch("http://localhost:1337/api/products"); // URL de la API de Strapi
-      const data = await response.json();
-      // En tu caso, la API devuelve los datos en el mismo nivel, sin "attributes"
-      if (data && data.data) {
-        setProducts(data.data);
-      } else {
-        console.error("La respuesta de la API no tiene el formato esperado:", data);
-        setProducts([]);
-      }
+      const response = await axios.get("/productos");
+      const filtered = response.data.filter(
+        (producto) => producto.Categoria.toLowerCase() === "tiempo aire"
+      );
+      setProducts(filtered);
     } catch (error) {
-      console.error("Error al obtener los productos:", error);
+      console.error("Error al obtener los productos desde Laravel:", error);
     }
   };
 
-  // Llamar a la API cuando el componente se monte
   useEffect(() => {
     fetchProducts();
   }, []);
 
-  // Actualizar los productos ordenados y paginados
   useEffect(() => {
-    let sortedProducts = getSortedProducts(products, sortType, sortValue);
-    const filterSortedProducts = getSortedProducts(
-      sortedProducts,
-      filterSortType,
-      filterSortValue
-    );
-    sortedProducts = filterSortedProducts;
-    setSortedProducts(sortedProducts);
-    setCurrentData(sortedProducts.slice(offset, offset + pageLimit));
-  }, [offset, products, sortType, sortValue, filterSortType, filterSortValue]);
+    setSortedProducts(products);
+    setCurrentData(products.slice(offset, offset + pageLimit));
+  }, [offset, products]);
 
-  const getLayout = (layout) => {
-    setLayout(layout);
-  };
-
-  const getSortParams = (sortType, sortValue) => {
-    setSortType(sortType);
-    setSortValue(sortValue);
-  };
-
-  const getFilterSortParams = (sortType, sortValue) => {
-    setFilterSortType(sortType);
-    setFilterSortValue(sortValue);
-  };
+  const getLayout = (layout) => setLayout(layout);
 
   return (
     <Fragment>
-      <SEO
-        titleTemplate="Shop Page"
-        description="Shop page of flone react minimalist eCommerce template."
-      />
-
+      <SEO titleTemplate="Tienda | Tiempo Aire" />
       <LayoutOne headerTop="visible">
-        {/* Breadcrumb */}
         <Breadcrumb 
           pages={[
             { label: "Inicio", path: "/" },
             { label: "Recargas", path: pathname }
           ]}
         />
-
         <div className="shop-area pt-95 pb-100">
           <div className="container">
             <div className="row">
               <div className="col-lg-3 order-2">
-                {/* Shop Sidebar */}
-                <ShopSidebar
-                  products={products}
-                  getSortParams={getSortParams}
-                  sideSpaceClass="ml-30"
-                />
+                <ShopSidebar products={products} />
               </div>
               <div className="col-lg-9 order-1">
-                {/* Shop Topbar */}
                 <ShopTopbar
                   getLayout={getLayout}
-                  getFilterSortParams={getFilterSortParams}
                   productCount={products.length}
                   sortedProductCount={currentData.length}
                 />
-
-                {/* Shop Products */}
                 <ShopProducts layout={layout} products={currentData} />
-
-                {/* Shop Product Pagination */}
                 <div className="pro-pagination-style text-center mt-30">
                   <Paginator
                     totalRecords={sortedProducts.length}

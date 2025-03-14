@@ -4,10 +4,14 @@ import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import withAuth from "../../components/withAuth";
+import Cards from 'react-credit-cards';
+import 'react-credit-cards/es/styles-compiled.css';
+import { motion, AnimatePresence } from "framer-motion";
 
 const CreditCardManager = () => {
     const { pathname } = useLocation();
     const [cards, setCards] = useState([]);
+    const [currentCardIndex, setCurrentCardIndex] = useState(0);
     const [cardNumber, setCardNumber] = useState("");
     const [cardHolder, setCardHolder] = useState("");
     const [expiryDate, setExpiryDate] = useState("");
@@ -16,8 +20,8 @@ const CreditCardManager = () => {
     const [expiryError, setExpiryError] = useState("");
     const [cvvError, setCvvError] = useState("");
     const [cardNumberError, setCardNumberError] = useState("");
-    const [showModal, setShowModal] = useState(false);
-    const [modalData, setModalData] = useState(null);
+    const [focused, setFocused] = useState("");
+    const [direction, setDirection] = useState(0);
 
     const handleAddCard = (e) => {
         e.preventDefault();
@@ -59,13 +63,19 @@ const CreditCardManager = () => {
 
         if (hasError) return;
 
-        setModalData({ cardNumber, cardHolder, expiryDate, cvv });
-        setShowModal(true); // Muestra el modal
+        setCards([...cards, { cardNumber, cardHolder, expiryDate, cvv }]);
+        setCardNumber("");
+        setCardHolder("");
+        setExpiryDate("");
+        setCvv("");
+        setFocused("");
+        setCurrentCardIndex(cards.length);
     };
 
     const handleDeleteCard = (index) => {
         const updatedCards = cards.filter((_, i) => i !== index);
         setCards(updatedCards);
+        setCurrentCardIndex(Math.max(0, currentCardIndex - 1));
     };
 
     const handleExpiryChange = (e) => {
@@ -77,93 +87,83 @@ const CreditCardManager = () => {
         }
     };
 
-    const handleSaveCard = () => {
-        setCards([...cards, { cardNumber, cardHolder, expiryDate, cvv }]);
-        setCardNumber("");
-        setCardHolder("");
-        setExpiryDate("");
-        setCvv("");
-        setShowModal(false); // Cierra el modal
+    const handleCvvChange = (e) => {
+        const value = e.target.value;
+        if (value.length <= 3) {
+            setCvv(value);
+        }
     };
 
-    const handleEditCard = () => {
-        setShowModal(false); // Cierra el modal
+    const paginate = (newDirection) => {
+        const newIndex = (currentCardIndex + newDirection + cards.length) % cards.length;
+        setDirection(newDirection);
+        setCurrentCardIndex(newIndex);
+    };
+
+    const cardVariants = {
+        enter: (dir) => ({ x: dir > 0 ? 300 : -300, opacity: 0 }),
+        center: { x: 0, opacity: 1 },
+        exit: (dir) => ({ x: dir > 0 ? -300 : 300, opacity: 0 })
     };
 
     return (
         <Fragment>
-            <SEO
-                titleTemplate="Gestor de Tarjetas de Crédito"
-                description="Página para gestionar tarjetas de crédito."
-            />
+            <SEO titleTemplate="Gestor de Tarjetas de Crédito" description="Página para gestionar tarjetas de crédito." />
             <LayoutOne headerTop="visible">
-                <Breadcrumb 
-                    pages={[
-                        { label: "Inicio", path: '/' },
-                        { label: "Mis Tarjetas", path: pathname }
-                    ]}
-                />
+                <Breadcrumb pages={[{ label: "Inicio", path: '/' }, { label: "Mis Tarjetas", path: pathname }]} />
                 <div className="credit-card-manager">
                     <div className="card-list">
                         <h3>Tarjetas Agregadas</h3>
-                        <ul>
-                            {cards.map((card, index) => (
-                                <li key={index} className="card-item">
-                                    <span>{card.cardHolder} - {card.cardNumber} (Exp: {card.expiryDate})</span>
-                                    <div className="icon-container">
-                                        <button onClick={() => handleDeleteCard(index)}>
-                                            🗑️
-                                        </button>
-                                        <button>
-                                            👁️
-                                        </button>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
+                        <div className="card-display">
+                            {cards.length > 0 ? (
+                                <AnimatePresence custom={direction} mode="wait">
+                                    <motion.div
+                                        key={currentCardIndex}
+                                        className="motion-card"
+                                        custom={direction}
+                                        variants={cardVariants}
+                                        initial="enter"
+                                        animate="center"
+                                        exit="exit"
+                                        transition={{ duration: 0.4 }}
+                                    >
+                                        <Cards
+                                            number={cards[currentCardIndex].cardNumber}
+                                            name={cards[currentCardIndex].cardHolder}
+                                            expiry={cards[currentCardIndex].expiryDate}
+                                            cvc={cards[currentCardIndex].cvv}
+                                        />
+                                    </motion.div>
+                                </AnimatePresence>
+                            ) : (
+                                <p style={{ textAlign: 'center' }}>No hay tarjetas aún</p>
+                            )}
+                            <div className="card-controls">
+                                <button onClick={() => paginate(-1)} disabled={cards.length <= 1}>◀</button>
+                                <button onClick={() => handleDeleteCard(currentCardIndex)} disabled={cards.length === 0}>🗑️</button>
+                                <button onClick={() => paginate(1)} disabled={cards.length <= 1}>▶</button>
+                            </div>
+                        </div>
                     </div>
-                    <div className="form-container" style={{ width: "50%" }}>
+                    <div className="form-container">
                         <h2 className="contact-title">Agregar Tarjeta</h2>
+                        <div className="card-animation">
+                            <Cards
+                                number={cardNumber}
+                                name={cardHolder}
+                                expiry={expiryDate}
+                                cvc={cvv}
+                                focused={focused}
+                            />
+                        </div>
                         <form onSubmit={handleAddCard} className="card-form">
-                            <input
-                                type="text"
-                                placeholder="Número de tarjeta"
-                                value={cardNumber}
-                                onChange={(e) => {
-                                    if (e.target.value.length <= 19) {
-                                        setCardNumber(e.target.value);
-                                    }
-                                }}
-                                required
-                            />
+                            <input type="text" placeholder="Número de tarjeta" value={cardNumber} onChange={(e) => e.target.value.length <= 19 && setCardNumber(e.target.value)} onFocus={() => setFocused("number")} required />
                             {cardNumberError && <p className="error-message">{cardNumberError}</p>}
-                            <input
-                                type="text"
-                                placeholder="Nombre del titular"
-                                value={cardHolder}
-                                onChange={(e) => setCardHolder(e.target.value)}
-                                required
-                            />
+                            <input type="text" placeholder="Nombre del titular" value={cardHolder} onChange={(e) => setCardHolder(e.target.value)} onFocus={() => setFocused("name")} required />
                             {error && <p className="error-message">{error}</p>}
-                            <input
-                                type="text"
-                                placeholder="Fecha de expiración (MM/AA)"
-                                value={expiryDate}
-                                onChange={handleExpiryChange}
-                                required
-                            />
+                            <input type="text" placeholder="Fecha de expiración (MM/AA)" value={expiryDate} onChange={handleExpiryChange} onFocus={() => setFocused("expiry")} required />
                             {expiryError && <p className="error-message">{expiryError}</p>}
-                            <input
-                                type="text"
-                                placeholder="CVV"
-                                value={cvv}
-                                onChange={(e) => {
-                                    if (e.target.value.length <= 3) {
-                                        setCvv(e.target.value);
-                                    }
-                                }}
-                                required
-                            />
+                            <input type="text" placeholder="CVV" value={cvv} onChange={handleCvvChange} onFocus={() => setFocused("cvc")} required />
                             {cvvError && <p className="error-message">{cvvError}</p>}
                             <div className="button-container">
                                 <button type="submit">Agregar Tarjeta</button>
@@ -171,21 +171,6 @@ const CreditCardManager = () => {
                         </form>
                     </div>
                 </div>
-                {showModal && (
-                    <div className="modal">
-                        <div className="modal-content">
-                            <h3>Confirmar Información</h3>
-                            <p>Número de tarjeta: {modalData.cardNumber}</p>
-                            <p>Nombre del titular: {modalData.cardHolder}</p>
-                            <p>Fecha de expiración: {modalData.expiryDate}</p>
-                            <p>CVV: {modalData.cvv}</p>
-                            <div className="modal-buttons">
-                                <button onClick={handleSaveCard}>Guardar</button>
-                                <button onClick={handleEditCard}>Seguir Editando</button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </LayoutOne>
         </Fragment>
     );
