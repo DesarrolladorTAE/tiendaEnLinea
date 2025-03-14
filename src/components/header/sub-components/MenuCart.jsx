@@ -38,18 +38,19 @@ const MenuCart = () => {
                     <Link to={"/product/" + item.id}>
                       <img
                         alt=""
-                        src={
-                          item.image && item.image.length > 0
-                            ? item.image[0]
-                            : "https://via.placeholder.com/150"
-                        }
+                        src={ item.image?.[0] || "https://picsum.photos/150/150" }
                         className="img-fluid"
                       />
                     </Link>
                   </div>
                   <div className="shopping-cart-title">
                     <h4>
-                      <Link to={"/product/" + item.id}> {item.name} </Link>
+                    <Link
+                        to={"/product/" + item.id}
+                      >
+                        {" "}
+                        {item.name}{" "}
+                      </Link>
                     </h4>
                     <h6>Qty: {item.quantity}</h6>
                     <span>

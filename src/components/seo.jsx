@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 
 const SEO = ({ 
-    title = "Flone", 
+    title = "MTEL", 
     titleTemplate = "Product Page", 
     description = "Product page of flone react minimalist eCommerce template." 
 }) => {
