@@ -26,25 +26,13 @@ function ProductModal({
   const { cartItems } = useSelector((state) => state.cart);
 
   const [selectedProductColor, setSelectedProductColor] = useState(
-    product.variation && product.variation.length > 0
-      ? product.variation[0].color
-      : null
+    product.variation ? product?.variation[0]?.color : ""
   );
-
   const [selectedProductSize, setSelectedProductSize] = useState(
-    product.variation &&
-      product.variation.length > 0 &&
-      product.variation[0].size
-      ? product.variation[0].size[0].name
-      : null
+    product.variation ? product?.variation[0]?.size[0]?.name : ""
   );
-
   const [productStock, setProductStock] = useState(
-    product.variation &&
-      product.variation.length > 0 &&
-      product.variation[0].size
-      ? product.variation[0].size[0].stock
-      : product.stock ?? 0 // Si `product.stock` no está definido, lo ponemos en 0
+    product.variation ? product?.variation[0]?.size[0]?.stock : product?.stock
   );
 
   const [quantityCount, setQuantityCount] = useState(1);

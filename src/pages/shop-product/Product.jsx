@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
-import { Fragment } from "react"; 
+import { Fragment } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useLocation } from "react-router-dom";
-import { fetchProducts } from "../../store/slices/product-slice"; // Importamos la función de Redux
+// import { fetchProducts } from "../../store/slices/product-slice"; // Importamos la función de Redux
+import { fetchProductById } from "../../store/slices/product-slice";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
@@ -14,19 +15,22 @@ const Product = () => {
   let { pathname } = useLocation();
   let { id } = useParams();
   const dispatch = useDispatch();
-  const { products, loading, error } = useSelector((state) => state.product);
-  const [product, setProduct] = useState(null);
+  const { product, loading, error } = useSelector((state) => state.product);
+  // const [product, setProduct] = useState(null);
+  const storeName = "Tienda1";
 
   useEffect(() => {
-    dispatch(fetchProducts(1)); // Carga los productos desde la API, cambiar el ID según la tienda
-  }, [dispatch]);
+    dispatch(fetchProductById({ storeName, productId: id }));
+  }, [dispatch, id]);
 
-  useEffect(() => {
-    if (products.length > 0) {
-      const foundProduct = products.find((product) => product.id === parseInt(id));
-      setProduct(foundProduct);
-    }
-  }, [products, id]);
+  // useEffect(() => {
+  //   if (products.length > 0) {
+  //     const foundProduct = products.find(
+  //       (product) => product.id === parseInt(id)
+  //     );
+  //     setProduct(foundProduct);
+  //   }
+  // }, [products, id]);
 
   if (loading) return <p>Cargando producto...</p>;
   if (error) return <p>Error: {error}</p>;
@@ -41,11 +45,11 @@ const Product = () => {
 
       <LayoutOne headerTop="visible">
         {/* breadcrumb */}
-        <Breadcrumb 
+        <Breadcrumb
           pages={[
             { label: "Home", path: "/" },
-            { label: "Shop Product", path: pathname }
-          ]} 
+            { label: "Shop Product", path: pathname },
+          ]}
         />
 
         {/* product description with image */}

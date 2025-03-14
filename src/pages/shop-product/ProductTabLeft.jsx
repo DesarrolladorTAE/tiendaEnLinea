@@ -1,7 +1,8 @@
-import React from "react";
-import { Fragment } from "react"; 
-import { useSelector } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { Fragment } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { useParams, useLocation } from "react-router-dom";
+import { fetchProducts } from "../../store/slices/product-slice";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
@@ -12,8 +13,49 @@ import ProductImageDescription from "../../wrappers/product/ProductImageDescript
 const ProductTabLeft = () => {
   let { pathname } = useLocation();
   let { id } = useParams();
-  const { products } = useSelector((state) => state.product);
-  const product = products.find(product => product.id === id);
+  const dispatch = useDispatch();
+
+  const { products, loading } = useSelector((state) => state.product);
+  const [product, setProduct] = useState(null);
+
+  useEffect(() => {
+    const storeName = "Tienda1"; // Reemplázalo con la lógica para obtener el nombre de la tienda dinámicamente
+    console.log("Obteniendo productos para la tienda:", storeName);
+    
+    if (products.length === 0) {
+      dispatch(fetchProducts(storeName));
+    }
+  }, [dispatch, products]);
+  
+
+  useEffect(() => {
+    console.log("Productos obtenidos:", products);
+    if (products.length > 0) {
+      const foundProduct = products.find((p) => p.id.toString() === id);
+      console.log("Producto encontrado:", foundProduct);
+      setProduct(foundProduct || null);
+    }
+  }, [products, id]);
+
+  if (loading) {
+    return (
+      <LayoutOne headerTop="visible">
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <h2>Cargando producto...</h2>
+        </div>
+      </LayoutOne>
+    );
+  }
+
+  if (!product) {
+    return (
+      <LayoutOne headerTop="visible">
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <h2>Producto no encontrado</h2>
+        </div>
+      </LayoutOne>
+    );
+  }
 
   return (
     <Fragment>
@@ -23,15 +65,13 @@ const ProductTabLeft = () => {
       />
 
       <LayoutOne headerTop="visible">
-        {/* breadcrumb */}
-        <Breadcrumb 
+        <Breadcrumb
           pages={[
-            {label: "Home", path: "/" },
-            {label: "Shop Product", path: pathname }
-          ]} 
+            { label: "Home", path: "/" },
+            { label: "Shop Product", path: pathname },
+          ]}
         />
 
-        {/* product description with image */}
         <ProductImageDescription
           spaceTopClass="pt-100"
           spaceBottomClass="pb-100"
@@ -39,21 +79,20 @@ const ProductTabLeft = () => {
           galleryType="leftThumb"
         />
 
-        {/* product description tab */}
         <ProductDescriptionTab
           spaceBottomClass="pb-90"
-          productFullDesc={product.fullDescription}
+          productFullDesc={
+            product.fullDescription || "No hay descripción disponible."
+          }
         />
 
-        {/* related product slider */}
         <RelatedProductSlider
           spaceBottomClass="pb-95"
-          category={product.category[0]}
+          category={product.category ? product.category[0] : "Sin categoría"}
         />
       </LayoutOne>
     </Fragment>
   );
 };
-
 
 export default ProductTabLeft;

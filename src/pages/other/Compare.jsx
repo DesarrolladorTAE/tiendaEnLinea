@@ -9,6 +9,8 @@ import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import Rating from "../../components/product/sub-components/ProductRating";
 import { addToCart } from "../../store/slices/cart-slice";
 import { deleteFromCompare } from "../../store/slices/compare-slice";
+import { FaTrashCan } from "react-icons/fa6";
+import { MdCompare } from "react-icons/md";
 
 const Compare = () => {
   const dispatch = useDispatch();
@@ -55,7 +57,7 @@ const Compare = () => {
                                         dispatch(deleteFromCompare(compareItem.id))
                                       }
                                     >
-                                      <i className="pe-7s-trash" />
+                                      <FaTrashCan style={{fontSize: "25px" }}/>
                                     </button>
                                   </div>
                                   <Link

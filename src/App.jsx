@@ -83,11 +83,12 @@ const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 
 const App = () => {
+  const storeName = "Tienda1";
   const dispatch = useDispatch();
 
   useEffect(() => {
-    dispatch(fetchProducts(1));  // CARGA LOS PRODUCTOS DESDE LA API (puedes cambiar el ID de tienda)
-  }, [dispatch]);
+    dispatch(fetchProducts(storeName));  // CARGA LOS PRODUCTOS DESDE LA API (puedes cambiar el ID de tienda)
+  }, [dispatch, storeName]);
   
   return (
       <Router>

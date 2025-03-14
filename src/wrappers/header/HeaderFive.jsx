@@ -22,9 +22,9 @@ const HeaderFive = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              Flone
-            </a>
-            .All Rights Reserved.
+              TAE
+            </a>{" "}
+            All Rights Reserved.
           </p>
         </div>
       </div>
