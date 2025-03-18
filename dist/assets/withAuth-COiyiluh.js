@@ -1,0 +1,1 @@
+import{j as r,u as n,r as c,R as u}from"./index-CIJeSWT7.js";const l=s=>a=>{const e=r(),t=n(i=>i.user.isAuthenticated);return c.useEffect(()=>{t||(alert("Acción Inválida. Debes iniciar sesión."),e("/login"))},[t,e]),u.createElement(s,{...a})};export{l as w};

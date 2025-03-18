@@ -9,6 +9,7 @@ const LoginOverlay = () => {
   const [rightPanelActive, setRightPanelActive] = useState(false);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState(null);
@@ -43,6 +44,7 @@ const LoginOverlay = () => {
     try {
       const response = await axios.post("register", {
         name,
+        email,
         phone,
         password,
         password_confirmation: passwordConfirmation,
@@ -69,42 +71,47 @@ const LoginOverlay = () => {
     <div className="login-container">
       <div className={`container ${rightPanelActive ? "right-panel-active" : ""}`} id="container">
         <div className="form-container sign-up-container">
-          <form onSubmit={handleRegister}>
-            <h1>Crea tu Cuenta</h1>
-            <input
-              type="text"
-              placeholder="Nombre"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-            <input
-              type="tel"
-              placeholder="Teléfono"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-            <input
-              type="password"
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <input
-              type="password"
-              placeholder="Confirmar Contraseña"
-              value={passwordConfirmation}
-              onChange={(e) => setPasswordConfirmation(e.target.value)}
-              required
-            />
-            <button id="lila" type="submit">
-              Registrar
-            </button>
+                <form onSubmit={handleRegister}>
+          <h1>Crea tu Cuenta</h1>
+              <input
+                type="text"
+                placeholder="Nombre"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+              <input
+                type="email"
+                placeholder="Correo electrónico"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+              <input
+                type="tel"
+                placeholder="Teléfono"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <input
+                type="password"
+                placeholder="Confirmar Contraseña"
+                value={passwordConfirmation}
+                onChange={(e) => setPasswordConfirmation(e.target.value)}
+                required
+              />
+            <button id="lila" type="submit">Registrar</button>
             {error && <p style={{ color: 'red' }}>{error}</p>}
-            {success && <p style={{ color: 'green' }}>{success}</p>}
-          </form>
+          {success && <p style={{ color: 'green' }}>{success}</p>}
+         </form>
         </div>
 
         <div className="form-container sign-in-container">

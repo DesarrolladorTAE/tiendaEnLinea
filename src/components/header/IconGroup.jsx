@@ -114,10 +114,10 @@ const IconGroup = ({ iconWhiteClass }) => {
               <Link to={"/wallet"}>Tarjetas</Link>
             </li>
             <li>
-              <Link to={"/*"}>Mis Compras</Link>
+              <Link to={"*"}>Mis Compras</Link>
             </li>
             <li>
-              <Link to={"/"}>Librerias</Link>
+              <Link to={"*"}>Librerias</Link>
             </li>
             <li>
               <Link to="/" onClick={handleLogout}>Cerrar Sesión</Link> {/* Enlace de cerrar sesión */}
