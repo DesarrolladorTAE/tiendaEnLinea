@@ -11,12 +11,10 @@ $xs-layout: 575px;
 @import url("https://fonts.googleapis.com/css2?family=Poppins:ital,wght@1,300&display=swap");
 
 .login-container {
-  /* Estilos generales del login encapsulados */
   * {
     box-sizing: border-box;
   }
-  
-  /* En este caso se aplican en el contenedor, en lugar de a body */
+
   font-family: "Poppins", sans-serif;
   background: #f6f5f7;
   display: flex;
@@ -28,7 +26,8 @@ $xs-layout: 575px;
 
   h1 {
     font-weight: bold;
-    margin: 0;
+    font-size: 26px;
+    margin-bottom: 20px;
   }
 
   p {
@@ -54,19 +53,16 @@ $xs-layout: 575px;
     color: red;
   }
 
-  /* ====================================
-     Estilos del Login/Registro - Overlay
-  ===================================== */
   .container {
     background: #fff;
     border-radius: 10px;
-    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25),
-      0 10px 10px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
     position: relative;
     overflow: hidden;
-    width: 768px;
-    max-width: 100%;
-    min-height: 480px;
+    width: 100%;
+    max-width: 1000px;
+    min-height: 580px;
+    padding: 20px;
   }
 
   .form-container {
@@ -84,14 +80,35 @@ $xs-layout: 575px;
       justify-content: center;
       align-items: center;
       text-align: center;
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 20px;
+        width: 100%;
+        margin-bottom: 20px;
+        justify-content: center;
+      }
+
+      .form-grid input {
+        background: #eee;
+        border: none;
+        padding: 14px 20px;
+        width: 105%;
+        border-radius: 6px;
+        font-size: 14px;
+        text-align: left;
+      }
     }
 
     input {
       background: #eee;
       border: none;
-      padding: 12px 15px;
-      margin: 8px 0;
-      width: 100%;
+      padding: 16px 22px;
+      margin: 10px 0;
+      width: 95%;
+      border-radius: 6px;
+      font-size: 14px;
     }
   }
 
@@ -115,12 +132,13 @@ $xs-layout: 575px;
     border: 1px solid #40E0D0;
     background: #40E0D0;
     color: #fff;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
-    padding: 12px 45px;
+    padding: 16px 50px;
     letter-spacing: 1px;
     text-transform: uppercase;
     transition: transform 80ms ease-in;
+    margin-top: 25px;
 
     &:active {
       transform: scale(0.95);
@@ -134,11 +152,50 @@ $xs-layout: 575px;
       background: transparent;
       border-color: #fff;
     }
-  }
 
-  #lila {
-    background: #be4bdb;
-    border: 1px solid #be4bdb;
+    &.btn-lila {
+      background: #be4bdb;
+      border: 1px solid #be4bdb;
+      color: #fff;
+
+      &:hover {
+        background: darken(#be4bdb, 10%);
+        border-color: darken(#be4bdb, 10%);
+      }
+
+      &.ghost {
+        background: transparent;
+        border: 1px solid #be4bdb;
+        color: #be4bdb;
+
+        &:hover {
+          background: #be4bdb;
+          color: #fff;
+        }
+      }
+    }
+
+    &.btn-turquesa {
+      background: #40E0D0;
+      border: 1px solid #40E0D0;
+      color: #fff;
+
+      &:hover {
+        background: darken(#40E0D0, 10%);
+        border-color: darken(#40E0D0, 10%);
+      }
+
+      &.ghost {
+        background: transparent;
+        border: 1px solid #40E0D0;
+        color: #40E0D0;
+
+        &:hover {
+          background: #40E0D0;
+          color: #fff;
+        }
+      }
+    }
   }
 
   .sign-in-container {
@@ -165,7 +222,7 @@ $xs-layout: 575px;
   }
 
   .overlay {
-    background: linear-gradient(to right, #40E0D0, #40E0D0) no-repeat 0 0 / cover;
+    background: #40E0D0;
     color: #fff;
     position: relative;
     left: -100%;
@@ -200,7 +257,6 @@ $xs-layout: 575px;
     transition: transform 0.6s ease-in-out;
   }
 
-  /* Estados de Animación */
   .container.right-panel-active {
     .sign-in-container {
       transform: translateX(100%);

@@ -1,34 +1,51 @@
-// src/store/slices/userSlice.jsx
 import { createSlice } from '@reduxjs/toolkit';
-import { FLUSH } from 'redux-persist';
 
-const getUserFromLocalStorage = () => {
-    try {
-        const user = localStorage.getItem('user');
-        console.log("Usuario recuperado de Local Storage:", user); // Agrega este log
-        return user ? { user: JSON.parse(user), isAuthenticated: true } : { user: null, isAuthenticated: false }; // Devuelve el estado de autenticación
-    } catch (error) {
-        console.error("Error al leer el usuario de Local Storage:", error);
-        return { user: null, isAuthenticated: false }; // Devuelve null si hay un error
-    }
+const initialState = {
+  user: null,
+  token: null,
+  isAuthenticated: false,
 };
 
 const userSlice = createSlice({
-    name: 'user',
-    initialState: getUserFromLocalStorage(), // Usa la función para obtener el usuario
-    reducers: {
-        setUser(state, action) {
-            localStorage.setItem('user', JSON.stringify(action.payload)); // Guardar en Local Storage
-            state.user = action.payload; // Establecer el usuario en el estado
-            state.isAuthenticated = true; // Marcar como autenticado
-        },
-        clearUser(state) {
-            localStorage.removeItem('user'); // Limpiar Local Storage
-            state.user = null; // Limpiar el usuario
-            state.isAuthenticated = false; // Marcar como no autenticado
-        },
+  name: 'user',
+  initialState,
+  reducers: {
+    setUser(state, action) {
+      const { user, token } = action.payload;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('token', token);
+      }
+      state.user = user;
+      state.token = token;
+      state.isAuthenticated = true;
     },
+    clearUser(state) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      }
+      state.user = null;
+      state.token = null;
+      state.isAuthenticated = false;
+    },
+    loadUserFromStorage(state) {
+      if (typeof window !== 'undefined') {
+        try {
+          const storedUser = localStorage.getItem('user');
+          const storedToken = localStorage.getItem('token');
+          if (storedUser && storedToken) {
+            state.user = JSON.parse(storedUser);
+            state.token = storedToken;
+            state.isAuthenticated = true;
+          }
+        } catch (error) {
+          console.error("Error al cargar user/token desde localStorage", error);
+        }
+      }
+    },
+  },
 });
 
-export const { setUser, clearUser } = userSlice.actions; // Exportar las acciones
-export default userSlice.reducer; // Exportar el reducer
+export const { setUser, clearUser, loadUserFromStorage } = userSlice.actions;
+export default userSlice.reducer;
