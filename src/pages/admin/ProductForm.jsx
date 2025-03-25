@@ -1,18 +1,24 @@
-import React, { useState } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import React, { useState, useEffect } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { useParams } from "react-router-dom";
 import axios from "axios";
-import Select from "react-select";
 import "bootstrap/dist/css/bootstrap.min.css";
-import VariationItem from "./VariationItem";
+import VariationItem from "../../components/admin/VariationItem";
+import CustomSelect from "../../components/admin/CustomSelect";
+import ProductField from "../../components/admin/ProductField";
+import TextAreaField from "../../components/admin/TextAreaField";
 
 function ProductForm() {
+  const { id } = useParams();
+
   const {
     register,
     control,
     handleSubmit,
     reset,
-    setValue,
     formState: { errors },
+    watch,
+    setValue,
   } = useForm({
     defaultValues: {
       sku: "",
@@ -33,17 +39,8 @@ function ProductForm() {
     },
   });
 
-  const categoriesOptions = [
-    { value: "news", label: "News" },
-    { value: "food", label: "Food" },
-    { value: "story", label: "Story" },
-  ];
-
-  const tagsOptions = [
-    { value: "tag1", label: "Tag1" },
-    { value: "tag2", label: "Tag2" },
-    { value: "tag3", label: "Tag3" },
-  ];
+  const [categoriesOptions, setCategoriesOptions] = useState([]);
+  const [tagsOptions, setTagsOptions] = useState([]);
 
   const {
     fields: variationFields,
@@ -58,6 +55,58 @@ function ProductForm() {
   const [error, setError] = useState("");
   const [activeVariationIndex, setActiveVariationIndex] = useState(null);
 
+  // Verifica si hay variaciones agregadas
+  const hasVariations = watch("variations").length > 0;
+
+  useEffect(() => {
+    if (id) {
+      // Modo edición
+      fetchProduct(id);
+    }
+  }, [id]);
+
+  const fetchProduct = async (productId) => {
+    try {
+      const response = await axios.get(
+        `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`
+      );
+      const product = response.data;
+
+      let offerEndDate = "";
+      let offerEndTime = "";
+
+      if (product.offerEnd) {
+        const [datePart, timePart] = product.offerEnd.split(" ");
+        offerEndDate = datePart;
+        offerEndTime = timePart?.slice(0, 5); // HH:MM
+      }
+
+      reset({
+        sku: product.sku || "",
+        name: product.name || "",
+        price: product.price?.toString() || "",
+        stock: product.stock?.toString() || "",
+        discount: product.discount?.toString() || "",
+        new: Boolean(product.new),
+        saleCount: product.saleCount?.toString() || "",
+        rating: product.rating?.toString() || "",
+        shortDescription: product.shortDescription || "",
+        fullDescription: product.fullDescription || "",
+        offerEndDate,
+        offerEndTime,
+        category: product.categories.map((c) => ({
+          value: c.id,
+          label: c.name,
+        })),
+        tags: product.tags.map((t) => ({ value: t.id, label: t.name })),
+        variations: product.variation || [],
+      });
+    } catch (err) {
+      console.error("Error al cargar producto para editar:", err);
+      setError("No se pudo cargar el producto para edición.");
+    }
+  };
+
   const onSubmit = async (data) => {
     setMessage("");
     setError("");
@@ -65,50 +114,63 @@ function ProductForm() {
     const formattedData = {
       sku: data.sku,
       name: data.name,
-      price: data.price,
-      stock: data.stock,
-      discount: data.discount,
-      new: data.new,
-      saleCount: data.saleCount,
-      rating: data.rating,
+      price: Number(data.price), // Convertir a número
+      discount: data.discount ? Number(data.discount) : 0, // Si está vacío, poner 0
+      new: Boolean(data.new),
+      saleCount: data.saleCount ? Number(data.saleCount) : 0,
+      rating: data.rating ? Number(data.rating) : 0,
       shortDescription: data.shortDescription,
       fullDescription: data.fullDescription,
-      category: data.category?.map((c) => c.value) || [],
-      tag: data.tags?.map((t) => t.value) || [], // Cambiamos 'tags' a 'tag'
-      variation:
-        data.variations?.map((variation) => ({
-          color: variation.color,
-          image: variation.image,
-          size: variation.sizes
-            .filter((size) => size.name.trim() !== "") // Eliminamos tamaños vacíos
-            .map((size) => ({
-              name: size.name,
-              stock: Number(size.stock),
-            })),
-        })) || [],
+      store_id: Number(2), // Convertir a número
+      image: "",
+
+      // Convertir las categorías y etiquetas a números
+      category: data.category?.map((c) => Number(c.value)) || [],
+      tag: data.tags?.map((t) => Number(t.value)) || [],
+
       offerEnd:
         data.offerEndDate && data.offerEndTime
           ? `${data.offerEndDate}T${data.offerEndTime}:00`
           : null,
     };
 
+    if (hasVariations) {
+      formattedData.variation = data.variations.map(({ color, sizes }) => ({
+        color,
+        image: "",
+        size: sizes
+          .filter((size) => size.name.trim() !== "")
+          .map(({ name, stock }) => ({ name, stock: Number(stock) })),
+      }));
+    } else {
+      formattedData.stock = data.stock;
+    }
+
     console.log("📝 Datos enviados:", JSON.stringify(formattedData, null, 2));
 
-    // try {
-    //   const headers = {
-    //     "X-Store-Name": "Tienda1",
-    //     Authorization: `Bearer ${localStorage.getItem("token")}`,
-    //     "Content-Type": "application/json",
-    //   };
+    try {
+      const response = await axios.post(
+        "https://mitiendaenlineamx.com.mx/api/cargar/products",
+        formattedData
+      );
 
-    //   await axios.post("https://mitiendaenlineamx.com.mx/api/products", formattedData, { headers });
+      setMessage("✅ Producto creado con éxito.");
+      reset();
+    } catch (error) {
+      console.error("❌ Error en la API:", error.response?.data || error);
 
-    //   setMessage("✅ Producto creado con éxito.");
-    //   reset();
-    // } catch (error) {
-    //   console.error("❌ Error al guardar el producto:", error);
-    //   setError("No se pudo crear el producto. Verifica la API.");
-    // }
+      if (error.response?.data?.errors) {
+        setError(
+          `❌ Error en la API:\n${JSON.stringify(
+            error.response.data.errors,
+            null,
+            2
+          )}`
+        );
+      } else {
+        setError("Error de conexión con el servidor.");
+      }
+    }
   };
 
   return (
@@ -121,151 +183,178 @@ function ProductForm() {
         <form onSubmit={handleSubmit(onSubmit)}>
           {/* Primera fila */}
           <div className="row">
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Código (SKU)</label>
-              <input
-                {...register("sku")}
-                className="form-control bg-secondary text-light border-secondary"
-              />
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Nombre</label>
-              <input
-                {...register("name", { required: "El nombre es obligatorio" })}
-                className="form-control bg-secondary text-light border-secondary"
-              />
-              {errors.name && (
-                <small className="text-danger">{errors.name.message}</small>
-              )}
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Precio</label>
-              <input
-                type="number"
-                {...register("price", { required: "El precio es obligatorio" })}
-                className="form-control bg-secondary text-light border-secondary"
-              />
-              {errors.price && (
-                <small className="text-danger">{errors.price.message}</small>
-              )}
-            </div>
+            <ProductField
+              label="Código (SKU)"
+              name="sku"
+              register={register}
+              errors={errors}
+            />
+            <ProductField
+              label="Nombre"
+              name="name"
+              register={register}
+              validation={{ required: "El nombre es obligatorio" }}
+              errors={errors}
+            />
+            <ProductField
+              label="Precio"
+              name="price"
+              type="number"
+              register={register}
+              validation={{ required: "El precio es obligatorio" }}
+              errors={errors}
+            />
           </div>
 
           {/* Segunda fila */}
-          <div className="row">
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Stock</label>
-              <input
+          {!hasVariations && (
+            <div className="row">
+              {/* Stock */}
+              <ProductField
+                label="Stock"
+                name="stock"
                 type="number"
-                {...register("stock")}
-                className="form-control bg-secondary text-light border-secondary"
+                register={register}
+                errors={errors}
               />
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Descuento (%)</label>
-              <input
+
+              {/* Descuento */}
+              <ProductField
+                label="Descuento (%)"
+                name="discount"
                 type="number"
-                {...register("discount")}
-                className="form-control bg-secondary text-light border-secondary"
+                register={register}
+                errors={errors}
               />
+
+              <div className="col-md-4 mb-3 d-flex align-items-center">
+                {/* Etiqueta "Nuevo" alineada correctamente */}
+                <label
+                  className="form-label me-3 mb-0"
+                  style={{ minWidth: "80px", textAlign: "right" }}
+                >
+                  Nuevo
+                </label>
+
+                {/* Contenedor del switch con flexbox para alineación */}
+                <div
+                  className="d-flex align-items-center"
+                  style={{ gap: "10px" }}
+                >
+                  {/* Switch personalizado */}
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      width: "60px",
+                      height: "30px",
+                      backgroundColor: watch("new") ? "#28a745" : "#6c757d",
+                      border: "2px solid white",
+                      borderRadius: "50px",
+                      transition: "all 0.3s ease-in-out",
+                      position: "relative",
+                      cursor: "pointer",
+                      padding: "3px",
+                    }}
+                    onClick={() => setValue("new", !watch("new"))} // ✅ Cambia el estado al hacer clic
+                  >
+                    {/* Botón deslizante */}
+                    <span
+                      style={{
+                        width: "24px",
+                        height: "24px",
+                        borderRadius: "50%",
+                        backgroundColor: "white",
+                        position: "absolute",
+                        left: watch("new") ? "32px" : "2px",
+                        transition: "all 0.3s ease-in-out",
+                      }}
+                    ></span>
+                  </label>
+
+                  {/* Checkbox oculto para manejar el estado */}
+                  <input
+                    type="checkbox"
+                    {...register("new")}
+                    style={{ display: "none" }}
+                  />
+
+                  {/* ✅ Texto alineado perfectamente con el switch */}
+                  <label
+                    className="form-check-label mb-0"
+                    style={{
+                      fontSize: "16px",
+                      color: "#ffffff",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ¿Es nuevo?
+                  </label>
+                </div>
+              </div>
             </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label d-block">Nuevo</label>
-              <input
-                type="checkbox"
-                className="form-check-input"
-                {...register("new")}
-              />
-              <label className="form-check-label">¿Es nuevo?</label>
-            </div>
-          </div>
+          )}
 
           {/* Tercera fila */}
           <div className="row">
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Fin de la Oferta (Fecha)</label>
-              <input
-                type="date"
-                {...register("offerEndDate")}
-                className="form-control bg-secondary text-light border-secondary"
-              />
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Fin de la Oferta (Hora)</label>
-              <input
-                type="time"
-                {...register("offerEndTime")}
-                className="form-control bg-secondary text-light border-secondary"
-              />
-            </div>
-            <div className="col-md-4 mb-3">
-              <label className="form-label">Calificación (0-5)</label>
-              <input
-                type="number"
-                min="0"
-                max="5"
-                {...register("rating")}
-                className="form-control bg-secondary text-light border-secondary"
-              />
-            </div>
+            <ProductField
+              label="Fin de la Oferta (Fecha)"
+              name="offerEndDate"
+              type="date"
+              register={register}
+              errors={errors}
+            />
+            <ProductField
+              label="Fin de la Oferta (Hora)"
+              name="offerEndTime"
+              type="time"
+              register={register}
+              errors={errors}
+            />
+            <ProductField
+              label="Calificación (0-5)"
+              name="rating"
+              type="number"
+              register={register}
+              errors={errors}
+            />
           </div>
 
           {/* Descripciones */}
           <div className="row">
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Descripción Corta</label>
-              <textarea
-                {...register("shortDescription")}
-                className="form-control bg-secondary text-light border-secondary"
-              ></textarea>
-            </div>
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Descripción Larga</label>
-              <textarea
-                {...register("fullDescription")}
-                className="form-control bg-secondary text-light border-secondary"
-              ></textarea>
-            </div>
+            <TextAreaField
+              label="Descripción Corta"
+              name="shortDescription"
+              register={register}
+              errors={errors}
+            />
+            <TextAreaField
+              label="Descripción Larga"
+              name="fullDescription"
+              register={register}
+              errors={errors}
+            />
           </div>
 
           <div className="row">
             {/* Categoría */}
             <div className="col-md-6 mb-3">
               <label className="form-label">Categoría</label>
-              <Controller
+              <CustomSelect
                 name="category"
                 control={control}
-                render={({ field }) => (
-                  <Select
-                    {...field}
-                    options={categoriesOptions}
-                    isMulti
-                    onChange={(selected) => field.onChange(selected)}
-                    value={field.value}
-                    className="basic-multi-select"
-                    classNamePrefix="select"
-                  />
-                )}
+                options={categoriesOptions}
               />
             </div>
 
-            {/* Etiquetas (Múltiple selección) */}
+            {/* Etiquetas */}
             <div className="col-md-6 mb-3">
               <label className="form-label">Tags</label>
-              <Controller
+              <CustomSelect
                 name="tags"
                 control={control}
-                render={({ field }) => (
-                  <Select
-                    {...field}
-                    options={tagsOptions}
-                    isMulti
-                    onChange={(selected) => field.onChange(selected)}
-                    value={field.value}
-                    className="basic-multi-select"
-                    classNamePrefix="select"
-                  />
-                )}
+                options={tagsOptions}
               />
             </div>
           </div>
