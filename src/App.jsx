@@ -350,6 +350,7 @@ const App = () => {
             <Route path="/admin/products" element={<ProductList />} />
             <Route path="/admin/products/new" element={<ProductForm />} /> {/* Nueva ruta para crear productos */}
             <Route path="/admin/products/:id" element={<ProductDetails />} />
+            <Route path="/admin/products/edit/:id" element={<ProductForm />} />
           </Routes>
         </Suspense>
       </ScrollToTop>
