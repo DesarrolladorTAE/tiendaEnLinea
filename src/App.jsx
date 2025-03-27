@@ -148,12 +148,13 @@ const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 
-const ProductList = lazy(() => import("./pages/admin/ProductList"));
-const ProductDetails = lazy(() => import("./pages/admin/ProductDetails"));
-const ProductForm = lazy(() => import("./pages/admin/ProductForm"));
+const ProductList = lazy(() => import("./pages/admin/ProductList.jsx"));
+const ProductDetails = lazy(() => import("./pages/admin/ProductDetails.jsx"));
+const ProductForm = lazy(() => import("./pages/admin/ProductForm.jsx"));
+const ProductImages = lazy(() => import("./pages/admin/ProductImages.jsx"));
 
 const App = () => {
-  const storeName = "Tienda1";
+  const storeName = "Tienda de Prueba";
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -351,6 +352,7 @@ const App = () => {
             <Route path="/admin/products/new" element={<ProductForm />} /> {/* Nueva ruta para crear productos */}
             <Route path="/admin/products/:id" element={<ProductDetails />} />
             <Route path="/admin/products/edit/:id" element={<ProductForm />} />
+            <Route path="/admin/products/images/:id" element={<ProductImages />} />
           </Routes>
         </Suspense>
       </ScrollToTop>
