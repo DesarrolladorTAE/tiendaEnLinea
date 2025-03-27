@@ -143,7 +143,7 @@ function ProductForm() {
       shortDescription: data.shortDescription,
       fullDescription: data.fullDescription,
       store_id: Number(2), // Convertir a número
-      image: "",
+      image: "/assets/img/product/fashion/8.jpg",
 
       // Convertir las categorías y etiquetas a números
       category: data.category?.map((c) => Number(c.value)) || [],
@@ -158,7 +158,7 @@ function ProductForm() {
     if (hasVariations) {
       formattedData.variation = data.variations.map(({ color, sizes }) => ({
         color,
-        image: "",
+        image: "/assets/img/product/fashion/8.jpg",
         size: sizes
           .filter((size) => size.name.trim() !== "")
           .map(({ name, stock }) => ({ name, stock: Number(stock) })),

@@ -17,12 +17,21 @@ const ProductImages = () => {
       .catch(() => setError("Error al cargar imágenes"));
   }, [id]);
 
+  const MAX_IMAGES = 6;
+
   const handleUpload = (e) => {
     e.preventDefault();
-    if (!newImage) return;
+    if (!newImage || newImage.length === 0) return;
 
+    if (images.length + newImage.length > MAX_IMAGES) {
+      setError("Solo se permiten hasta 6 imágenes por producto.");
+      return;
+    }
+    
     const formData = new FormData();
-    formData.append("image", newImage);
+    for (let i = 0; i < newImage.length; i++) {
+      formData.append("images[]", newImage[i]);
+    }
 
     axios
       .post(
@@ -30,7 +39,7 @@ const ProductImages = () => {
         formData
       )
       .then((res) => {
-        setImages([...images, res.data]);
+        setImages([...images, ...res.data]);
         setNewImage(null);
       })
       .catch(() => setError("Error al subir la imagen"));
@@ -58,8 +67,9 @@ const ProductImages = () => {
         <div className="input-group">
           <input
             type="file"
+            multiple
             className="form-control"
-            onChange={(e) => setNewImage(e.target.files[0])}
+            onChange={(e) => setNewImage(e.target.files)}
             accept="image/*"
           />
           <button type="submit" className="btn btn-success">
@@ -72,7 +82,12 @@ const ProductImages = () => {
         {images.map((img) => (
           <div className="col-md-3 mb-4" key={img.id}>
             <div className="card">
-              <img src={img.image} className="card-img-top" alt="Producto" />
+              <img
+                src={img.image}
+                alt="Producto"
+                className="card-img-top"
+                style={{ height: "200px", width: "100%", objectFit: "cover" }}
+              />
               <div className="card-body text-center">
                 <button
                   className="btn btn-sm btn-outline-danger"
