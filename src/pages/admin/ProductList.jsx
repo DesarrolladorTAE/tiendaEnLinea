@@ -42,9 +42,7 @@ const ProductList = () => {
         className="bg-white p-4 shadow rounded w-100"
         style={{ maxWidth: "960px" }}
       >
-        <h2 className="text-center text-primary mb-4">
-          🛒 Lista de Productos
-        </h2>
+        <h2 className="text-center text-primary mb-4">🛒 Lista de Productos</h2>
 
         {error && <p className="text-danger text-center">{error}</p>}
 
@@ -80,6 +78,13 @@ const ProductList = () => {
                           title="Editar producto"
                         >
                           ✏️
+                        </Link>
+                        <Link
+                          to={`/admin/products/images/${product.id}`}
+                          className="btn btn-sm btn-outline-warning"
+                          title="Modificar imágenes"
+                        >
+                          🖼
                         </Link>
                         <button
                           onClick={() => handleDelete(product.id)}

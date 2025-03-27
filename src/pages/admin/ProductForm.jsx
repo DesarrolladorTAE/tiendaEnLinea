@@ -59,11 +59,32 @@ function ProductForm() {
   const hasVariations = watch("variations").length > 0;
 
   useEffect(() => {
-    if (id) {
-      // Modo edición
-      fetchProduct(id);
-    }
+    const initializeForm = async () => {
+      await fetchOptions(); // ⏳ Primero cargamos las opciones
+
+      if (id) {
+        await fetchProduct(id); // 🧠 Luego cargamos los datos si estamos en modo edición
+      }
+    };
+
+    initializeForm();
   }, [id]);
+
+  const fetchOptions = async () => {
+    try {
+      const [catRes, tagRes] = await Promise.all([
+        axios.get("https://mitiendaenlineamx.com.mx/api/categorias"),
+        axios.get("https://mitiendaenlineamx.com.mx/api/etiquetas"),
+      ]);
+
+      setCategoriesOptions(
+        catRes.data.map((c) => ({ value: c.id, label: c.name }))
+      );
+      setTagsOptions(tagRes.data.map((t) => ({ value: t.id, label: t.name })));
+    } catch (error) {
+      console.error("Error cargando categorías o etiquetas:", error);
+    }
+  };
 
   const fetchProduct = async (productId) => {
     try {
@@ -176,7 +197,9 @@ function ProductForm() {
   return (
     <div className="container mt-5">
       <div className="card bg-dark text-light p-4 shadow-lg">
-        <h2 className="text-center">📝 Crear Producto</h2>
+        <h2 className="text-center">
+          {id ? "✏️ Editar Producto" : "📝 Crear Producto"}
+        </h2>
         {message && <div className="alert alert-success">{message}</div>}
         {error && <div className="alert alert-danger">{error}</div>}
 
@@ -389,7 +412,7 @@ function ProductForm() {
           </button>
 
           <button type="submit" className="btn btn-success w-100 mt-4">
-            ✅ Guardar Producto
+            {id ? "✏️ Actualizar Producto" : "✅ Guardar Producto"}
           </button>
         </form>
       </div>
