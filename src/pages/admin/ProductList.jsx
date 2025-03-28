@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
-import "bootstrap/dist/css/bootstrap.min.css";
-import "bootstrap/dist/js/bootstrap.bundle.min.js";
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
@@ -37,81 +35,84 @@ const ProductList = () => {
   };
 
   return (
-    <div className="d-flex justify-content-center mt-5">
-      <div
-        className="bg-white p-4 shadow rounded w-100"
-        style={{ maxWidth: "960px" }}
-      >
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2 className="text-primary">🛒 Lista de Productos</h2>
-          <Link to="/admin/products/new" className="btn btn-success">
-            ➕ Crear Producto
-          </Link>
-        </div>
+    <div className="bg-dark text-white p-4 shadow rounded border border-light">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="text-white">
+          <span role="img" aria-label="cart">
+            🛒
+          </span>{" "}
+          Lista de Productos
+        </h2>
+        <Link
+          to="new"
+          className="btn btn-outline-light d-flex align-items-center gap-2"
+        >
+          <span className="fs-5">➕</span> Crear Producto
+        </Link>
+      </div>
 
-        {error && <p className="text-danger text-center">{error}</p>}
+      {error && <p className="text-danger text-center">{error}</p>}
 
-        <div className="table-responsive">
-          <table className="table table-hover align-middle">
-            <thead className="table-primary">
-              <tr>
-                <th>Nombre</th>
-                <th>Precio</th>
-                <th>Stock</th>
-                <th className="text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.length > 0 ? (
-                products.map((product) => (
-                  <tr key={product.id}>
-                    <td className="fw-semibold">{product.name || "N/A"}</td>
-                    <td>${product.price || "0.00"}</td>
-                    <td>{product.stock ?? "Con Variaciones"}</td>
-                    <td className="text-center">
-                      <div className="d-flex justify-content-center gap-2">
-                        <Link
-                          to={`/product/${product.id}`}
-                          className="btn btn-sm btn-outline-info"
-                          title="Ver detalles"
-                        >
-                          🔍
-                        </Link>
-                        <Link
-                          to={`/admin/products/edit/${product.id}`}
-                          className="btn btn-sm btn-outline-primary"
-                          title="Editar producto"
-                        >
-                          ✏️
-                        </Link>
-                        <Link
-                          to={`/admin/products/images/${product.id}`}
-                          className="btn btn-sm btn-outline-warning"
-                          title="Modificar imágenes"
-                        >
-                          🖼
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="btn btn-sm btn-outline-danger"
-                          title="Eliminar producto"
-                        >
-                          🗑
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="4" className="text-center text-muted py-3">
-                    No hay productos disponibles
+      <div className="table-responsive">
+        <table className="table table-dark table-hover align-middle table-bordered">
+          <thead className="table-secondary text-white">
+            <tr>
+              <th>Nombre</th>
+              <th>Precio</th>
+              <th>Stock</th>
+              <th className="text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.length > 0 ? (
+              products.map((product) => (
+                <tr key={product.id}>
+                  <td className="fw-semibold">{product.name || "N/A"}</td>
+                  <td>${product.price || "0.00"}</td>
+                  <td>{product.stock ?? "Con Variaciones"}</td>
+                  <td className="text-center">
+                    <div className="d-flex justify-content-center gap-2">
+                      <Link
+                        to={`/product/${product.id}`}
+                        className="btn btn-sm btn-outline-info"
+                        title="Ver detalles"
+                      >
+                        🔍
+                      </Link>
+                      <Link
+                        to={`edit/${product.id}`}
+                        className="btn btn-sm btn-outline-primary"
+                        title="Editar producto"
+                      >
+                        ✏️
+                      </Link>
+                      <Link
+                        to={`images/${product.id}`}
+                        className="btn btn-sm btn-outline-warning"
+                        title="Modificar imágenes"
+                      >
+                        🖼
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        className="btn btn-sm btn-outline-danger"
+                        title="Eliminar producto"
+                      >
+                        🗑
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="text-center text-muted py-3">
+                  No hay productos disponibles
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -199,9 +199,9 @@ function ProductForm() {
   };
 
   return (
-    <div className="container mt-5">
+    <div className="container">
       <div className="card bg-dark text-light p-4 shadow-lg">
-        <h2 className="text-center">
+        <h2 className="text-center text-primary">
           {id ? "✏️ Editar Producto" : "📝 Crear Producto"}
         </h2>
         {message && <div className="alert alert-success">{message}</div>}

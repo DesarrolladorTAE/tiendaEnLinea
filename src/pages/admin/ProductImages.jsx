@@ -6,26 +6,36 @@ import "bootstrap/dist/css/bootstrap.min.css";
 const ProductImages = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
   const [images, setImages] = useState([]);
   const [newImage, setNewImage] = useState(null);
   const [error, setError] = useState("");
   const [variations, setVariations] = useState([]);
+  const [loading, setLoading] = useState(true); // 👈 nuevo
 
   useEffect(() => {
-    axios
-      .get(`http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}`)
-      .then((res) => setImages(res.data))
-      .catch(() => setError("Error al cargar imágenes"));
+    const fetchData = async () => {
+      try {
+        const [imagesRes, productRes] = await Promise.all([
+          axios.get(
+            `http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}`
+          ),
+          axios.get(`http://mitiendaenlineamx.com.mx/api/admin/products/${id}`),
+        ]);
 
-    axios
-      .get(`http://mitiendaenlineamx.com.mx/api/admin/products/${id}`)
-      .then((res) => {
-        console.log(res.data); // 👈 aquí puedes ver si viene variation
-        if (res.data.variation) {
-          setVariations(res.data.variation);
+        setImages(imagesRes.data);
+
+        if (productRes.data.variation) {
+          setVariations(productRes.data.variation);
         }
-      })
-      .catch(() => setError("Error al cargar variaciones"));
+      } catch (err) {
+        setError("Error al cargar datos del producto");
+      } finally {
+        setLoading(false); // ✅ cuando todo termine
+      }
+    };
+
+    fetchData();
   }, [id]);
 
   const MAX_IMAGES = 6;
@@ -61,7 +71,7 @@ const ProductImages = () => {
 
     axios
       .delete(
-        `//mitiendaenlineamx.com.mx/api/admin/products/images/${id}/${imageId}`
+        `http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}/${imageId}`
       )
       .then(() => {
         setImages(images.filter((img) => img.id !== imageId));
@@ -86,7 +96,6 @@ const ProductImages = () => {
         formData
       )
       .then((res) => {
-        // Actualizar la imagen mostrada sin recargar todo
         setVariations((prev) =>
           prev.map((v) =>
             v.id === variation.id
@@ -98,9 +107,29 @@ const ProductImages = () => {
       .catch(() => alert("Error al subir la imagen de la variación."));
   };
 
+  // ✅ Loader mientras se cargan datos
+  if (loading) {
+    return (
+      <div className="text-center mt-5">
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Cargando...</span>
+        </div>
+        <p className="text-muted mt-3">Cargando imágenes y variaciones...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mt-5">
-      <h2 className="text-center mb-4 text-primary">🖼 Imágenes del Producto</h2>
+    <div className="container">
+      <div className="d-flex justify-content-between align-items-center mb-20">
+        <h2 className="text-primary">🖼 Imágenes del Producto</h2>
+        <button
+          className="btn btn-secondary"
+          onClick={() => navigate("/admin/products")}
+        >
+          ← Volver a productos
+        </button>
+      </div>
       {error && <p className="text-danger">{error}</p>}
 
       <form onSubmit={handleUpload} className="mb-4">
@@ -139,15 +168,6 @@ const ProductImages = () => {
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="text-center mt-4">
-        <button
-          className="btn btn-secondary"
-          onClick={() => navigate("/admin/products")}
-        >
-          ← Volver a productos
-        </button>
       </div>
 
       {variations.length > 0 && (
