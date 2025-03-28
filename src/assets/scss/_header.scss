@@ -1,7 +1,7 @@
 /*----- 2. Header style ----*/
 
 .header-area {
-  background-color: #40E0D0; /* Azul turquesa para el encabezado principal */
+  background-color: #00bfff; /* Azul turquesa para el encabezado principal */
   position: relative;
 
   &.header-absolute {
@@ -33,7 +33,7 @@
   animation: 700ms ease-in-out 0s normal none 1 running fadeInDown;
 
   border-bottom: 0 solid #4a90e2;
-  background-color: #40E0D0; /* Azul turquesa */
+  background-color: #00bfff; /* Azul turquesa */
   box-shadow: 0 0 25px 0 rgba(0, 0, 0, 0.06);
 
   .center-menu-logo {

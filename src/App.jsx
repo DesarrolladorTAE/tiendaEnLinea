@@ -4,6 +4,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import { useDispatch } from 'react-redux';
 import { loadUserFromStorage } from './store/slices/userSlice';
 
+//Pruebas
+
+const AuthCard = lazy (()=> import ("./components/login/AuthCard.jsx"));
+
 // Home pages
 const HomeFashionThree = lazy(() => import("./pages/home/HomeFashionThree.jsx"));
 
@@ -72,6 +76,8 @@ const App = () => {
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/authlogin" element= {<AuthCard/>}/>
+
 
             {/* Not Found */}
             <Route path="*" element={<NotFound />} />

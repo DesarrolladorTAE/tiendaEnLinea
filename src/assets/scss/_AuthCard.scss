@@ -1,0 +1,256 @@
+/* ================================
+   VARIABLES DE COLOR Y FUENTE
+================================= */
+$color-primary: #6c5ce7; // morado botón login
+$color-accent: #fd79a8;  // rosa botón izquierdo
+$color-yellow: #fbc531;  // social login amarillo
+$color-blue: #00a8ff;    // social login azul
+$color-bg-left: #2d3250;
+$color-bg-right: #ffffff;
+$color-input: #f2f3f5;
+$color-text: #333;
+$font-main: 'Poppins', sans-serif;
+
+/* ================================
+   GLOBAL STYLES
+================================= */
+.auth-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f5f6fa;
+  height: 100vh;
+  font-family: $font-main;
+  padding: 1rem;
+}
+
+/* ================================
+   CARD PRINCIPAL
+================================= */
+.auth-card {
+  display: flex;
+  position: relative;
+  width: 100%;
+  max-width: 950px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  background: $color-bg-right;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    border-radius: 0;
+  }
+
+  &::before {
+    content: "➜";
+    font-size: 26px;
+    font-weight: bold;
+    color: white;
+    background: $color-primary;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) translateX(-220px); // <- ajuste para colocarlo hacia la izquierda
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: vibrar 0.1s infinite;
+    z-index: 10;
+
+    @media (max-width: 768px) {
+      display: none;
+    }
+  }
+}
+
+/* ================================
+   SECCIÓN IZQUIERDA (INFO)
+================================= */
+.info-section {
+  width: 50%;
+  padding: 40px;
+  background: $color-bg-left;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  clip-path: polygon(0 0, 100% 0, 70% 100%, 0% 100%);
+
+  .logo {
+    width: 60px;
+    margin-bottom: 1.5rem;
+  }
+
+  h2 {
+    text-align: center;
+    font-size: 22px;
+    line-height: 30px;
+    font-weight: bold;
+    margin-bottom: 10px;
+  }
+
+  p {
+    font-size: 13px;
+    text-align: center;
+    opacity: 0.8;
+    max-width: 250px;
+  }
+
+  .toggle-button {
+    margin-top: 2rem;
+    background: $color-accent;
+    color: #fff;
+    border: none;
+    border-radius: 999px;
+    padding: 14px 28px;
+    font-weight: bold;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover {
+      background: darken($color-accent, 10%);
+    }
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    clip-path: none;
+    padding: 60px 20px;
+    display: none; // Ocultar en móvil
+  }
+}
+
+/* ================================
+   SECCIÓN DERECHA (FORM)
+================================= */
+.form-section {
+  width: 50%;
+  padding: 60px 40px;
+  background-color: $color-bg-right;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  h2 {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: $color-text;
+    text-align: center;
+  }
+
+  p {
+    font-size: 14px;
+    margin-bottom: 30px;
+    color: $color-text;
+    opacity: 0.7;
+    text-align: center;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    padding: 40px 20px;
+  }
+}
+
+/* ================================
+   FORMULARIO
+================================= */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"] {
+    padding: 16px 22px;
+    border: none;
+    background: $color-input;
+    border-radius: 999px;
+    margin-bottom: 15px;
+    font-size: 15px;
+    width: 100%;
+  }
+
+  .form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 13px;
+    margin-bottom: 20px;
+
+    a {
+      color: $color-primary;
+      text-decoration: none;
+    }
+  }
+
+  .btn-primary {
+    background: $color-primary;
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    border-radius: 999px;
+    padding: 14px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover {
+      background: darken($color-primary, 10%);
+    }
+  }
+
+  .login-social {
+    text-align: center;
+
+    span {
+      font-size: 13px;
+      opacity: 0.7;
+    }
+
+    .social-buttons {
+      margin-top: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+
+      .btn-social {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        cursor: pointer;
+        font-size: 18px;
+
+        &.yellow {
+          background: $color-yellow;
+        }
+
+        &.blue {
+          background: $color-blue;
+        }
+      }
+    }
+  }
+}
+
+/* ================================
+   ANIMACIÓN CÍRCULO VIBRANTE
+================================= */
+@keyframes vibrar {
+  0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+  25% { transform: translate(-50%, -50%) rotate(3deg); }
+  50% { transform: translate(-50%, -50%) rotate(-3deg); }
+  75% { transform: translate(-50%, -50%) rotate(2deg); }
+}

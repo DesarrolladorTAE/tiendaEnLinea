@@ -1,0 +1,184 @@
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-contenido {
+  background: #fff;
+  padding: 2rem;
+  border-radius: 2rem;
+  max-width: 600px;
+  width: 90%;
+  position: relative;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  animation: slide-in 0.3s ease forwards;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cerrar {
+  position: absolute;
+  top: 1rem;
+  right: 1.5rem;
+  font-size: 1.5rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+
+  .saldo {
+    font-size: 1rem;
+    align-self: flex-start;
+  }
+
+  .logo-carrier {
+    max-height: 80px;
+    object-fit: contain;
+  }
+}
+
+.formulario {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+
+  select, input {
+    flex: 1 1 48%;
+    padding: 0.6rem;
+    border: 2px solid #00bfff;
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+
+  input::placeholder {
+    color: #888;
+  }
+
+  .mensaje-error {
+    color: red;
+    width: 100%;
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+
+  .detalle {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+
+    p {
+      margin: 0.3rem 0;
+    }
+
+    a {
+      color: red;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    .vigencia {
+      color: red;
+      font-weight: bold;
+    }
+  }
+}
+
+.btn-enviar {
+  position: relative;
+  margin: 1rem auto 0;
+  width: 50%;
+  padding: 0.6rem;
+  border: none;
+  background: #000;
+  color: #fff;
+  font-weight: bold;
+  border-radius: 8px;
+  font-size: 1rem;
+  overflow: hidden;
+  cursor: pointer;
+  transition: color 0.1s ease;
+
+  &:hover {
+    color: #000;
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0;
+    height: 100%;
+    width: 0%;
+    background: #00bfff;
+    transition: width 0.78s ease;
+    z-index: 0;
+  }
+
+  &:hover::before {
+    width: 100%;
+  }
+
+  span {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.iconos-extras {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 0 1rem;
+  margin-top: 1rem;
+  font-size: 1.3rem;
+  color: #00bfff;
+
+  svg {
+    cursor: pointer;
+    transition: transform 0.3s ease;
+
+    &:hover {
+      transform: scale(1.2);
+    }
+
+    &:hover::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: -25px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      color: #fff;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+  }
+
+  position: relative;
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

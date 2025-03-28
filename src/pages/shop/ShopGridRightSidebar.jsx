@@ -31,12 +31,12 @@ const ShopGridRightSidebar = () => {
 
   return (
     <Fragment>
-      <SEO titleTemplate="Tienda | Tiempo Aire" />
+      <SEO titleTemplate="Tiempo Aire" />
       <LayoutOne headerTop="visible">
         <Breadcrumb
           pages={[
             { label: "Inicio", path: "/" },
-            { label: "Carriers", path: pathname },
+            { label: "TiempO Aire", path: pathname },
           ]}
         />
         <CarrierGrid carriers={carriers} />
