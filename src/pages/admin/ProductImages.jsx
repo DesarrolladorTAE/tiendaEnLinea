@@ -9,12 +9,23 @@ const ProductImages = () => {
   const [images, setImages] = useState([]);
   const [newImage, setNewImage] = useState(null);
   const [error, setError] = useState("");
+  const [variations, setVariations] = useState([]);
 
   useEffect(() => {
     axios
       .get(`http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}`)
       .then((res) => setImages(res.data))
       .catch(() => setError("Error al cargar imágenes"));
+
+    axios
+      .get(`http://mitiendaenlineamx.com.mx/api/admin/products/${id}`)
+      .then((res) => {
+        console.log(res.data); // 👈 aquí puedes ver si viene variation
+        if (res.data.variation) {
+          setVariations(res.data.variation);
+        }
+      })
+      .catch(() => setError("Error al cargar variaciones"));
   }, [id]);
 
   const MAX_IMAGES = 6;
@@ -27,7 +38,7 @@ const ProductImages = () => {
       setError("Solo se permiten hasta 6 imágenes por producto.");
       return;
     }
-    
+
     const formData = new FormData();
     for (let i = 0; i < newImage.length; i++) {
       formData.append("images[]", newImage[i]);
@@ -56,6 +67,35 @@ const ProductImages = () => {
         setImages(images.filter((img) => img.id !== imageId));
       })
       .catch(() => setError("Error al eliminar la imagen"));
+  };
+
+  const handleVariationImageUpload = (e, variation) => {
+    e.preventDefault();
+
+    if (!variation.newImage) {
+      alert("Selecciona una imagen primero.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("image", variation.newImage);
+
+    axios
+      .post(
+        `http://mitiendaenlineamx.com.mx/api/products/${id}/variations/${variation.id}/image`,
+        formData
+      )
+      .then((res) => {
+        // Actualizar la imagen mostrada sin recargar todo
+        setVariations((prev) =>
+          prev.map((v) =>
+            v.id === variation.id
+              ? { ...v, image: res.data.image, newImage: null }
+              : v
+          )
+        );
+      })
+      .catch(() => alert("Error al subir la imagen de la variación."));
   };
 
   return (
@@ -109,6 +149,58 @@ const ProductImages = () => {
           ← Volver a productos
         </button>
       </div>
+
+      {variations.length > 0 && (
+        <div className="mt-5">
+          <h4 className="text-info">🎨 Variaciones del producto</h4>
+          <div className="row">
+            {variations.map((v, i) => (
+              <div className="col-md-4 mb-4" key={i}>
+                <div className="card">
+                  <img
+                    src={v.image}
+                    alt={`Variación ${v.color}`}
+                    className="card-img-top"
+                    style={{
+                      height: "200px",
+                      width: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                  <div className="card-body">
+                    <strong>Color:</strong> {v.color}
+                    <form
+                      onSubmit={(e) => handleVariationImageUpload(e, v)}
+                      className="mt-2"
+                    >
+                      <input
+                        type="file"
+                        className="form-control mb-2"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setVariations((prev) =>
+                            prev.map((varr) =>
+                              varr.id === v.id
+                                ? { ...varr, newImage: e.target.files[0] }
+                                : varr
+                            )
+                          )
+                        }
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn-sm btn-warning w-100"
+                      >
+                        ✏️ Cambiar Imagen
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

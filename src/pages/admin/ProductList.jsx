@@ -10,7 +10,7 @@ const ProductList = () => {
 
   useEffect(() => {
     const headers = {
-      "X-Store-Name": "Tienda de Prueba",
+      "X-Store-Name": "Tienda Zapatos MX",
     };
 
     axios

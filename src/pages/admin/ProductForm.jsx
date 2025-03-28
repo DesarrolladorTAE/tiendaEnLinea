@@ -120,7 +120,11 @@ function ProductForm() {
           label: c.name,
         })),
         tags: product.tags.map((t) => ({ value: t.id, label: t.name })),
-        variations: product.variation || [],
+        variations:
+          product.variation?.map((v) => ({
+            ...v,
+            sizes: v.size || [], // Renombramos correctamente para react-hook-form
+          })) || [],
       });
     } catch (err) {
       console.error("Error al cargar producto para editar:", err);
@@ -142,7 +146,7 @@ function ProductForm() {
       rating: data.rating ? Number(data.rating) : 0,
       shortDescription: data.shortDescription,
       fullDescription: data.fullDescription,
-      store_id: Number(2), // Convertir a número
+      store_id: Number(1), // Convertir a número
       image: "/assets/img/product/fashion/8.jpg",
 
       // Convertir las categorías y etiquetas a números
