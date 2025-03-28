@@ -3,6 +3,7 @@ import { useDispatch } from "react-redux";
 import { fetchProducts } from "./store/slices/product-slice";
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import AdminLayout from "./layouts/AdminLayout";
 
 // home pages
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
@@ -348,11 +349,13 @@ const App = () => {
 
             <Route path="*" element={<NotFound />} />
 
-            <Route path="/admin/products" element={<ProductList />} />
-            <Route path="/admin/products/new" element={<ProductForm />} /> {/* Nueva ruta para crear productos */}
-            <Route path="/admin/products/:id" element={<ProductDetails />} />
-            <Route path="/admin/products/edit/:id" element={<ProductForm />} />
-            <Route path="/admin/products/images/:id" element={<ProductImages />} />
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route path="products" element={<ProductList />} />
+              <Route path="products/new" element={<ProductForm />} />
+              <Route path="products/edit/:id" element={<ProductForm />} />
+              <Route path="products/images/:id" element={<ProductImages />} />
+              <Route path="products/:id" element={<ProductDetails />} />
+            </Route>
           </Routes>
         </Suspense>
       </ScrollToTop>
