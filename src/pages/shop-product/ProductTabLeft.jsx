@@ -19,7 +19,7 @@ const ProductTabLeft = () => {
   const [product, setProduct] = useState(null);
 
   useEffect(() => {
-    const storeName = "Tienda de Prueba"; // Reemplázalo con la lógica para obtener el nombre de la tienda dinámicamente
+    const storeName = "Tienda Zapatos MX"; // Reemplázalo con la lógica para obtener el nombre de la tienda dinámicamente
     console.log("Obteniendo productos para la tienda:", storeName);
     
     if (products.length === 0) {

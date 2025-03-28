@@ -15,7 +15,7 @@ const ProductDetails = () => {
                 console.log(`🔍 Obteniendo producto con ID: ${id}`);
 
                 const headers = {
-                    "X-Store-Name": "Tienda1",  // ❗ Reemplaza con el nombre de la tienda
+                    "X-Store-Name": "Tienda Zapatos MX",  // ❗ Reemplaza con el nombre de la tienda
                     "Authorization": `Bearer ${localStorage.getItem("token")}`  // Si usas tokens
                 };
 

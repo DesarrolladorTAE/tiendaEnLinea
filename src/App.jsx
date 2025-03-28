@@ -154,7 +154,7 @@ const ProductForm = lazy(() => import("./pages/admin/ProductForm.jsx"));
 const ProductImages = lazy(() => import("./pages/admin/ProductImages.jsx"));
 
 const App = () => {
-  const storeName = "Tienda de Prueba";
+  const storeName = "Tienda Zapatos MX";
   const dispatch = useDispatch();
 
   useEffect(() => {

@@ -17,7 +17,7 @@ const Product = () => {
   const dispatch = useDispatch();
   const { product, loading, error } = useSelector((state) => state.product);
   // const [product, setProduct] = useState(null);
-  const storeName = "Tienda1";
+  const storeName = "Tienda Zapatos MX";
 
   useEffect(() => {
     dispatch(fetchProductById({ storeName, productId: id }));
