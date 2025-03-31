@@ -6,7 +6,7 @@ import { Link } from "react-router-dom";
 const Logo = ({ imageUrl, logoClass }) => {
   return (
     <div className={clsx(logoClass)}>
-      <Link to={ "/"}>
+      <Link to={ "/home-fashion-three"}>
         <img alt="" src={ imageUrl} />
       </Link>
     </div>

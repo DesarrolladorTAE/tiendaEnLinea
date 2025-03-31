@@ -74,7 +74,9 @@ const LoginOverlay = () => {
       dispatch(setUser({ user, token }));
       navigate("/home-fashion-three");
     } catch (error) {
-      setLoginError(error.response?.data?.message || "Error en el inicio de sesión");
+      setLoginError(
+        error.response?.data?.message || "Error en el inicio de sesión"
+      );
     }
   };
 
@@ -92,7 +94,8 @@ const LoginOverlay = () => {
       if (res?.data?.errors) {
         if (res.data.errors.email) fieldErrors.email = res.data.errors.email[0];
         if (res.data.errors.phone) fieldErrors.phone = res.data.errors.phone[0];
-        if (res.data.errors.password) fieldErrors.password = res.data.errors.password[0];
+        if (res.data.errors.password)
+          fieldErrors.password = res.data.errors.password[0];
         setBackendFieldErrors(fieldErrors);
       } else {
         setRegisterError(res?.data?.message || "Error en el registro");
@@ -108,11 +111,15 @@ const LoginOverlay = () => {
         code: verificationCode,
       });
       setIsVerificationModalOpen(false);
-      setRegisterSuccess("Cuenta creada exitosamente. Ahora puedes iniciar sesión.");
+      setRegisterSuccess(
+        "Cuenta creada exitosamente. Ahora puedes iniciar sesión."
+      );
       reset();
       setRightPanelActive(false);
     } catch (error) {
-      setVerificationError(error.response?.data?.message || "Error al crear cuenta.");
+      setVerificationError(
+        error.response?.data?.message || "Error al crear cuenta."
+      );
     }
   };
 
@@ -125,7 +132,9 @@ const LoginOverlay = () => {
       });
       await handleRegisterAfterVerification();
     } catch (error) {
-      setVerificationError(error.response?.data?.error || "Código inválido o expirado");
+      setVerificationError(
+        error.response?.data?.error || "Código inválido o expirado"
+      );
     }
   };
 
@@ -156,7 +165,9 @@ const LoginOverlay = () => {
       setIsResetModalOpen(false);
       alert("Contraseña actualizada exitosamente.");
     } catch (error) {
-      setResetError(error.response?.data?.message || "Error al cambiar contraseña");
+      setResetError(
+        error.response?.data?.message || "Error al cambiar contraseña"
+      );
     }
   };
 
@@ -168,20 +179,41 @@ const LoginOverlay = () => {
 
   return (
     <div className="login-container">
-      <div className={`container ${!isMobile && rightPanelActive ? "right-panel-active" : ""}`}>
+      <div
+        className={`container ${
+          !isMobile && rightPanelActive ? "right-panel-active" : ""
+        }`}
+      >
         {/* Registro */}
         <div
-          className={`form-container sign-up-container ${isMobile ? (activeForm === "register" ? "show-mobile-form" : "hide-mobile-form") : ""
-            }`}
+          className={`form-container sign-up-container ${
+            isMobile
+              ? activeForm === "register"
+                ? "show-mobile-form"
+                : "hide-mobile-form"
+              : ""
+          }`}
           ref={registerFormRef}
         >
           <form onSubmit={handleSubmit(handleRegister)}>
             <h1>Crea tu Cuenta</h1>
             <div className="form-grid">
-              <input type="text" placeholder="Nombre" {...register("name", { required: "Nombre requerido" })} />
-              {errors.name && <p className="error-message">{errors.name.message}</p>}
-              <input type="text" placeholder="Apellidos" {...register("apellidos", { required: "Apellidos requeridos" })} />
-              {errors.apellidos && <p className="error-message">{errors.apellidos.message}</p>}
+              <input
+                type="text"
+                placeholder="Nombre"
+                {...register("name", { required: "Nombre requerido" })}
+              />
+              {errors.name && (
+                <p className="error-message">{errors.name.message}</p>
+              )}
+              <input
+                type="text"
+                placeholder="Apellidos"
+                {...register("apellidos", { required: "Apellidos requeridos" })}
+              />
+              {errors.apellidos && (
+                <p className="error-message">{errors.apellidos.message}</p>
+              )}
               <input
                 type="email"
                 placeholder="Correo electrónico"
@@ -190,18 +222,29 @@ const LoginOverlay = () => {
                   pattern: { value: /^\S+@\S+$/i, message: "Email no válido" },
                 })}
               />
-              {errors.email && <p className="error-message">{errors.email.message}</p>}
-              {backendFieldErrors.email && <p className="error-message">{backendFieldErrors.email}</p>}
+              {errors.email && (
+                <p className="error-message">{errors.email.message}</p>
+              )}
+              {backendFieldErrors.email && (
+                <p className="error-message">{backendFieldErrors.email}</p>
+              )}
               <input
                 type="tel"
                 placeholder="Teléfono"
                 {...register("phone", {
                   required: "Teléfono requerido",
-                  pattern: { value: /^[0-9]{10}$/, message: "Debe contener 10 dígitos" },
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Debe contener 10 dígitos",
+                  },
                 })}
               />
-              {errors.phone && <p className="error-message">{errors.phone.message}</p>}
-              {backendFieldErrors.phone && <p className="error-message">{backendFieldErrors.phone}</p>}
+              {errors.phone && (
+                <p className="error-message">{errors.phone.message}</p>
+              )}
+              {backendFieldErrors.phone && (
+                <p className="error-message">{backendFieldErrors.phone}</p>
+              )}
               <input
                 type="password"
                 placeholder="Contraseña"
@@ -210,36 +253,51 @@ const LoginOverlay = () => {
                   minLength: { value: 8, message: "Mínimo 8 caracteres" },
                 })}
               />
-              {errors.password && <p className="error-message">{errors.password.message}</p>}
-              {backendFieldErrors.password && <p className="error-message">{backendFieldErrors.password}</p>}
+              {errors.password && (
+                <p className="error-message">{errors.password.message}</p>
+              )}
+              {backendFieldErrors.password && (
+                <p className="error-message">{backendFieldErrors.password}</p>
+              )}
               <input
                 type="password"
                 placeholder="Confirmar Contraseña"
                 {...register("password_confirmation", {
                   required: "Confirmación requerida",
-                  validate: (value) => value === password || "Las contraseñas no coinciden",
+                  validate: (value) =>
+                    value === password || "Las contraseñas no coinciden",
                 })}
               />
               {errors.password_confirmation && (
-                <p className="error-message">{errors.password_confirmation.message}</p>
+                <p className="error-message">
+                  {errors.password_confirmation.message}
+                </p>
               )}
             </div>
             <button className="btn-lila">Registrarme</button>
             {registerError && <p className="error-message">{registerError}</p>}
-            {registerSuccess && <p className="success-message">{registerSuccess}</p>}
+            {registerSuccess && (
+              <p className="success-message">{registerSuccess}</p>
+            )}
           </form>
         </div>
 
         {/* Login */}
         <div
-          className={`form-container sign-in-container ${isMobile ? (activeForm === "login" ? "show-mobile-form" : "hide-mobile-form") : ""
-            }`}
+          className={`form-container sign-in-container ${
+            isMobile
+              ? activeForm === "login"
+                ? "show-mobile-form"
+                : "hide-mobile-form"
+              : ""
+          }`}
           ref={loginFormRef}
-        >
+        > 
           <form onSubmit={handleLogin}>
             <h1>Iniciar Sesión</h1>
             <input
               type="tel"
+              name="phone"
               placeholder="Teléfono"
               value={loginPhone}
               onChange={(e) => setLoginPhone(e.target.value)}
@@ -247,12 +305,15 @@ const LoginOverlay = () => {
             />
             <input
               type="password"
+              name="password"
               placeholder="Contraseña"
               value={loginPassword}
               onChange={(e) => setLoginPassword(e.target.value)}
               required
             />
-            <button className="btn-turquesa">Iniciar Sesión</button>
+            <button type="submit" className="btn-turquesa">
+              Iniciar Sesión
+            </button>
             {loginError && <p className="error-message">{loginError}</p>}
             <div className="forgot-password-link">
               <a
@@ -286,7 +347,7 @@ const LoginOverlay = () => {
                 <h1>Hola!</h1>
                 <p>Crea tu cuenta para comenzar tu experiencia</p>
                 <button
-                  className="ghost ghost-lila"
+                  className="ghost"
                   onClick={() => setRightPanelActive(true)}
                 >
                   Registrarse
@@ -296,12 +357,13 @@ const LoginOverlay = () => {
           </div>
         )}
 
-
         {/* Switch de formularios solo si ES móvil */}
         {isMobile && (
           <div className="switch-mobile">
             <button
-              className={`ghost ghost-turquesa ${activeForm === "login" ? "active" : ""}`}
+              className={`ghost ghost-turquesa ${
+                activeForm === "login" ? "active" : ""
+              }`}
               onClick={() => {
                 setActiveForm("login");
                 scrollToForm(loginFormRef);
@@ -310,7 +372,9 @@ const LoginOverlay = () => {
               Iniciar Sesión
             </button>
             <button
-              className={`ghost ghost-lila ${activeForm === "register" ? "active" : ""}`}
+              className={`ghost ghost-lila ${
+                activeForm === "register" ? "active" : ""
+              }`}
               onClick={() => {
                 setActiveForm("register");
                 scrollToForm(registerFormRef);
