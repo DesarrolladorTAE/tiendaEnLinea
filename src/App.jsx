@@ -153,6 +153,7 @@ const ProductList = lazy(() => import("./pages/admin/ProductList.jsx"));
 const ProductDetails = lazy(() => import("./pages/admin/ProductDetails.jsx"));
 const ProductForm = lazy(() => import("./pages/admin/ProductForm.jsx"));
 const ProductImages = lazy(() => import("./pages/admin/ProductImages.jsx"));
+const ProductCategory = lazy(() => import("./pages/admin/ProductCategory.jsx"));
 
 const App = () => {
   const storeName = "Tienda Zapatos MX";
@@ -355,6 +356,7 @@ const App = () => {
               <Route path="products/edit/:id" element={<ProductForm />} />
               <Route path="products/images/:id" element={<ProductImages />} />
               <Route path="products/:id" element={<ProductDetails />} />
+              <Route path="categories" element={<ProductCategory />} />
             </Route>
           </Routes>
         </Suspense>
