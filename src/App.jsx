@@ -1,6 +1,4 @@
-import React, { Suspense, lazy, useEffect } from "react";
-import { useDispatch } from "react-redux";
-import { fetchProducts } from "./store/slices/product-slice";
+import React, { Suspense, lazy } from "react";
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminLayout from "./layouts/AdminLayout";
@@ -156,12 +154,6 @@ const ProductImages = lazy(() => import("./pages/admin/ProductImages.jsx"));
 const ProductCategory = lazy(() => import("./pages/admin/ProductCategory.jsx"));
 
 const App = () => {
-  const storeName = "Tienda Zapatos MX";
-  const dispatch = useDispatch();
-
-  useEffect(() => {
-    dispatch(fetchProducts(storeName)); // CARGA LOS PRODUCTOS DESDE LA API (puedes cambiar el ID de tienda)
-  }, [dispatch, storeName]);
 
   return (
     <Router>
