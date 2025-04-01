@@ -36,8 +36,8 @@ h1 {
     position: relative; // Posiciona el contenedor relativo a su padre.
     overflow: hidden; // Oculta cualquier contenido que se desborde.
     width: 100%; // Ocupa todo el ancho disponible.
-    max-width: 1200px; // Ancho máximo del contenedor.
-    min-height: 780px; // Altura mínima del contenedor.
+    max-width: 1100px; // Ancho máximo del contenedor.
+    min-height: 650px; // Altura mínima del contenedor.
     display: flex; // Usa flexbox para organizar los elementos hijos.
     flex-direction: row; // Coloca los elementos hijos en una fila.
     transition: all 0.6s ease-in-out; // Transición suave para cambios de estado.

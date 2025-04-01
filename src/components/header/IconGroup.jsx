@@ -25,16 +25,29 @@ const IconGroup = ({ iconWhiteClass }) => {
   const { cartItems } = useSelector((state) => state.cart);
 
   const handleLogout = async (e) => {
-    e.preventDefault(); // Prevenir el comportamiento por defecto del enlace
+    e.preventDefault();
+  
+    const token = localStorage.getItem('token');
+    if (!token) {
+      dispatch(clearUser());
+      navigate("/login");
+      return;
+    }
+  
     try {
-      await logoutUser(); // Llama a la función de cierre de sesión
-      localStorage.removeItem("user"); // Elimina el usuario del Local Storage
-      dispatch(clearUser()); // Limpia el estado del usuario en Redux
-      navigate("/login"); // Redirige al login
+      await logoutUser();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      dispatch(clearUser());
+      navigate("/login");
     } catch (error) {
-      // console.error("Error al cerrar sesión:", error.response ? error.response.data : error.message);
+      console.error("Error al cerrar sesión:", error.response?.data || error.message);
+      // Como fallback, limpiar y redirigir de todos modos
+      dispatch(clearUser());
+      navigate("/login");
     }
   };
+  
 
   return (
     <div className={clsx("header-right-wrap", iconWhiteClass)}>
@@ -97,7 +110,7 @@ const IconGroup = ({ iconWhiteClass }) => {
         </Link>
       </div>
       <div className="same-style header-wallet">
-        <Link to={"/wallet"}>
+        <Link to={"/recargar-saldo"}>
           <i className="pe-7s-wallet" /> {/* Icono de Cartera Electrónica */}
         </Link>
       </div>

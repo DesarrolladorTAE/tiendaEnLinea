@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-// import { FiHeart, FiShare2 } from "react-icons/fi";
+import { useSelector } from "react-redux";
 import axios from "../../axiosConfig";
+import { Link } from "react-router-dom";
 
 const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
   const [numero, setNumero] = useState("");
@@ -10,9 +11,12 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
   const [contactos, setContactos] = useState([]);
   const [errorNumero, setErrorNumero] = useState("");
 
+  const user = useSelector((state) => state.user.user);
+  const saldo = Number(user?.saldo) || 0;
+  const isBajoSaldo = saldo < 100;
+
   const modalRef = useRef(null);
 
-  // Cierra el modal si se da clic fuera
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (modalRef.current && !modalRef.current.contains(e.target)) {
@@ -40,7 +44,8 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
 
   useEffect(() => {
     if (isOpen) {
-      axios.get("/contacts")
+      axios
+        .get("/contacts")
         .then((res) => setContactos(res.data))
         .catch((err) => console.error("Error al obtener contactos", err));
     }
@@ -71,6 +76,10 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
     if (numero.length !== 10 || confirmacion.length !== 10) return alert("Son 10 números");
     if (numero !== confirmacion) return alert("Los números no coinciden");
 
+    if (productoSeleccionado.Monto > saldo) {
+      return alert("Saldo insuficiente para esta recarga. Por favor, recarga primero.");
+    }
+
     console.log("Enviar recarga:", {
       proID: productoSeleccionado.proID,
       numero,
@@ -83,7 +92,12 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div className="modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        <motion.div
+          className="modal-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
           <motion.div
             className="modal-contenido"
             ref={modalRef}
@@ -91,68 +105,104 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
             animate={{ y: 0 }}
             exit={{ y: -30 }}
           >
-            <button className="cerrar" onClick={onClose}>×</button>
+            <button className="cerrar" onClick={onClose}>
+              ×
+            </button>
 
             <div className="header">
-              <p className="saldo">Saldo Disponible: $</p>
-              <img src={carrier.Logotipo} alt={carrier.Nombre} className="logo-carrier" />
+              <div className="saldo-con-boton">
+                <p className={`saldo ${isBajoSaldo ? "rojo" : "verde"}`}>
+                  Saldo Disponible: ${saldo.toFixed(2)}
+                </p>
+
+                {productoSeleccionado && productoSeleccionado.Monto > saldo && (
+                  <Link to="/recargar-saldo" className="boton-recarga">
+                    Recargar ahora
+                  </Link>
+                )}
+              </div>
+
+              <img
+                src={carrier.Logotipo}
+                alt={carrier.Nombre}
+                className="logo-carrier"
+              />
             </div>
 
-            <div className="formulario">
-              <select onChange={(e) => {
-                const selected = productos.find(p => p.proID === parseInt(e.target.value));
+
+          <div className="formulario">
+            <select
+              onChange={(e) => {
+                const selected = productos.find(
+                  (p) => p.proID === parseInt(e.target.value)
+                );
                 setProductoSeleccionado(selected);
-              }}>
-                <option value="">Selecciona un monto</option>
-                {productos
-                  .filter(p => p.Carrier === carrier.Nombre && p.Categoria?.toLowerCase() === "tiempo aire")
-                  .sort((a, b) => a.Monto - b.Monto)
-                  .map(p => (
-                    <option key={`producto-${p.proID}`} value={p.proID}>${p.Monto}</option>
-                  ))}
-              </select>
-
-              <select onChange={handleContactoSelect}>
-                <option value="">Elegir Contacto</option>
-                {contactos.map(c => (
-                  <option key={`contacto-${c.id}`} value={c.phone}>{c.name}</option>
+              }}
+            >
+              <option value="">Selecciona un monto</option>
+              {productos
+                .filter(
+                  (p) =>
+                    p.Carrier === carrier.Nombre &&
+                    p.Categoria?.toLowerCase() === "tiempo aire"
+                )
+                .sort((a, b) => a.Monto - b.Monto)
+                .map((p) => (
+                  <option key={`producto-${p.proID}`} value={p.proID}>
+                    ${p.Monto}
+                  </option>
                 ))}
-              </select>
+            </select>
 
-              <input
-                type="text"
-                placeholder="Número"
-                value={numero}
-                onChange={(e) => handleInput(e.target.value, setNumero)}
-              />
+            <select onChange={handleContactoSelect}>
+              <option value="">Elegir Contacto</option>
+              {contactos.map((c) => (
+                <option key={`contacto-${c.id}`} value={c.phone}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
 
-              <input
-                type="password"
-                placeholder="Confirmar Número"
-                value={confirmacion}
-                onChange={(e) => handleInput(e.target.value, setConfirmacion)}
-              />
+            <input
+              type="text"
+              placeholder="Número"
+              value={numero}
+              onChange={(e) => handleInput(e.target.value, setNumero)}
+            />
 
-              {errorNumero && <p className="mensaje-error">{errorNumero}</p>}
+            <input
+              type="password"
+              placeholder="Confirmar Número"
+              value={confirmacion}
+              onChange={(e) => handleInput(e.target.value, setConfirmacion)}
+            />
 
-              {productoSeleccionado && (
-                <div className="detalle">
-                  <p>📝 Al dar click en el botón <strong>Enviar Recarga</strong>, acepta nuestros <a href="/terminos" target="_blank" rel="noopener noreferrer">Términos y Condiciones</a></p>
-                  <p>💰 <strong>Costo del Producto:</strong> ${productoSeleccionado.Monto} MXN</p>
-                  <p>💵 <strong>Comisión por Servicio:</strong> ${productoSeleccionado.suscrip}.00 MXN</p>
-                  <p>⏳ <strong>Vigencia:</strong> <span className="vigencia">{productoSeleccionado.Vigencia}</span></p>
-                  <p>ℹ️ <strong>Descripción:</strong> {productoSeleccionado.Descripcion}</p>
-                </div>
-              )}
-            </div>
+            {errorNumero && <p className="mensaje-error">{errorNumero}</p>}
 
-            <button className="btn-enviar" onClick={handleEnviarRecarga}>
-              <span>Enviar Recarga</span>
-            </button>
-          </motion.div>
+            {productoSeleccionado && (
+              <div className="detalle">
+                <p>
+                  📝 Al dar click en el botón <strong>Enviar Recarga</strong>, acepta nuestros{" "}
+                  <a href="/terminos" target="_blank" rel="noopener noreferrer">
+                    Términos y Condiciones
+                  </a>
+                </p>
+                <p>💰 <strong>Costo del Producto:</strong> ${productoSeleccionado.Monto} MXN</p>
+                <p>💵 <strong>Comisión por Servicio:</strong> ${productoSeleccionado.suscrip}.00 MXN</p>
+                <p>⏳ <strong>Vigencia:</strong> <span className="vigencia">{productoSeleccionado.Vigencia}</span></p>
+                <p>ℹ️ <strong>Descripción:</strong> {productoSeleccionado.Descripcion}</p>
+              </div>
+            )}
+          </div>
+
+          <button className="btn-enviar" onClick={handleEnviarRecarga}>
+            <span>Enviar Recarga</span>
+          </button>
         </motion.div>
-      )}
-    </AnimatePresence>
+        </motion.div>
+  )
+}
+    </AnimatePresence >
   );
 };
 

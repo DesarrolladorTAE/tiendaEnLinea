@@ -1,26 +1,53 @@
-// src/components/header/HeaderTop.jsx
 import React from "react";
 import PropTypes from "prop-types";
 import { useSelector } from "react-redux";
 import clsx from "clsx";
+import { Link } from "react-router-dom";
 
 const HeaderTop = ({ borderStyle }) => {
   const currency = useSelector((state) => state.currency);
-  const user = useSelector((state) => state.user.user); // Obtener el objeto del usuario
+  const user = useSelector((state) => state.user.user);
+
+  const saldo = Number(user?.saldo) || 0;
+  const saldoConvertido = (saldo * currency.currencyRate).toFixed(2);
+  const isBajoSaldo = saldo < 100;
 
   return (
-    <div className={clsx("header-top-wap", borderStyle === "fluid-border" && "border-bottom")}>
+    <div
+      className={clsx(
+        "header-top-wap",
+        borderStyle === "fluid-border" && "border-bottom"
+      )}
+    >
       <div className="header-offer">
-        <p>
-          El saldo de tu Cartera es{" "}
-          <span>
-            {currency.currencySymbol + (2300 * currency.currencyRate).toFixed(2)}
-          </span>
-        </p>
-        {user && user.name && ( // Mostrar el mensaje de bienvenida solo si hay un usuario
-          <p>
-            Bienvenido, <strong>{user.name}</strong>!
-          </p>
+        {user && (
+          <>
+            <div className="saldo-wrapper">
+              <p className="texto-saldo">
+                El saldo de tu Cartera es{" "}
+                <span className={isBajoSaldo ? "saldo-rojo" : "saldo-verde"}>
+                  {currency.currencySymbol + saldoConvertido}
+                </span>
+              </p>
+
+              {isBajoSaldo && (
+                <Link to="/recargar-saldo" className="boton-recarga">
+                  Recarga ahora
+                </Link>
+              )}
+            </div>
+
+
+            <div className="lado-derecho">
+              <p className="bienvenida">
+                Bienvenido,{" "}
+                <strong>
+                  {user.name} {user.apellidos}
+                </strong>
+                !
+              </p>
+            </div>
+          </>
         )}
       </div>
     </div>

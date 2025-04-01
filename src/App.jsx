@@ -3,6 +3,8 @@ import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch } from 'react-redux';
 import { loadUserFromStorage } from './store/slices/userSlice';
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 //Pruebas
 
@@ -30,6 +32,7 @@ const Wishlist = lazy(() => import("./pages/other/Wishlist.jsx"));
 const Compare = lazy(() => import("./pages/other/Compare.jsx"));
 const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
+const RecargarSaldo = lazy(() => import("./pages/other/RecargarSaldo.jsx"));
 
 const App = () => {
   const dispatch = useDispatch();
@@ -41,6 +44,19 @@ const App = () => {
   return (
     <Router>
       <ScrollToTop>
+        {/* Aquí el container de notificaciones */}
+        <ToastContainer
+          position="top-right"
+          autoClose={4000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="colored"
+        />
         <Suspense
           fallback={
             <div className="flone-preloader-wrapper">
@@ -76,6 +92,7 @@ const App = () => {
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/recargar-saldo" element={<RecargarSaldo />} />
 
 
 

@@ -31,6 +31,38 @@
   border: none;
   cursor: pointer;
 }
+.saldo {
+  font-size: 1rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+
+  &.rojo {
+    color: #e63946;
+  }
+
+  &.verde {
+    color: #2a9d8f;
+  }
+}
+
+.boton-recarga {
+  background-color: #be4bdb;
+  color: #fff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 10px;
+  margin-top: -5px;
+  margin-left: 10px;
+  transition: background-color 0.3s;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+
+  &:hover {
+    background-color: #a838bd;
+  }
+}
 
 .header {
   display: flex;
@@ -39,9 +71,26 @@
   gap: 0.5rem;
   margin-bottom: 1.5rem;
 
+  .saldo-con-boton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
   .saldo {
     font-size: 1rem;
-    align-self: flex-start;
+    font-weight: bold;
+    margin: 0;
+
+    &.rojo {
+      color: #e63946;
+    }
+
+    &.verde {
+      color: #2a9d8f;
+    }
   }
 
   .logo-carrier {
@@ -49,6 +98,7 @@
     object-fit: contain;
   }
 }
+
 
 .formulario {
   display: flex;

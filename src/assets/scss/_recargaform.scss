@@ -1,0 +1,239 @@
+.pago-container {
+  display: flex;
+  flex-wrap: wrap;
+  min-height: 100vh;
+  border-radius: 20px;
+  padding: 2rem;
+  background: linear-gradient(to bottom right, #ffffff, #ffffff);
+
+  .formulario {
+    flex: 0 0 60%;
+    background: #fff;
+    padding: 2rem 2.5rem;
+    border-radius: 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    animation: fadeInUp 0.6s ease;
+
+    h2 {
+      font-size: 2rem;
+      font-weight: bold;
+      margin-bottom: 1.5rem;
+      color: #6a00ff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .formulario-doble {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 2rem;
+
+      .col {
+        flex: 1 1 45%;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      input {
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1.5px solid #00bfff;
+        transition: 0.3s;
+        font-size: 1rem;
+
+        &:focus {
+          border-color: #be4bdb;
+          box-shadow: 0 0 0 3px rgba(190, 75, 219, 0.15);
+          outline: none;
+        }
+      }
+
+      .card-row {
+        display: flex;
+        gap: 0.5rem;
+
+        input {
+          flex: 1;
+        }
+      }
+
+      button {
+        background-color: #be4bdb;
+        color: #fff;
+        padding: 12px;
+        border: none;
+        border-radius: 10px;
+        font-weight: bold;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+
+        &:hover {
+          background-color: #a838bd;
+        }
+
+        &:disabled {
+          background-color: #ccc;
+          cursor: not-allowed;
+        }
+      }
+
+      .mensaje {
+        text-align: center;
+        font-weight: bold;
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+        color: #333;
+      }
+    }
+  }
+
+  // En .formulario-doble sigue igual...
+
+  // Agregamos aquí (fuera del .formulario-doble) para botón general en móviles:
+  .formulario {
+    height: auto !important; // Evita que intente ocupar más del necesario
+
+    .btn-pago {
+      display: none; // Oculto por defecto (modo escritorio)
+
+      @media (max-width: 768px) {
+        display: block;
+        width: 100%;
+        margin-top: 1rem;
+        padding: 12px;
+        background-color: #be4bdb;
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-weight: bold;
+        font-size: 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+
+        &:hover {
+          background-color: #a838bd;
+        }
+      }
+    }
+  }
+
+  // Oculta botón dentro del form cuando sea móvil
+  @media (max-width: 768px) {
+    .formulario-doble button {
+      display: none;
+    }
+  }
+
+
+  .info-extra {
+    flex: 0 0 40%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: slideRight 0.7s ease;
+
+    img {
+      width: 80%;
+      max-width: 300px;
+      margin-bottom: 1.5rem;
+      animation: pulse 3s infinite;
+    }
+
+    p {
+      text-align: center;
+      font-size: 1rem;
+      color: #555;
+      padding: 0 1rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+
+    .formulario {
+      flex: 1 1 100%;
+    }
+
+    .info-extra {
+      flex: 1 1 100%;
+      margin-top: 2rem;
+
+      img {
+        width: 50%;
+      }
+    }
+
+    .formulario-doble {
+      flex-direction: column;
+
+      .col {
+        flex: 1 1 100%;
+      }
+
+      .card-row {
+        flex-direction: column;
+
+        input {
+          width: 100%;
+        }
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  }
+}
+
+// Animaciones
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(50px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+
+
+.pagina-conekta-completa {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 2rem 0;
+  min-height: 100vh; // Opcional, si quieres que siempre ocupe toda la pantalla
+  background: linear-gradient(to bottom right, #f2f6ff, #ffffff);
+}
