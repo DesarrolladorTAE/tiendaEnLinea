@@ -387,7 +387,7 @@ function ProductForm() {
           </div>
 
           {/* Variaciones */}
-          <h4 className="mt-4">Variaciones</h4>
+          <h4 className="mt-4 text-white">Variaciones</h4>
           {variationFields.map((variation, vIndex) => (
             <VariationItem
               key={variation.id}
