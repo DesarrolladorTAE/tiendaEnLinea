@@ -44,8 +44,23 @@ const userSlice = createSlice({
         }
       }
     },
+
+    // ✅ NUEVA ACCIÓN PARA ACTUALIZAR SOLO EL SALDO
+    updateSaldo(state, action) {
+      const nuevoSaldo = action.payload;
+      if (state.user) {
+        state.user.saldo = nuevoSaldo;
+
+        // También actualizamos en localStorage
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(state.user));
+        }
+      }
+    },
   },
 });
 
-export const { setUser, clearUser, loadUserFromStorage } = userSlice.actions;
+
+export const { setUser, clearUser, loadUserFromStorage, updateSaldo } = userSlice.actions;
+
 export default userSlice.reducer;

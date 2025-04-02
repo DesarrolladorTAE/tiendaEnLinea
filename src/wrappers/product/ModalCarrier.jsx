@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import axios from "../../axiosConfig";
 import { Link } from "react-router-dom";
+import { updateSaldo } from "../../store/slices/userSlice";
+import { toast } from "react-toastify";
 
 const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
   const [numero, setNumero] = useState("");
@@ -14,6 +16,7 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
   const user = useSelector((state) => state.user.user);
   const saldo = Number(user?.saldo) || 0;
   const isBajoSaldo = saldo < 100;
+  const dispatch = useDispatch();
 
   const modalRef = useRef(null);
 
@@ -71,22 +74,33 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
     }
   };
 
-  const handleEnviarRecarga = () => {
-    if (!productoSeleccionado) return alert("Selecciona un producto");
-    if (numero.length !== 10 || confirmacion.length !== 10) return alert("Son 10 números");
-    if (numero !== confirmacion) return alert("Los números no coinciden");
+  const handleEnviarRecarga = async () => {
+    if (!productoSeleccionado) return toast.warning("Selecciona un producto");
+    if (numero.length !== 10 || confirmacion.length !== 10) return toast.error("Son 10 números");
+    if (numero !== confirmacion) return toast.error("Los números no coinciden");
+    if (productoSeleccionado.Monto > saldo) return toast.error("Saldo insuficiente");
 
-    if (productoSeleccionado.Monto > saldo) {
-      return alert("Saldo insuficiente para esta recarga. Por favor, recarga primero.");
+    try {
+      const res = await axios.post("/recargar", {
+        producto: productoSeleccionado.Codigo,
+        referencia: numero
+      });
+
+      const nuevaTransaccion = res.data.transaccion;
+      const nuevoSaldo = saldo - productoSeleccionado.Monto;
+
+      dispatch(updateSaldo(nuevoSaldo));
+      localStorage.setItem("user", JSON.stringify({
+        ...user,
+        saldo: nuevoSaldo
+      }));
+
+      toast.success(`✅ Recarga exitosa\nID: ${nuevaTransaccion.transID}`);
+      onClose();
+    } catch (error) {
+      console.error("Error en recarga:", error.response?.data || error.message);
+      toast.error("❌ " + (error.response?.data?.message || "Error desconocido"));
     }
-
-    console.log("Enviar recarga:", {
-      proID: productoSeleccionado.proID,
-      numero,
-      carrier: carrier.Nombre,
-    });
-
-    onClose();
   };
 
   return (
@@ -105,9 +119,7 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
             animate={{ y: 0 }}
             exit={{ y: -30 }}
           >
-            <button className="cerrar" onClick={onClose}>
-              ×
-            </button>
+            <button className="cerrar" onClick={onClose}>×</button>
 
             <div className="header">
               <div className="saldo-con-boton">
@@ -129,80 +141,78 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
               />
             </div>
 
+            <div className="formulario">
+              <select
+                onChange={(e) => {
+                  const selected = productos.find(
+                    (p) => p.proID === parseInt(e.target.value)
+                  );
+                  setProductoSeleccionado(selected);
+                }}
+              >
+                <option value="">Selecciona un monto</option>
+                {productos
+                  .filter(
+                    (p) =>
+                      p.Carrier === carrier.Nombre &&
+                      p.Categoria?.toLowerCase() === "tiempo aire"
+                  )
+                  .sort((a, b) => a.Monto - b.Monto)
+                  .map((p) => (
+                    <option key={`producto-${p.proID}`} value={p.proID}>
+                      ${p.Monto}
+                    </option>
+                  ))}
+              </select>
 
-          <div className="formulario">
-            <select
-              onChange={(e) => {
-                const selected = productos.find(
-                  (p) => p.proID === parseInt(e.target.value)
-                );
-                setProductoSeleccionado(selected);
-              }}
-            >
-              <option value="">Selecciona un monto</option>
-              {productos
-                .filter(
-                  (p) =>
-                    p.Carrier === carrier.Nombre &&
-                    p.Categoria?.toLowerCase() === "tiempo aire"
-                )
-                .sort((a, b) => a.Monto - b.Monto)
-                .map((p) => (
-                  <option key={`producto-${p.proID}`} value={p.proID}>
-                    ${p.Monto}
+              <select onChange={handleContactoSelect}>
+                <option value="">Elegir Contacto</option>
+                {contactos.map((c) => (
+                  <option key={`contacto-${c.id}`} value={c.phone}>
+                    {c.name}
                   </option>
                 ))}
-            </select>
+              </select>
 
-            <select onChange={handleContactoSelect}>
-              <option value="">Elegir Contacto</option>
-              {contactos.map((c) => (
-                <option key={`contacto-${c.id}`} value={c.phone}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+              <input
+                type="text"
+                placeholder="Número"
+                value={numero}
+                onChange={(e) => handleInput(e.target.value, setNumero)}
+              />
 
-            <input
-              type="text"
-              placeholder="Número"
-              value={numero}
-              onChange={(e) => handleInput(e.target.value, setNumero)}
-            />
+              <input
+                type="password"
+                placeholder="Confirmar Número"
+                value={confirmacion}
+                onChange={(e) => handleInput(e.target.value, setConfirmacion)}
+              />
 
-            <input
-              type="password"
-              placeholder="Confirmar Número"
-              value={confirmacion}
-              onChange={(e) => handleInput(e.target.value, setConfirmacion)}
-            />
+              {errorNumero && <p className="mensaje-error">{errorNumero}</p>}
 
-            {errorNumero && <p className="mensaje-error">{errorNumero}</p>}
+              {productoSeleccionado && (
+                <div className="detalle">
+                  <p>
+                    📝 Al dar click en <strong>Enviar Recarga</strong>, aceptas nuestros{" "}
+                    <a href="/terminos" target="_blank" rel="noopener noreferrer">
+                      Términos y Condiciones
+                    </a>
+                  </p>
+                  <p>💰 <strong>Costo del Producto:</strong> ${productoSeleccionado.Monto} MXN</p>
+                  <p>💵 <strong>Comisión por Servicio:</strong> ${productoSeleccionado.suscrip}.00 MXN</p>
+                  <p>⏳ <strong>Vigencia:</strong> <span className="vigencia">{productoSeleccionado.Vigencia}</span></p>
+                  <p>ℹ️ <strong>Descripción:</strong> {productoSeleccionado.Descripcion}</p>
+                </div>
+              )}
+            </div>
 
-            {productoSeleccionado && (
-              <div className="detalle">
-                <p>
-                  📝 Al dar click en el botón <strong>Enviar Recarga</strong>, acepta nuestros{" "}
-                  <a href="/terminos" target="_blank" rel="noopener noreferrer">
-                    Términos y Condiciones
-                  </a>
-                </p>
-                <p>💰 <strong>Costo del Producto:</strong> ${productoSeleccionado.Monto} MXN</p>
-                <p>💵 <strong>Comisión por Servicio:</strong> ${productoSeleccionado.suscrip}.00 MXN</p>
-                <p>⏳ <strong>Vigencia:</strong> <span className="vigencia">{productoSeleccionado.Vigencia}</span></p>
-                <p>ℹ️ <strong>Descripción:</strong> {productoSeleccionado.Descripcion}</p>
-              </div>
-            )}
-          </div>
-
-          <button className="btn-enviar" onClick={handleEnviarRecarga}>
-            <span>Enviar Recarga</span>
-          </button>
+            <button className="btn-enviar" onClick={handleEnviarRecarga}>
+              <span>Enviar Recarga</span>
+            </button>
+          </motion.div>
         </motion.div>
-        </motion.div>
-  )
-}
-    </AnimatePresence >
+      )}
+    </AnimatePresence>
   );
 };
 
