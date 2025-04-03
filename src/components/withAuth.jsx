@@ -1,22 +1,37 @@
 // src/components/withAuth.js
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import AnimatedModal from '../../src/components/AnimatedModal'; // ajusta la ruta
 
 const withAuth = (WrappedComponent) => {
     return (props) => {
         const navigate = useNavigate();
         const isAuthenticated = useSelector((state) => state.user.isAuthenticated);
+        const [showModal, setShowModal] = useState(false);
 
         useEffect(() => {
             if (!isAuthenticated) {
-                alert("Acción Inválida. Debes iniciar sesión.");
-                navigate("/login"); // Redirige a la página de inicio de sesión
+                setShowModal(true);
+                setTimeout(() => {
+                    navigate("/login");
+                }, 3000);
             }
-        }, [isAuthenticated, navigate]);
+        }, [isAuthenticated]);
 
-        return <WrappedComponent {...props} />;
+        return (
+            <>
+                <WrappedComponent {...props} />
+                <AnimatedModal
+                    isOpen={showModal}
+                    onRequestClose={() => setShowModal(false)}
+                    message="¡Hasta luego!..... ¡Vuelve Pronto!"
+                    tipo="bye"
+                />
+            </>
+        );
     };
 };
 
 export default withAuth;
+

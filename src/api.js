@@ -19,5 +19,5 @@ export const logoutUser = async () => {
             Authorization: `Bearer ${localStorage.getItem('token')}` // Asegúrate de que el token esté almacenado en Local Storage
         }
     });
-    return response.data; // Devuelve la respuesta del servidor
+    // return response.data; // Devuelve la respuesta del servidor
 };

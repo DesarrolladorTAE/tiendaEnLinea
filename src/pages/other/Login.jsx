@@ -6,6 +6,9 @@ import { setUser } from "../../store/slices/userSlice";
 import { useForm } from "react-hook-form";
 import AuthModal from "../../wrappers/AuthVerification/AuthModals";
 import ResetPasswordModal from "../../wrappers/AuthVerification/ResetPasswordModal";
+import AnimatedModal from '../../components/AnimatedModal'; // ajusta la ruta según tu estructura
+import LoginOverlayResponsive from "../../components/login/LoginOverlayResponsive";
+
 
 const LoginOverlay = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -37,6 +40,7 @@ const LoginOverlay = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [resetError, setResetError] = useState(null);
   const [resetPhone, setResetPhone] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
 
   const {
     register,
@@ -72,7 +76,14 @@ const LoginOverlay = () => {
       });
       const { token, user } = response.data;
       dispatch(setUser({ user, token }));
-      navigate("/home-fashion-three");
+
+      // Mostrar modal de bienvenida
+      setShowWelcome(true);
+      setTimeout(() => {
+        setShowWelcome(false);
+        navigate("/home-fashion-three");
+      }, 3000);
+
     } catch (error) {
       setLoginError(
         error.response?.data?.message || "Error en el inicio de sesión"
@@ -180,19 +191,17 @@ const LoginOverlay = () => {
   return (
     <div className="login-container">
       <div
-        className={`container ${
-          !isMobile && rightPanelActive ? "right-panel-active" : ""
-        }`}
+        className={`container ${!isMobile && rightPanelActive ? "right-panel-active" : ""
+          }`}
       >
         {/* Registro */}
         <div
-          className={`form-container sign-up-container ${
-            isMobile
-              ? activeForm === "register"
-                ? "show-mobile-form"
-                : "hide-mobile-form"
-              : ""
-          }`}
+          className={`form-container sign-up-container ${isMobile
+            ? activeForm === "register"
+              ? "show-mobile-form"
+              : "hide-mobile-form"
+            : ""
+            }`}
           ref={registerFormRef}
         >
           <form onSubmit={handleSubmit(handleRegister)}>
@@ -284,15 +293,14 @@ const LoginOverlay = () => {
 
         {/* Login */}
         <div
-          className={`form-container sign-in-container ${
-            isMobile
-              ? activeForm === "login"
-                ? "show-mobile-form"
-                : "hide-mobile-form"
-              : ""
-          }`}
+          className={`form-container sign-in-container ${isMobile
+            ? activeForm === "login"
+              ? "show-mobile-form"
+              : "hide-mobile-form"
+            : ""
+            }`}
           ref={loginFormRef}
-        > 
+        >
           <form onSubmit={handleLogin}>
             <h1>Iniciar Sesión</h1>
             <input
@@ -329,7 +337,31 @@ const LoginOverlay = () => {
           </form>
         </div>
 
-        {/* Overlay solo si NO es móvil */}
+        {/* Overlay para móvil */}
+        {isMobile && (
+          <LoginOverlayResponsive
+            isRegistering={rightPanelActive}
+            toggleForm={() => setRightPanelActive(!rightPanelActive)}
+            loginFormRef={loginFormRef}
+            registerFormRef={registerFormRef}
+            handleLogin={handleLogin}
+            loginPhone={loginPhone}
+            setLoginPhone={setLoginPhone}
+            loginPassword={loginPassword}
+            setLoginPassword={setLoginPassword}
+            loginError={loginError}
+            handleSubmit={handleSubmit}
+            register={register}
+            errors={errors}
+            backendFieldErrors={backendFieldErrors}
+            password={password}
+            registerError={registerError}
+            registerSuccess={registerSuccess}
+          />
+
+        )}
+
+        {/* Overlay para escritorio */}
         {!isMobile && (
           <div className="overlay-container">
             <div className="overlay">
@@ -357,33 +389,6 @@ const LoginOverlay = () => {
           </div>
         )}
 
-        {/* Switch de formularios solo si ES móvil */}
-        {isMobile && (
-          <div className="switch-mobile">
-            <button
-              className={`ghost ghost-turquesa ${
-                activeForm === "login" ? "active" : ""
-              }`}
-              onClick={() => {
-                setActiveForm("login");
-                scrollToForm(loginFormRef);
-              }}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              className={`ghost ghost-lila ${
-                activeForm === "register" ? "active" : ""
-              }`}
-              onClick={() => {
-                setActiveForm("register");
-                scrollToForm(registerFormRef);
-              }}
-            >
-              Crear Cuenta
-            </button>
-          </div>
-        )}
 
         {/* Modals */}
         <AuthModal
@@ -408,6 +413,14 @@ const LoginOverlay = () => {
           onSubmit={handleResetPasswordSubmit}
           error={resetError}
         />
+
+        <AnimatedModal
+          isOpen={showWelcome}
+          onRequestClose={() => setShowWelcome(false)}
+          message="¡Bienvenido de nuevo! 😄"
+          tipo="welcome"
+        />
+
       </div>
     </div>
   );

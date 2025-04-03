@@ -5,6 +5,7 @@ import axios from "../../axiosConfig";
 import { Link } from "react-router-dom";
 import { updateSaldo } from "../../store/slices/userSlice";
 import { toast } from "react-toastify";
+import { AiOutlineLoading3Quarters } from "react-icons/ai"; // 👈 Spinner
 
 const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
   const [numero, setNumero] = useState("");
@@ -12,6 +13,7 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [contactos, setContactos] = useState([]);
   const [errorNumero, setErrorNumero] = useState("");
+  const [isLoading, setIsLoading] = useState(false); // 👈 Estado de carga
 
   const user = useSelector((state) => state.user.user);
   const saldo = Number(user?.saldo) || 0;
@@ -80,26 +82,33 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
     if (numero !== confirmacion) return toast.error("Los números no coinciden");
     if (productoSeleccionado.Monto > saldo) return toast.error("Saldo insuficiente");
 
+    setIsLoading(true); // 👈 Inicio carga
+
     try {
       const res = await axios.post("/recargar", {
         producto: productoSeleccionado.Codigo,
-        referencia: numero
+        referencia: numero,
       });
 
       const nuevaTransaccion = res.data.transaccion;
       const nuevoSaldo = saldo - productoSeleccionado.Monto;
 
       dispatch(updateSaldo(nuevoSaldo));
-      localStorage.setItem("user", JSON.stringify({
-        ...user,
-        saldo: nuevoSaldo
-      }));
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...user,
+          saldo: nuevoSaldo,
+        })
+      );
 
       toast.success(`✅ Recarga exitosa\nID: ${nuevaTransaccion.transID}`);
       onClose();
     } catch (error) {
       console.error("Error en recarga:", error.response?.data || error.message);
       toast.error("❌ " + (error.response?.data?.message || "Error desconocido"));
+    } finally {
+      setIsLoading(false); // 👈 Fin carga
     }
   };
 
@@ -119,7 +128,9 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
             animate={{ y: 0 }}
             exit={{ y: -30 }}
           >
-            <button className="cerrar" onClick={onClose}>×</button>
+            <button className="cerrar" onClick={onClose}>
+              ×
+            </button>
 
             <div className="header">
               <div className="saldo-con-boton">
@@ -155,7 +166,8 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
                   .filter(
                     (p) =>
                       p.Carrier === carrier.Nombre &&
-                      p.Categoria?.toLowerCase() === "tiempo aire"
+                      p.Categoria?.toLowerCase() ===
+                        carrier.Categoria?.toLowerCase()
                   )
                   .sort((a, b) => a.Monto - b.Monto)
                   .map((p) => (
@@ -188,26 +200,57 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
                 onChange={(e) => handleInput(e.target.value, setConfirmacion)}
               />
 
-              {errorNumero && <p className="mensaje-error">{errorNumero}</p>}
+              {errorNumero && (
+                <p className="mensaje-error">{errorNumero}</p>
+              )}
 
               {productoSeleccionado && (
                 <div className="detalle">
                   <p>
-                    📝 Al dar click en <strong>Enviar Recarga</strong>, aceptas nuestros{" "}
-                    <a href="/terminos" target="_blank" rel="noopener noreferrer">
+                    📝 Al dar click en <strong>Enviar Recarga</strong>, aceptas
+                    nuestros{" "}
+                    <a
+                      href="/terminos"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
                       Términos y Condiciones
                     </a>
                   </p>
-                  <p>💰 <strong>Costo del Producto:</strong> ${productoSeleccionado.Monto} MXN</p>
-                  <p>💵 <strong>Comisión por Servicio:</strong> ${productoSeleccionado.suscrip}.00 MXN</p>
-                  <p>⏳ <strong>Vigencia:</strong> <span className="vigencia">{productoSeleccionado.Vigencia}</span></p>
-                  <p>ℹ️ <strong>Descripción:</strong> {productoSeleccionado.Descripcion}</p>
+                  <p>
+                    💰 <strong>Costo del Producto:</strong> $
+                    {productoSeleccionado.Monto} MXN
+                  </p>
+                  <p>
+                    💵 <strong>Comisión por Servicio:</strong> $
+                    {productoSeleccionado.suscrip}.00 MXN
+                  </p>
+                  <p>
+                    ⏳ <strong>Vigencia:</strong>{" "}
+                    <span className="vigencia">
+                      {productoSeleccionado.Vigencia}
+                    </span>
+                  </p>
+                  <p>
+                    ℹ️ <strong>Descripción:</strong>{" "}
+                    {productoSeleccionado.Descripcion}
+                  </p>
                 </div>
               )}
             </div>
 
-            <button className="btn-enviar" onClick={handleEnviarRecarga}>
-              <span>Enviar Recarga</span>
+            <button
+              className="btn-enviar"
+              onClick={handleEnviarRecarga}
+              disabled={isLoading}
+            >
+              <span>
+                {isLoading ? (
+                  <AiOutlineLoading3Quarters className="icon-spinner" />
+                ) : (
+                  "Enviar Recarga"
+                )}
+              </span>
             </button>
           </motion.div>
         </motion.div>
