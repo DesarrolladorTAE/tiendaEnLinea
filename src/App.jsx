@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import AdminLayout from "./layouts/AdminLayout";
+import PrivateRoute from "./routes/PrivateRoute";
 
 // home pages
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
@@ -152,9 +152,9 @@ const ProductDetails = lazy(() => import("./pages/admin/ProductDetails.jsx"));
 const ProductForm = lazy(() => import("./pages/admin/ProductForm.jsx"));
 const ProductImages = lazy(() => import("./pages/admin/ProductImages.jsx"));
 const ProductCategory = lazy(() => import("./pages/admin/ProductCategory.jsx"));
+const AdminLayout = lazy(() => import("./layouts/AdminLayout"));
 
 const App = () => {
-
   return (
     <Router>
       <ScrollToTop>
@@ -342,7 +342,14 @@ const App = () => {
 
             <Route path="*" element={<NotFound />} />
 
-            <Route path="/admin" element={<AdminLayout />}>
+            <Route
+              path="/admin"
+              element={
+                <PrivateRoute>
+                  <AdminLayout />
+                </PrivateRoute>
+              }
+            >
               <Route path="products" element={<ProductList />} />
               <Route path="products/new" element={<ProductForm />} />
               <Route path="products/edit/:id" element={<ProductForm />} />
