@@ -5,7 +5,7 @@ import { Helmet, HelmetProvider } from "react-helmet-async";
 const SEO = ({ 
     title = "MTEL", 
     titleTemplate = "Product Page", 
-    description = "Product page of flone react minimalist eCommerce template." 
+    description = "MITIENDAENLINEAMX" 
 }) => {
     return (
         <HelmetProvider>
