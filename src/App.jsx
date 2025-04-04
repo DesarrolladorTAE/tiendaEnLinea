@@ -33,6 +33,7 @@ const Compare = lazy(() => import("./pages/other/Compare.jsx"));
 const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 const RecargarSaldo = lazy(() => import("./pages/other/RecargarSaldo.jsx"));
+const HistorialRecargas = lazy (() => import ("./pages/other/HistorialRecargas.jsx"))
 
 const App = () => {
   const dispatch = useDispatch();
@@ -93,6 +94,7 @@ const App = () => {
             <Route path="/compare" element={<Compare />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/recargar-saldo" element={<RecargarSaldo />} />
+            <Route path="/historial-recargas" element={<HistorialRecargas />} />
 
 
 
