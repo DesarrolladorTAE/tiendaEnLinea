@@ -61,6 +61,7 @@ const ShopGridStandard = lazy(() => import("./pages/shop/ShopGridStandard.jsx"))
 const ShopGridFilter = lazy(() => import("./pages/shop/ShopGridFilter.jsx"));
 const ShopGridTwoColumn = lazy(() => import("./pages/shop/ShopGridTwoColumn.jsx"));
 const ShopGridNoSidebar = lazy(() => import("./pages/shop/ShopGridNoSidebar.jsx"));
+const Catalogo = lazy(() => import("./pages/shop/Catalogo.jsx"));
 const ShopGridFullWidth = lazy(() => import("./pages/shop/ShopGridFullWidth.jsx"));
 const ShopGridRightSidebar = lazy(() =>
   import("./pages/shop/ShopGridRightSidebar.jsx")
@@ -396,6 +397,9 @@ const App = () => {
               /> 
 
               <Route path="*" element={<NotFound/>} />
+              
+              {/* Ruta dinámica por tienda */}
+              <Route path="/tienda/:storeSlug" element={<Catalogo/>} />
             </Routes>
           </Suspense>
         </ScrollToTop>
