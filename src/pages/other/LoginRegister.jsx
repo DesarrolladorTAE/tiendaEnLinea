@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import Tab from "react-bootstrap/Tab";
 import Nav from "react-bootstrap/Nav";
 import SEO from "../../components/seo";
-import LayoutOne from "../../layouts/LayoutOne";
+import LayoutTEL from "../../layouts/LayoutTEL";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 
 const LoginRegister = () => {
@@ -15,7 +15,7 @@ const LoginRegister = () => {
         titleTemplate="Login"
         description="Login page of flone react minimalist eCommerce template."
       />
-      <LayoutOne headerTop="visible">
+      <LayoutTEL>
         {/* breadcrumb */}
         <Breadcrumb 
           pages={[
@@ -107,7 +107,7 @@ const LoginRegister = () => {
             </div>
           </div>
         </div>
-      </LayoutOne>
+      </LayoutTEL>
     </Fragment>
   );
 };
