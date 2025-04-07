@@ -6,6 +6,10 @@ import { loadUserFromStorage } from './store/slices/userSlice';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import AdminRoutes from "./routes/AdminRoutes";
+import AdminLayout from "./layouts/AdminLayout";
+import Dashboard from "./pages/admin/Dashboard";
+
 //Pruebas
 
 
@@ -33,7 +37,13 @@ const Compare = lazy(() => import("./pages/other/Compare.jsx"));
 const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 const RecargarSaldo = lazy(() => import("./pages/other/RecargarSaldo.jsx"));
-const HistorialRecargas = lazy (() => import ("./pages/other/HistorialRecargas.jsx"))
+const HistorialRecargas = lazy(() => import("./pages/other/HistorialRecargas.jsx"))
+
+//Pages Admin
+const Notifications = lazy(() => import("./pages/admin/Notifications.jsx"));
+const Purchases = lazy(() => import("./pages/admin/Purchases.jsx"));
+// const Dashboard = lazy(() => import("./pages/admin/Dashboard.jsx"));
+const Users = lazy(() => import("./pages/admin/Users.jsx"));
 
 const App = () => {
   const dispatch = useDispatch();
@@ -95,11 +105,17 @@ const App = () => {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/recargar-saldo" element={<RecargarSaldo />} />
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
-
-
-
-            {/* Not Found */}
-            <Route path="*" element={<NotFound />} />
+          
+              <Route path="/admin" element={<AdminRoutes />}>
+                <Route element={<AdminLayout />}>
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="notifications" element={<Notifications />} />
+                  <Route path="purchases" element={<Purchases />} />
+                  <Route path="users" element={<Users />} />
+                </Route>
+              </Route>
+              {/* Not Found */}
+              <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </ScrollToTop>

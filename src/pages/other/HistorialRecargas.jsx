@@ -47,7 +47,7 @@ const HistorialRecargas = () => {
 
     return (
         <Fragment>
-            <SEO title="Historial de Recargas" />
+           <SEO titleTemplate="Historial de Recargas" />
             <LayoutOne headerTop="visible">
                 <Breadcrumb pages={[{ label: "Inicio", path: "/" }, { label: "Historial de Recargas", path: pathname }]} />
                 <div className="historial-recargas-wrapper">

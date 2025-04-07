@@ -81,8 +81,13 @@ const LoginOverlay = () => {
       setShowWelcome(true);
       setTimeout(() => {
         setShowWelcome(false);
-        navigate("/home-fashion-three");
+        if (user.role === "superadmin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/home-fashion-three");
+        }
       }, 3000);
+      
 
     } catch (error) {
       setLoginError(

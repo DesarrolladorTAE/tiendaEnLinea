@@ -3,6 +3,10 @@
   "version": "2.0.0",
   "private": true,
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.0.1",
+    "@mui/material": "^7.0.1",
     "@reduxjs/toolkit": "^1.8.6",
     "animate.css": "^4.1.1",
     "axios": "^1.8.1",
@@ -11,6 +15,7 @@
     "clsx": "^1.2.1",
     "cogo-toast": "https://github.com/hasanm95/cogo-toast",
     "date-fns": "^4.1.0",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.6.3",
     "google-map-react": "^2.2.0",
     "i18next": "^22.0.4",
@@ -41,6 +46,7 @@
     "redux-persist": "^6.0.0",
     "swiper": "^8.4.4",
     "uuid": "^9.0.0",
+    "xlsx": "^0.18.5",
     "yet-another-react-lightbox": "^2.2.0"
   },
   "scripts": {
