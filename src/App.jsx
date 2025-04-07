@@ -1,7 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import PrivateRoute from "./routes/PrivateRoute";
+import AdminRoutes from "./routes/AdminRoutes";
 
 // home pages
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
@@ -90,6 +90,7 @@ const ShopGridTwoColumn = lazy(() =>
 const ShopGridNoSidebar = lazy(() =>
   import("./pages/shop/ShopGridNoSidebar.jsx")
 );
+const Catalogo = lazy(() => import("./pages/shop/Catalogo.jsx"));
 const ShopGridFullWidth = lazy(() =>
   import("./pages/shop/ShopGridFullWidth.jsx")
 );
@@ -342,21 +343,9 @@ const App = () => {
 
             <Route path="*" element={<NotFound />} />
 
-            <Route
-              path="/admin"
-              element={
-                <PrivateRoute>
-                  <AdminLayout />
-                </PrivateRoute>
-              }
-            >
-              <Route path="products" element={<ProductList />} />
-              <Route path="products/new" element={<ProductForm />} />
-              <Route path="products/edit/:id" element={<ProductForm />} />
-              <Route path="products/images/:id" element={<ProductImages />} />
-              <Route path="products/:id" element={<ProductDetails />} />
-              <Route path="categories" element={<ProductCategory />} />
-            </Route>
+            <Route path="/tienda/:storeSlug" element={<Catalogo/>} />
+
+            {AdminRoutes}
           </Routes>
         </Suspense>
       </ScrollToTop>
