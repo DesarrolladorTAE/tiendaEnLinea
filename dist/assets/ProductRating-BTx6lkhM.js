@@ -1,1 +1,0 @@
-import{R as r,r as s,P as o}from"./index-BNOfT272.js";const l=({ratingValue:t})=>{let a=[];for(let e=0;e<5;e++)a.push(r.createElement("i",{className:"fa fa-star-o",key:e}));if(t&&t>0)for(let e=0;e<=t-1;e++)a[e]=r.createElement("i",{className:"fa fa-star-o yellow",key:e});return r.createElement(s.Fragment,null,a)};l.propTypes={ratingValue:o.number};export{l as P};

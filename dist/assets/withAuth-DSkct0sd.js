@@ -1,1 +1,0 @@
-import{k as r,d as n,r as c,R as o}from"./index-BNOfT272.js";const l=s=>a=>{const e=r(),t=n(i=>i.user.isAuthenticated);return c.useEffect(()=>{t||(alert("Acción Inválida. Debes iniciar sesión."),e("/login"))},[t,e]),o.createElement(s,{...a})};export{l as w};
