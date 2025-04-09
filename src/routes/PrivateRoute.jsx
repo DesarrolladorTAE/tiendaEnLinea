@@ -1,15 +1,15 @@
-import { Navigate } from "react-router-dom";
 import React from "react";
+import { Navigate, Outlet } from "react-router-dom";
 
-const PrivateRoute = ({ children }) => {
-  const token = localStorage.getItem("store_token");
-  const store = JSON.parse(localStorage.getItem("store_data") || "{}");
+const PrivateRoute = () => {
+  const token = localStorage.getItem("AUTH_TOKEN"); // ✅ esta es la clave correcta
 
-  if (!token || !store.verified) {
-    return <Navigate to="/login" />;
+
+  if (!token) {
+    return <Navigate to="/login" replace />;
   }
 
-  return children;
+  return <Outlet />;
 };
 
 export default PrivateRoute;
