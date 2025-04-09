@@ -8,9 +8,9 @@ const AdminRoutes = (
   <Route
     path="/admin"
     element={
-      <PrivateRoute>
+      // <PrivateRoute>
         <AdminLayout />
-      </PrivateRoute>
+      // </PrivateRoute>
     }
   >
     {adminRouteConfig.map(({ path, element }) => (
