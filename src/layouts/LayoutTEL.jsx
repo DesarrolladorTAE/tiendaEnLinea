@@ -21,11 +21,11 @@ const LayoutOne = ({
         headerPositionClass={headerPositionClass}
       /> */}
       {children}
-      <FooterOne
+      {/* <FooterOne
         backgroundColorClass="bg-gray"
         spaceTopClass="pt-100"
         spaceBottomClass="pb-70"
-      />
+      /> */}
       <ScrollToTop />
     </Fragment>
   );
