@@ -2571,3 +2571,17 @@
   -ms-overflow-style: none; 
   scrollbar-width: none;
 }
+
+.admin-link {
+  font-weight: 500;
+  color: #4F46E5;
+  display: flex;
+  align-items: center;
+  padding: 5px 0;
+  transition: all 0.2s ease-in-out;
+}
+
+.admin-link:hover {
+  text-decoration: underline;
+  color: #3730a3; /* un tono más oscuro */
+}

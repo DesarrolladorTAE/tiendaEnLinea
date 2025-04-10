@@ -105,17 +105,19 @@ const App = () => {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/recargar-saldo" element={<RecargarSaldo />} />
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
-          
-              <Route path="/admin" element={<AdminRoutes />}>
-                <Route element={<AdminLayout />}>
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="notifications" element={<Notifications />} />
-                  <Route path="purchases" element={<Purchases />} />
-                  <Route path="users" element={<Users />} />
-                </Route>
+
+            <Route element={<AdminRoutes />}>
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<Navigate to="dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="purchases" element={<Purchases />} />
+                <Route path="users" element={<Users />} />
               </Route>
-              {/* Not Found */}
-              <Route path="*" element={<NotFound />} />
+            </Route>
+
+            {/* Not Found */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </ScrollToTop>

@@ -26,6 +26,7 @@ const IconGroup = ({ iconWhiteClass }) => {
   const { compareItems } = useSelector((state) => state.compare);
   const { wishlistItems } = useSelector((state) => state.wishlist);
   const { cartItems } = useSelector((state) => state.cart);
+  const { user } = useSelector((state) => state.user); // ← ESTA ES LA CLAVE
 
   const handleLogout = async (e) => {
     e.preventDefault();
@@ -134,6 +135,10 @@ const IconGroup = ({ iconWhiteClass }) => {
               <li><Link to={"/wallet"}>Tarjetas</Link></li>
               <li><Link to={"/historial-recargas"}>Mis Compras</Link></li>
               <li><Link to={"*"}>Librerías</Link></li>
+              {user?.role === "superadmin" && (
+                <li><Link to={"/admin/dashboard"}>Administración</Link></li>
+              )}
+
               <li>
                 <Link to="/" onClick={handleLogout}>Cerrar Sesión</Link>
               </li>

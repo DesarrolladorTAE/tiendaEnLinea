@@ -22,12 +22,6 @@ const withAuth = (WrappedComponent) => {
         return (
             <>
                 <WrappedComponent {...props} />
-                <AnimatedModal
-                    isOpen={showModal}
-                    onRequestClose={() => setShowModal(false)}
-                    message="¡Hasta luego!..... ¡Vuelve Pronto!"
-                    tipo="bye"
-                />
             </>
         );
     };

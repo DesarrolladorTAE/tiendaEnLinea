@@ -1,10 +1,19 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Box } from "@mui/material";
+import { AppBar, Toolbar, Typography, IconButton, Box } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
 
-const Topbar = () => {
+const Topbar = ({ onMenuClick }) => {
   return (
-    <AppBar position="static" sx={{ backgroundColor: "#23388B" }}>
+    <AppBar position="static" sx={{ backgroundColor: "#4F46E5" }}>
       <Toolbar>
+        <IconButton
+          color="inherit"
+          edge="start"
+          onClick={onMenuClick}
+          sx={{ mr: 2 }}
+        >
+          <MenuIcon />
+        </IconButton>
         <Typography variant="h6" sx={{ flexGrow: 1 }}>
           Panel de Administración
         </Typography>

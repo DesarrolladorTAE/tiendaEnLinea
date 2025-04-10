@@ -11,22 +11,26 @@ import 'swiper/swiper-bundle.min.css';
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 import "./assets/scss/style.scss";
-// import '../../assets/scss/_login.scss';
 import "./i18n";
 
+// MUI Theme
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import theme from './theme';
 
 // Despacha los productos en el store
 store.dispatch(setProducts(products));
 
-// Obtén el contenedor de root
+// Root render
 const container = document.getElementById('root');
 const root = createRoot(container);
 
-// Renderiza la aplicación
 root.render(
-    <Provider store={store}>
-      <PersistProvider>
+  <Provider store={store}>
+    <PersistProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
         <App />
-      </PersistProvider>
-    </Provider>
+      </ThemeProvider>
+    </PersistProvider>
+  </Provider>
 );

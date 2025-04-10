@@ -14,7 +14,7 @@ import {
 const Dashboard = () => {
   const [stats, setStats] = useState({ usuarios: 0, notificaciones: 0, enviadosHoy: 0 });
   const [actividades, setActividades] = useState([]);
-  const [datos, setDatos] = useState(null); // Inicialmente null
+  const [datos, setDatos] = useState(null);
 
   useEffect(() => {
     cargarDatos();
@@ -61,42 +61,22 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={20}>
-          <Paper elevation={3} sx={{ p: 3, borderRadius: 4 }}>
-            <Typography variant="subtitle2" color="text.secondary" mb={1}>
-              Recargas por mes (últimos 6 meses)
-            </Typography>
-            <Typography variant="h4" color="primary" fontWeight="bold" mb={2}>
-              {Number(
-                (datos.recargasMensuales || []).reduce((acc, val) => acc + (parseFloat(val.total) || 0), 0)
-              ).toFixed(2)} MXN
-            </Typography>
-
-            <Box sx={{ width: '100%', maxWidth: 1000, margin: '0 auto' }}></Box>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart
-                data={datos?.recargasMensuales || []}
-                margin={{ top: 0, right: 20, left: 0, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#4F46E5" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#4F46E5" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-
-                <XAxis dataKey="mes" tick={{ fill: "#6B7280" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "#6B7280" }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#ffffff",
-                    borderRadius: 10,
-                    border: "1px solid #E5E7EB",
-                  }}
-                  labelStyle={{ color: "#4B5563" }}
-                  itemStyle={{ color: "#4F46E5" }}
-                />
+      {/* Recargas por mes */}
+      <Grid item xs={12}>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 4 }}>
+          <Typography variant="subtitle2" color="text.secondary" mb={1}>
+            Recargas por mes (últimos 6 meses)
+          </Typography>
+          <Typography variant="h4" color="primary" fontWeight="bold" mb={2}>
+            {Number((datos.recargasMensuales || []).reduce((acc, val) => acc + (parseFloat(val.total) || 0), 0)).toFixed(2)} MXN
+          </Typography>
+          <Box sx={{ width: '100%', height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={datos.recargasMensuales || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" />
+                <YAxis />
+                <Tooltip />
                 <Line
                   type="monotone"
                   dataKey="total"
@@ -104,56 +84,78 @@ const Dashboard = () => {
                   strokeWidth={3}
                   dot={{ r: 4 }}
                   activeDot={{ r: 6 }}
-                  fill="url(#colorTotal)"
                 />
               </LineChart>
             </ResponsiveContainer>
-          </Paper>
-        </Grid>
-
-
-        <Grid item xs={12} md={6}>
-          <Typography variant="h6">Carriers más utilizados</Typography>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={datos?.carriers || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="carrier" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="total" fill="#82ca9d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Typography variant="h6">Productos más vendidos</Typography>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={datos?.masVendidos || []} dataKey="ventas" nameKey="producto" cx="50%" cy="50%" outerRadius={80} label>
-                {(datos?.masVendidos || []).map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={["#0088FE", "#00C49F", "#FFBB28", "#FF8042"][index % 4]} />
-                ))}
-              </Pie>
-              <Legend />
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <Typography variant="h6">Compras en Conekta</Typography>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={datos?.conekta || []}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="fecha" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="monto" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
-        </Grid>
+          </Box>
+        </Paper>
       </Grid>
 
+      {/* Carriers más utilizados */}
+      <Grid item xs={12}>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 4 }}>
+          <Typography variant="h6" mb={2}>Carriers más utilizados</Typography>
+          <Box sx={{ width: '100%', height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={datos.carriers || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="carrier" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="total" fill="#10B981" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        </Paper>
+      </Grid>
+
+      {/* Productos más vendidos */}
+      <Grid item xs={12}>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 4 }}>
+          <Typography variant="h6" mb={2}>Productos más vendidos</Typography>
+          <Box sx={{ width: '100%', height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={datos.masVendidos || []}
+                  dataKey="ventas"
+                  nameKey="producto"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={120}
+                  label
+                >
+                  {(datos.masVendidos || []).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={["#6366F1", "#06B6D4", "#F59E0B", "#EF4444"][index % 4]} />
+                  ))}
+                </Pie>
+                <Legend />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </Box>
+        </Paper>
+      </Grid>
+
+      {/* Compras en Conekta */}
+      <Grid item xs={12}>
+        <Paper elevation={3} sx={{ p: 3, borderRadius: 4 }}>
+          <Typography variant="h6" mb={2}>Compras en Conekta</Typography>
+          <Box sx={{ width: '100%', height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={datos.conekta || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="fecha" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="monto" fill="#8B5CF6" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        </Paper>
+      </Grid>
+
+      {/* Actividades recientes */}
       <Box mt={4}>
         <Typography variant="h6" mb={2}>Actividades recientes</Typography>
         <Paper>
@@ -163,7 +165,9 @@ const Dashboard = () => {
               {actividades.map((a, idx) => (
                 <Box key={idx}>
                   <Typography variant="body1">{a.descripcion}</Typography>
-                  <Typography variant="caption" color="text.secondary">{new Date(a.fecha).toLocaleString()}</Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(a.fecha).toLocaleString()}
+                  </Typography>
                 </Box>
               ))}
             </Stack>
