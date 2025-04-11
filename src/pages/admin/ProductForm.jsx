@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useParams } from "react-router-dom";
-import axios from "axios";
+import axiosClient from "../../config/axiosClient";
 import "bootstrap/dist/css/bootstrap.min.css";
 import VariationItem from "../../components/admin/VariationItem";
 import CustomSelect from "../../components/admin/CustomSelect";
@@ -88,7 +88,7 @@ function ProductForm() {
 
   const fetchProduct = async (productId) => {
     try {
-      const response = await axios.get(
+      const response = await axiosClient.get(
         `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`
       );
       const product = response.data;
@@ -146,7 +146,6 @@ function ProductForm() {
       rating: data.rating ? Number(data.rating) : 0,
       shortDescription: data.shortDescription,
       fullDescription: data.fullDescription,
-      store_id: Number(1), // Convertir a número
       image: "/assets/img/product/fashion/8.jpg",
 
       // Convertir las categorías y etiquetas a números
@@ -174,7 +173,7 @@ function ProductForm() {
     console.log("📝 Datos enviados:", JSON.stringify(formattedData, null, 2));
 
     try {
-      const response = await axios.post(
+      const response = await axiosClient.post(
         "https://mitiendaenlineamx.com.mx/api/cargar/products",
         formattedData
       );

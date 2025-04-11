@@ -1,24 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import axios from "axios";
+import axiosClient from "../../config/axiosClient";
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const headers = {
-      "X-Store-Name": "Tienda Zapatos MX",
-    };
-
-    axios
-      .get("http://mitiendaenlineamx.com.mx/api/products", { headers })
+    axiosClient
+      .get("/my-products") // ya incluye baseURL y token en header
       .then((response) => setProducts(response.data))
       .catch((error) => {
         console.error("Error al obtener productos:", error);
         setError(error.response?.data?.error || "Error desconocido");
       });
   }, []);
+  
 
   const handleDelete = (id) => {
     if (window.confirm("¿Estás seguro que deseas eliminar este producto?")) {
