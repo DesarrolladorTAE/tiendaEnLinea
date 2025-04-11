@@ -94,7 +94,7 @@ const LoginRegister = () => {
         description="Página de Inicio de Sesión y Registro para el Sistema MiTiendaEnLineaMX"
       />
       <LayoutTEL>
-        <div className="login-register-area pt-30 pb-100">
+        <div className="login-register-area pt-50 pb-100">
           <div className="container">
             <div className="col-lg-7 col-md-12 ms-auto me-auto">
               <div className="login-register-wrapper">

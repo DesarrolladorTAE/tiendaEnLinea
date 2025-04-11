@@ -6,8 +6,10 @@ import Stores from "../pages/admin/Stores";
 import ProductForm from "../pages/admin/ProductForm";
 import ProductImages from "../pages/admin/ProductImages";
 import ProductDetails from "../pages/admin/ProductDetails";
+import { Navigate } from "react-router-dom";
 
 export const adminRouteConfig = [
+  { path: "", element: <Navigate to="products" replace /> },
   { path: "products", element: <ProductList /> },
   { path: "products/new", element: <ProductForm /> },
   { path: "products/edit/:id", element: <ProductForm /> },
