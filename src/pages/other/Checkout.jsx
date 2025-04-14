@@ -14,10 +14,47 @@ const Checkout = () => {
   let { pathname } = useLocation();
   const currency = useSelector((state) => state.currency);
   const { cartItems } = useSelector((state) => state.cart);
-  
+
   useEffect(() => {
-    console.log('Item', cartItems)
-  }, []);
+    console.log("Item", cartItems);
+  }, [cartItems]);
+
+  const handlePlaceOrder = async () => {
+    // Se arma el objeto a enviar con la información mínima de cada producto
+    const orderData = {
+      // Solo se envían los datos que se utilizarán para los line_items
+      // En este caso, el id del producto, la cantidad y las variaciones seleccionadas
+      products: cartItems.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        selectedProductColor: item.selectedProductColor,
+        selectedProductSize: item.selectedProductSize,
+      })),
+      // Opcional: puedes incluir datos adicionales de cliente, si los tienes en el estado
+      // customer_info: { name, email, phone } 
+    };
+    
+    try {
+      const response = await fetch("https://mitiendaenlineamx.com.mx/api/checkout/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(orderData)
+      });
+
+      const data = await response.json();
+
+      if (data.checkout_url) {
+        window.open(data.checkout_url, "_blank");
+      } else {
+        alert("No se pudo iniciar el checkout.");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Ocurrió un error al iniciar el checkout.");
+    }
+  };
 
   return (
     <Fragment>
@@ -80,10 +117,7 @@ const Checkout = () => {
                             placeholder="House number and street name"
                             type="text"
                           />
-                          <input
-                            placeholder="Apartment, suite, unit etc."
-                            type="text"
-                          />
+                          <input placeholder="Apartment, suite, unit etc." type="text" />
                         </div>
                       </div>
                       <div className="col-lg-12">
@@ -158,27 +192,20 @@ const Checkout = () => {
                               ).toFixed(2);
 
                               discountedPrice != null
-                                ? (cartTotalPrice +=
-                                    finalDiscountedPrice * cartItem.quantity)
-                                : (cartTotalPrice +=
-                                    finalProductPrice * cartItem.quantity);
+                                ? (cartTotalPrice += finalDiscountedPrice * cartItem.quantity)
+                                : (cartTotalPrice += finalProductPrice * cartItem.quantity);
                               return (
                                 <li key={key}>
                                   <span className="order-middle-left">
-                                    {cartItem.name} X {cartItem.quantity} {cartItem.selectedProductColor}
-                                    
+                                    {cartItem.name} X {cartItem.quantity}{" "}
+                                    {cartItem.selectedProductColor}
                                   </span>{" "}
                                   <span className="order-price">
                                     {discountedPrice !== null
                                       ? currency.currencySymbol +
-                                        (
-                                          finalDiscountedPrice *
-                                          cartItem.quantity
-                                        ).toFixed(2)
+                                        (finalDiscountedPrice * cartItem.quantity).toFixed(2)
                                       : currency.currencySymbol +
-                                        (
-                                          finalProductPrice * cartItem.quantity
-                                        ).toFixed(2)}
+                                        (finalProductPrice * cartItem.quantity).toFixed(2)}
                                   </span>
                                 </li>
                               );
@@ -194,17 +221,16 @@ const Checkout = () => {
                         <div className="your-order-total">
                           <ul>
                             <li className="order-total">Total</li>
-                            <li>
-                              {currency.currencySymbol +
-                                cartTotalPrice.toFixed(2)}
-                            </li>
+                            <li>{currency.currencySymbol + cartTotalPrice.toFixed(2)}</li>
                           </ul>
                         </div>
                       </div>
                       <div className="payment-method"></div>
                     </div>
                     <div className="place-order mt-25">
-                      <button className="btn-hover">Place Order</button>
+                      <button className="btn-hover" onClick={handlePlaceOrder}>
+                        Place Order
+                      </button>
                     </div>
                   </div>
                 </div>
