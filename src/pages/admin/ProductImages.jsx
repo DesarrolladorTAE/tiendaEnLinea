@@ -3,40 +3,13 @@ import axios from "axios";
 import { useParams, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const ProductImages = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-
-  const [images, setImages] = useState([]);
+const ProductImages = ({ product, onClose }) => {
+  const { id } = product; // 👈 importante
+  const [images, setImages] = useState(product.image || []);
   const [newImage, setNewImage] = useState(null);
   const [error, setError] = useState("");
-  const [variations, setVariations] = useState([]);
-  const [loading, setLoading] = useState(true); // 👈 nuevo
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [imagesRes, productRes] = await Promise.all([
-          axios.get(
-            `http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}`
-          ),
-          axios.get(`http://mitiendaenlineamx.com.mx/api/admin/products/${id}`),
-        ]);
-
-        setImages(imagesRes.data);
-
-        if (productRes.data.variation) {
-          setVariations(productRes.data.variation);
-        }
-      } catch (err) {
-        setError("Error al cargar datos del producto");
-      } finally {
-        setLoading(false); // ✅ cuando todo termine
-      }
-    };
-
-    fetchData();
-  }, [id]);
+  const [variations, setVariations] = useState(product.variation || []);
+  const [loading] = useState(false); // No se necesita fetch inicial
 
   const MAX_IMAGES = 6;
 
@@ -55,10 +28,7 @@ const ProductImages = () => {
     }
 
     axios
-      .post(
-        `http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}`,
-        formData
-      )
+      .post(`http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}`, formData)
       .then((res) => {
         setImages([...images, ...res.data]);
         setNewImage(null);
@@ -70,9 +40,7 @@ const ProductImages = () => {
     if (!window.confirm("¿Eliminar esta imagen?")) return;
 
     axios
-      .delete(
-        `http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}/${imageId}`
-      )
+      .delete(`http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}/${imageId}`)
       .then(() => {
         setImages(images.filter((img) => img.id !== imageId));
       })
@@ -98,9 +66,7 @@ const ProductImages = () => {
       .then((res) => {
         setVariations((prev) =>
           prev.map((v) =>
-            v.id === variation.id
-              ? { ...v, image: res.data.image, newImage: null }
-              : v
+            v.id === variation.id ? { ...v, image: res.data.image, newImage: null } : v
           )
         );
       })
@@ -119,14 +85,17 @@ const ProductImages = () => {
     );
   }
 
+  const normalizeImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `https://mitiendaenlineamx.com.mx${url.replace(/\/\/+/g, "/")}`;
+  };
+
   return (
     <div className="container">
-      <div className="d-flex justify-content-between align-items-center mb-20">
+      <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="text-primary">🖼 Imágenes del Producto</h2>
-        <button
-          className="btn btn-secondary"
-          onClick={() => navigate("/admin/products")}
-        >
+        <button className="btn btn-secondary" onClick={onClose}>
           ← Volver a productos
         </button>
       </div>
@@ -148,11 +117,11 @@ const ProductImages = () => {
       </form>
 
       <div className="row">
-        {images.map((img) => (
-          <div className="col-md-3 mb-4" key={img.id}>
+        {images.map((imgUrl, index) => (
+          <div className="col-md-3 mb-4" key={imgUrl || index}>
             <div className="card">
               <img
-                src={img.image}
+                src={typeof imgUrl === "string" ? imgUrl : imgUrl.image}
                 alt="Producto"
                 className="card-img-top"
                 style={{ height: "200px", width: "100%", objectFit: "cover" }}
@@ -160,7 +129,7 @@ const ProductImages = () => {
               <div className="card-body text-center">
                 <button
                   className="btn btn-sm btn-outline-danger"
-                  onClick={() => handleDelete(img.id)}
+                  onClick={() => handleDelete(imgUrl.id || imgUrl)}
                 >
                   🗑 Eliminar
                 </button>
@@ -174,11 +143,11 @@ const ProductImages = () => {
         <div className="mt-5">
           <h4 className="text-info">🎨 Variaciones del producto</h4>
           <div className="row">
-            {variations.map((v, i) => (
-              <div className="col-md-4 mb-4" key={i}>
+            {variations.map((v) => (
+              <div className="col-md-4 mb-4" key={v.id}>
                 <div className="card">
                   <img
-                    src={v.image}
+                    src={normalizeImageUrl(v.image)}
                     alt={`Variación ${v.color}`}
                     className="card-img-top"
                     style={{
@@ -189,10 +158,7 @@ const ProductImages = () => {
                   />
                   <div className="card-body">
                     <strong>Color:</strong> {v.color}
-                    <form
-                      onSubmit={(e) => handleVariationImageUpload(e, v)}
-                      className="mt-2"
-                    >
+                    <form onSubmit={(e) => handleVariationImageUpload(e, v)} className="mt-2">
                       <input
                         type="file"
                         className="form-control mb-2"
@@ -200,17 +166,12 @@ const ProductImages = () => {
                         onChange={(e) =>
                           setVariations((prev) =>
                             prev.map((varr) =>
-                              varr.id === v.id
-                                ? { ...varr, newImage: e.target.files[0] }
-                                : varr
+                              varr.id === v.id ? { ...varr, newImage: e.target.files[0] } : varr
                             )
                           )
                         }
                       />
-                      <button
-                        type="submit"
-                        className="btn btn-sm btn-warning w-100"
-                      >
+                      <button type="submit" className="btn btn-sm btn-warning w-100">
                         ✏️ Cambiar Imagen
                       </button>
                     </form>

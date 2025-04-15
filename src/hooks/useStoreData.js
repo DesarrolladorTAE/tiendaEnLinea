@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axiosClient from "../config/axiosClient";
 
 export const useStoreData = (storeSlug) => {
   const [isStoreValid, setIsStoreValid] = useState(null);
@@ -10,8 +11,10 @@ export const useStoreData = (storeSlug) => {
   useEffect(() => {
     const validateStore = async () => {
       try {
-        const res = await fetch(`https://mitiendaenlineamx.com.mx/api/verify-store/${storeSlug}`);
-        const data = await res.json();
+        const { data } = await axiosClient.get(`/verificar-tienda/${storeSlug}`, {
+          skipAuth: true,
+        });
+
         if (data.valid) {
           setIsStoreValid(true);
         } else {
@@ -23,7 +26,7 @@ export const useStoreData = (storeSlug) => {
       }
     };
     validateStore();
-  }, [storeSlug]);
+  }, [storeSlug, navigate]);
 
   // Obtener productos si la tienda es válida
   useEffect(() => {
@@ -31,18 +34,10 @@ export const useStoreData = (storeSlug) => {
 
     const fetchProducts = async () => {
       try {
-        const response = await fetch("https://mitiendaenlineamx.com.mx/api/products", {
-          headers: {
-            "X-Store-Name": "Tienda Zapatos MX",
-            "Content-Type": "application/json",
-          },
+        const { data } = await axiosClient.get(`/tienda/${storeSlug}/products`, {
+          skipAuth: true,
         });
-        const data = await response.json();
-        if (response.ok) {
-          setProducts(data);
-        } else {
-          console.error("Error del servidor:", data.error || data);
-        }
+        setProducts(data);
       } catch (error) {
         console.error("Error al cargar productos desde la API:", error);
       }

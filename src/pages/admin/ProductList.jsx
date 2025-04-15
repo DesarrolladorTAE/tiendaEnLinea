@@ -1,21 +1,25 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
+import ProductImages from "./ProductImages";
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   useEffect(() => {
     axiosClient
-      .get("/my-products") // ya incluye baseURL y token en header
-      .then((response) => setProducts(response.data))
+      .get("/my-products")
+      .then((response) => {
+        console.log("🛠 Respuesta del backend:", response.data); // 👈 AQUI
+        setProducts(response.data);
+      })
       .catch((error) => {
-        console.error("Error al obtener productos:", error);
+        console.error("❌ Error al obtener productos:", error);
         setError(error.response?.data?.error || "Error desconocido");
       });
   }, []);
-  
 
   const handleDelete = (id) => {
     if (window.confirm("¿Estás seguro que deseas eliminar este producto?")) {
@@ -31,6 +35,14 @@ const ProductList = () => {
     }
   };
 
+  if (selectedProduct) {
+    return (
+      <div className="bg-dark text-white p-4">
+        <ProductImages product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-dark text-white p-4 shadow rounded border border-light">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -40,10 +52,7 @@ const ProductList = () => {
           </span>{" "}
           Lista de Productos
         </h2>
-        <Link
-          to="new"
-          className="btn btn-outline-light d-flex align-items-center gap-2"
-        >
+        <Link to="new" className="btn btn-outline-light d-flex align-items-center gap-2">
           <span className="fs-5">➕</span> Crear Producto
         </Link>
       </div>
@@ -83,13 +92,12 @@ const ProductList = () => {
                       >
                         ✏️
                       </Link>
-                      <Link
-                        to={`images/${product.id}`}
+                      <button
                         className="btn btn-sm btn-outline-warning"
-                        title="Modificar imágenes"
+                        onClick={() => setSelectedProduct(product)} // 👈 cambia a render local
                       >
                         🖼
-                      </Link>
+                      </button>
                       <button
                         onClick={() => handleDelete(product.id)}
                         className="btn btn-sm btn-outline-danger"
