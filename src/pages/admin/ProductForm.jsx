@@ -77,9 +77,7 @@ function ProductForm() {
         axios.get("https://mitiendaenlineamx.com.mx/api/etiquetas"),
       ]);
 
-      setCategoriesOptions(
-        catRes.data.map((c) => ({ value: c.id, label: c.name }))
-      );
+      setCategoriesOptions(catRes.data.map((c) => ({ value: c.id, label: c.name })));
       setTagsOptions(tagRes.data.map((t) => ({ value: t.id, label: t.name })));
     } catch (error) {
       console.error("Error cargando categorías o etiquetas:", error);
@@ -167,30 +165,35 @@ function ProductForm() {
           .map(({ name, stock }) => ({ name, stock: Number(stock) })),
       }));
     } else {
-      formattedData.stock = data.stock;
+      formattedData.stock = Number(data.stock);
     }
 
     console.log("📝 Datos enviados:", JSON.stringify(formattedData, null, 2));
 
     try {
-      const response = await axiosClient.post(
-        "https://mitiendaenlineamx.com.mx/api/cargar/products",
-        formattedData
-      );
+      let response;
 
-      setMessage("✅ Producto creado con éxito.");
-      reset();
+      if (id) {
+        // Modo edición
+        response = await axiosClient.put(
+          `https://mitiendaenlineamx.com.mx/api/admin/products/${id}`,
+          formattedData
+        );
+        setMessage("✏️ Producto actualizado con éxito.");
+      } else {
+        // Modo creación
+        response = await axiosClient.post(
+          "https://mitiendaenlineamx.com.mx/api/cargar/products",
+          formattedData
+        );
+        setMessage("✅ Producto creado con éxito.");
+        reset(); // Solo limpiamos si es nuevo
+      }
     } catch (error) {
       console.error("❌ Error en la API:", error.response?.data || error);
 
       if (error.response?.data?.errors) {
-        setError(
-          `❌ Error en la API:\n${JSON.stringify(
-            error.response.data.errors,
-            null,
-            2
-          )}`
-        );
+        setError(`❌ Error en la API:\n${JSON.stringify(error.response.data.errors, null, 2)}`);
       } else {
         setError("Error de conexión con el servidor.");
       }
@@ -209,12 +212,7 @@ function ProductForm() {
         <form onSubmit={handleSubmit(onSubmit)}>
           {/* Primera fila */}
           <div className="row">
-            <ProductField
-              label="Código (SKU)"
-              name="sku"
-              register={register}
-              errors={errors}
-            />
+            <ProductField label="Código (SKU)" name="sku" register={register} errors={errors} />
             <ProductField
               label="Nombre"
               name="name"
@@ -263,10 +261,7 @@ function ProductForm() {
                 </label>
 
                 {/* Contenedor del switch con flexbox para alineación */}
-                <div
-                  className="d-flex align-items-center"
-                  style={{ gap: "10px" }}
-                >
+                <div className="d-flex align-items-center" style={{ gap: "10px" }}>
                   {/* Switch personalizado */}
                   <label
                     style={{
@@ -300,11 +295,7 @@ function ProductForm() {
                   </label>
 
                   {/* Checkbox oculto para manejar el estado */}
-                  <input
-                    type="checkbox"
-                    {...register("new")}
-                    style={{ display: "none" }}
-                  />
+                  <input type="checkbox" {...register("new")} style={{ display: "none" }} />
 
                   {/* ✅ Texto alineado perfectamente con el switch */}
                   <label
@@ -367,21 +358,13 @@ function ProductForm() {
             {/* Categoría */}
             <div className="col-md-6 mb-3">
               <label className="form-label">Categoría</label>
-              <CustomSelect
-                name="category"
-                control={control}
-                options={categoriesOptions}
-              />
+              <CustomSelect name="category" control={control} options={categoriesOptions} />
             </div>
 
             {/* Etiquetas */}
             <div className="col-md-6 mb-3">
               <label className="form-label">Tags</label>
-              <CustomSelect
-                name="tags"
-                control={control}
-                options={tagsOptions}
-              />
+              <CustomSelect name="tags" control={control} options={tagsOptions} />
             </div>
           </div>
 

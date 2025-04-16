@@ -77,9 +77,9 @@ const LoginRegister = () => {
         code: verificationCode,
       });
       localStorage.setItem("AUTH_TOKEN", res.data.token);
-      localStorage.setItem("store_data", JSON.stringify(res.data.user));
+      // localStorage.setItem("store_data", JSON.stringify(res.data.user)); 
       setShowModal(false);
-      navigate("/contact");
+      navigate("/admin");
     } catch (err) {
       alert(err.response?.data?.message || "Código inválido o expirado");
     } finally {
