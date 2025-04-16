@@ -1,317 +1,324 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  useMediaQuery,
-  useTheme,
-} from '@mui/material';
+import React, { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "../../axiosConfig";
+import { useDispatch } from "react-redux";
+import { setUser } from "../../store/slices/userSlice";
+import { useForm } from "react-hook-form";
+import AuthModal from "../../wrappers/AuthVerification/AuthModals";
+import ResetPasswordModal from "../../wrappers/AuthVerification/ResetPasswordModal";
+import AnimatedModal from "../../components/AnimatedModal";
+import LoginOverlayResponsive from "../../components/login/LoginOverlayResponsive";
 
-const LoginOverlayMui = () => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+const LoginOverlay = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [rightPanelActive, setRightPanelActive] = useState(false);
-  const [activeForm, setActiveForm] = useState('login');
+  const [activeForm, setActiveForm] = useState("login");
 
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const [loginData, setLoginData] = useState({ phone: '', password: '' });
-  const [registerData, setRegisterData] = useState({
-    name: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    password: '',
-    password_confirmation: '',
-  });
+  const loginFormRef = useRef(null);
+  const registerFormRef = useRef(null);
 
-  const handleChange = (e, isLogin = true) => {
-    const { name, value } = e.target;
-    if (isLogin) {
-      setLoginData({ ...loginData, [name]: value });
-    } else {
-      setRegisterData({ ...registerData, [name]: value });
+  const [loginPhone, setLoginPhone] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState(null);
+
+  const [registerError, setRegisterError] = useState(null);
+  const [registerSuccess, setRegisterSuccess] = useState(null);
+  const [backendFieldErrors, setBackendFieldErrors] = useState({});
+
+  const [isVerificationModalOpen, setIsVerificationModalOpen] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationError, setVerificationError] = useState(null);
+  const [currentPhoneToVerify, setCurrentPhoneToVerify] = useState("");
+
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetCode, setResetCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetError, setResetError] = useState(null);
+  const [resetPhone, setResetPhone] = useState("");
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    getValues,
+    formState: { errors },
+  } = useForm();
+
+  const password = watch("password");
+
+  useEffect(() => {
+    const handleResize = () => {
+      const isNowMobile = window.innerWidth <= 768;
+      setIsMobile(isNowMobile);
+      if (isNowMobile) {
+        setRightPanelActive(false);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post("login", {
+        phone: loginPhone,
+        password: loginPassword,
+      });
+      const { token, user } = response.data;
+      dispatch(setUser({ user, token }));
+
+      setShowWelcome(true);
+      setTimeout(() => {
+        setShowWelcome(false);
+        if (user.role === "superadmin") {
+          navigate("/admin/dashboard");
+        } else {
+          navigate("/home-fashion-three");
+        }
+      }, 3000);
+    } catch (error) {
+      setLoginError(
+        error.response?.data?.message || "Error en el inicio de sesión"
+      );
     }
   };
 
-  const handleLogin = () => {
-    console.log('Login', loginData);
+  const handleRegister = async (data) => {
+    try {
+      await axios.post("auth/send-code", { phone: data.phone });
+      setCurrentPhoneToVerify(data.phone);
+      setIsVerificationModalOpen(true);
+      setRegisterSuccess(null);
+      setRegisterError(null);
+      setBackendFieldErrors({});
+    } catch (error) {
+      const res = error.response;
+      const fieldErrors = {};
+      if (res?.data?.errors) {
+        if (res.data.errors.email) fieldErrors.email = res.data.errors.email[0];
+        if (res.data.errors.phone) fieldErrors.phone = res.data.errors.phone[0];
+        if (res.data.errors.password)
+          fieldErrors.password = res.data.errors.password[0];
+        setBackendFieldErrors(fieldErrors);
+      } else {
+        setRegisterError(res?.data?.message || "Error en el registro");
+      }
+    }
   };
 
-  const handleRegister = () => {
-    console.log('Register', registerData);
+  const handleRegisterAfterVerification = async () => {
+    const formData = getValues();
+    try {
+      await axios.post("/register", {
+        ...formData,
+        code: verificationCode,
+      });
+      setIsVerificationModalOpen(false);
+      setRegisterSuccess("Cuenta creada exitosamente. Ahora puedes iniciar sesión.");
+      reset();
+      setRightPanelActive(false);
+    } catch (error) {
+      setVerificationError(error.response?.data?.message || "Error al crear cuenta.");
+    }
+  };
+
+  const handleVerifyCodeSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post("/auth/verify-code", {
+        phone: currentPhoneToVerify,
+        code: verificationCode,
+      });
+      await handleRegisterAfterVerification();
+    } catch (error) {
+      setVerificationError(error.response?.data?.error || "Código inválido o expirado");
+    }
+  };
+
+  const handleSendResetCode = async () => {
+    try {
+      await axios.post("auth/reset-password/send-code", { phone: loginPhone });
+      setResetPhone(loginPhone);
+      setIsResetModalOpen(true);
+      setResetError(null);
+    } catch (error) {
+      setResetError(error.response?.data?.message || "Error al enviar código");
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setResetError("Las contraseñas no coinciden");
+      return;
+    }
+    try {
+      await axios.post("/auth/reset-password", {
+        phone: resetPhone,
+        code: resetCode,
+        password: newPassword,
+        password_confirmation: confirmPassword,
+      });
+      setIsResetModalOpen(false);
+      alert("Contraseña actualizada exitosamente.");
+    } catch (error) {
+      setResetError(error.response?.data?.message || "Error al cambiar contraseña");
+    }
   };
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        backgroundColor: '#f6f5f7',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        p: 2,
-      }}
-    >
-      <Box
-        sx={{
-          width: '100%',
-          maxWidth: 1100,
-          height: 650,
-          position: 'relative',
-          borderRadius: 5,
-          overflow: 'hidden',
-          boxShadow: 5,
-        }}
-      >
-        {/* Contenedor de formularios (no se mueve) */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            zIndex: 1,
-          }}
+    <div className="login-container">
+      <div className={`container ${!isMobile && rightPanelActive ? "right-panel-active" : ""}`}>
+        {/* Registro */}
+        <div
+          className={`form-container sign-up-container ${isMobile
+            ? activeForm === "register"
+              ? "show-mobile-form"
+              : "hide-mobile-form"
+            : ""}`}
+          ref={registerFormRef}
         >
-          {/* Login */}
-          <Box
-            sx={{
-              width: '50%',
-              backgroundColor: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              p: 4,
-            }}
-          >
-            <Typography variant="h5" fontWeight="bold" mb={2}>
-              Iniciar Sesión
-            </Typography>
-            <TextField
-              label="Teléfono"
-              name="phone"
-              fullWidth
-              value={loginData.phone}
-              onChange={(e) => handleChange(e, true)}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              label="Contraseña"
-              name="password"
-              type="password"
-              fullWidth
-              value={loginData.password}
-              onChange={(e) => handleChange(e, true)}
-              sx={{ mb: 2 }}
-            />
-            <Button
-              sx={{
-                width: '50%',
-                backgroundColor: '#00bfff',
-                color: 'white',
-                borderRadius: '25px',
-                mt: 2,
-                '&:hover': { backgroundColor: '#009edb' },
-              }}
-              onClick={handleLogin}
-            >
-              INICIAR SESIÓN
-            </Button>
-          </Box>
+          <form onSubmit={handleSubmit(handleRegister)}>
+            <h1>Crea tu Cuenta</h1>
+            <div className="form-grid">
+              <input type="text" placeholder="Nombre" {...register("name", { required: "Nombre requerido" })} />
+              <input type="text" placeholder="Apellidos" {...register("apellidos", { required: "Apellidos requeridos" })} />
+              <input type="email" placeholder="Correo electrónico" {...register("email", {
+                required: "Email requerido",
+                pattern: { value: /^\S+@\S+$/i, message: "Email no válido" },
+              })} />
+              <input type="tel" placeholder="Teléfono" {...register("phone", {
+                required: "Teléfono requerido",
+                pattern: { value: /^[0-9]{10}$/, message: "Debe contener 10 dígitos" },
+              })} />
+              <input type="password" placeholder="Contraseña" {...register("password", {
+                required: "Contraseña requerida",
+                minLength: { value: 8, message: "Mínimo 8 caracteres" },
+              })} />
+              <input type="password" placeholder="Confirmar Contraseña" {...register("password_confirmation", {
+                required: "Confirmación requerida",
+                validate: value => value === password || "Las contraseñas no coinciden",
+              })} />
+            </div>
+            <button className="btn-lila">Registrarme</button>
+            {registerError && <p className="error-message">{registerError}</p>}
+            {registerSuccess && <p className="success-message">{registerSuccess}</p>}
+          </form>
+        </div>
 
-          {/* Registro */}
-          <Box
-            sx={{
-              width: '50%',
-              backgroundColor: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              p: 4,
-            }}
-          >
-            <Typography variant="h5" fontWeight="bold" mb={2}>
-              Crea tu Cuenta
-            </Typography>
+        {/* Login */}
+        <div
+          className={`form-container sign-in-container ${isMobile
+            ? activeForm === "login"
+              ? "show-mobile-form"
+              : "hide-mobile-form"
+            : ""}`}
+          ref={loginFormRef}
+        >
+          <form onSubmit={handleLogin}>
+            <h1>Iniciar Sesión</h1>
+            <input type="tel" name="phone" placeholder="Teléfono" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)} required />
+            <input type="password" name="password" placeholder="Contraseña" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} required />
+            <button type="submit" className="btn-turquesa">Iniciar Sesión</button>
+            {loginError && <p className="error-message">{loginError}</p>}
+            <div className="forgot-password-link">
+              <a href="#" onClick={(e) => { e.preventDefault(); handleSendResetCode(); }}>
+                ¿Olvidaste tu contraseña?
+              </a>
+            </div>
+          </form>
+        </div>
 
-            <Box sx={{ display: 'flex', gap: 2, width: '100%' }}>
-              <TextField
-                label="Nombre"
-                name="name"
-                fullWidth
-                value={registerData.name}
-                onChange={(e) => handleChange(e, false)}
-                sx={{ backgroundColor: '#f1f1f1' }}
-              />
-              <TextField
-                label="Apellidos"
-                name="lastName"
-                fullWidth
-                value={registerData.lastName}
-                onChange={(e) => handleChange(e, false)}
-                sx={{ backgroundColor: '#f1f1f1' }}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', gap: 2, width: '100%', mt: 2 }}>
-              <TextField
-                label="Correo electrónico"
-                name="email"
-                fullWidth
-                value={registerData.email}
-                onChange={(e) => handleChange(e, false)}
-                sx={{ backgroundColor: '#f1f1f1' }}
-              />
-              <TextField
-                label="Teléfono"
-                name="phone"
-                fullWidth
-                value={registerData.phone}
-                onChange={(e) => handleChange(e, false)}
-                sx={{ backgroundColor: '#f1f1f1' }}
-              />
-            </Box>
-
-            <Box sx={{ display: 'flex', gap: 2, width: '100%', mt: 2 }}>
-              <TextField
-                label="Contraseña"
-                name="password"
-                type="password"
-                fullWidth
-                value={registerData.password}
-                onChange={(e) => handleChange(e, false)}
-                sx={{ backgroundColor: '#f1f1f1' }}
-              />
-              <TextField
-                label="Confirmar Contraseña"
-                name="password_confirmation"
-                type="password"
-                fullWidth
-                value={registerData.password_confirmation}
-                onChange={(e) => handleChange(e, false)}
-                sx={{ backgroundColor: '#f1f1f1' }}
-              />
-            </Box>
-
-            <Button
-              sx={{
-                width: '60%',
-                backgroundColor: '#be4bdb',
-                color: 'white',
-                borderRadius: '25px',
-                mt: 3,
-                '&:hover': { backgroundColor: '#a638bd' },
-              }}
-              onClick={handleRegister}
-            >
-              REGISTRARME
-            </Button>
-          </Box>
-        </Box>
-
+        {/* Overlay móvil */}
         {isMobile && (
-          <Box
-            sx={{
-              height: '200px',
-              width: '100%',
-              background: 'linear-gradient(to right, #be4bdb, #00bfff)',
-              borderBottomLeftRadius: 40,
-              borderBottomRightRadius: 40,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              textAlign: 'center',
-              px: 3,
-              mb: 3,
+          <LoginOverlayResponsive
+            isRegistering={rightPanelActive}
+            toggleForm={() => {
+              setActiveForm(activeForm === "login" ? "register" : "login");
+              setRightPanelActive(!rightPanelActive);
             }}
-          >
-            <Box>
-              <Typography variant="h6" fontWeight="bold">
-                {activeForm === 'login' ? '¡Bienvenido de vuelta!' : '¡Únete ahora!'}
-              </Typography>
-              <Typography variant="body2" mt={1}>
-                {activeForm === 'login'
-                  ? 'Inicia sesión para continuar'
-                  : 'Crea una cuenta gratis en segundos'}
-              </Typography>
-              <Button
-                variant="outlined"
-                sx={{
-                  mt: 2,
-                  borderColor: '#fff',
-                  color: '#fff',
-                  borderRadius: '25px',
-                  '&:hover': {
-                    backgroundColor: '#fff',
-                    color: '#be4bdb',
-                  },
-                }}
-                onClick={() =>
-                  setActiveForm((prev) => (prev === 'login' ? 'register' : 'login'))
-                }
-              >
-                {activeForm === 'login' ? 'Registrarme' : 'Iniciar Sesión'}
-              </Button>
-            </Box>
-          </Box>
+            loginFormRef={loginFormRef}
+            registerFormRef={registerFormRef}
+            handleLogin={handleLogin}
+            loginPhone={loginPhone}
+            setLoginPhone={setLoginPhone}
+            loginPassword={loginPassword}
+            setLoginPassword={setLoginPassword}
+            loginError={loginError}
+            handleSubmit={handleSubmit}
+            register={register}
+            errors={errors}
+            backendFieldErrors={backendFieldErrors}
+            password={password}
+            registerError={registerError}
+            registerSuccess={registerSuccess}
+          />
         )}
 
-        Overlay con efecto deslizante
+        {/* Overlay escritorio */}
         {!isMobile && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: rightPanelActive ? '0%' : '50%',
-              width: '50%',
-              height: '100%',
-              background: 'linear-gradient(to right, #be4bdb, #00bfff)',
-              color: 'white',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'left 0.6s ease-in-out',
-              zIndex: 5,
-              borderTopLeftRadius: rightPanelActive ? 0 : 40,
-              borderBottomLeftRadius: rightPanelActive ? 0 : 40,
-              borderTopRightRadius: rightPanelActive ? 40 : 0,
-              borderBottomRightRadius: rightPanelActive ? 40 : 0,
-            }}
-          >
-            <Box textAlign="center" px={4}>
-              <Typography variant="h5" fontWeight="bold">
-                {rightPanelActive ? '¡Bienvenido!' : 'Hola!'}
-              </Typography>
-              <Typography sx={{ mt: 1, mb: 2 }}>
-                {rightPanelActive
-                  ? 'Inicia sesión con tu cuenta'
-                  : 'Crea tu cuenta para comenzar tu experiencia'}
-              </Typography>
-              <Button
-                variant="outlined"
-                sx={{
-                  color: '#fff',
-                  borderColor: '#fff',
-                  borderRadius: '25px',
-                  px: 4,
-                  '&:hover': { backgroundColor: '#fff', color: '#be4bdb' },
-                }}
-                onClick={() => setRightPanelActive(!rightPanelActive)}
-              >
-                {rightPanelActive ? 'INICIAR SESIÓN' : 'REGISTRARSE'}
-              </Button>
-            </Box>
-          </Box>
+          <div className="overlay-container">
+            <div className="overlay">
+              <div className="overlay-panel overlay-left">
+                <h1>¡Bienvenido!</h1>
+                <p>Inicia sesión con tu cuenta</p>
+                <button className="ghost ghost-turquesa" onClick={() => setRightPanelActive(false)}>
+                  Inicia sesión
+                </button>
+              </div>
+              <div className="overlay-panel overlay-right">
+                <h1>Hola!</h1>
+                <p>Crea tu cuenta para comenzar tu experiencia</p>
+                <button className="ghost" onClick={() => setRightPanelActive(true)}>
+                  Registrarse
+                </button>
+              </div>
+            </div>
+          </div>
         )}
-      </Box>
-    </Box>
+
+        {/* Modales */}
+        <AuthModal
+          isOpen={isVerificationModalOpen}
+          type="verify"
+          onSubmit={handleVerifyCodeSubmit}
+          phone={currentPhoneToVerify}
+          code={verificationCode}
+          setCode={setVerificationCode}
+          error={verificationError}
+        />
+
+        <ResetPasswordModal
+          isOpen={isResetModalOpen}
+          phone={resetPhone}
+          code={resetCode}
+          setCode={setResetCode}
+          newPassword={newPassword}
+          setNewPassword={setNewPassword}
+          confirmPassword={confirmPassword}
+          setConfirmPassword={setConfirmPassword}
+          onSubmit={handleResetPasswordSubmit}
+          error={resetError}
+        />
+
+        <AnimatedModal
+          isOpen={showWelcome}
+          onRequestClose={() => setShowWelcome(false)}
+          message="¡Bienvenido de nuevo! 😄"
+          tipo="welcome"
+        />
+      </div>
+    </div>
   );
 };
 
-export default LoginOverlayMui;
+export default LoginOverlay;
