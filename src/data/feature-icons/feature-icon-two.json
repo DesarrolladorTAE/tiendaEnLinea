@@ -2,19 +2,18 @@
   {
     "id": 1,
     "image": "/assets/img/icon-img/support-1.png",
-    "title": "Free Shipping",
-    "subtitle": "Lorem ipsum dolor sit amet consectetu adipisicing elit sed"
+    "title": "🚚 Recargas inmediatas",
+    "subtitle": "Con Te Lo Recargo, tu tiempo aire llega rápido y sin complicaciones."
   },
   {
     "id": 2,
     "image": "/assets/img/icon-img/support-2.png",
-    "title": "Support 24/7",
-    "subtitle": "Lorem ipsum dolor sit amet consectetu adipisicing elit sed"
-  },
+    "title": "🕑 Atención continua",
+    "subtitle": "Nuestro equipo está disponible día y noche para resolver cualquier inconveniente."},
   {
     "id": 3,
     "image": "/assets/img/icon-img/support-3.png",
-    "title": "Money Return",
-    "subtitle": "Lorem ipsum dolor sit amet consectetu adipisicing elit sed"
+    "title": "💸 Gana dinero con cada recarga",
+    "subtitle": "Con Te Lo Recargo, cada recarga te deja una ganancia. ¡Recarga y genera ingresos fácilmente!."
   }
 ]

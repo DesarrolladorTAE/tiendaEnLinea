@@ -1,24 +1,32 @@
-import React from "react";
+import React, { Fragment, useState } from "react";
 import PropTypes from "prop-types";
-import { Fragment, useState } from "react";
 import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import clsx from "clsx";
 import { getDiscountPrice } from "../../helpers/product";
 import ProductModal from "./ProductModal";
 import { addToCart } from "../../store/slices/cart-slice";
 import { addToWishlist } from "../../store/slices/wishlist-slice";
 import { addToCompare } from "../../store/slices/compare-slice";
+import {
+  Box,
+  Typography,
+  IconButton,
+  Tooltip,
+  Stack
+} from "@mui/material";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import Grid from '@mui/material/Grid';
+
 
 const ProductGridSingleTwo = ({
   product,
   currency,
   cartItem,
   wishlistItem,
-  compareItem,
-  spaceBottomClass,
-  colorClass,
-  titlePriceClass
+  compareItem
 }) => {
   const [modalShow, setModalShow] = useState(false);
   const discountedPrice = getDiscountPrice(product.price, product.discount);
@@ -30,138 +38,125 @@ const ProductGridSingleTwo = ({
 
   return (
     <Fragment>
-      <div className={clsx("product-wrap-2", spaceBottomClass, colorClass)}>
-        <div className="product-img">
-          <Link to={"/product/" + product.id}>
-            <img
-              className="default-img"
-              src={product.image[0]}
-              alt=""
-            />
-            {product.image.length > 1 ? (
-              <img
-                className="hover-img"
-                src={product.image[1]}
-                alt=""
-              />
-            ) : (
-              ""
-            )}
-          </Link>
-          {product.discount || product.new ? (
-            <div className="product-img-badges">
-              {product.discount ? (
-                <span className="pink">-{product.discount}%</span>
-              ) : (
-                ""
-              )}
-              {product.new ? <span className="purple">New</span> : ""}
-            </div>
-          ) : (
-            ""
-          )}
-
-          <div className="product-action-2">
-            {product.affiliateLink ? (
-              <a
-                href={product.affiliateLink}
-                rel="noopener noreferrer"
-                target="_blank"
-                title="Buy now"
-              >
-                {" "}
-                <i className="fa fa-shopping-cart"></i>{" "}
-              </a>
-            ) : product.variation && product.variation.length >= 1 ? (
-              <Link
-                to={`/product/${product.id}`}
-                title="Select options"
-              >
-                <i className="fa fa-cog"></i>
-              </Link>
-            ) : product.stock && product.stock > 0 ? (
-              <button
-                onClick={() => dispatch(addToCart(product))}
-                className={
-                  cartItem !== undefined && cartItem.quantity > 0
-                    ? "active"
-                    : ""
-                }
-                disabled={cartItem !== undefined && cartItem.quantity > 0}
-                title={
-                  cartItem !== undefined ? "Added to cart" : "Add to cart"
-                }
-              >
-                {" "}
-                <i className="fa fa-shopping-cart"></i>{" "}
-              </button>
-            ) : (
-              <button disabled className="active" title="Out of stock">
-                <i className="fa fa-shopping-cart"></i>
-              </button>
-            )}
-
-            <button onClick={() => setModalShow(true)} title="Quick View">
-              <i className="fa fa-eye"></i>
-            </button>
-
-            <button
-              className={compareItem !== undefined ? "active" : ""}
-              disabled={compareItem !== undefined}
-              title={
-                compareItem !== undefined
-                  ? "Added to compare"
-                  : "Add to compare"
-              }
-              onClick={() => dispatch(addToCompare(product))}
-            >
-              <i className="fa fa-retweet"></i>
-            </button>
-          </div>
-        </div>
-        <div className="product-content-2">
-          <div
-            className={`title-price-wrap-2 ${
-              titlePriceClass ? titlePriceClass : ""
-            }`}
+      <Box
+        sx={{
+          p: 2,
+          borderRadius: 2,
+          boxShadow: 3,
+          bgcolor: "#fff",
+          textAlign: "center",
+          transition: "transform 0.3s",
+          "&:hover": {
+            transform: "scale(1.01)"
+          },
+        }}
+      >
+        <Link to={`/product/${product.id}`}>
+          <Box
+            sx={{
+              width: "100%",
+              height: 220,
+              mx: "auto",
+              mb: 2,
+              overflow: "hidden",
+              borderRadius: 3,
+              backgroundColor: "#fff",
+              border: "1px solid #eee",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: 1,
+              p: 2 // Espacio interno para evitar que el logo se pegue a los bordes
+            }}
           >
-            <h3>
-              <Link to={"/product/" + product.id}>
-                {product.name}
-              </Link>
-            </h3>
-            <div className="price-2">
-              {discountedPrice !== null ? (
-                <Fragment>
-                  <span>
-                    {currency.currencySymbol + finalDiscountedPrice}
-                  </span>{" "}
-                  <span className="old">
-                    {currency.currencySymbol + finalProductPrice}
-                  </span>
-                </Fragment>
-              ) : (
-                <span>{currency.currencySymbol + finalProductPrice} </span>
-              )}
-            </div>
-          </div>
-          <div className="pro-wishlist-2">
-            <button
-              className={wishlistItem !== undefined ? "active" : ""}
-              disabled={wishlistItem !== undefined}
-              title={
-                wishlistItem !== undefined
-                  ? "Added to wishlist"
-                  : "Add to wishlist"
-              }
-              onClick={() => dispatch(addToWishlist(product))}
+            <img
+              src={product.image[0]}
+              alt={product.name}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                objectFit: "contain"
+              }}
+            />
+          </Box>
+
+        </Link>
+
+        {product.discount || product.new ? (
+          <Stack direction="row" spacing={1} justifyContent="center" mb={1}>
+            {product.discount ? (
+              <Typography variant="caption" color="primary">
+                -{product.discount}%
+              </Typography>
+            ) : null}
+            {product.new ? (
+              <Typography variant="caption" color="secondary">
+                New
+              </Typography>
+            ) : null}
+          </Stack>
+        ) : null}
+
+        <Typography variant="subtitle1" fontWeight="bold" noWrap>
+          {product.name}
+        </Typography>
+
+        <Typography variant="body1" sx={{ mt: 1 }}>
+          {discountedPrice !== null ? (
+            <>
+              <strong>{currency.currencySymbol + finalDiscountedPrice}</strong>{" "}
+              <Typography
+                component="span"
+                variant="body2"
+                sx={{ textDecoration: "line-through", color: "text.secondary", ml: 1 }}
+              >
+                {currency.currencySymbol + finalProductPrice}
+              </Typography>
+            </>
+          ) : (
+            <strong>{currency.currencySymbol + finalProductPrice}</strong>
+          )}
+        </Typography>
+
+        <Stack direction="row" justifyContent="center" spacing={2} mt={2}>
+          <Tooltip title="Agregar al carrito">
+            <IconButton
+              onClick={() => dispatch(addToCart(product))}
+              disabled={cartItem !== undefined}
+              color={cartItem ? "primary" : "default"}
             >
-              <i className="fa fa-heart-o" />
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* product modal */}
+              <ShoppingCartIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Vista rápida">
+            <IconButton onClick={() => setModalShow(true)}>
+              <VisibilityIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Agregar a comparar">
+            <IconButton
+              onClick={() => dispatch(addToCompare(product))}
+              disabled={compareItem !== undefined}
+              color={compareItem ? "primary" : "default"}
+            >
+              <CompareArrowsIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Favoritos">
+            <IconButton
+              onClick={() => dispatch(addToWishlist(product))}
+              disabled={wishlistItem !== undefined}
+              color={wishlistItem ? "secondary" : "default"}
+            >
+              <FavoriteBorderIcon />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Box>
+
       <ProductModal
         show={modalShow}
         onHide={() => setModalShow(false)}
@@ -182,11 +177,7 @@ ProductGridSingleTwo.propTypes = {
   compareItem: PropTypes.shape({}),
   wishlistItem: PropTypes.shape({}),
   currency: PropTypes.shape({}),
-  product: PropTypes.shape({}),
-  sliderClassName: PropTypes.string,
-  spaceBottomClass: PropTypes.string,
-  colorClass: PropTypes.string,
-  titlePriceClass: PropTypes.string,
+  product: PropTypes.shape({}).isRequired
 };
 
 export default ProductGridSingleTwo;
