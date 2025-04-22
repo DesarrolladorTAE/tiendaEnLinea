@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminRoutes from "./routes/AdminRoutes";
+import { Container } from "@mui/material";
 
 // home pages
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
@@ -81,6 +82,8 @@ const Compare = lazy(() => import("./pages/other/Compare.jsx"));
 const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
+
+const POS = lazy(() => import("./components/POS.jsx"));
 
 const ProductList = lazy(() => import("./pages/admin/ProductList.jsx"));
 const ProductDetails = lazy(() => import("./pages/admin/ProductDetails.jsx"));
@@ -187,6 +190,15 @@ const App = () => {
             <Route path="/tienda/:storeSlug" element={<Catalogo />} />
 
             {AdminRoutes}
+
+            <Route
+              path="/prueba/pos"
+              element={
+                <Container maxWidth="xl">
+                  <POS />
+                </Container>
+              }
+            />
           </Routes>
         </Suspense>
       </ScrollToTop>
