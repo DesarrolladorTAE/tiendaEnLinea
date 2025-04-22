@@ -1,91 +1,112 @@
-import React, { Fragment, useState } from "react";
+import React from "react";
 import PropTypes from "prop-types";
-import { Modal } from "react-bootstrap";
-import { useDispatch, useSelector } from "react-redux";
-import Rating from "./sub-components/ProductRating";
-import { addToCart } from "../../store/slices/cart-slice";
-import { addToWishlist } from "../../store/slices/wishlist-slice";
-import { addToCompare } from "../../store/slices/compare-slice";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Typography,
+  Box,
+  Button,
+  Divider
+} from "@mui/material";
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import InfoIcon from '@mui/icons-material/Info';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import DescriptionIcon from '@mui/icons-material/Description';
+import BadgeIcon from '@mui/icons-material/Badge';
 
-const ProductModal = ({ product, currency, show, onHide, wishlistItem, compareItem }) => {
-  const dispatch = useDispatch();
-  const { cartItems } = useSelector((state) => state.cart);
-  
-  // Asegurar que `Monto` sea numérico para evitar el error de `.toFixed()`
-  const finalProductPrice = parseFloat(product.Monto || 0).toFixed(2);
+const ProductModal = ({ open, onClose, product }) => {
+  if (!product) return null;
 
   return (
-    <Modal show={show} onHide={onHide} className="product-quickview-modal-wrapper">
-      <Modal.Header closeButton></Modal.Header>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle sx={{ textAlign: "center", fontWeight: "bold" }}>
+        {product.Nombre || "🔥 Populares 🔥"}
+      </DialogTitle>
 
-      <div className="modal-body">
-        <div className="row">
-          <div className="col-md-5 col-sm-12 col-xs-12">
-            <div className="product-large-image-wrapper">
-              <img 
-                src={product.imagen || "/assets/img/product/default.jpg"} 
-                className="img-fluid" 
-                alt={product.Nombre || "Producto"} 
-              />
-            </div>
-          </div>
+      <Divider />
 
-          <div className="col-md-7 col-sm-12 col-xs-12">
-            <div className="product-details-content quickview-content">
-              <h2>{product.Nombre || product.Codigo}</h2>
-              <div className="product-details-price">
-                <span>{currency.currencySymbol}{finalProductPrice}</span>
-              </div>
-              {product.rating && product.rating > 0 && (
-                <div className="pro-details-rating-wrap">
-                  <div className="pro-details-rating">
-                    <Rating ratingValue={product.rating} />
-                  </div>
-                </div>
-              )}
-              <p>{product.Descripcion}</p>
-              <div className="pro-details-quality">
-                <div className="pro-details-cart btn-hover">
-                  <button onClick={() => dispatch(addToCart(product))}>
-                    Agregar al carrito
-                  </button>
-                </div>
-                <div className="pro-details-wishlist">
-                  <button
-                    className={wishlistItem ? "active" : ""}
-                    disabled={wishlistItem}
-                    title="Añadir a favoritos"
-                    onClick={() => dispatch(addToWishlist(product))}
-                  >
-                    <i className="pe-7s-like" />
-                  </button>
-                </div>
-                <div className="pro-details-compare">
-                  <button
-                    className={compareItem ? "active" : ""}
-                    disabled={compareItem}
-                    title="Comparar"
-                    onClick={() => dispatch(addToCompare(product))}
-                  >
-                    <i className="pe-7s-shuffle" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Modal>
+      <DialogContent>
+        <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+
+          {/* Carrier Name */}
+          {product.name && (
+            <Typography variant="subtitle1" fontWeight="bold" color="text.secondary">
+              {product.name}
+            </Typography>
+          )}
+
+
+          {/* Logo Image */}
+          <Box
+            component="img"
+            src={product.Logotipo || product.image?.[0] || ""}
+            alt={product.Nombre || product.Carrier || "Logo"}
+            sx={{
+              width: 120,
+              height: 120,
+              objectFit: "contain",
+              mb: 1
+            }}
+          />
+
+          {/* Monto */}
+          <Box width="100%" display="flex" alignItems="center" gap={1}>
+            <MonetizationOnIcon color="primary" />
+            <Typography fontWeight="bold">Monto:</Typography>
+            <Typography ml="auto">${parseFloat(product.Monto || product.price || 0).toFixed(2)}</Typography>
+          </Box>
+
+          {/* Comisión */}
+          <Box width="100%" display="flex" alignItems="center" gap={1}>
+            <InfoIcon color="action" />
+            <Typography fontWeight="bold">Comisión por Servicio:</Typography>
+            <Typography ml="auto">${parseFloat(product.Comision || 0).toFixed(2)} MXN</Typography>
+          </Box>
+
+          {/* Vigencia */}
+          <Box width="100%" display="flex" alignItems="center" gap={1}>
+            <AccessTimeIcon color="secondary" />
+            <Typography fontWeight="bold">Vigencia:</Typography>
+            <Typography ml="auto" color={product.vigencia ? "green" : "red"}>
+              {product.vigencia || "N/A"}
+            </Typography>
+          </Box>
+
+          {/* Descripción */}
+          <Box width="100%" mt={2}>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <DescriptionIcon color="disabled" />
+              <Typography variant="subtitle1" fontWeight="bold">Descripción:</Typography>
+            </Box>
+            <Typography textAlign="justify" sx={{ fontSize: "0.95rem" }}>
+              {product.Descripcion || product.descripcion || "Sin descripción disponible."}
+            </Typography>
+          </Box>
+
+        </Box>
+      </DialogContent>
+    </Dialog>
+
   );
 };
 
 ProductModal.propTypes = {
-  currency: PropTypes.shape({}),
-  product: PropTypes.shape({}),
-  show: PropTypes.bool,
-  onHide: PropTypes.func,
-  wishlistItem: PropTypes.shape({}),
-  compareItem: PropTypes.shape({})
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  product: PropTypes.shape({
+    Nombre: PropTypes.string,
+    Carrier: PropTypes.string,
+    Monto: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    Comision: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    Vigencia: PropTypes.string,
+    Descripcion: PropTypes.string,
+    Logotipo: PropTypes.string,
+    image: PropTypes.array,
+    price: PropTypes.number,
+    descripcion: PropTypes.string,
+    vigencia: PropTypes.string
+  })
 };
 
 export default ProductModal;

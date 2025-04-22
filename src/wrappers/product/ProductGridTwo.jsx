@@ -2,7 +2,8 @@ import React, { Fragment, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import ProductGridSingleTwo from "../../components/product/ProductGridSingleTwo";
 import { useSelector } from "react-redux";
-import axios from "../../axiosConfig"; // Asegúrate de que este archivo exista y esté bien configurado
+import axios from "../../axiosConfig";
+import Grid from "@mui/material/Grid";
 
 const ProductGridTwo = ({
   spaceBottomClass,
@@ -19,27 +20,28 @@ const ProductGridTwo = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // 1. Obtener productos populares
         const productosRes = await axios.get("/productos-populares");
-
-        // 2. Obtener carriers
         const carriersRes = await axios.get("/carriers");
 
-        // 3. Crear un mapa Carrier -> Logotipo
         const logoMap = {};
         carriersRes.data.forEach((c) => {
           logoMap[c.Nombre] = c.Logotipo;
         });
 
-        // 4. Formatear productos para la vista
         const formateados = productosRes.data.map((p) => ({
           id: p.Codigo,
-          name: `$${p.Monto} - ${p.Carrier}`,
-          price: p.Monto,
-          discount: p.populares ? 5 : 0,
-          image: [logoMap[p.Carrier] ?? "/imagenes/default.png"],
-          new: true
+          name: p.carrier_nombre,
+          price: Number(p.Monto),
+          category: p.Categoria,
+          image: [p.logo || "/imagenes/default.png"],
+          descripcion: p.Descripcion || "",
+          vigencia: p.Vigencia && p.Vigencia.trim() !== "" ? String(p.Vigencia) : "N/A",
+          comision: Number(p.Comision || 0),
+          new: false
         }));
+        
+        
+        
 
         setProductos(formateados.slice(0, limit));
       } catch (error) {
@@ -52,20 +54,22 @@ const ProductGridTwo = ({
 
   return (
     <Fragment>
-      {productos.map((product) => (
-        <div className="col-xl-3 col-md-6 col-lg-4 col-sm-6" key={product.id}>
-          <ProductGridSingleTwo
-            spaceBottomClass={spaceBottomClass}
-            colorClass={colorClass}
-            product={product}
-            currency={currency}
-            cartItem={cartItems.find((c) => c.id === product.id)}
-            wishlistItem={wishlistItems.find((w) => w.id === product.id)}
-            compareItem={compareItems.find((c) => c.id === product.id)}
-            titlePriceClass={titlePriceClass}
-          />
-        </div>
-      ))}
+      <Grid container spacing={3} justifyContent="center">
+        {productos.map((product) => (
+          <Grid item xs={12} sm={6} md={3} key={product.id}>
+            <ProductGridSingleTwo
+              spaceBottomClass={spaceBottomClass}
+              colorClass={colorClass}
+              product={product}
+              currency={currency}
+              cartItem={cartItems.find((c) => c.id === product.id)}
+              wishlistItem={wishlistItems.find((w) => w.id === product.id)}
+              compareItem={compareItems.find((c) => c.id === product.id)}
+              titlePriceClass={titlePriceClass}
+            />
+          </Grid>
+        ))}
+      </Grid>
     </Fragment>
   );
 };
