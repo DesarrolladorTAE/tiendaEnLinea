@@ -3,6 +3,7 @@ import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminRoutes from "./routes/AdminRoutes";
 import { Container } from "@mui/material";
+import POSWrapper from "./wrappers/POSWrapper";
 
 // home pages
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
@@ -195,7 +196,7 @@ const App = () => {
               path="/prueba/pos"
               element={
                 <Container maxWidth="xl">
-                  <POS />
+                  <POSWrapper />
                 </Container>
               }
             />
