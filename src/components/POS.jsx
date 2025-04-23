@@ -1,7 +1,7 @@
 // src/components/POS.jsx
 import React, { useState, useEffect } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
-import productsData from "../data/products.json";
+// import productsData from "../data/products.json";
 import {
   Box,
   Typography,
@@ -14,7 +14,6 @@ import {
   MenuItem,
 } from "@mui/material";
 import axiosClient from "../config/axiosClient";
-import TuneIcon from "@mui/icons-material/Tune";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import Tooltip from "@mui/material/Tooltip";
 
@@ -154,7 +153,7 @@ export default function POS() {
           display: "grid",
           gridTemplateColumns: {
             xs: "1fr",
-            md: "75% 25%",
+            md: "3fr 1fr",
           },
           gap: 2,
         }}
