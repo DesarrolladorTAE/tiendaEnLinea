@@ -1,165 +1,117 @@
-import React from "react";
-import { Fragment } from "react"; 
-import { useLocation } from "react-router-dom"; 
-import Accordion from "react-bootstrap/Accordion";
-import SEO from "../../components/seo";
+import React, { useState } from "react";
+import { useSelector } from "react-redux";
+import {
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  TextField,
+  Typography,
+  Grid,
+  Button,
+  Box,
+  Paper,
+  Fade,
+} from "@mui/material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import LockIcon from "@mui/icons-material/Lock";
+import { useLocation } from "react-router-dom";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
-import withAuth from '../../components/withAuth';
+import SEO from "../../components/seo";
+import withAuth from "../../components/withAuth";
 
 const MyAccount = () => {
-  let { pathname } = useLocation();
+  const { pathname } = useLocation();
+  const user = useSelector((state) => state.user.user);
+
+  const [expanded, setExpanded] = useState("panel1");
+
+  const handleChange = (panel) => (event, isExpanded) => {
+    setExpanded(isExpanded ? panel : false);
+  };
 
   return (
-    <Fragment>
-      <SEO
-        titleTemplate="My Account"
-        description="My Account page of flone react minimalist eCommerce template."
-      />
-      <LayoutOne headerTop="visible">
-        {/* breadcrumb */}
-        <Breadcrumb 
-          pages={[
-            {label: "Home", path: "/" },
-            {label: "My Account", path: pathname }
-          ]} 
-        />
-        
-        <div className="myaccount-area pb-80 pt-100">
-          <div className="container">
-            <div className="row">
-              <div className="ms-auto me-auto col-lg-9">
-                <div className="myaccount-wrapper">
-                  <Accordion defaultActiveKey="0">
-                    <Accordion.Item eventKey="0" className="single-my-account mb-20">
-                      <Accordion.Header className="panel-heading">
-                        <span>1 .</span> Edit your account information{" "}
-                      </Accordion.Header>
-                      <Accordion.Body>
-                          <div className="myaccount-info-wrapper">
-                            <div className="account-info-wrapper">
-                              <h4>My Account Information</h4>
-                              <h5>Your Personal Details</h5>
-                            </div>
-                            <div className="row">
-                              <div className="col-lg-6 col-md-6">
-                                <div className="billing-info">
-                                  <label>First Name</label>
-                                  <input type="text" />
-                                </div>
-                              </div>
-                              <div className="col-lg-6 col-md-6">
-                                <div className="billing-info">
-                                  <label>Last Name</label>
-                                  <input type="text" />
-                                </div>
-                              </div>
-                              <div className="col-lg-12 col-md-12">
-                                <div className="billing-info">
-                                  <label>Email Address</label>
-                                  <input type="email" />
-                                </div>
-                              </div>
-                              <div className="col-lg-6 col-md-6">
-                                <div className="billing-info">
-                                  <label>Telephone</label>
-                                  <input type="text" />
-                                </div>
-                              </div>
-                              <div className="col-lg-6 col-md-6">
-                                <div className="billing-info">
-                                  <label>Fax</label>
-                                  <input type="text" />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="billing-back-btn">
-                              <div className="billing-btn">
-                                <button type="submit">Continue</button>
-                              </div>
-                            </div>
-                          </div>
-                      </Accordion.Body>
-                    </Accordion.Item>
+    <Fade in timeout={500}>
+      <Box>
+        <SEO titleTemplate="Mi Cuenta" description="Página de cuenta del usuario." />
+        <LayoutOne headerTop="visible">
+          <Breadcrumb
+            pages={[
+              { label: "Inicio", path: "/" },
+              { label: "Mi Cuenta", path: pathname },
+            ]}
+          />
 
+          <Box pt={5} pb={10}>
+            <Paper elevation={3} sx={{ p: 3, maxWidth: 900, mx: "auto" }}>
+              <Typography variant="h4" gutterBottom>
+                Mi Cuenta
+              </Typography>
+              <Accordion expanded={expanded === "panel1"} onChange={handleChange("panel1")}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <AccountCircleIcon sx={{ mr: 1 }} /> Información personal
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Nombre" defaultValue={user?.name || ""} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Apellidos" defaultValue={user?.apellidos || ""} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Correo" value={user?.email || ""} disabled />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Teléfono" defaultValue={user?.phone || ""} />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Saldo" value={`$${Number(user?.saldo || 0).toFixed(2)}`} disabled />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Ganancias" value={`${Number(user?.ganancias || 0).toFixed(2)}%`} disabled />
+                    </Grid>
+                    {/* <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Rol" value={user?.role || "usuario"} disabled />
+                    </Grid> */}
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth label="Fecha de Registro" value={new Date(user?.created_at).toLocaleString()} disabled />
+                    </Grid>
+                  </Grid>
+                  <Box mt={2}>
+                    <Button variant="contained" color="primary">
+                      Guardar Cambios
+                    </Button>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
 
-                    <Accordion.Item eventKey="1" className="single-my-account mb-20">
-                      <Accordion.Header className="panel-heading">
-                          <span>2 .</span> Change your password
-                      </Accordion.Header>
-                      <Accordion.Body>
-                          <div className="myaccount-info-wrapper">
-                            <div className="account-info-wrapper">
-                              <h4>Change Password</h4>
-                              <h5>Your Password</h5>
-                            </div>
-                            <div className="row">
-                              <div className="col-lg-12 col-md-12">
-                                <div className="billing-info">
-                                  <label>Password</label>
-                                  <input type="password" />
-                                </div>
-                              </div>
-                              <div className="col-lg-12 col-md-12">
-                                <div className="billing-info">
-                                  <label>Password Confirm</label>
-                                  <input type="password" />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="billing-back-btn">
-                              <div className="billing-btn">
-                                <button type="submit">Continue</button>
-                              </div>
-                            </div>
-                          </div>
-                      </Accordion.Body>
-                    </Accordion.Item>
-
-                    <Accordion.Item eventKey="2" className="single-my-account mb-20">
-                      <Accordion.Header className="panel-heading">
-                          <span>3 .</span> Modify your address book entries
-                      </Accordion.Header>
-                      <Accordion.Body>
-                          <div className="myaccount-info-wrapper">
-                            <div className="account-info-wrapper">
-                              <h4>Address Book Entries</h4>
-                            </div>
-                            <div className="entries-wrapper">
-                              <div className="row">
-                                <div className="col-lg-6 col-md-6 d-flex align-items-center justify-content-center">
-                                  <div className="entries-info text-center">
-                                    <p>John Doe</p>
-                                    <p>Paul Park </p>
-                                    <p>Lorem ipsum dolor set amet</p>
-                                    <p>NYC</p>
-                                    <p>New York</p>
-                                  </div>
-                                </div>
-                                <div className="col-lg-6 col-md-6 d-flex align-items-center justify-content-center">
-                                  <div className="entries-edit-delete text-center">
-                                    <button className="edit">Edit</button>
-                                    <button>Delete</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="billing-back-btn">
-                              <div className="billing-btn">
-                                <button type="submit">Continue</button>
-                              </div>
-                            </div>
-                          </div>
-                      </Accordion.Body>
-                    </Accordion.Item>
-                  </Accordion>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </LayoutOne>
-    </Fragment>
+              <Accordion expanded={expanded === "panel2"} onChange={handleChange("panel2")}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <LockIcon sx={{ mr: 1 }} /> Cambiar contraseña
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth type="password" label="Nueva contraseña" />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                      <TextField fullWidth type="password" label="Confirmar contraseña" />
+                    </Grid>
+                  </Grid>
+                  <Box mt={2}>
+                    <Button variant="contained" color="primary">
+                      Actualizar Contraseña
+                    </Button>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
+            </Paper>
+          </Box>
+        </LayoutOne>
+      </Box>
+    </Fade>
   );
 };
 

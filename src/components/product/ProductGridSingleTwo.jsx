@@ -1,10 +1,10 @@
 import React, { Fragment, useState } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router-dom";
+// import { Link } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import ProductModal from "./ProductModal";
 import RecargaModal from "../../wrappers/product/RecargaModal"; // ⬅️ Importación del modal nuevo
-import { addToCart } from "../../store/slices/cart-slice";
+// import { addToCart } from "../../store/slices/cart-slice";
 import { addToWishlist } from "../../store/slices/wishlist-slice";
 import { addToCompare } from "../../store/slices/compare-slice";
 import {
@@ -121,12 +121,21 @@ const ProductGridSingleTwo = ({
 
           <Tooltip title="Agregar a comparar">
             <IconButton
-              onClick={() => dispatch(addToCompare(product))}
+              onClick={() => {
+                const productoFormateado = {
+                  ...product,
+                  descripcion: product.descripcion || "",
+                  vigencia: product.vigencia || "N/A",
+                  comision: Number(product.comision || 0)
+                };
+                dispatch(addToCompare(productoFormateado));
+              }}
               disabled={compareItem !== undefined}
               color={compareItem ? "primary" : "default"}
             >
               <CompareArrowsIcon />
             </IconButton>
+
           </Tooltip>
 
           <Tooltip title="Favoritos">

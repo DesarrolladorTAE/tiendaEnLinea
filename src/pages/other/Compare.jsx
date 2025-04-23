@@ -1,234 +1,185 @@
-import React from "react";
-import { Fragment } from "react";
+import React, { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
-import { getDiscountPrice } from "../../helpers/product";
+import {
+  Box,
+  Typography,
+  Paper,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
-import Rating from "../../components/product/sub-components/ProductRating";
 import { addToCart } from "../../store/slices/cart-slice";
 import { deleteFromCompare } from "../../store/slices/compare-slice";
-import withAuth from '../../components/withAuth';
+import withAuth from "../../components/withAuth";
+import RecargaModal from "../../wrappers/product/RecargaModal";
 
 const Compare = () => {
   const dispatch = useDispatch();
-  let { pathname } = useLocation();
+  const { pathname } = useLocation();
 
   const currency = useSelector((state) => state.currency);
   const { compareItems } = useSelector((state) => state.compare);
   const { cartItems } = useSelector((state) => state.cart);
 
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [recargaModalOpen, setRecargaModalOpen] = useState(false);
+
+  const handleOpenModal = (item) => {
+    setSelectedProduct(item);
+    setRecargaModalOpen(true);
+  };
+
   return (
-    <Fragment>
-      <SEO
-        titleTemplate="Compare"
-        description="Compare page of flone react minimalist eCommerce template."
-      />
+    <Box>
+      <SEO titleTemplate="Comparar" description="Página de comparación de productos" />
       <LayoutOne headerTop="visible">
-        {/* breadcrumb */}
-        <Breadcrumb 
+        <Breadcrumb
           pages={[
-            {label: "Home", path: "/" },
-            {label: "Compare", path: pathname }
-          ]} 
+            { label: "Inicio", path: "/" },
+            { label: "Comparar", path: pathname },
+          ]}
         />
-        <div className="compare-main-area pt-90 pb-100">
-          <div className="container">
-            {compareItems && compareItems.length >= 1 ? (
-              <div className="row">
-                <div className="col-lg-12">
-                  <div className="compare-page-content">
-                    <div className="compare-table table-responsive">
-                      <table className="table table-bordered mb-0">
-                        <tbody>
-                          <tr>
-                            <th className="title-column">Product Info</th>
-                            {compareItems.map((compareItem, key) => {
-                              const cartItem = cartItems.find(
-                                item => item.id === compareItem.id
-                              );
-                              return (
-                                <td className="product-image-title" key={key}>
-                                  <div className="compare-remove">
-                                    <button
-                                      onClick={() =>
-                                        dispatch(deleteFromCompare(compareItem.id))
-                                      }
-                                    >
-                                      <i className="pe-7s-trash" />
-                                    </button>
-                                  </div>
-                                  <Link
-                                    to={
-                                      "/product/" +
-                                      compareItem.id
-                                    }
-                                    className="image"
-                                  >
-                                    <img
-                                      className="img-fluid"
-                                      src={
-                                        compareItem.image[0]
-                                      }
-                                      alt=""
-                                    />
-                                  </Link>
-                                  <div className="product-title">
-                                    <Link
-                                      to={
-                                        "/product/" +
-                                        compareItem.id
-                                      }
-                                    >
-                                      {compareItem.name}
-                                    </Link>
-                                  </div>
-                                  <div className="compare-btn">
-                                    {compareItem.affiliateLink ? (
-                                      <a
-                                        href={compareItem.affiliateLink}
-                                        rel="noopener noreferrer"
-                                        target="_blank"
-                                      >
-                                        {" "}
-                                        Buy now{" "}
-                                      </a>
-                                    ) : compareItem.variation &&
-                                      compareItem.variation.length >= 1 ? (
-                                      <Link
-                                        to={`/product/${compareItem.id}`}
-                                      >
-                                        Select Option
-                                      </Link>
-                                    ) : compareItem.stock &&
-                                      compareItem.stock > 0 ? (
-                                      <button
-                                        onClick={() =>
-                                          dispatch(addToCart(compareItem))
-                                        }
-                                        className={
-                                          cartItem !== undefined &&
-                                          cartItem.quantity > 0
-                                            ? "active"
-                                            : ""
-                                        }
-                                        disabled={
-                                          cartItem !== undefined &&
-                                          cartItem.quantity > 0
-                                        }
-                                        title={
-                                          compareItem !== undefined
-                                            ? "Added to cart"
-                                            : "Add to cart"
-                                        }
-                                      >
-                                        {cartItem !== undefined &&
-                                        cartItem.quantity > 0
-                                          ? "Added"
-                                          : "Add to cart"}
-                                      </button>
-                                    ) : (
-                                      <button disabled className="active">
-                                        Out of Stock
-                                      </button>
-                                    )}
-                                  </div>
-                                </td>
-                              );
-                            })}
-                          </tr>
-                          <tr>
-                            <th className="title-column">Price</th>
-                            {compareItems.map((compareItem, key) => {
-                              const discountedPrice = getDiscountPrice(
-                                compareItem.price,
-                                compareItem.discount
-                              );
-                              const finalProductPrice = (
-                                compareItem.price * currency.currencyRate
-                              ).toFixed(2);
-                              const finalDiscountedPrice = (
-                                discountedPrice * currency.currencyRate
-                              ).toFixed(2);
-                              return (
-                                <td className="product-price" key={key}>
-                                  {discountedPrice !== null ? (
-                                    <Fragment>
-                                      <span className="amount old">
-                                        {currency.currencySymbol +
-                                          finalProductPrice}
-                                      </span>
-                                      <span className="amount">
-                                        {currency.currencySymbol +
-                                          finalDiscountedPrice}
-                                      </span>
-                                    </Fragment>
-                                  ) : (
-                                    <span className="amount">
-                                      {currency.currencySymbol +
-                                        finalProductPrice}
-                                    </span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
 
-                          <tr>
-                            <th className="title-column">Description</th>
-                            {compareItems.map((compareItem, key) => {
-                              return (
-                                <td className="product-desc" key={key}>
-                                  <p>
-                                    {compareItem.shortDescription
-                                      ? compareItem.shortDescription
-                                      : "N/A"}
-                                  </p>
-                                </td>
-                              );
-                            })}
-                          </tr>
+        <Box sx={{ p: 3 }}>
+          {compareItems && compareItems.length >= 1 ? (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Info del Producto</TableCell>
+                    {compareItems.map((item, idx) => (
+                      <TableCell key={idx} align="center">
+                        <IconButton
+                          onClick={() => dispatch(deleteFromCompare(item.id))}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                        <Box
+                          onClick={() => handleOpenModal(item)}
+                          sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+                        >
+                          <Box
+                            component="img"
+                            src={item.image?.[0] || "/imagenes/default.png"}
+                            alt={item.name}
+                            sx={{ width: 100, height: 100, objectFit: "contain", mb: 1 }}
+                          />
+                          <Typography>{item.name}</Typography>
+                        </Box>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  <TableRow>
+                    <TableCell>Precio</TableCell>
+                    {compareItems.map((item, idx) => {
+                      const finalPrice = (item.price * currency.currencyRate).toFixed(2);
+                      return (
+                        <TableCell key={idx} align="center">
+                          <Typography>
+                            {currency.currencySymbol + finalPrice}
+                          </Typography>
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
 
-                          <tr>
-                            <th className="title-column">Rating</th>
-                            {compareItems.map((compareItem, key) => {
-                              return (
-                                <td className="product-rating" key={key}>
-                                  <Rating ratingValue={compareItem.rating} />
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="row">
-                <div className="col-lg-12">
-                  <div className="item-empty-area text-center">
-                    <div className="item-empty-area__icon mb-30">
-                      <i className="pe-7s-shuffle"></i>
-                    </div>
-                    <div className="item-empty-area__text">
-                      No items found in compare <br />{" "}
-                      <Link to={"/shop-grid-standard"}>
-                        Add Items
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+                  <TableRow>
+                    <TableCell>Comisión por Servicio</TableCell>
+                    {compareItems.map((item, idx) => (
+                      <TableCell key={idx} align="center">
+                        <Typography>
+                          {item.comision != null ? `$${Number(item.comision).toFixed(2)} MXN` : "N/A"}
+                        </Typography>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell>Vigencia</TableCell>
+                    {compareItems.map((item, idx) => (
+                      <TableCell key={idx} align="center">
+                        <Typography>
+                          {item.vigencia || "N/A"}
+                        </Typography>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell>Descripción</TableCell>
+                    {compareItems.map((item, idx) => (
+                      <TableCell key={idx} align="center">
+                        <Typography>
+                          {item.descripcion || "N/A"}
+                        </Typography>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+
+                  <TableRow>
+                    <TableCell>Acciones</TableCell>
+                    {compareItems.map((item, idx) => {
+                      const cartItem = cartItems.find(ci => ci.id === item.id);
+                      const isInCart = cartItem && cartItem.quantity > 0;
+                      return (
+                        <TableCell key={idx} align="center">
+                          <Button
+                            startIcon={<ShoppingCartIcon />}
+                            variant="contained"
+                            color="primary"
+                            onClick={() => handleOpenModal(item)}
+                          >
+                            ¡Compra ya!
+                          </Button>
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Box textAlign="center" mt={4}>
+              <Typography variant="h6" gutterBottom>
+                No hay productos para comparar.
+              </Typography>
+              <Button variant="outlined" component={Link} to="/shop-grid-standard">
+                Agregar productos
+              </Button>
+            </Box>
+          )}
+        </Box>
       </LayoutOne>
-    </Fragment>
+
+      {/* Modal de Recarga */}
+      {selectedProduct && (
+        <RecargaModal
+          open={recargaModalOpen}
+          onClose={() => setRecargaModalOpen(false)}
+          producto={selectedProduct}
+          carrier={{
+            Nombre: selectedProduct.name,
+            Logotipo: selectedProduct.image?.[0] || "/imagenes/default.png",
+            Categoria: selectedProduct.category || "Paquete"
+          }}
+        />
+      )}
+    </Box>
   );
 };
 
 export default withAuth(Compare);
-
