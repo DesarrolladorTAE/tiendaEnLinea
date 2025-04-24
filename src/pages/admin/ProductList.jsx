@@ -10,7 +10,7 @@ const ProductList = () => {
 
   useEffect(() => {
     axiosClient
-      .get("/my-products")
+      .get("/products")
       .then((response) => {
         console.log("🛠 Respuesta del backend:", response.data); // 👈 AQUI
         setProducts(response.data);
