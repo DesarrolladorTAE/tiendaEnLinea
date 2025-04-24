@@ -15,7 +15,8 @@ import "./i18n";
 
 // MUI Theme
 import { ThemeProvider, CssBaseline } from '@mui/material';
-import theme from './theme';
+import { ColorModeProvider } from "./context/ThemeContext";
+
 
 // Despacha los productos en el store
 store.dispatch(setProducts(products));
@@ -24,13 +25,14 @@ store.dispatch(setProducts(products));
 const container = document.getElementById('root');
 const root = createRoot(container);
 
+
 root.render(
   <Provider store={store}>
     <PersistProvider>
-      <ThemeProvider theme={theme}>
+      <ColorModeProvider>
         <CssBaseline />
         <App />
-      </ThemeProvider>
+      </ColorModeProvider>
     </PersistProvider>
   </Provider>
 );

@@ -9,8 +9,7 @@ import {
   MenuItem,
   Typography,
   CircularProgress,
-  Box,
-  Divider
+  Box
 } from "@mui/material";
 import Swal from "sweetalert2";
 import axios from "../../axiosConfig";
@@ -31,6 +30,15 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [numeroCoincide, setNumeroCoincide] = useState(true);
 
+  // 🔄 Reset al cerrar el modal
+  const resetForm = () => {
+    setNumero("");
+    setConfirmacion("");
+    setNumeroCoincide(true);
+    setProductoSeleccionado(null);
+    setContactos([]);
+  };
+
   useEffect(() => {
     if (open && producto) {
       setProductoSeleccionado(producto);
@@ -47,6 +55,12 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
   }, [open]);
 
   useEffect(() => {
+    if (!open) {
+      resetForm(); // ✅ siempre que se cierre, reseteamos
+    }
+  }, [open]);
+
+  useEffect(() => {
     if (numero.length === 10 && confirmacion.length === 10) {
       setNumeroCoincide(numero === confirmacion);
     }
@@ -57,6 +71,11 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
     setNumero(phone);
     setConfirmacion(phone);
     setNumeroCoincide(true);
+  };
+
+  const handleCerrar = () => {
+    resetForm();
+    onClose();
   };
 
   const handleRecarga = async () => {
@@ -88,18 +107,26 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
       dispatch(updateSaldo(nuevoSaldo));
       localStorage.setItem("user", JSON.stringify({ ...user, saldo: nuevoSaldo }));
 
-      Swal.fire("✅ Recarga exitosa", `ID: ${nuevaTransaccion.transID}`, "success");
-      onClose();
+      Swal.fire("✅ Recarga exitosa", " ", "success");
+      handleCerrar(); // ✅ cierra y resetea
     } catch (err) {
       console.error(err);
-      Swal.fire("Error", err.response?.data?.message || "Error desconocido", "error");
+      const mensajeBackend =
+        err.response?.data?.detalle?.message ||
+        err.response?.data?.message ||
+        "Error desconocido";
+
+      handleCerrar(); // ⬅️ primero cierra
+      setTimeout(() => {
+        Swal.fire("Error", mensajeBackend, "error");
+      }, 300);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open={open} onClose={handleCerrar} fullWidth maxWidth="sm">
       <DialogTitle>
         🔥 Populares 🔥{" "}
         <span style={{ color: "red", fontWeight: "bold" }}>
@@ -174,7 +201,7 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={isLoading}>
+        <Button onClick={handleCerrar} disabled={isLoading}>
           Cancelar
         </Button>
         <Button

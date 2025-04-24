@@ -9,7 +9,7 @@ const BreadcrumbWrap = ({pages}) => {
       <div className="container">
         <Breadcrumb>
             {pages?.map(({ path, label }, i) => i !== pages.length - 1 ? (
-                <Breadcrumb.Item key={label} linkProps={{to: path}} linkAs={Link}>
+                <Breadcrumb.Item key={label} linkProps={{to: "/home-fashion-three"}} linkAs={Link}>
                   {label}
                 </Breadcrumb.Item>
             ) : (                

@@ -1,223 +1,172 @@
-import React from "react";
-import { Fragment } from "react";
+import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useLocation } from "react-router-dom";
-import { getDiscountPrice } from "../../helpers/product";
+import {
+  Box,
+  Typography,
+  Paper,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  IconButton,
+  Chip,
+  Zoom,
+  useMediaQuery,
+  useTheme
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
-import { addToCart } from "../../store/slices/cart-slice";
 import { deleteFromWishlist, deleteAllFromWishlist } from "../../store/slices/wishlist-slice";
 import withAuth from "../../components/withAuth";
+import RecargaModal from "../../wrappers/product/RecargaModal";
+
+const categoryEmojis = {
+  paquetes: "📦",
+  datos: "📶",
+  "tiempo aire": "📱",
+  default: "🛍️"
+};
 
 const Wishlist = () => {
   const dispatch = useDispatch();
-  let { pathname } = useLocation();
+  const { pathname } = useLocation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const currency = useSelector((state) => state.currency);
   const { wishlistItems } = useSelector((state) => state.wishlist);
   const { cartItems } = useSelector((state) => state.cart);
 
-  // Ruta de imagen por defecto
-  const defaultImage = "/assets/img/product/fashion/2.jpg";
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [recargaModalOpen, setRecargaModalOpen] = useState(false);
+
+  const handleOpenModal = (item) => {
+    setSelectedProduct(item);
+    setRecargaModalOpen(true);
+  };
+
+  const getCategoryChip = (cat) => {
+    const key = cat?.toLowerCase() || "default";
+    const emoji = categoryEmojis[key] || categoryEmojis.default;
+    return <Chip label={`${emoji} ${cat}`} size="small" variant="outlined" color="info" sx={{ mt: 1 }} />;
+  };
 
   return (
-    <Fragment>
-      <SEO
-        titleTemplate="Wishlist"
-        description="Wishlist page of flone react minimalist eCommerce template."
-      />
+    <Box>
+      <SEO titleTemplate="Favoritos" description="Página de favoritos" />
       <LayoutOne headerTop="visible">
-        {/* breadcrumb */}
         <Breadcrumb
-          pages={[
-            { label: "Home", path: "/" },
-            { label: "Wishlist", path: pathname },
-          ]}
+          pages={[{ label: "Inicio", path: "/" }, { label: "Favoritos", path: pathname }]}
         />
-        <div className="cart-main-area pt-90 pb-100">
-          <div className="container">
-            {wishlistItems && wishlistItems.length >= 1 ? (
-              <Fragment>
-                <h3 className="cart-page-title">Your wishlist items</h3>
-                <div className="row">
-                  <div className="col-12">
-                    <div className="table-content table-responsive cart-table-content">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Image</th>
-                            <th>Product Name</th>
-                            <th>Unit Price</th>
-                            <th>Add To Cart</th>
-                            <th>action</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {wishlistItems.map((wishlistItem, key) => {
-                            const discountedPrice = getDiscountPrice(
-                              wishlistItem.price,
-                              wishlistItem.discount
-                            );
-                            const finalProductPrice = (
-                              wishlistItem.price * currency.currencyRate
-                            ).toFixed(2);
-                            const finalDiscountedPrice = (
-                              discountedPrice * currency.currencyRate
-                            ).toFixed(2);
-                            const cartItem = cartItems.find(
-                              (item) => item.id === wishlistItem.id
-                            );
-                            return (
-                              <tr key={key}>
-                                <td className="product-thumbnail">
-                                  <Link to={"/product/" + wishlistItem.id}>
-                                    <img
-                                      className="img-fluid"
-                                      src={
-                                        wishlistItem.image &&
-                                        wishlistItem.image.length > 0
-                                          ? wishlistItem.image[0]
-                                          : defaultImage
-                                      }
-                                      alt=""
-                                    />
-                                  </Link>
-                                </td>
 
-                                <td className="product-name text-center">
-                                  <Link to={"/product/" + wishlistItem.id}>
-                                    {wishlistItem.name}
-                                  </Link>
-                                </td>
+        <Box sx={{ p: 3 }}>
+          {wishlistItems && wishlistItems.length >= 1 ? (
+            <Zoom in>
+              <TableContainer component={Paper} elevation={3} sx={{ borderRadius: 3 }}>
+                <Table size={isMobile ? "small" : "medium"}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Producto</TableCell>
+                      <TableCell align="center">Nombre</TableCell>
+                      <TableCell align="center">Precio</TableCell>
+                      <TableCell align="center">Categoría</TableCell>
+                      <TableCell align="center">Acciones</TableCell>
+                      <TableCell align="center">Eliminar</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {wishlistItems.map((item, idx) => {
+                      const finalPrice = (item.price * currency.currencyRate).toFixed(2);
+                      return (
+                        <TableRow key={idx} hover>
+                          <TableCell>
+                            <Box
+                              component="img"
+                              src={item.image?.[0] || "/imagenes/default.png"}
+                              alt={item.name}
+                              sx={{ width: 80, height: 80, objectFit: "contain" }}
+                            />
+                          </TableCell>
+                          <TableCell align="center">
+                            <Typography fontWeight="bold">{item.name}</Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            <Typography fontWeight="bold">
+                              {currency.currencySymbol + finalPrice}
+                            </Typography>
+                          </TableCell>
+                          <TableCell align="center">
+                            {getCategoryChip(item.category || "" )}
+                          </TableCell>
+                          <TableCell align="center">
+                            <Button
+                              startIcon={<ShoppingCartIcon />}
+                              variant="contained"
+                              color="success"
+                              onClick={() => handleOpenModal(item)}
+                              sx={{ borderRadius: 2 }}
+                            >
+                              ¡Compra ya!
+                            </Button>
+                          </TableCell>
+                          <TableCell align="center">
+                            <IconButton onClick={() => dispatch(deleteFromWishlist(item.id))}>
+                              <DeleteIcon color="error" />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Zoom>
+          ) : (
+            <Box textAlign="center" mt={4}>
+              <Typography variant="h2" component="div" fontSize={80}>📲</Typography>
+              <Typography variant="h6" gutterBottom mt={2}>
+                No tienes productos en favoritos.
+              </Typography>
+              <Button variant="outlined" component={Link} to="/shop-grid-right-sidebar">
+                Agregar productos
+              </Button>
+            </Box>
+          )}
+        </Box>
 
-                                <td className="product-price-cart">
-                                  {discountedPrice !== null ? (
-                                    <Fragment>
-                                      <span className="amount old">
-                                        {currency.currencySymbol +
-                                          finalProductPrice}
-                                      </span>
-                                      <span className="amount">
-                                        {currency.currencySymbol +
-                                          finalDiscountedPrice}
-                                      </span>
-                                    </Fragment>
-                                  ) : (
-                                    <span className="amount">
-                                      {currency.currencySymbol +
-                                        finalProductPrice}
-                                    </span>
-                                  )}
-                                </td>
+        {wishlistItems.length > 0 && (
+          <Box display="flex" flexDirection={isMobile ? "column" : "row"} justifyContent="space-between" mt={3} px={3} gap={2}>
+            <Button component={Link} to="/shop-grid-right-sidebar" variant="outlined">
+              Seguir comprando
+            </Button>
+            <Button color="error" variant="contained" onClick={() => dispatch(deleteAllFromWishlist())}>
+              Vaciar lista
+            </Button>
+          </Box>
+        )}
 
-                                <td className="product-wishlist-cart">
-                                  {wishlistItem.affiliateLink ? (
-                                    <a
-                                      href={wishlistItem.affiliateLink}
-                                      rel="noopener noreferrer"
-                                      target="_blank"
-                                    >
-                                      {" "}
-                                      Buy now{" "}
-                                    </a>
-                                  ) : wishlistItem.variation &&
-                                    wishlistItem.variation.length >= 1 ? (
-                                    <Link to={`/product/${wishlistItem.id}`}>
-                                      Select option
-                                    </Link>
-                                  ) : wishlistItem.stock &&
-                                    wishlistItem.stock > 0 ? (
-                                    <button
-                                      onClick={() =>
-                                        dispatch(addToCart(wishlistItem))
-                                      }
-                                      className={
-                                        cartItem !== undefined &&
-                                        cartItem.quantity > 0
-                                          ? "active"
-                                          : ""
-                                      }
-                                      disabled={
-                                        cartItem !== undefined &&
-                                        cartItem.quantity > 0
-                                      }
-                                      title={
-                                        wishlistItem !== undefined
-                                          ? "Added to cart"
-                                          : "Add to cart"
-                                      }
-                                    >
-                                      {cartItem !== undefined &&
-                                      cartItem.quantity > 0
-                                        ? "Added"
-                                        : "Add to cart"}
-                                    </button>
-                                  ) : (
-                                    <button disabled className="active">
-                                      Out of stock
-                                    </button>
-                                  )}
-                                </td>
-
-                                <td className="product-remove">
-                                  <button
-                                    onClick={() =>
-                                      dispatch(
-                                        deleteFromWishlist(wishlistItem.id)
-                                      )
-                                    }
-                                  >
-                                    <i className="fa fa-times"></i>
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="row">
-                  <div className="col-lg-12">
-                    <div className="cart-shiping-update-wrapper">
-                      <div className="cart-shiping-update">
-                        <Link to={"/shop-grid-standard"}>
-                          Continue Shopping
-                        </Link>
-                      </div>
-                      <div className="cart-clear">
-                        <button
-                          onClick={() => dispatch(deleteAllFromWishlist())}
-                        >
-                          Clear Wishlist
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Fragment>
-            ) : (
-              <div className="row">
-                <div className="col-lg-12">
-                  <div className="item-empty-area text-center">
-                    <div className="item-empty-area__icon mb-30">
-                      <i className="pe-7s-like"></i>
-                    </div>
-                    <div className="item-empty-area__text">
-                      No items found in wishlist <br />{" "}
-                      <Link to={"/shop-grid-standard"}>Add Items</Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Modal de Recarga */}
+        {selectedProduct && (
+          <RecargaModal
+            open={recargaModalOpen}
+            onClose={() => setRecargaModalOpen(false)}
+            producto={selectedProduct}
+            carrier={{
+              Nombre: selectedProduct.name,
+              Logotipo: selectedProduct.image?.[0] || "/imagenes/default.png",
+              Categoria: selectedProduct.category || "Paquete"
+            }}
+          />
+        )}
       </LayoutOne>
-    </Fragment>
+    </Box>
   );
 };
 

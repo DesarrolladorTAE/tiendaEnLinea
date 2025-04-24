@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import PropTypes from "prop-types";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
@@ -7,8 +7,11 @@ import MenuCart from "./sub-components/MenuCart";
 import { logoutUser } from "../../api";
 import { clearUser } from '../../store/slices/userSlice';
 import AnimatedModal from "../AnimatedModal";
+import { ColorModeContext } from "../../context/ThemeContext";
+import { Brightness4, Brightness7 } from "@mui/icons-material";
 
 const IconGroup = ({ iconWhiteClass }) => {
+  const { toggleColorMode, modoOscuro } = useContext(ColorModeContext);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -83,6 +86,11 @@ const IconGroup = ({ iconWhiteClass }) => {
               <span className="count-style">{wishlistItems?.length || 0}</span>
             </Link>
           </div>
+          {/* <div className="same-style theme-toggle">
+            <button onClick={toggleColorMode} title="Cambiar modo">
+              {modoOscuro ? <Brightness7 /> : <Brightness4 />}
+            </button>
+          </div> */}
           {/* <div className="same-style cart-wrap">
             <button className="icon-cart" onClick={e => handleClick(e)}>
               <i className="pe-7s-shopbag" />
@@ -267,7 +275,7 @@ export default IconGroup;
 //             <ListItemText primary="Mis Compras" />
 //           </ListItemButton>
 //         </ListItem>
-// {/* 
+// {/*
 //         <ListItem disablePadding>
 //           <ListItemButton component={RouterLink} to="*" onClick={onItemClick}>
 //             <ListItemIcon><Search /></ListItemIcon>
