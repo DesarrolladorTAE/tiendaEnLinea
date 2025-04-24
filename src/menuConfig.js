@@ -2,8 +2,8 @@ const adminNavItems = [
   { path: "/admin/products", label: "🛒 Productos" },
   { path: "/admin/categories", label: "📂 Categorías" },
   { path: "/admin/tags", label: "🏷️ Tags" },
-  { path: "/admin/stores", label: "🏬 Tiendas" },
-  { path: "/admin/pos", label: "POS" },
+  { path: "/admin/stores", label: "🏬 Inventario" },
+  { path: "/admin/pos", label: "🏬 Punto de Venta" },
 ];
 
 export default adminNavItems;
