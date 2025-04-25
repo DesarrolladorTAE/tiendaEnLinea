@@ -43,7 +43,7 @@ const CategoryManager = () => {
   return (
     <div className="category-container bg-dark text-white p-4 rounded shadow border border-light">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="h4">
+        <h2 className="h4 text-white">
           <span role="img" aria-label="folder">
             📁
           </span>{" "}

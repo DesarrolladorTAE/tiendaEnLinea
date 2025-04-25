@@ -1,5 +1,3 @@
-// src/pages/Administracion/POS.jsx
-
 import React, { useState, useEffect } from "react";
 import {
   Box,
