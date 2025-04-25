@@ -1,13 +1,16 @@
 import React from "react";
-import ProductList from "../pages/admin/ProductList";
-import ProductCategory from "../pages/admin/ProductCategory";
-import ProductTags from "../pages/admin/ProductTags";
-import Stores from "../pages/admin/Stores";
-import POS from "../pages/admin/POS";
-import ProductForm from "../pages/admin/ProductForm";
-import ProductImages from "../pages/admin/ProductImages";
-import ProductDetails from "../pages/admin/ProductDetails";
 import { Navigate } from "react-router-dom";
+
+import ProductList from "../pages/admin/ProductList";
+import ProductForm from "../pages/admin/ProductForm";
+import ProductDetails from "../pages/admin/ProductDetails";
+import ProductImages from "../pages/admin/ProductImages";
+
+import Categorias from "../pages/admin/ProductCategory";
+import Etiquetas from "../pages/admin/ProductTags";
+import Inventario from "../pages/admin/Inventario";
+import POS from "../pages/admin/POS";
+import Ventas from "../pages/admin/Ventas";
 
 export const adminRouteConfig = [
   { path: "", element: <Navigate to="products" replace /> },
@@ -16,9 +19,10 @@ export const adminRouteConfig = [
   { path: "products/edit/:id", element: <ProductForm /> },
   { path: "products/images/:id", element: <ProductImages /> },
   { path: "products/:id", element: <ProductDetails /> },
-  { path: "categories", element: <ProductCategory /> },
-  { path: "tags", element: <ProductTags /> },
-  { path: "stores", element: <Stores /> },
-  { path: "pos", element: <POS /> },
 
+  { path: "categorias", element: <Categorias /> },
+  { path: "etiquetas", element: <Etiquetas /> },
+  { path: "inventario", element: <Inventario /> },
+  { path: "pos", element: <POS /> },
+  { path: "ventas", element: <Ventas /> },
 ];

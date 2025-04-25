@@ -12,7 +12,7 @@ const ProductList = () => {
     axiosClient
       .get("/products")
       .then((response) => {
-        console.log("🛠 Respuesta del backend:", response.data); // 👈 AQUI
+        console.log("Respuesta del backend:", response.data); // 👈 AQUI
         setProducts(response.data);
       })
       .catch((error) => {
