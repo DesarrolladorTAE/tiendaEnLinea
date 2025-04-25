@@ -110,6 +110,7 @@ const IconGroup = ({ iconWhiteClass }) => {
             <div className="account-dropdown">
               <ul>
                 <li><Link to={"/my-account"}>Mi Cuenta</Link></li>
+                <li><Link to={"/agent-mipages"}>Agentes</Link></li>
                 <li><Link to={"/wallet"}>Tarjetas</Link></li>
                 <li><Link to={"*"}>Librerías</Link></li>
                 {user?.role === "superadmin" && (
