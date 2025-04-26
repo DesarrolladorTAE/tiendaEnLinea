@@ -1,167 +1,192 @@
-import React, { Fragment, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
+import {
+    Grid,
+    Card,
+    CardContent,
+    Typography,
+    TextField,
+    Button,
+    Avatar,
+    IconButton,
+    Box,
+    Pagination,
+    InputAdornment
+} from "@mui/material";
+import { Edit, Delete, Phone, Person, Search } from "@mui/icons-material";
+import axios from '../../axiosConfig';
 import { useLocation } from "react-router-dom";
-import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import withAuth from '../../components/withAuth';
-import axios from '../../axiosConfig'; // Importa axios con la configuración personalizada
 
 const Contact = () => {
     const { pathname } = useLocation();
     const [contacts, setContacts] = useState([]);
+    const [filteredContacts, setFilteredContacts] = useState([]);
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [editingIndex, setEditingIndex] = useState(null);
-    const [error, setError] = useState("");  // Error de longitud
-    const [phoneError, setPhoneError] = useState("");  // Error de caracteres no numéricos
+    const [error, setError] = useState("");
+    const [phoneError, setPhoneError] = useState("");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 9; // Mostrar 9 contactos por página (3 filas de 3)
 
     useEffect(() => {
-        // Obtener los contactos cuando el componente se monta
-        axios.get('/contacts')
-            .then(response => {
-                setContacts(response.data);
-            })
-            .catch(error => {
-                console.error("Hubo un error al obtener los contactos", error);
-            });
+        axios.get('/contacts').then(res => {
+            setContacts(res.data);
+            setFilteredContacts(res.data);
+        });
     }, []);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-
-        // Verifica si el teléfono tiene exactamente 10 dígitos
-        if (phone.length !== 10) {
-            setError("Son 10 dígitos");
-            return;
-        }
-        setError("");  // Limpia el error si es válido
-
-        // Si estamos editando un contacto, actualizamos
-        if (editingIndex !== null) {
-            const updatedContact = { name, phone };
-            axios.put(`/contacts/${contacts[editingIndex].id}`, updatedContact)
-                .then(response => {
-                    const updatedContacts = contacts.map((contact, index) =>
-                        index === editingIndex ? response.data : contact
-                    );
-                    setContacts(updatedContacts);
-                    setEditingIndex(null);
-                })
-                .catch(error => {
-                    console.error("Error al actualizar el contacto", error);
-                });
-        } else {
-            // Si no estamos editando, creamos un nuevo contacto
-            const newContact = { name, phone };
-            axios.post('/contacts', newContact)
-                .then(response => {
-                    setContacts([...contacts, response.data]);
-                })
-                .catch(error => {
-                    console.error("Error al agregar el contacto", error);
-                });
-        }
-        setName("");
-        setPhone("");
-    };
-
-    const handleEdit = (index) => {
-        setName(contacts[index].name);
-        setPhone(contacts[index].phone);
-        setEditingIndex(index);
-    };
-
-    const handleDelete = (index) => {
-        axios.delete(`/contacts/${contacts[index].id}`)
-            .then(() => {
-                const updatedContacts = contacts.filter((_, i) => i !== index);
-                setContacts(updatedContacts);
-            })
-            .catch(error => {
-                console.error("Error al eliminar el contacto", error);
-            });
-    };
+    useEffect(() => {
+        const term = searchTerm.toLowerCase();
+        const filtered = contacts.filter(c =>
+            c.name.toLowerCase().includes(term) ||
+            c.phone.includes(term)
+        );
+        setFilteredContacts(filtered);
+        setCurrentPage(1); // reset to first page on new search
+    }, [searchTerm, contacts]);
 
     const handlePhoneChange = (e) => {
         const value = e.target.value;
-
-        // Solo permitir valores numéricos
         if (/^[0-9]*$/.test(value)) {
-            setPhone(value);
-            setPhoneError("");  // Limpiar error si es un número válido
-            
-            // Verificar si el número tiene exactamente 10 dígitos
-            if (value.length > 10) {
-                setPhone(value.slice(0, 10));  // Limitar a 10 dígitos
-                setError("Son 10 dígitos");
-            } else {
-                setError("");  // Limpiar el error si tiene 10 dígitos o menos
-            }
+            setPhone(value.slice(0, 10));
+            setPhoneError("");
+            if (value.length > 10) setError("Son 10 dígitos");
+            else setError("");
         } else {
-            setPhoneError("Solo números telefónicos");  // Error si no es numérico
-            setError("");  // Limpiar el error de los dígitos
+            setPhoneError("Solo números telefónicos");
+            setError("");
         }
     };
 
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (phone.length !== 10) return setError("Son 10 dígitos");
+
+        const payload = { name, phone };
+
+        if (editingIndex !== null) {
+            axios.put(`/contacts/${contacts[editingIndex].id}`, payload).then((res) => {
+                const updated = [...contacts];
+                updated[editingIndex] = res.data;
+                setContacts(updated);
+                setEditingIndex(null);
+                setName("");
+                setPhone("");
+            });
+        } else {
+            axios.post('/contacts', payload).then((res) => {
+                setContacts([...contacts, res.data]);
+                setName("");
+                setPhone("");
+            });
+        }
+    };
+
+    const handleEdit = (index) => {
+        const filteredIndex = (currentPage - 1) * itemsPerPage + index;
+        setName(filteredContacts[filteredIndex].name);
+        setPhone(filteredContacts[filteredIndex].phone);
+        setEditingIndex(contacts.findIndex(c => c.id === filteredContacts[filteredIndex].id));
+    };
+
+    const handleDelete = (index) => {
+        const filteredIndex = (currentPage - 1) * itemsPerPage + index;
+        const contactId = filteredContacts[filteredIndex].id;
+        axios.delete(`/contacts/${contactId}`).then(() => {
+            setContacts(contacts.filter(c => c.id !== contactId));
+        });
+    };
+
+    const paginatedContacts = filteredContacts.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const rows = [];
+    for (let i = 0; i < paginatedContacts.length; i += 3) {
+        rows.push(paginatedContacts.slice(i, i + 3));
+    }
+
     return (
-        <Fragment>
-            <SEO titleTemplate="Mis Contactos" description="Página para agregar y gestionar contactos." />
-            <LayoutOne headerTop="visible">
-                <Breadcrumb pages={[{ label: "Inicio", path: '/' }, { label: "Mis Contactos", path: pathname }]} />
-                <div className="contact-page">
-                    <div className="form-container">
-                        <h2 className="contact-title">Nuevo Contacto</h2>
-                        <div className="avatar-container">
-                            <div className="avatar"></div>
-                            <div className="icon-container">
-                                <button className="icon-button" onClick={() => handleEdit(editingIndex)}>Editar</button>
-                                <button className="icon-button" onClick={() => handleDelete(editingIndex)}>Eliminar</button>
-                            </div>
-                        </div>
-                        <form onSubmit={handleSubmit} className="contact-form">
-                            <input
-                                type="text"
-                                placeholder="Nombre del contacto"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                required
+        <LayoutOne headerTop="visible">
+            <Breadcrumb pages={[{ label: "Inicio", path: "/" }, { label: "Mis Contactos", path: pathname }]} />
+
+            <Box p={2}>
+                <Grid container spacing={2} justifyContent="center">
+                    <Grid item xs={12} md={5} lg={4} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Card elevation={3} sx={{ p: 3, borderRadius: 3, display: "flex",alignSelf: "flex-start", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 350 }}>
+                            <Typography variant="h6" mb={2}>Nuevo Contacto</Typography>
+                            <Avatar sx={{ width: 90, height: 90, bgcolor: "grey.300", boxShadow: 2, mb: 2 }}><Person fontSize="large" /></Avatar>
+                            <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%", maxWidth: 280 }}>
+                                <TextField fullWidth label="Nombre del contacto" value={name} onChange={(e) => setName(e.target.value)} margin="normal" required />
+                                <TextField fullWidth label="Teléfono" value={phone} onChange={handlePhoneChange} margin="normal" required inputProps={{ maxLength: 10 }} />
+                                {(phoneError || error) && <Typography variant="caption" color="error" textAlign="center" mt={1}>{phoneError || error}</Typography>}
+                                <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, borderRadius: "50px", fontWeight: "bold", textTransform: "none", bgcolor: "#4B4DED", "&:hover": { bgcolor: "#373fcf" } }}>{editingIndex !== null ? "Actualizar" : "Agregar"}</Button>
+                            </Box>
+                        </Card>
+                    </Grid>
+
+                    <Grid item xs={12} md={7} lg={8}>
+                        <Box display="flex" justifyContent="center" mb={2}>
+                            <TextField
+                                placeholder="Buscar Contacto"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                margin="normal"
+                                sx={{ width: "100%", maxWidth: 360, '& .MuiOutlinedInput-root': { borderRadius: "30px" } }}
+                                InputProps={{ startAdornment: (<InputAdornment position="start"><Search /></InputAdornment>) }}
                             />
-                            <input
-                                type="tel"
-                                placeholder="Número telefónico"
-                                value={phone}
-                                onChange={handlePhoneChange}  // Usamos el nuevo manejador
-                                required
-                            />
-                            {phoneError && <p className="error-message">{phoneError}</p>}  {/* Mostrar el error de solo números */}
-                            {error && <p className="error-message">{error}</p>}  {/* Mostrar el error de dígitos */}
-                            <div className="button-container">
-                                <button type="submit">{editingIndex !== null ? "Actualizar" : "Agregar"}</button>
-                            </div>
-                        </form>
-                    </div>
-                    <div className="contact-list-container">
-                        <div className="contact-list-wrapper">
-                            <ul className="contact-list">
-                                {contacts.map((contact, index) => (
-                                    <li key={index} className="contact-item">
-                                        <div className="contact-avatar"></div>
-                                        <div className="contact-info">
-                                            <span className="contact-name">{contact.name}</span>
-                                            <span className="phone-icon">📞 {contact.phone}</span>
-                                        </div>
-                                        <div className="icon-container">
-                                            <button className="icon-button" onClick={() => handleEdit(index)}>✏️</button>
-                                            <button className="icon-button" onClick={() => handleDelete(index)}>🗑️</button>
-                                        </div>
-                                    </li>
+                        </Box>
+                        {rows.map((group, rowIndex) => (
+                            <Grid container spacing={2} justifyContent="center" key={rowIndex} sx={{ mb: 2 }}>
+                                {group.map((contact, index) => (
+                                    <Grid
+                                        item
+                                        xs={12}
+                                        sm={6}
+                                        md={4}
+                                        key={contact.id}
+                                        sx={{ display: "flex", justifyContent: "center" }}
+                                    >
+                                        <Card elevation={2} sx={{ width: "100%", maxWidth: 360 }}>
+                                            <CardContent sx={{ display: "flex", alignItems: "center" }}>
+                                                <Avatar sx={{ mr: 2 }}><Person /></Avatar>
+                                                <Box flexGrow={1}>
+                                                    <Typography variant="subtitle1" fontWeight="bold">{contact.name}</Typography>
+                                                    <Typography variant="body2" color="textSecondary">
+                                                        <Phone fontSize="small" sx={{ mr: 0.5 }} />
+                                                        {contact.phone}
+                                                    </Typography>
+                                                </Box>
+                                                <IconButton onClick={() => handleEdit(index + rowIndex * 3)}><Edit color="primary" /></IconButton>
+                                                <IconButton onClick={() => handleDelete(index + rowIndex * 3)}><Delete color="error" /></IconButton>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
                                 ))}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </LayoutOne>
-        </Fragment>
+                            </Grid>
+                        ))}
+
+
+
+                        {filteredContacts.length > itemsPerPage && (
+                            <Box mt={4} display="flex" justifyContent="center">
+                                <Pagination
+                                    count={Math.ceil(filteredContacts.length / itemsPerPage)}
+                                    page={currentPage}
+                                    onChange={(e, value) => setCurrentPage(value)}
+                                    color="primary"
+                                />
+                            </Box>
+                        )}
+                    </Grid>
+                </Grid>
+            </Box>
+        </LayoutOne>
     );
 };
 

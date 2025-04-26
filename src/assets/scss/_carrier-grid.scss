@@ -5,47 +5,47 @@
 $color-turquesa: #00bfff;
 $border-thickness: 30px;
 
-.carrier-border-wrapper {
-  position: relative;
-  padding: $border-thickness;
+// .carrier-border-wrapper {
+//   position: relative;
+//   padding: $border-thickness;
 
-  .border-top,
-  .border-bottom,
-  .border-left,
-  .border-right {
-    position: absolute;
-    background-color: $color-turquesa;
-    z-index: 1;
-  }
+//   .border-top,
+//   .border-bottom,
+//   .border-left,
+//   .border-right {
+//     position: absolute;
+//     background-color: $color-turquesa;
+//     z-index: 1;
+//   }
 
-  .border-top {
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: $border-thickness;
-  }
+//   .border-top {
+//     top: 0;
+//     left: 0;
+//     width: 100%;
+//     height: $border-thickness;
+//   }
 
-  .border-bottom {
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    height: $border-thickness;
-  }
+//   .border-bottom {
+//     bottom: 0;
+//     left: 0;
+//     width: 100%;
+//     height: $border-thickness;
+//   }
 
-  .border-left {
-    top: 0;
-    left: 0;
-    width: $border-thickness;
-    height: 100%;
-  }
+//   .border-left {
+//     top: 0;
+//     left: 0;
+//     width: $border-thickness;
+//     height: 100%;
+//   }
 
-  .border-right {
-    top: 0;
-    right: 0;
-    width: $border-thickness;
-    height: 100%;
-  }
-}
+//   .border-right {
+//     top: 0;
+//     right: 0;
+//     width: $border-thickness;
+//     height: 100%;
+//   }
+// }
 
 .carrier-grid-container {
   position: relative;
