@@ -30,34 +30,28 @@ const LoginForm = () => {
   } = useForm();
 
   // Manejo del login
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (data) => {
     try {
       const response = await axios.post("login", {
-        phone: loginPhone,
-        password: loginPassword,
+        phone: data.loginPhone,
+        password: data.loginPassword,
       });
-
       const { token, user } = response.data;
-
-      // Guarda token en localStorage
-      localStorage.setItem("token", token);
-
-      // Actualiza el estado global con el usuario y el token
       dispatch(setUser({ user, token }));
 
-      // Muestra mensaje de bienvenida
       setShowWelcome(true);
       setTimeout(() => {
         setShowWelcome(false);
         if (user.role === "superadmin") {
-          navigate("/admin/dashboard"); // Redirige al dashboard de superadmin
+          navigate("/admin/dashboard");
         } else {
-          navigate("/home-fashion-three"); // Redirige a la página principal
+          navigate("/home-fashion-three");
         }
       }, 3000);
     } catch (error) {
-      setLoginError(error.response?.data?.message || "Error en el inicio de sesión");
+      setLoginError(
+        error.response?.data?.message || "Error en el inicio de sesión"
+      );
       toast.error(error.response?.data?.message || "⚠️ Error en el inicio de sesión");
     }
   };
@@ -72,6 +66,7 @@ const LoginForm = () => {
       await axios.post("auth/reset-password/send-code", { phone: loginPhone });
       setResetPhone(loginPhone);
       setIsResetModalOpen(true); // Abre el modal de recuperación
+      setResetError(null); // Limpiar cualquier error previo
     } catch (error) {
       toast.error(error.response?.data?.message || "Error al enviar código");
     }
@@ -101,7 +96,7 @@ const LoginForm = () => {
   return (
     <Box
       component="form"
-      onSubmit={handleSubmit(handleLogin, onError)}
+      onSubmit={handleSubmit(handleLogin, onError)} // Aquí se maneja el submit
       sx={{
         width: "50%",
         display: "flex",
@@ -227,17 +222,13 @@ const LoginForm = () => {
         </Typography>
       </Stack>
 
-      {/* Modal de bienvenida
-      {showWelcome && (
-        <Typography
-          variant="h6"
-          fontWeight="bold"
-          color="#00bfa5"
-          sx={{ textAlign: "center", mt: 3 }}
-        >
-          ¡Bienvenido de nuevo! 😄
-        </Typography>
-      )} */}
+      {/* Modal de bienvenida */}
+      <AnimatedModal
+        isOpen={showWelcome}
+        onRequestClose={() => setShowWelcome(false)}
+        message="¡Bienvenido de nuevo! 😄"
+        tipo="welcome"
+      />
 
       {/* Modal de recuperación de contraseña */}
       <ResetPasswordModal
@@ -245,15 +236,11 @@ const LoginForm = () => {
         phone={loginPhone}
         code={resetCode} // Se pasa el código aquí
         setCode={setResetCode} // Pasamos la función para actualizar el código
+        newPassword={newPassword}
+        setNewPassword={setNewPassword} // Para cambiar la nueva contraseña
+        confirmPassword={confirmPassword}
+        setConfirmPassword={setConfirmPassword} // Para confirmar la nueva contraseña
         onSubmit={handleResetPasswordSubmit} // Llamamos la función de cambio de contraseña
-      />
-
-      {/* Modal Animado */}
-      <AnimatedModal
-        isOpen={showWelcome}
-        onRequestClose={() => setShowWelcome(false)}
-        message="¡Bienvenido de nuevo! 😄"
-        tipo="welcome"
       />
     </Box>
   );

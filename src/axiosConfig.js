@@ -16,7 +16,7 @@ axiosInstance.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     } else {
-      console.warn("⚠️ No se encontró token al hacer request");
+      // console.warn("⚠️ No se encontró token al hacer request");
     }
     return config;
   },
