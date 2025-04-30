@@ -145,7 +145,7 @@ const POS = () => {
     if (!String(id).startsWith("new-")) {
       try {
         await axiosClient.delete(`/pos/${id}`);
-  
+
         setPuntos((ps) => ps.filter((p) => p.id !== id));
         setEditando((e) => {
           const { [id]: _, ...rest } = e;
@@ -155,10 +155,12 @@ const POS = () => {
           const { [id]: _, ...rest } = v;
           return rest;
         });
-  
+
         cogoToast.info("Punto de venta eliminado.", { position: "top-center" });
       } catch (err) {
-        cogoToast.error("Error al eliminar el POS. Intenta nuevamente.", { position: "top-center" });
+        cogoToast.error("Error al eliminar el POS. Intenta nuevamente.", {
+          position: "top-center",
+        });
         console.error("Error eliminando POS:", err);
       }
     } else {
@@ -171,18 +173,37 @@ const POS = () => {
         const { [id]: _, ...rest } = v;
         return rest;
       });
-  
+
       cogoToast.info("Punto de venta descartado antes de guardar.", { position: "top-center" });
     }
-  };  
+  };
 
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
         <Typography variant="h4">Gestión de POS</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={agregarPunto}>
-          Nuevo punto
-        </Button>
+
+        <Box display="flex" gap={1}>
+          <Button
+            variant="contained"
+            color="success"
+            href="/prueba/pos"
+            target="_blank"
+            sx={{
+              color: "white", // siempre blanco
+              "&:hover": {
+                backgroundColor: "#2e7d32", // tono más oscuro opcional
+                color: "white",
+              },
+            }}
+          >
+            Ir al Punto de Venta
+          </Button>
+
+          <Button variant="contained" startIcon={<Add />} onClick={agregarPunto}>
+            Nuevo punto
+          </Button>
+        </Box>
       </Box>
 
       <Box sx={{ flex: 1, overflow: "auto" }}>

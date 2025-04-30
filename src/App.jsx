@@ -44,6 +44,7 @@ const HomeChristmas = lazy(() => import("./pages/home/HomeChristmas.jsx"));
 const HomeBlackFriday = lazy(() => import("./pages/home/HomeBlackFriday.jsx"));
 const HomeBlackFridayTwo = lazy(() => import("./pages/home/HomeBlackFridayTwo.jsx"));
 const HomeValentinesDay = lazy(() => import("./pages/home/HomeValentinesDay.jsx"));
+const LandingPage = lazy(() => import("./pages/home/LandingPage.jsx"));
 
 // shop pages
 const ShopGridStandard = lazy(() => import("./pages/shop/ShopGridStandard.jsx"));
@@ -108,7 +109,7 @@ const App = () => {
           }
         >
           <Routes>
-            <Route path="/" element={<HomeFashion />} />
+            <Route path="/" element={<LandingPage />} />
 
             {/* Homepages */}
             <Route path={"/home-fashion"} element={<HomeFashion />} />

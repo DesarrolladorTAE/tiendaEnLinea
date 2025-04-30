@@ -7,6 +7,7 @@ import VariationItem from "../../components/admin/VariationItem";
 import CustomSelect from "../../components/admin/CustomSelect";
 import ProductField from "../../components/admin/ProductField";
 import TextAreaField from "../../components/admin/TextAreaField";
+import { FormControlLabel, Switch } from "@mui/material";
 
 function ProductForm() {
   const { id } = useParams();
@@ -28,8 +29,7 @@ function ProductForm() {
       discount: "",
       new: false,
       saleCount: "",
-      offerEndDate: "",
-      offerEndTime: "",
+      offerEnd: "",
       rating: "",
       shortDescription: "",
       fullDescription: "",
@@ -41,6 +41,8 @@ function ProductForm() {
 
   const [categoriesOptions, setCategoriesOptions] = useState([]);
   const [tagsOptions, setTagsOptions] = useState([]);
+  const discount = watch("discount");
+  const hasVariations = watch("variations").length > 0;
 
   const {
     fields: variationFields,
@@ -54,9 +56,6 @@ function ProductForm() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [activeVariationIndex, setActiveVariationIndex] = useState(null);
-
-  // Verifica si hay variaciones agregadas
-  const hasVariations = watch("variations").length > 0;
 
   useEffect(() => {
     const initializeForm = async () => {
@@ -91,13 +90,11 @@ function ProductForm() {
       );
       const product = response.data;
 
-      let offerEndDate = "";
-      let offerEndTime = "";
+      let offerEnd = "";
 
       if (product.offerEnd) {
-        const [datePart, timePart] = product.offerEnd.split(" ");
-        offerEndDate = datePart;
-        offerEndTime = timePart?.slice(0, 5); // HH:MM
+        const date = new Date(product.offerEnd);
+        offerEnd = date.toISOString().slice(0, 16); // formato: "YYYY-MM-DDTHH:MM"
       }
 
       reset({
@@ -111,8 +108,7 @@ function ProductForm() {
         rating: product.rating?.toString() || "",
         shortDescription: product.shortDescription || "",
         fullDescription: product.fullDescription || "",
-        offerEndDate,
-        offerEndTime,
+        offerEnd,
         category: product.categories.map((c) => ({
           value: c.id,
           label: c.name,
@@ -150,10 +146,7 @@ function ProductForm() {
       category: data.category?.map((c) => Number(c.value)) || [],
       tag: data.tags?.map((t) => Number(t.value)) || [],
 
-      offerEnd:
-        data.offerEndDate && data.offerEndTime
-          ? `${data.offerEndDate}T${data.offerEndTime}:00`
-          : null,
+      offerEnd: Number(data.discount) > 0 && data.offerEnd ? data.offerEnd : null,
     };
 
     if (hasVariations) {
@@ -212,7 +205,13 @@ function ProductForm() {
         <form onSubmit={handleSubmit(onSubmit)}>
           {/* Primera fila */}
           <div className="row">
-            <ProductField label="Código (SKU)" name="sku" register={register} errors={errors} />
+            <ProductField
+              label="Código"
+              name="sku"
+              register={register}
+              errors={errors}
+              validation={{ required: "El codigo es obligatorio" }}
+            />
             <ProductField
               label="Nombre"
               name="name"
@@ -221,7 +220,7 @@ function ProductForm() {
               errors={errors}
             />
             <ProductField
-              label="Precio"
+              label="Precio (IVA incluido)"
               name="price"
               type="number"
               register={register}
@@ -231,9 +230,9 @@ function ProductForm() {
           </div>
 
           {/* Segunda fila */}
-          {!hasVariations && (
-            <div className="row">
-              {/* Stock */}
+          <div className="row">
+            {/* Mostrar stock solo si no hay variaciones */}
+            {!hasVariations && (
               <ProductField
                 label="Stock"
                 name="stock"
@@ -241,94 +240,29 @@ function ProductForm() {
                 register={register}
                 errors={errors}
               />
+            )}
 
-              {/* Descuento */}
+            <ProductField
+              label="Descuento (%)"
+              name="discount"
+              type="number"
+              register={register}
+              errors={errors}
+            />
+
+            {Number(discount) > 0 && (
               <ProductField
-                label="Descuento (%)"
-                name="discount"
-                type="number"
+                label="Fin de la Oferta"
+                name="offerEnd"
+                type="datetime-local"
                 register={register}
                 errors={errors}
               />
-
-              <div className="col-md-4 mb-3 d-flex align-items-center">
-                {/* Etiqueta "Nuevo" alineada correctamente */}
-                <label
-                  className="form-label me-3 mb-0"
-                  style={{ minWidth: "80px", textAlign: "right" }}
-                >
-                  Nuevo
-                </label>
-
-                {/* Contenedor del switch con flexbox para alineación */}
-                <div className="d-flex align-items-center" style={{ gap: "10px" }}>
-                  {/* Switch personalizado */}
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      width: "60px",
-                      height: "30px",
-                      backgroundColor: watch("new") ? "#28a745" : "#6c757d",
-                      border: "2px solid white",
-                      borderRadius: "50px",
-                      transition: "all 0.3s ease-in-out",
-                      position: "relative",
-                      cursor: "pointer",
-                      padding: "3px",
-                    }}
-                    onClick={() => setValue("new", !watch("new"))} // ✅ Cambia el estado al hacer clic
-                  >
-                    {/* Botón deslizante */}
-                    <span
-                      style={{
-                        width: "24px",
-                        height: "24px",
-                        borderRadius: "50%",
-                        backgroundColor: "white",
-                        position: "absolute",
-                        left: watch("new") ? "32px" : "2px",
-                        transition: "all 0.3s ease-in-out",
-                      }}
-                    ></span>
-                  </label>
-
-                  {/* Checkbox oculto para manejar el estado */}
-                  <input type="checkbox" {...register("new")} style={{ display: "none" }} />
-
-                  {/* ✅ Texto alineado perfectamente con el switch */}
-                  <label
-                    className="form-check-label mb-0"
-                    style={{
-                      fontSize: "16px",
-                      color: "#ffffff",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    ¿Es nuevo?
-                  </label>
-                </div>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Tercera fila */}
           <div className="row">
-            <ProductField
-              label="Fin de la Oferta (Fecha)"
-              name="offerEndDate"
-              type="date"
-              register={register}
-              errors={errors}
-            />
-            <ProductField
-              label="Fin de la Oferta (Hora)"
-              name="offerEndTime"
-              type="time"
-              register={register}
-              errors={errors}
-            />
             <ProductField
               label="Calificación (0-5)"
               name="rating"
@@ -336,6 +270,22 @@ function ProductForm() {
               register={register}
               errors={errors}
             />
+
+            <div className="col-md-4 mb-3">
+              <label className="form-label" htmlFor="new-switch">
+                ¿Es nuevo?
+              </label>
+              <div>
+                <Switch
+                  id="new-switch"
+                  checked={watch("new")}
+                  onChange={() => setValue("new", !watch("new"))}
+                  {...register("new")}
+                  color="success"
+                  sx={{ transform: "scale(1.5)" }}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Descripciones */}
@@ -344,32 +294,33 @@ function ProductForm() {
               label="Descripción Corta"
               name="shortDescription"
               register={register}
+              validation={{ required: "Las descripción corta es obligatoria" }}
               errors={errors}
             />
             <TextAreaField
               label="Descripción Larga"
               name="fullDescription"
               register={register}
+              validation={{ required: "Las descripción larga es obligatoria" }}
               errors={errors}
             />
           </div>
 
-          <div className="row">
-            {/* Categoría */}
+          {/* Categoría y Etiquetas */}
+          {/* <div className="row">
             <div className="col-md-6 mb-3">
               <label className="form-label">Categoría</label>
               <CustomSelect name="category" control={control} options={categoriesOptions} />
             </div>
 
-            {/* Etiquetas */}
             <div className="col-md-6 mb-3">
               <label className="form-label">Tags</label>
               <CustomSelect name="tags" control={control} options={tagsOptions} />
             </div>
-          </div>
+          </div> */}
 
           {/* Variaciones */}
-          <h4 className="mt-4 text-white">Variaciones</h4>
+          <h4 className="mt-4 text-white">Variaciones (opcional)</h4>
           {variationFields.map((variation, vIndex) => (
             <VariationItem
               key={variation.id}

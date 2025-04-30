@@ -7,17 +7,16 @@ import {
   Typography,
   TextField,
   Button,
-  Grid,
   Paper,
   CircularProgress,
   IconButton,
   MenuItem,
 } from "@mui/material";
-import axiosClient from "../config/axiosClient";
+import axiosClient from "../config/axiosClientPOS";
 import Inventory2Icon from "@mui/icons-material/Inventory2";
 import Tooltip from "@mui/material/Tooltip";
 
-export default function POS() {
+export default function POS({ posName }) {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState(null);
   const [cart, setCart] = useState([]);
@@ -136,9 +135,12 @@ export default function POS() {
   const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
   return (
     <Box mt={3} px={5}>
-      <Typography variant="h4" gutterBottom>
-        Punto de Venta
-      </Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="h4" >Punto de Venta:</Typography>
+        <Typography variant="h4" fontWeight="bold" color="secondary">
+          {posName}
+        </Typography>
+      </Box>
 
       <TextField
         label="Buscar producto"

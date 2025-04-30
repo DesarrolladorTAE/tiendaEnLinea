@@ -3,35 +3,35 @@
     "id": 11,
     "title": "Arroz Integral",
     "subtitle": "Paquete de 1 kg - Nutritivo y Saludable",
-    "image": "/assets/img/slider/arrozIngral.jpg",
+    "image": "/assets/img/slider/arrozIngral.webp",
     "url": "/shop-grid-standard"
   },
   {
     "id": 12,
     "title": "Harina de Trigo",
     "subtitle": "Paquete de 1 kg - Ideal para Panadería",
-    "image": "/assets/img/slider/HarinadeTrigo.jpg",
+    "image": "/assets/img/slider/HarinadeTrigo.webp",
     "url": "/shop-grid-standard"
   },
   {
     "id": 13,
     "title": "Azúcar Morena",
     "subtitle": "Paquete de 500 g - Dulzura Natural",
-    "image": "/assets/img/slider/Azúcar Morena.jpg",
+    "image": "/assets/img/slider/Azúcar Morena.webp",
     "url": "/shop-grid-standard"
   },
   {
     "id": 14,
     "title": "Aceite Vegetal",
     "subtitle": "Botella de 1 L - Versátil para Cocinar",
-    "image": "/assets/img/slider/Aceite Vegetal.jpg",
+    "image": "/assets/img/slider/Aceite Vegetal.webp",
     "url": "/shop-grid-standard"
   },
   {
     "id": 15,
     "title": "Sal de Mesa",
     "subtitle": "Paquete de 500 g - Esencial para la Cocina",
-    "image": "/assets/img/slider/Sal de Mesa.jpg",
+    "image": "/assets/img/slider/Sal de Mesa.webp",
     "url": "/shop-grid-standard"
   }
 ]

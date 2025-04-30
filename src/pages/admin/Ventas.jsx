@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Box,
   Card,
@@ -27,6 +27,12 @@ import EditNoteIcon from "@mui/icons-material/EditNote";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import axiosClient from "../../config/axiosClient";
 
+import Dialog from "@mui/material/Dialog";
+import DialogActions from "@mui/material/DialogActions";
+import DialogContent from "@mui/material/DialogContent";
+import Button from "@mui/material/Button";
+import TicketVenta from "../../components/tickets/TicketVenta";
+
 const ITEMS_PER_PAGE = 7;
 
 export default function Ventas() {
@@ -35,6 +41,9 @@ export default function Ventas() {
   const [busqueda, setBusqueda] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
   const [filtroFecha, setFiltroFecha] = useState("todos");
+  const [openTicket, setOpenTicket] = useState(false);
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+  const ticketRef = useRef();
 
   useEffect(() => {
     axiosClient
@@ -144,6 +153,29 @@ export default function Ventas() {
     return <KeyboardArrowUpIcon fontSize="small" sx={{ opacity: 0.3 }} />;
   };
 
+  const handleOpenTicket = (venta) => {
+    setVentaSeleccionada(venta);
+    setOpenTicket(true);
+  };
+
+  const handleCloseTicket = () => {
+    setOpenTicket(false);
+    setVentaSeleccionada(null);
+  };
+
+  const handlePrint = () => {
+    if (ticketRef.current) {
+      const printWindow = window.open("", "_blank", "width=600,height=800");
+      printWindow.document.write("<html><head><title>Ticket</title></head><body>");
+      printWindow.document.write(ticketRef.current.innerHTML);
+      printWindow.document.write("</body></html>");
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      printWindow.close();
+    }
+  };
+
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Card sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -236,9 +268,9 @@ export default function Ventas() {
 
                     <TableCell sx={{ width: 120 }}>Estado</TableCell>
 
-                    <TableCell sx={{ width: 100 }} align="center">
+                    {/* <TableCell sx={{ width: 100 }} align="center">
                       Acciones
-                    </TableCell>
+                    </TableCell> */}
                   </TableRow>
                 </TableHead>
 
@@ -252,19 +284,19 @@ export default function Ventas() {
                       <TableCell>${venta.total_amount.toFixed(2)}</TableCell>
                       <TableCell>{venta.pos_location?.name || "-"}</TableCell>
                       <TableCell>{venta.status === "paid" ? "Pagado" : venta.status}</TableCell>
-                      <TableCell align="center">
+                      {/* <TableCell align="center">
                         <Stack direction="row" spacing={1} justifyContent="center">
                           <IconButton color="primary">
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
-                          <IconButton color="secondary">
+                          <IconButton color="secondary" onClick={() => handleOpenTicket(venta)}>
                             <EditNoteIcon fontSize="small" />
                           </IconButton>
                           <IconButton>
                             <MoreHorizIcon fontSize="small" />
                           </IconButton>
                         </Stack>
-                      </TableCell>
+                      </TableCell> */}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -285,6 +317,31 @@ export default function Ventas() {
           </Box>
         </CardContent>
       </Card>
+
+      <Dialog open={openTicket} onClose={handleCloseTicket} maxWidth="xs" fullWidth>
+        <DialogContent>
+          {ventaSeleccionada && (
+            <div ref={ticketRef}>
+              <TicketVenta
+                venta={ventaSeleccionada}
+                tienda={{
+                  nombre: "Mi Tienda Ejemplo",
+                  direccion: "Calle Falsa 123",
+                  telefono: "555-555-5555",
+                }}
+              />
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handlePrint} variant="contained" color="primary">
+            Imprimir Ticket
+          </Button>
+          <Button onClick={handleCloseTicket} variant="outlined" color="secondary">
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

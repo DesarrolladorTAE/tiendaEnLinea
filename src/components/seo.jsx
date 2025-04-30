@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 import { Helmet, HelmetProvider } from "react-helmet-async";
 
 const SEO = ({ 
-    title = "MTEL", 
-    titleTemplate = "Product Page", 
-    description = "MITIENDAENLINEAMX" 
+    title = "MITIENDAENLINEAMX", 
+    titleTemplate = "Product Page",
+    description = "Bienvenidos!" 
 }) => {
     return (
         <HelmetProvider>

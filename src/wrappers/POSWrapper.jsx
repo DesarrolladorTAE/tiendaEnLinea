@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
-import axiosClient from "../config/axiosClient";
+import axiosClient from "../config/axiosClientPOS";
 import POS from "../components/POS";
 import POSLoginModal from "../components/POSLoginModal";
 
 const POSWrapper = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [posName, setPosName] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("POS_TOKEN");
@@ -20,6 +21,7 @@ const POSWrapper = () => {
       .then(res => {
         if (res.data.abilities?.includes("sell-only")) {
           setIsAuthenticated(true);
+          setPosName(res.data.name || "");
         } else {
           setIsAuthenticated(false);
           setShowModal(true);
@@ -37,7 +39,7 @@ const POSWrapper = () => {
 
   return (
     <>
-      {isAuthenticated && <POS />}
+      {isAuthenticated && <POS posName={posName} />}
       <POSLoginModal open={showModal} onLoginSuccess={() => {
         setIsAuthenticated(true);
         setShowModal(false);
