@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import ProductImages from "./ProductImages";
+import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
@@ -10,7 +12,7 @@ const ProductList = () => {
 
   useEffect(() => {
     axiosClient
-      .get("/products")
+      .get("/admin/products")
       .then((response) => {
         console.log("Respuesta del backend:", response.data); // 👈 AQUI
         setProducts(response.data);
@@ -23,8 +25,8 @@ const ProductList = () => {
 
   const handleDelete = (id) => {
     if (window.confirm("¿Estás seguro que deseas eliminar este producto?")) {
-      axios
-        .delete(`http://mitiendaenlineamx.com.mx/api/products/${id}`)
+      axiosClient
+        .delete(`/admin/products/${id}`)
         .then(() => {
           setProducts(products.filter((product) => product.id !== id));
         })
@@ -78,32 +80,35 @@ const ProductList = () => {
                   <td>{product.stock ?? "Con Variaciones"}</td>
                   <td className="text-center">
                     <div className="d-flex justify-content-center gap-2">
-                      <Link
+                      {/* <Link
                         to={`/product/${product.id}`}
                         className="btn btn-sm btn-outline-info"
                         title="Ver detalles"
                       >
                         🔍
-                      </Link>
+                      </Link> */}
                       <Link
                         to={`edit/${product.id}`}
-                        className="btn btn-sm btn-outline-primary"
+                        className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
                         title="Editar producto"
+                        style={{ width: "32px", height: "32px" }}
                       >
-                        ✏️
+                        <EditIcon fontSize="small" />
                       </Link>
-                      <button
+                      {/* <button
                         className="btn btn-sm btn-outline-warning"
                         onClick={() => setSelectedProduct(product)} // 👈 cambia a render local
                       >
                         🖼
-                      </button>
+                      </button> */}
+
                       <button
                         onClick={() => handleDelete(product.id)}
-                        className="btn btn-sm btn-outline-danger"
+                        className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center"
                         title="Eliminar producto"
+                        style={{ width: "32px", height: "32px" }}
                       >
-                        🗑
+                        <DeleteIcon fontSize="small" />
                       </button>
                     </div>
                   </td>
