@@ -268,9 +268,9 @@ export default function Ventas() {
 
                     <TableCell sx={{ width: 120 }}>Estado</TableCell>
 
-                    {/* <TableCell sx={{ width: 100 }} align="center">
+                    <TableCell sx={{ width: 100 }} align="center">
                       Acciones
-                    </TableCell> */}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
 
@@ -284,7 +284,7 @@ export default function Ventas() {
                       <TableCell>${venta.total_amount.toFixed(2)}</TableCell>
                       <TableCell>{venta.pos_location?.name || "-"}</TableCell>
                       <TableCell>{venta.status === "paid" ? "Pagado" : venta.status}</TableCell>
-                      {/* <TableCell align="center">
+                      <TableCell align="center">
                         <Stack direction="row" spacing={1} justifyContent="center">
                           <IconButton color="primary">
                             <VisibilityIcon fontSize="small" />
@@ -296,7 +296,7 @@ export default function Ventas() {
                             <MoreHorizIcon fontSize="small" />
                           </IconButton>
                         </Stack>
-                      </TableCell> */}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
