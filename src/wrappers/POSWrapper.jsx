@@ -33,17 +33,20 @@ const POSWrapper = () => {
       });
   }, []);
 
-  if (isAuthenticated === null) {
-    return <div>Cargando POS...</div>;
-  }
+  const handleLoginSuccess = () => {
+    setShowModal(false);
+    setIsAuthenticated(true);
+    // ⚠️ Importante: volver a obtener el nombre del POS
+    axiosClient.post("/pos/me").then(res => {
+      setPosName(res.data.name || "");
+    });
+  };
 
   return (
     <>
-      {isAuthenticated && <POS posName={posName} />}
-      <POSLoginModal open={showModal} onLoginSuccess={() => {
-        setIsAuthenticated(true);
-        setShowModal(false);
-      }} />
+      <POSLoginModal open={showModal} onLoginSuccess={handleLoginSuccess} />
+      {isAuthenticated === true && <POS posName={posName} />}
+      {isAuthenticated === null && <p style={{ textAlign: "center" }}>Cargando...</p>}
     </>
   );
 };
