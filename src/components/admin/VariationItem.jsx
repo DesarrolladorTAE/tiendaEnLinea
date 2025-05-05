@@ -63,14 +63,14 @@ const VariationItem = ({
                 />
               </div>
 
-              <div className="col-md-6 mb-2">
+              {/* <div className="col-md-6 mb-2">
                 <Form.Label>Imagen</Form.Label>
                 <Form.Control
                   type="file"
                   {...register(`variations.${vIndex}.image`)}
                   className="bg-dark text-light border-secondary"
                 />
-              </div>
+              </div> */}
             </div>
 
             {/* Sección de tamaños */}

@@ -1,21 +1,61 @@
-import React, { useEffect, useState } from "react";
-import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import axiosClient from "../../config/axiosClient";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const ProductImages = ({ product, onClose }) => {
-  const { id } = product; // 👈 importante
-  const [images, setImages] = useState(product.image || []);
-  const [newImage, setNewImage] = useState(null);
+const ProductImages = ({ productId, onClose }) => {
+  const [images, setImages] = useState([]);
+  const [newImage, setNewImage] = useState([]);
   const [error, setError] = useState("");
-  const [variations, setVariations] = useState(product.variation || []);
-  const [loading] = useState(false); // No se necesita fetch inicial
+  const [variations, setVariations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
 
   const MAX_IMAGES = 6;
+  const MAX_IMAGE_SIZE_MB = 2;
+  useEffect(() => {
+    const fetchImages = async () => {
+      try {
+        const [productRes, variationsRes] = await Promise.all([
+          axiosClient.get(`/admin/products/${productId}/images`),
+          axiosClient.get(`/admin/products/${productId}/variations/images`),
+        ]);
+  
+        // console.log("🖼 Imágenes del producto:", productRes.data);      // 👈 Aquí ves lo que responde el backend
+        // console.log("🎨 Imágenes de variaciones:", variationsRes.data); // 👈 También lo que devuelve para variaciones
+  
+        setImages(productRes.data);
+        setVariations(variationsRes.data);
+      } catch (err) {
+        console.error("❌ Error al cargar imágenes:", err);
+        setError("Error al cargar las imágenes del producto");
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchImages();
+  }, [productId]);  
 
-  const handleUpload = (e) => {
+  const normalizeImageUrl = (url) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `https://mitiendaenlineamx.com.mx${url.replace(/\/\/+/g, "/")}`;
+  };
+
+  const handleUpload = async (e) => {
     e.preventDefault();
     if (!newImage || newImage.length === 0) return;
+
+    for (const file of newImage) {
+      if (!file.type.startsWith("image/")) {
+        setError("Solo se permiten archivos de imagen.");
+        return;
+      }
+      if (file.size / 1024 / 1024 > MAX_IMAGE_SIZE_MB) {
+        setError(`La imagen ${file.name} excede los ${MAX_IMAGE_SIZE_MB}MB permitidos.`);
+        return;
+      }
+    }
 
     if (images.length + newImage.length > MAX_IMAGES) {
       setError("Solo se permiten hasta 6 imágenes por producto.");
@@ -23,33 +63,40 @@ const ProductImages = ({ product, onClose }) => {
     }
 
     const formData = new FormData();
-    for (let i = 0; i < newImage.length; i++) {
-      formData.append("images[]", newImage[i]);
-    }
+    newImage.forEach((file) => formData.append("images[]", file));
 
-    axios
-      .post(`http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}`, formData)
-      .then((res) => {
-        setImages([...images, ...res.data]);
-        setNewImage(null);
-      })
-      .catch(() => setError("Error al subir la imagen"));
+    try {
+      setUploading(true);
+      const res = await axiosClient.post(`/admin/products/${productId}/images`, formData);
+      setImages((prev) => [...prev, ...res.data]);
+      setNewImage([]);
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.images?.[0] || "Error al subir la imagen");
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleDelete = (imageId) => {
     if (!window.confirm("¿Eliminar esta imagen?")) return;
 
-    axios
-      .delete(`http://mitiendaenlineamx.com.mx/api/admin/products/images/${id}/${imageId}`)
+    axiosClient
+      .delete(`/admin/products/${productId}/images/${imageId}`)
       .then(() => {
-        setImages(images.filter((img) => img.id !== imageId));
+        setImages((prev) => prev.filter((img) => img.id !== imageId));
       })
       .catch(() => setError("Error al eliminar la imagen"));
   };
 
+  const updateVariationImage = (variationId, file) => {
+    setVariations((prev) =>
+      prev.map((v) => (v.id === variationId ? { ...v, newImage: file } : v))
+    );
+  };
+
   const handleVariationImageUpload = (e, variation) => {
     e.preventDefault();
-
     if (!variation.newImage) {
       alert("Selecciona una imagen primero.");
       return;
@@ -58,11 +105,8 @@ const ProductImages = ({ product, onClose }) => {
     const formData = new FormData();
     formData.append("image", variation.newImage);
 
-    axios
-      .post(
-        `http://mitiendaenlineamx.com.mx/api/products/${id}/variations/${variation.id}/image`,
-        formData
-      )
+    axiosClient
+      .post(`/admin/products/${productId}/variations/${variation.id}/image`, formData)
       .then((res) => {
         setVariations((prev) =>
           prev.map((v) =>
@@ -73,7 +117,6 @@ const ProductImages = ({ product, onClose }) => {
       .catch(() => alert("Error al subir la imagen de la variación."));
   };
 
-  // ✅ Loader mientras se cargan datos
   if (loading) {
     return (
       <div className="text-center mt-5">
@@ -85,20 +128,17 @@ const ProductImages = ({ product, onClose }) => {
     );
   }
 
-  const normalizeImageUrl = (url) => {
-    if (!url) return "";
-    if (url.startsWith("http")) return url;
-    return `https://mitiendaenlineamx.com.mx${url.replace(/\/\/+/g, "/")}`;
-  };
-
   return (
     <div className="container">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="text-primary">🖼 Imágenes del Producto</h2>
-        <button className="btn btn-secondary" onClick={onClose}>
-          ← Volver a productos
-        </button>
+        {onClose && (
+          <button className="btn btn-secondary" onClick={onClose}>
+            ← Volver a productos
+          </button>
+        )}
       </div>
+
       {error && <p className="text-danger">{error}</p>}
 
       <form onSubmit={handleUpload} className="mb-4">
@@ -107,29 +147,33 @@ const ProductImages = ({ product, onClose }) => {
             type="file"
             multiple
             className="form-control"
-            onChange={(e) => setNewImage(e.target.files)}
+            onChange={(e) => setNewImage(Array.from(e.target.files))}
             accept="image/*"
           />
-          <button type="submit" className="btn btn-success">
-            Agregar Imagen
+          <button type="submit" className="btn btn-success" disabled={uploading}>
+            {uploading ? "Subiendo..." : "Agregar Imagen"}
           </button>
         </div>
       </form>
 
+      {images.length === 0 && <p className="text-muted text-center">No hay imágenes aún.</p>}
+
       <div className="row">
-        {images.map((imgUrl, index) => (
-          <div className="col-md-3 mb-4" key={imgUrl || index}>
+        {images.map((img, index) => (
+          <div className="col-md-3 mb-4" key={img.id || `img-${index}`}>
             <div className="card">
               <img
-                src={typeof imgUrl === "string" ? imgUrl : imgUrl.image}
-                alt="Producto"
+                src={normalizeImageUrl(img.image)}
+                alt={`Imagen del producto ${productId}`}
                 className="card-img-top"
                 style={{ height: "200px", width: "100%", objectFit: "cover" }}
+                loading="lazy"
               />
               <div className="card-body text-center">
                 <button
                   className="btn btn-sm btn-outline-danger"
-                  onClick={() => handleDelete(imgUrl.id || imgUrl)}
+                  onClick={() => handleDelete(img.id)}
+                  title="Eliminar imagen"
                 >
                   🗑 Eliminar
                 </button>
@@ -148,13 +192,10 @@ const ProductImages = ({ product, onClose }) => {
                 <div className="card">
                   <img
                     src={normalizeImageUrl(v.image)}
-                    alt={`Variación ${v.color}`}
+                    alt={`Variación color ${v.color}`}
                     className="card-img-top"
-                    style={{
-                      height: "200px",
-                      width: "100%",
-                      objectFit: "cover",
-                    }}
+                    style={{ height: "200px", width: "100%", objectFit: "cover" }}
+                    loading="lazy"
                   />
                   <div className="card-body">
                     <strong>Color:</strong> {v.color}
@@ -163,13 +204,7 @@ const ProductImages = ({ product, onClose }) => {
                         type="file"
                         className="form-control mb-2"
                         accept="image/*"
-                        onChange={(e) =>
-                          setVariations((prev) =>
-                            prev.map((varr) =>
-                              varr.id === v.id ? { ...varr, newImage: e.target.files[0] } : varr
-                            )
-                          )
-                        }
+                        onChange={(e) => updateVariationImage(v.id, e.target.files[0])}
                       />
                       <button type="submit" className="btn btn-sm btn-warning w-100">
                         ✏️ Cambiar Imagen

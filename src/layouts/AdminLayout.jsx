@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { Drawer, IconButton, Box } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -33,11 +33,15 @@ const AdminLayout = () => {
       <Drawer
         variant="temporary"
         open={mobileOpen}
+        transitionDuration={350}
         onClose={handleDrawerToggle}
         ModalProps={{ keepMounted: true }}
         sx={{
           display: { xs: "block", md: "none" },
-          "& .MuiDrawer-paper": { width: drawerWidth, backgroundColor: "#1a1a1a" },
+          "& .MuiDrawer-paper": {
+            width: drawerWidth,
+            backgroundColor: "#1a1a1a",
+          },
         }}
       >
         <Sidebar />
@@ -48,8 +52,11 @@ const AdminLayout = () => {
         component="main"
         sx={{
           flexGrow: 1,
-          overflow: "auto",
-          p: { xs: 6, md: 3 },
+          height: "100vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+          px: { xs: 2, sm: 3, md: 4 },
+          py: { xs: 1, sm: 2 },
           backgroundColor: "#f5f5f5",
         }}
       >
@@ -64,7 +71,9 @@ const AdminLayout = () => {
           <MenuIcon />
         </IconButton>
 
-        <Outlet />
+        <Suspense fallback={null}>
+          <Outlet />
+        </Suspense>
       </Box>
     </Box>
   );
