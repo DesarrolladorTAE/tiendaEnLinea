@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Link } from "react";
 
 const LandingPage = () => {
   return (
@@ -84,7 +84,7 @@ const LandingPage = () => {
             Regístrate ahora, prueba todas nuestras funcionalidades y transforma tu negocio. Obtén
             soporte prioritario y capacitación gratuita.
           </p>
-          <a href="#" style={ctaButtonStyle}>
+          <a href="/login-register" style={ctaButtonStyle}>
             PRUÉBALO GRATIS
           </a>
         </section>
