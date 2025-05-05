@@ -1,16 +1,16 @@
-import React from "react";
+import React, { lazy } from "react";
 import { Navigate } from "react-router-dom";
 
-import ProductList from "../pages/admin/ProductList";
-import ProductForm from "../pages/admin/ProductForm";
-import ProductDetails from "../pages/admin/ProductDetails";
-import ProductImages from "../pages/admin/ProductImages";
+const ProductList = lazy(() => import("../pages/admin/ProductList"));
+const ProductForm = lazy(() => import("../pages/admin/ProductForm"));
+const ProductDetails = lazy(() => import("../pages/admin/ProductDetails"));
+const ProductImages = lazy(() => import("../pages/admin/ProductImages"));
 
-import Categorias from "../pages/admin/ProductCategory";
-import Etiquetas from "../pages/admin/ProductTags";
-import Inventario from "../pages/admin/Inventario";
-import POS from "../pages/admin/POS";
-import Ventas from "../pages/admin/Ventas";
+const Categorias = lazy(() => import("../pages/admin/ProductCategory"));
+const Etiquetas = lazy(() => import("../pages/admin/ProductTags"));
+const Inventario = lazy(() => import("../pages/admin/Inventario"));
+const POS = lazy(() => import("../pages/admin/POS"));
+const Ventas = lazy(() => import("../pages/admin/Ventas"));
 
 export const adminRouteConfig = [
   { path: "", element: <Navigate to="products" replace /> },

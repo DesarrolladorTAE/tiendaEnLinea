@@ -17,7 +17,6 @@ const PrivateRoute = () => {
 
         setIsAuthenticated(true);
       } catch (err) {
-        console.error("Error de autenticación:", err);
         setIsAuthenticated(false);
       } finally {
         setChecking(false);

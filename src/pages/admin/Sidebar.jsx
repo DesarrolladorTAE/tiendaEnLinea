@@ -11,24 +11,23 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("AUTH_TOKEN");
-    navigate("/login-register"); // ajusta según tu ruta de login
+    navigate("/login-register");
   };
 
   return (
-    <div
-      className="bg-dark text-white p-3 d-flex flex-column justify-content-between"
-      style={{ minHeight: "100vh", width: "250px" }}
-    >
+    <div className="d-flex flex-column justify-content-between h-100" style={{ padding: "1rem" }}>
       <div>
-        <h5 className="mb-4 text-white text-center">MiTiendaEnLineaMX</h5>
+        <img
+          src="/assets/logo.png" // o usa import si lo prefieres
+          alt="MiTiendaEnLineaMX"
+          style={{ maxWidth: "208px", height: "auto" }}
+        />
         <ul className="nav flex-column">
           {adminNavItems.map((item) => (
             <li className="nav-item mb-2" key={item.path}>
               <Link
                 to={item.path}
-                className={`nav-link ${
-                  isActive(item.path) ? "text-warning" : "text-white"
-                }`}
+                className={`nav-link ${isActive(item.path) ? "text-warning" : "text-white"}`}
               >
                 {item.label}
               </Link>
@@ -38,10 +37,7 @@ const Sidebar = () => {
       </div>
 
       <div className="text-center mt-auto">
-        <button
-          onClick={handleLogout}
-          className="btn btn-outline-light btn-sm w-100"
-        >
+        <button onClick={handleLogout} className="btn btn-outline-light btn-sm w-100">
           🚪 Cerrar Sesión
         </button>
       </div>

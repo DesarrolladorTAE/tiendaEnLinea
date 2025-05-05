@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
-import ProductImages from "./ProductImages";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
+import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+const ProductImages = lazy(() => import("./ProductImages"));
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
@@ -40,10 +41,12 @@ const ProductList = () => {
   if (selectedProduct) {
     return (
       <div className="bg-dark text-white p-4">
-        <ProductImages product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+        <Suspense fallback={<p className="text-white">Cargando imágenes...</p>}>
+        <ProductImages productId={selectedProduct.id} onClose={() => setSelectedProduct(null)} />
+        </Suspense>
       </div>
     );
-  }
+  }  
 
   return (
     <div className="bg-dark text-white p-4 shadow rounded border border-light">
@@ -77,7 +80,7 @@ const ProductList = () => {
                 <tr key={product.id}>
                   <td className="fw-semibold">{product.name || "N/A"}</td>
                   <td>${product.price || "0.00"}</td>
-                  <td>{product.stock ?? "Con Variaciones"}</td>
+                  <td>{product.has_variations ? "Con Variaciones" : `${product.stock ?? 0}`}</td>
                   <td className="text-center">
                     <div className="d-flex justify-content-center gap-2">
                       {/* <Link
@@ -95,12 +98,13 @@ const ProductList = () => {
                       >
                         <EditIcon fontSize="small" />
                       </Link>
-                      {/* <button
+
+                      <button
                         className="btn btn-sm btn-outline-warning"
                         onClick={() => setSelectedProduct(product)} // 👈 cambia a render local
                       >
-                        🖼
-                      </button> */}
+                        <ImageIcon fontSize="small" />
+                      </button>
 
                       <button
                         onClick={() => handleDelete(product.id)}
