@@ -1,8 +1,9 @@
 import React, { Suspense, lazy } from "react";
 import ScrollToTop from "./helpers/scroll-top";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { useLocation, BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminRoutes from "./routes/AdminRoutes";
 import { Container } from "@mui/material";
+import WhatsappButton from "./components/WhatsappButton";
 
 // home pages
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
@@ -196,6 +197,7 @@ const App = () => {
           </Routes>
         </Suspense>
       </ScrollToTop>
+      <WhatsappButton />
     </Router>
   );
 };
