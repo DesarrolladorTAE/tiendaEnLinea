@@ -1,65 +1,124 @@
 import React, { useState } from "react";
-import { Box, Button, Grid, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Grid,
+  TextField,
+  Typography,
+  Checkbox,
+  FormControlLabel,
+} from "@mui/material";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
-import axios from "../../axiosConfig"; // Importa axios correctamente
+import { useNavigate } from "react-router-dom";
+import axios from "../../axiosConfig";
+import TermsModal from "../modals/TermsModal";
 
-const RegisterForm = () => {
-  const [isVerificationStep, setIsVerificationStep] = useState(false); // Paso de verificación
-  const [verificationCode, setVerificationCode] = useState(""); // Código de verificación
-  const [currentPhone, setCurrentPhone] = useState(""); // Teléfono del usuario
-  const [verificationError, setVerificationError] = useState(""); // Error en verificación
-  const { register, handleSubmit, formState: { errors }, watch } = useForm();
+const roundedInputStyle = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: "50px",
+  },
+};
+
+const RegisterForm = ({ setRightPanelActive }) => {
+  const [isVerificationStep, setIsVerificationStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [currentPhone, setCurrentPhone] = useState("");
+  const [verificationError, setVerificationError] = useState("");
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [termsOpen, setTermsOpen] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    watch,
+    reset,
+  } = useForm();
+
   const password = watch("password");
 
   const onSubmit = async (data) => {
-    if (!isVerificationStep) {
-      // Enviar código de verificación
-      try {
+    try {
+      if (!isVerificationStep) {
         await axios.post("/auth/send-code", { phone: data.phone });
         setCurrentPhone(data.phone);
-        setIsVerificationStep(true); // Cambia al paso de verificación
-        toast.success("✅ Código de verificación enviado");
-      } catch (error) {
-        toast.error("⚠️ Error al enviar el código");
-      }
-    } else {
-      // Paso de registro después de la verificación
-      try {
-        // Verificar el código
+        setIsVerificationStep(true);
+        toast.success("✅ Código enviado");
+      } else {
         await axios.post("/auth/verify-code", {
           phone: currentPhone,
           code: verificationCode,
         });
 
-        // Si el código es correcto, registrar al usuario
         await axios.post("/register", {
-          name: data.nombre,
-          lastName: data.apellidos,
-          email: data.email,
-          phone: data.phone,
-          password: data.password,
-          password_confirmation: data.password_confirmation,
+          ...data,
+          code: verificationCode,
         });
 
-        toast.success("✅ Registro exitoso.");
-        // Redirigir a la página de login o la principal
-      } catch (error) {
-        setVerificationError(error.response?.data?.message || "Código inválido");
-        toast.error(error.response?.data?.message || "⚠️ Error en la verificación del código");
+        toast.success("✅ Registro exitoso");
+        setRegistrationComplete(true);
+        reset();
       }
+    } catch (error) {
+      const msg =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        "⚠️ Error en el registro";
+      setVerificationError(msg);
+      toast.error(msg);
     }
   };
 
   const handleResendCode = async () => {
-    // Vuelve a enviar el código
     try {
       await axios.post("/auth/send-code", { phone: currentPhone });
       toast.success("✅ Código reenviado");
-    } catch (error) {
-      toast.error("⚠️ Error al reenviar el código");
+    } catch {
+      toast.error("⚠️ Error al reenviar código");
     }
   };
+
+  if (registrationComplete) {
+    return (
+      <Box
+        sx={{
+          width: "50%",
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          px: 4,
+          py: 6,
+          backgroundColor: "white",
+        }}
+      >
+        <Typography variant="h4" fontWeight="bold" color="#333">
+          🎉 Registro exitoso
+        </Typography>
+        <Typography mt={2}>
+          Ya puedes iniciar sesión con tu número y contraseña.
+        </Typography>
+        <Button
+          variant="contained"
+          onClick={() => setRightPanelActive(false)}
+          sx={{
+            mt: 4,
+            px: 5,
+            py: 1.5,
+            bgcolor: "#be4bdb",
+            borderRadius: 9999,
+            color: "#fff",
+            fontWeight: "bold",
+          }}
+        >
+          Iniciar sesión
+        </Button>
+      </Box>
+    );
+  }
 
   return (
     <Box
@@ -80,67 +139,76 @@ const RegisterForm = () => {
         {isVerificationStep ? "Verificación de Código" : "Crea tu Cuenta"}
       </Typography>
 
-      {/* Si estamos en el paso de verificación */}
       {isVerificationStep ? (
         <>
           <Typography sx={{ mb: 2 }}>
-            Por favor, ingresa el código enviado a {currentPhone}
+            Ingresa el código enviado a <b>{currentPhone}</b>
           </Typography>
-          <TextField
-            label="Código de Verificación"
-            fullWidth
-            size="small"
-            value={verificationCode}
-            onChange={(e) => setVerificationCode(e.target.value)}
-            error={Boolean(verificationError)}
-            helperText={verificationError}
-            sx={{
-              borderRadius: 50,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 50,
-              },
-            }}
-          />
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-            <Button
-              type="submit"
-              variant="contained"
+          <Box sx={{ display: "flex", justifyContent: "center", width: "100%" }}>
+            <TextField
+              label="Código"
+              value={verificationCode}
+              onChange={(e) =>
+                setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              error={Boolean(verificationError)}
+              helperText={verificationError}
+              inputProps={{ maxLength: 6, inputMode: "numeric" }}
               sx={{
-                px: 5,
-                py: 1.5,
-                bgcolor: "#be4bdb",
-                color: "white",
-                fontWeight: "bold",
-                borderRadius: "25px",
-                textTransform: "uppercase",
-                boxShadow: 3,
-                "&:hover": {
-                  bgcolor: "#9e35b4",
+                width: 180,
+                textAlign: "center",
+                "& .MuiOutlinedInput-root": { borderRadius: 50 },
+                "& input": {
+                  textAlign: "center",
+                  letterSpacing: "0.2em",
+                  fontWeight: "bold",
                 },
               }}
-            >
-              Verificar Código
-            </Button>
+              size="small"
+            />
           </Box>
+
+          <Button
+            type="submit"
+            variant="contained"
+            sx={{
+              mt: 4,
+              px: 5,
+              py: 1.5,
+              bgcolor: "#be4bdb",
+              color: "white",
+              borderRadius: "25px",
+              fontWeight: "bold",
+            }}
+          >
+            Verificar Código
+          </Button>
+
           <Typography
-            sx={{ mt: 2, textAlign: "center", color: "#00bfa5", cursor: "pointer", "&:hover": { textDecoration: "underline" } }}
+            mt={2}
             onClick={handleResendCode}
+            sx={{
+              color: "#00bfa5",
+              cursor: "pointer",
+              textAlign: "center",
+              "&:hover": { textDecoration: "underline" },
+            }}
           >
             ¿No recibiste el código? ¡Reenviar!
           </Typography>
         </>
       ) : (
         <>
-          {/* Formulario de registro */}
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Nombre"
                 fullWidth
                 size="small"
-                {...register("nombre", { required: "El nombre es obligatorio" })}
-                error={Boolean(errors.nombre)}
-                helperText={errors.nombre?.message}
+                {...register("name", { required: "El nombre es obligatorio" })}
+                error={Boolean(errors.name)}
+                helperText={errors.name?.message}
+                sx={roundedInputStyle}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -151,6 +219,7 @@ const RegisterForm = () => {
                 {...register("apellidos", { required: "Los apellidos son obligatorios" })}
                 error={Boolean(errors.apellidos)}
                 helperText={errors.apellidos?.message}
+                sx={roundedInputStyle}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -160,13 +229,11 @@ const RegisterForm = () => {
                 size="small"
                 {...register("email", {
                   required: "El correo es obligatorio",
-                  pattern: {
-                    value: /^\S+@\S+$/i,
-                    message: "Correo inválido",
-                  },
+                  pattern: { value: /^\S+@\S+$/, message: "Correo inválido" },
                 })}
                 error={Boolean(errors.email)}
                 helperText={errors.email?.message}
+                sx={roundedInputStyle}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -174,17 +241,17 @@ const RegisterForm = () => {
                 label="Teléfono"
                 fullWidth
                 size="small"
-                inputProps={{
-                  maxLength: 10,
-                  inputMode: "numeric",
-                  pattern: "[0-9]*",
-                }}
+                inputProps={{ maxLength: 10, inputMode: "numeric" }}
                 {...register("phone", {
                   required: "El teléfono es obligatorio",
-                  pattern: { value: /^[0-9]{10}$/, message: "Debe contener 10 dígitos" },
+                  pattern: {
+                    value: /^[0-9]{10}$/,
+                    message: "Debe tener 10 dígitos",
+                  },
                 })}
                 error={Boolean(errors.phone)}
                 helperText={errors.phone?.message}
+                sx={roundedInputStyle}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -199,6 +266,7 @@ const RegisterForm = () => {
                 })}
                 error={Boolean(errors.password)}
                 helperText={errors.password?.message}
+                sx={roundedInputStyle}
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -209,34 +277,65 @@ const RegisterForm = () => {
                 size="small"
                 {...register("password_confirmation", {
                   required: "Confirma tu contraseña",
-                  validate: (value) => value === watch("password") || "Las contraseñas no coinciden",
+                  validate: (value) =>
+                    value === password || "Las contraseñas no coinciden",
                 })}
                 error={Boolean(errors.password_confirmation)}
                 helperText={errors.password_confirmation?.message}
+                sx={roundedInputStyle}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  />
+                }
+                label={
+                  <span>
+                    Acepto los{" "}
+                    <span
+                      onClick={() => setTermsOpen(true)}
+                      style={{
+                        color: "#00bfa5",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      términos y condiciones
+                    </span>
+                  </span>
+                }
               />
             </Grid>
           </Grid>
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-            <Button
-              type="submit"
-              variant="contained"
-              sx={{
-                px: 5,
-                py: 1.5,
-                bgcolor: "#be4bdb",
-                color: "white",
-                fontWeight: "bold",
-                borderRadius: "25px",
-                textTransform: "uppercase",
-                boxShadow: 3,
-                "&:hover": {
-                  bgcolor: "#9e35b4",
-                },
-              }}
-            >
-              Registrarme
-            </Button>
-          </Box>
+
+          <Button
+            type="submit"
+            disabled={!acceptedTerms}
+            variant="contained"
+            sx={{
+              mt: 4,
+              px: 5,
+              py: 1.5,
+              bgcolor: acceptedTerms ? "#be4bdb" : "grey.400",
+              color: "#fff",
+              borderRadius: "25px",
+              fontWeight: "bold",
+              textTransform: "uppercase",
+              boxShadow: 3,
+              "&:hover": {
+                bgcolor: acceptedTerms ? "#9e35b4" : "grey.500",
+              },
+            }}
+          >
+            Registrarme
+          </Button>
+
+          <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
         </>
       )}
     </Box>
@@ -244,4 +343,3 @@ const RegisterForm = () => {
 };
 
 export default RegisterForm;
-

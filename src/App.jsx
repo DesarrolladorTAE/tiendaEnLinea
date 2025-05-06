@@ -5,6 +5,7 @@ import { useDispatch } from 'react-redux';
 import { loadUserFromStorage } from './store/slices/userSlice';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import PublicOnlyRoute from "./routes/PublicOnlyRoute.jsx";
 
 import AdminRoutes from "./routes/AdminRoutes";
 import AdminLayout from "./layouts/AdminLayout";
@@ -29,7 +30,7 @@ const About = lazy(() => import("./pages/other/About.jsx"));
 const MyContacts = lazy(() => import("./pages/other/MyContacts.jsx"));
 const MyAccount = lazy(() => import("./pages/other/MyAccount.jsx"));
 const Wallet = lazy(() => import("./pages/other/Wallet.jsx"));
-const Login = lazy(() => import("./pages/other/Login.jsx"));
+// const Login = lazy(() => import("./pages/other/Login.jsx"));
 const Contact = lazy(() => import("./pages/other/Contact.jsx"));
 const Cart = lazy(() => import("./pages/other/Cart.jsx"));
 const Wishlist = lazy(() => import("./pages/other/Wishlist.jsx"));
@@ -38,8 +39,8 @@ const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 const RecargarSaldo = lazy(() => import("./pages/other/RecargarSaldo.jsx"));
 const HistorialRecargas = lazy(() => import("./pages/other/HistorialRecargas.jsx"))
-const Agentes = lazy (() => import ("./pages/other/Agentes.jsx"))
-const Loginmui = lazy (()=> import ("./pages/other/loginmui.jsx"))
+const Agentes = lazy(() => import("./pages/other/Agentes.jsx"))
+const Loginmui = lazy(() => import("./pages/other/loginmui.jsx"))
 
 //Pages Admin
 const Notifications = lazy(() => import("./pages/admin/Notifications.jsx"));
@@ -82,7 +83,7 @@ const App = () => {
         >
           <Routes>
             {/* Redirigir raíz al login */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<Navigate to="/loginmui" replace />} />
 
             {/* Home page */}
             <Route path="/home-fashion-three" element={<HomeFashionThree />} />
@@ -99,7 +100,7 @@ const App = () => {
             <Route path="/contact" element={<Contact />} />
             <Route path="/my-account" element={<MyAccount />} />
             <Route path="/wallet" element={<Wallet />} />
-            <Route path="/login" element={<Login />} />
+            {/* <Route path="/login" element={<Login />} /> */}
             <Route path="/cart" element={<Cart />} />
             <Route path="/mycontacts" element={<MyContacts />} />
             <Route path="/wishlist" element={<Wishlist />} />
@@ -107,8 +108,16 @@ const App = () => {
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/recargar-saldo" element={<RecargarSaldo />} />
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
-            <Route path = "/agent-mipages" element = {<Agentes /> } />
-            <Route path = "/loginmui" element = {< Loginmui />} />
+            <Route path="/agent-mipages" element={<Agentes />} />
+            <Route
+              path="/loginmui"
+              element={
+                <PublicOnlyRoute>
+                  <Loginmui />
+                </PublicOnlyRoute>
+              }
+            />
+
 
             <Route element={<AdminRoutes />}>
               <Route path="/admin" element={<AdminLayout />}>

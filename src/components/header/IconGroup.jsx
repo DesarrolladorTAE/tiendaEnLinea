@@ -37,7 +37,8 @@ const IconGroup = ({ iconWhiteClass }) => {
     const token = localStorage.getItem('token');
     if (!token) {
       dispatch(clearUser());
-      navigate("/login");
+      navigate("/loginmui", { replace: true });
+
       return;
     }
 
@@ -50,14 +51,16 @@ const IconGroup = ({ iconWhiteClass }) => {
       setShowByeModal(true);
       setTimeout(() => {
         setShowByeModal(false);
-        navigate("/login");
+        navigate("/loginmui", { replace: true });
+
       }, 3000);
     } catch (error) {
       dispatch(clearUser());
       setShowByeModal(true);
       setTimeout(() => {
         setShowByeModal(false);
-        navigate("/login");
+        navigate("/loginmui", { replace: true });
+
       }, 3000);
     }
   };

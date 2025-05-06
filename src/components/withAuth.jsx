@@ -14,7 +14,7 @@ const withAuth = (WrappedComponent) => {
             if (!isAuthenticated) {
                 setShowModal(true);
                 setTimeout(() => {
-                    navigate("/login");
+                    navigate("/loginmui");
                 }, 3000);
             }
         }, [isAuthenticated]);

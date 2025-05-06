@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Box, Paper } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import OverlayPanel from "../../components/login/OverlayPanel";
 import LoginForm from "../../components/login/LoginForm";
 import RegisterForm from "../../components/login/RegisterForm";
@@ -7,14 +8,20 @@ import RegisterForm from "../../components/login/RegisterForm";
 const LoginOverlayResponsiveMUI = () => {
   const [rightPanelActive, setRightPanelActive] = useState(false);
   const [resetForm, setResetForm] = useState(false);
+  const navigate = useNavigate();
 
-  const resetLoginForm = () => {
-    setResetForm(true);  // Trigger reset for login form
-  };
+  const resetLoginForm = () => setResetForm(true);
+  const resetRegisterForm = () => setResetForm(true);
 
-  const resetRegisterForm = () => {
-    setResetForm(true);  // Trigger reset for register form
-  };
+  // ✅ Verifica si ya hay sesión activa y redirige
+  useEffect(() => {
+    const token = localStorage.getItem("TOKEN") || localStorage.getItem("POS_TOKEN");
+
+    if (token) {
+      // Redirige reemplazando el historial (para evitar que regrese con "atrás")
+      navigate("/home-fashion-three", { replace: true }); // Cambia por la ruta privada real
+    }
+  }, [navigate]);
 
   return (
     <Box
@@ -39,26 +46,24 @@ const LoginOverlayResponsiveMUI = () => {
           minHeight: 600,
         }}
       >
-        {/* Formularios lado a lado */}
         <Box sx={{ display: "flex", width: "100%" }}>
           <LoginForm
             visible={!rightPanelActive}
             setRightPanelActive={setRightPanelActive}
-            resetForm={resetForm}  // Pass resetForm to LoginForm
+            resetForm={resetForm}
           />
           <RegisterForm
             visible={rightPanelActive}
             setRightPanelActive={setRightPanelActive}
-            resetForm={resetForm}  // Pass resetForm to RegisterForm
+            resetForm={resetForm}
           />
         </Box>
 
-        {/* Overlay */}
         <OverlayPanel
           rightPanelActive={rightPanelActive}
           setRightPanelActive={setRightPanelActive}
-          resetLoginForm={resetLoginForm}  // Pass resetLoginForm to OverlayPanel
-          resetRegisterForm={resetRegisterForm}  // Pass resetRegisterForm to OverlayPanel
+          resetLoginForm={resetLoginForm}
+          resetRegisterForm={resetRegisterForm}
         />
       </Paper>
     </Box>
