@@ -135,6 +135,19 @@ const RegisterForm = ({ setRightPanelActive }) => {
         backgroundColor: "white",
       }}
     >
+      {/* Logo arriba del título */}
+      <Box
+        component="img"
+        src="/assets/img/logo2.png"
+        alt="Logo Te lo recargo"
+        sx={{
+          width: 180,
+          height: "auto",
+          mb: 2,
+          mt: -4,
+        }}
+      />
+
       <Typography variant="h4" fontWeight="bold" color="#333" gutterBottom>
         {isVerificationStep ? "Verificación de Código" : "Crea tu Cuenta"}
       </Typography>

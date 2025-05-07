@@ -9,7 +9,9 @@ import { setUser } from "../../store/slices/userSlice";
 import ResetPasswordModal from "../../wrappers/AuthVerification/ResetPasswordModal";
 import AnimatedModal from "../../components/AnimatedModal";
 
-const LoginForm = () => {
+
+
+const LoginForm = ({ onBack }) => {
   const [loginError, setLoginError] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -110,12 +112,26 @@ const LoginForm = () => {
           alignItems: "center",
           backgroundColor: "white",
           px: 6,
-          py: 8,
+          py: 0, // <-- padding vertical reducido
           zIndex: 2,
           borderTopLeftRadius: 16,
           borderBottomLeftRadius: 16,
         }}
       >
+
+
+        <Box
+          component="img"
+          src="/assets/img/logo1.png"
+          alt="Logo Te lo recargo"
+          sx={{
+            width: 180,
+            height: "auto",
+            mb: 2,
+            mt: -8,// <-- margen superior negativo para empujarlo hacia arriba
+          }}
+        />
+
         <Typography variant="h4" fontWeight="bold" color="#444" gutterBottom sx={{ mb: 3 }}>
           Iniciar Sesión
         </Typography>
@@ -221,6 +237,25 @@ const LoginForm = () => {
             }}
           >
             ¿Olvidaste tu contraseña?
+          </Typography>
+          <Typography>  
+          </Typography>
+          <Typography>  
+          </Typography>
+
+          <Typography
+            sx={{
+              alignSelf: "flex-start",
+              mb: 2,
+              cursor: "pointer",
+              fontSize: 14,
+              fontWeight: 500,
+              color: "#00bfa5",
+              "&:hover": { textDecoration: "underline" },
+            }}
+            onClick={onBack}
+          >
+            ⬅️ Regresar
           </Typography>
         </Stack>
 

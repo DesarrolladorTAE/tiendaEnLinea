@@ -3,25 +3,56 @@ import { Box, Paper } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import OverlayPanel from "../../components/login/OverlayPanel";
 import LoginForm from "../../components/login/LoginForm";
+import LoginAgentForm from "../../components/login/LoginAgentForm";
 import RegisterForm from "../../components/login/RegisterForm";
+import LoginSelector from "../../components/login/LoginSelector"; // 👈 Asegúrate de importarlo
 
 const LoginOverlayResponsiveMUI = () => {
   const [rightPanelActive, setRightPanelActive] = useState(false);
   const [resetForm, setResetForm] = useState(false);
+  const [loginType, setLoginType] = useState(null); // 👈 usuario | agente | null
   const navigate = useNavigate();
 
   const resetLoginForm = () => setResetForm(true);
   const resetRegisterForm = () => setResetForm(true);
 
-  // ✅ Verifica si ya hay sesión activa y redirige
   useEffect(() => {
     const token = localStorage.getItem("TOKEN") || localStorage.getItem("POS_TOKEN");
-
     if (token) {
-      // Redirige reemplazando el historial (para evitar que regrese con "atrás")
-      navigate("/home-fashion-three", { replace: true }); // Cambia por la ruta privada real
+      navigate("/home-fashion-three", { replace: true });
     }
   }, [navigate]);
+
+  const renderLoginComponent = () => {
+    if (loginType === "usuario") {
+      return (
+        <LoginForm
+          visible={!rightPanelActive}
+          setRightPanelActive={setRightPanelActive}
+          resetForm={resetForm}
+          onBack={() => setLoginType(null)} // 👈
+        />
+      );
+    }
+
+    if (loginType === "agente") {
+      return (
+        <LoginAgentForm
+          visible={!rightPanelActive}
+          setRightPanelActive={setRightPanelActive}
+          resetForm={resetForm}
+          onBack={() => setLoginType(null)} // 👈
+        />
+      );
+    }
+
+    // Pantalla inicial (selector)
+    return (
+      <LoginSelector
+        onSelect={(type) => setLoginType(type)}
+      />
+    );
+  };
 
   return (
     <Box
@@ -47,11 +78,7 @@ const LoginOverlayResponsiveMUI = () => {
         }}
       >
         <Box sx={{ display: "flex", width: "100%" }}>
-          <LoginForm
-            visible={!rightPanelActive}
-            setRightPanelActive={setRightPanelActive}
-            resetForm={resetForm}
-          />
+          {renderLoginComponent()}
           <RegisterForm
             visible={rightPanelActive}
             setRightPanelActive={setRightPanelActive}
