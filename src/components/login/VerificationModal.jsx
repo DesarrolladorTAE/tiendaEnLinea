@@ -6,12 +6,15 @@ const VerificationModal = ({
   show,
   onClose,
   onVerify,
+  onSubmitResendCode,
   code,
   setCode,
   loading,
+  resendDisabled,
+  cooldown,
 }) => {
   return (
-    <Modal show={show} onHide={onClose} centered>
+    <Modal show={show} onHide={onClose}>
       <Modal.Header closeButton>
         <Modal.Title>Verificación de WhatsApp</Modal.Title>
       </Modal.Header>
@@ -32,6 +35,13 @@ const VerificationModal = ({
         </Button>
         <Button variant="primary" onClick={onVerify} disabled={loading}>
           {loading ? "Verificando..." : "Verificar"}
+        </Button>
+        <Button
+          variant="outline-secondary"
+          onClick={onSubmitResendCode}
+          disabled={resendDisabled}
+        >
+          {resendDisabled ? `Reenviar código en ${cooldown}s` : "Reenviar código"}
         </Button>
       </Modal.Footer>
     </Modal>

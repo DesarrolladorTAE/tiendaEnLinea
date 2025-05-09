@@ -4,6 +4,7 @@ import { useLocation, BrowserRouter as Router, Routes, Route } from "react-route
 import AdminRoutes from "./routes/AdminRoutes";
 import { Container } from "@mui/material";
 import WhatsappButton from "./components/WhatsappButton";
+import { Toaster } from "react-hot-toast";
 
 // home pages
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
@@ -91,6 +92,7 @@ const App = () => {
   return (
     <Router>
       <ScrollToTop>
+        <Toaster position="top-right" reverseOrder={false} />
         <Suspense
           fallback={
             <div className="flone-preloader-wrapper">

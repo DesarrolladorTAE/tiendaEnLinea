@@ -11,13 +11,18 @@ import {
   TableRow,
   TableCell,
   TableContainer,
+  Tooltip,
   Paper,
   Pagination,
   Stack,
   TextField,
+  IconButton,
 } from "@mui/material";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import { RiFileExcel2Fill } from "react-icons/ri";
+import { saveAs } from "file-saver";
+import toast from "react-hot-toast";
 
 const ITEMS_PER_PAGE = 7;
 
@@ -89,13 +94,77 @@ export default function InventoryTable() {
     return <KeyboardArrowUpIcon fontSize="small" sx={{ opacity: 0.3 }} />;
   };
 
+  const confirmExport = () => {
+    toast(
+      (t) => (
+        <span>
+          ¿Quieres descargar el inventario?
+          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                handleExport(); // tu función real
+              }}
+              style={{
+                background: "#217346",
+                color: "white",
+                border: "none",
+                padding: "4px 10px",
+                borderRadius: 4,
+                cursor: "pointer",
+              }}
+            >
+              Sí
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              style={{
+                background: "#ddd",
+                border: "none",
+                padding: "4px 10px",
+                borderRadius: 4,
+                cursor: "pointer",
+              }}
+            >
+              No
+            </button>
+          </div>
+        </span>
+      ),
+      {
+        duration: 10000,
+      }
+    );
+  };
+
+  const handleExport = () => {
+    axiosClient
+      .get("/inventario/excel", { responseType: "blob" })
+      .then((res) => {
+        const blob = new Blob([res.data], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+        const fecha = new Date().toISOString().slice(0, 10);
+        saveAs(blob, `inventario-${fecha}.xlsx`);
+      })
+      .catch((err) => {
+        console.error("Error al exportar inventario:", err);
+      });
+  };
+
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Card sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <Typography variant="h5" gutterBottom>
-            Inventario de Productos 📊
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h5">Inventario de Productos 📊</Typography>
+
+            <Tooltip title="Exportar a Excel" arrow>
+              <IconButton onClick={confirmExport}>
+                <RiFileExcel2Fill style={{ color: "#217346", fontSize: "1.8rem"}} />
+              </IconButton>
+            </Tooltip>
+          </Box>
 
           <TextField
             label="Buscar por nombre"
@@ -122,7 +191,7 @@ export default function InventoryTable() {
               <Table stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ width: 120 }}>SKU</TableCell>
+                    <TableCell sx={{ width: 120 }}>Código</TableCell>
 
                     <TableCell
                       onClick={() => requestSort("name")}
