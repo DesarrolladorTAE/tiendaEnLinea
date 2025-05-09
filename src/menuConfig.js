@@ -5,6 +5,7 @@ const adminNavItems = [
   { path: "/admin/inventario", label: "🏬 Inventario" },
   { path: "/admin/pos", label: "🏬 Punto de Venta" },
   { path: "/admin/ventas", label: "Historial de Ventas" },
+  { path: "/admin/compra", label: "Entradas Producto" },
 ];
 
 export default adminNavItems;

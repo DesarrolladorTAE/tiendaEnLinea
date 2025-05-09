@@ -11,6 +11,7 @@ const Etiquetas = lazy(() => import("../pages/admin/ProductTags"));
 const Inventario = lazy(() => import("../pages/admin/Inventario"));
 const POS = lazy(() => import("../pages/admin/POS"));
 const Ventas = lazy(() => import("../pages/admin/Ventas"));
+const Entradas = lazy(() => import("../pages/admin/Entradas.jsx"));
 
 export const adminRouteConfig = [
   { path: "", element: <Navigate to="products" replace /> },
@@ -25,4 +26,5 @@ export const adminRouteConfig = [
   { path: "inventario", element: <Inventario /> },
   { path: "pos", element: <POS /> },
   { path: "ventas", element: <Ventas /> },
+  { path: "compra", element: <Entradas /> },
 ];

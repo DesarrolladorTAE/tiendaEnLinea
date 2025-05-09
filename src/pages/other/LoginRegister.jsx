@@ -1,9 +1,8 @@
 import React, { Fragment, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Tab from "react-bootstrap/Tab";
 import Nav from "react-bootstrap/Nav";
 import SEO from "../../components/seo";
-import LayoutTEL from "../../layouts/LayoutTEL";
 import axiosClient from "../../config/axiosClient";
 import VerificationModal from "../../components/login/VerificationModal";
 import LoginForm from "../../components/login/LoginForm";
@@ -12,10 +11,7 @@ import RegisterForm from "../../components/login/RegisterForm";
 const LoginRegister = () => {
   const navigate = useNavigate();
 
-  const [loginData, setLoginData] = useState({
-    login: "",
-    password: "",
-  });
+  const [loginData, setLoginData] = useState({ login: "", password: "" });
   const [registerData, setRegisterData] = useState({
     nombre: "",
     email: "",
@@ -28,6 +24,23 @@ const LoginRegister = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [resendDisabled, setResendDisabled] = useState(false);
+  const [cooldown, setCooldown] = useState(60);
+  const [registerBlocked, setRegisterBlocked] = useState(false);
+
+  const startCooldown = () => {
+    let seconds = 60;
+    setCooldown(seconds);
+    setResendDisabled(true);
+    const interval = setInterval(() => {
+      seconds -= 1;
+      setCooldown(seconds);
+      if (seconds <= 0) {
+        clearInterval(interval);
+        setResendDisabled(false);
+      }
+    }, 1000);
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -37,10 +50,7 @@ const LoginRegister = () => {
       localStorage.setItem("AUTH_TOKEN", res.data.token);
       navigate("/admin");
     } catch (err) {
-      const errorMsg =
-        err.response?.data?.error ||
-        err.response?.data?.message ||
-        "Error al iniciar sesión";
+      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Error al iniciar sesión";
       alert(errorMsg);
     } finally {
       setLoading(false);
@@ -51,21 +61,41 @@ const LoginRegister = () => {
     e.preventDefault();
     setLoading(true);
     setErrors({});
+    setRegisterBlocked(true);
+    setTimeout(() => setRegisterBlocked(false), 15000);
 
     try {
       await axiosClient.post("/registro/enviar-codigo", {
-        nombre: registerData.nombre,
+        name: registerData.nombre,
         email: registerData.email,
-        telefono: registerData.telefono,
+        phone_number: registerData.telefono,
         password: registerData.password,
       });
+
       setShowModal(true);
+      startCooldown(); // ⬅️ Inicia cooldown correctamente
     } catch (err) {
       if (err.response?.status === 422) {
         setErrors(err.response.data.errors);
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onSubmitResendCode = async () => {
+    try {
+      await axiosClient.post("/registro/enviar-codigo", {
+        name: registerData.nombre,
+        email: registerData.email,
+        phone_number: registerData.telefono,
+        password: registerData.password,
+      });
+
+      // toast.success("Código reenviado con éxito");
+      startCooldown(); // ⬅️ Bloquea botón nuevamente durante 60s
+    } catch (err) {
+      // toast.error(err.response?.data?.message || "No se pudo reenviar el código");
     }
   };
 
@@ -77,7 +107,6 @@ const LoginRegister = () => {
         code: verificationCode,
       });
       localStorage.setItem("AUTH_TOKEN", res.data.token);
-      // localStorage.setItem("store_data", JSON.stringify(res.data.user)); 
       setShowModal(false);
       navigate("/admin");
     } catch (err) {
@@ -93,74 +122,72 @@ const LoginRegister = () => {
         titleTemplate="Login"
         description="Página de Inicio de Sesión y Registro para el Sistema MiTiendaEnLineaMX"
       />
-      <LayoutTEL>
-        <div className="login-register-area pt-50 pb-100">
-          <div className="container">
-            <div className="col-lg-7 col-md-12 ms-auto me-auto">
-              <div className="login-register-wrapper">
-                <Tab.Container defaultActiveKey="register">
-                  <Nav variant="pills" className="login-register-tab-list">
-                    <Nav.Item>
-                      <Nav.Link eventKey="login">
-                        <h4>Iniciar Sesión</h4>
-                      </Nav.Link>
-                    </Nav.Item>
-                    <Nav.Item>
-                      <Nav.Link eventKey="register">
-                        <h4>Registrarse</h4>
-                      </Nav.Link>
-                    </Nav.Item>
-                  </Nav>
-                  <Tab.Content>
-                    <Tab.Pane eventKey="login">
-                      <div className="login-form-container">
-                        <div className="login-register-form">
-                          <LoginForm
-                            loginData={loginData}
-                            setLoginData={setLoginData}
-                            onSubmit={handleLogin}
-                            showPassword={showPassword}
-                            togglePassword={() =>
-                              setShowPassword(!showPassword)
-                            }
-                            loading={loading}
-                          />
-                        </div>
+      <div className="login-register-area py-5" style={{ minHeight: "100vh" }}>
+        <div className="container">
+          <div className="col-lg-7 col-md-12 ms-auto me-auto">
+            <div className="login-register-wrapper">
+              <Tab.Container defaultActiveKey="register">
+                <Nav variant="pills" className="login-register-tab-list">
+                  <Nav.Item>
+                    <Nav.Link eventKey="login">
+                      <h4>Iniciar Sesión</h4>
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="register">
+                      <h4>Registrarse</h4>
+                    </Nav.Link>
+                  </Nav.Item>
+                </Nav>
+                <Tab.Content>
+                  <Tab.Pane eventKey="login">
+                    <div className="login-form-container">
+                      <div className="login-register-form">
+                        <LoginForm
+                          loginData={loginData}
+                          setLoginData={setLoginData}
+                          onSubmit={handleLogin}
+                          showPassword={showPassword}
+                          togglePassword={() => setShowPassword(!showPassword)}
+                          loading={loading}
+                        />
                       </div>
-                    </Tab.Pane>
+                    </div>
+                  </Tab.Pane>
 
-                    <Tab.Pane eventKey="register">
-                      <div className="login-form-container">
-                        <div className="login-register-form">
-                          <RegisterForm
-                            registerData={registerData}
-                            setRegisterData={setRegisterData}
-                            errors={errors}
-                            onSubmit={handleRegister}
-                            showPassword={showPassword}
-                            togglePassword={() =>
-                              setShowPassword(!showPassword)
-                            }
-                            loading={loading}
-                          />
-                        </div>
+                  <Tab.Pane eventKey="register">
+                    <div className="login-form-container">
+                      <div className="login-register-form">
+                        <RegisterForm
+                          registerData={registerData}
+                          setRegisterData={setRegisterData}
+                          errors={errors}
+                          onSubmit={handleRegister}
+                          showPassword={showPassword}
+                          togglePassword={() => setShowPassword(!showPassword)}
+                          loading={loading}
+                          registerBlocked={registerBlocked}
+                        />
                       </div>
-                    </Tab.Pane>
-                  </Tab.Content>
-                </Tab.Container>
-              </div>
+                    </div>
+                  </Tab.Pane>
+                </Tab.Content>
+              </Tab.Container>
             </div>
           </div>
         </div>
-        <VerificationModal
-          show={showModal}
-          onClose={() => setShowModal(false)}
-          onVerify={handleVerificationCodeSubmit}
-          code={verificationCode}
-          setCode={setVerificationCode}
-          loading={loading}
-        />
-      </LayoutTEL>
+      </div>
+      <VerificationModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        onVerify={handleVerificationCodeSubmit}
+        onSubmitResendCode={onSubmitResendCode}
+        code={verificationCode}
+        setCode={setVerificationCode}
+        loading={loading}
+        resendDisabled={resendDisabled}
+        cooldown={cooldown}
+      />
     </Fragment>
   );
 };

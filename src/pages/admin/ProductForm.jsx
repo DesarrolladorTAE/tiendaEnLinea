@@ -220,13 +220,31 @@ function ProductForm() {
               errors={errors}
             />
             <ProductField
-              label="Precio (IVA incluido)"
+              label="Precio"
               name="price"
               type="number"
               register={register}
               validation={{ required: "El precio es obligatorio" }}
               errors={errors}
             />
+            <div className="col-md-4 mb-3">
+              <label className="form-label" htmlFor="ivaRate">
+                Tasa de IVA <span className="text-danger">*</span>
+              </label>
+              <select
+                id="ivaRate"
+                className={`form-control bg-secondary border-secondary ${
+                  errors?.ivaRate ? "is-invalid" : ""
+                }`}
+                {...register("ivaRate", { required: "La tasa de IVA es obligatoria" })}
+              >
+                <option value="">Selecciona una tasa</option>
+                <option value="16">TASA 16%</option>
+                <option value="0">TASA 0%</option>
+                <option value="exento">EXENTO</option>
+              </select>
+              {errors.ivaRate && <small className="text-danger">{errors.ivaRate.message}</small>}
+            </div>
           </div>
 
           {/* Segunda fila */}

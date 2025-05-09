@@ -101,7 +101,8 @@ const ProductList = () => {
 
                       <button
                         className="btn btn-sm btn-outline-warning"
-                        onClick={() => setSelectedProduct(product)} // 👈 cambia a render local
+                        onClick={() => setSelectedProduct(product)}
+                        title="Agregar Imagenes al Producto" 
                       >
                         <ImageIcon fontSize="small" />
                       </button>
