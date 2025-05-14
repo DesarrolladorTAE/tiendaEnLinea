@@ -73,7 +73,7 @@ const RegisterForm = ({ setRightPanelActive }) => {
 
   const handleResendCode = async () => {
     try {
-      await axios.post("/auth/send-code", { phone: currentPhone });
+      await axios.post("/auth/resend-code", { phone: currentPhone });
       toast.success("✅ Código reenviado");
     } catch {
       toast.error("⚠️ Error al reenviar código");

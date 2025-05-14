@@ -34,16 +34,34 @@ const IconGroup = ({ iconWhiteClass }) => {
   const handleLogout = async (e) => {
     e.preventDefault();
 
-    const token = localStorage.getItem('token');
-    if (!token) {
+    const posToken = localStorage.getItem('POS_TOKEN');
+    const userToken = localStorage.getItem('token');
+    const hasToken = posToken || userToken;
+
+    if (!hasToken) {
       dispatch(clearUser());
       navigate("/loginmui", { replace: true });
-
       return;
     }
 
     try {
-      await logoutUser();
+      await logoutUser(); // puedes usar una sola ruta backend si ambos usan Sanctum
+
+      // Limpiar ambos posibles tokens
+      localStorage.removeItem("POS_TOKEN");
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      dispatch(clearUser());
+
+      // Mostrar despedida y redirigir
+      setShowByeModal(true);
+      setTimeout(() => {
+        setShowByeModal(false);
+        navigate("/loginmui", { replace: true });
+      }, 3000);
+    } catch (error) {
+      // También limpiar en caso de error
+      localStorage.removeItem("POS_TOKEN");
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       dispatch(clearUser());
@@ -52,18 +70,10 @@ const IconGroup = ({ iconWhiteClass }) => {
       setTimeout(() => {
         setShowByeModal(false);
         navigate("/loginmui", { replace: true });
-
-      }, 3000);
-    } catch (error) {
-      dispatch(clearUser());
-      setShowByeModal(true);
-      setTimeout(() => {
-        setShowByeModal(false);
-        navigate("/loginmui", { replace: true });
-
       }, 3000);
     }
   };
+
 
   return (
     <>
@@ -102,7 +112,7 @@ const IconGroup = ({ iconWhiteClass }) => {
             <MenuCart />
           </div> */}
           <div className="same-style header-wallet">
-            <Link to={"/recargar-saldo"}>
+            <Link to={"/saldo-recarga"}>
               <i className="pe-7s-wallet" />
             </Link>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, forwardRef } from "react";
 import {
   Drawer,
   List,
@@ -17,9 +17,20 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { clearUser } from "../../store/slices/userSlice";
-import AnimatedModal from "../AnimatedModal"; // ✅ asegúrate de que la ruta sea correcta
+import AnimatedModal from "../AnimatedModal";
 
 const drawerWidth = 240;
+
+const ListItemLink = forwardRef(function ListItemLink({ icon, primary, to, onClick }, ref) {
+  return (
+    <Box component={NavLink} to={to} onClick={onClick} ref={ref} sx={{ textDecoration: "none" }}>
+      <ListItem disableGutters sx={{ px: 3, button: "true" }}>
+        {icon && <ListItemIcon>{icon}</ListItemIcon>}
+        <ListItemText primary={primary} />
+      </ListItem>
+    </Box>
+  );
+});
 
 const Sidebar = ({ open, onClose }) => {
   const navigate = useNavigate();
@@ -56,7 +67,7 @@ const Sidebar = ({ open, onClose }) => {
         variant="temporary"
         ModalProps={{
           keepMounted: true,
-          BackdropProps: { invisible: true }, // ✅ Quita opacidad
+          BackdropProps: { invisible: true },
         }}
         sx={{
           "& .MuiDrawer-paper": {
@@ -69,10 +80,9 @@ const Sidebar = ({ open, onClose }) => {
           }
         }}
       >
-        {/* 🔵 Parte superior: botón tienda + navegación */}
         <Box>
           <List>
-            <ListItem button onClick={goToStore} sx={{ px: 3 }}>
+            <ListItem disableGutters onClick={goToStore} sx={{ px: 3, cursor: 'pointer' }}>
               <ListItemIcon><StorefrontIcon /></ListItemIcon>
               <ListItemText primary="Tienda" />
             </ListItem>
@@ -80,28 +90,21 @@ const Sidebar = ({ open, onClose }) => {
             <Divider sx={{ my: 1 }} />
 
             {menuItems.map((item) => (
-              <ListItem
+              <ListItemLink
                 key={item.text}
-                component={NavLink}
                 to={item.path}
+                icon={item.icon}
+                primary={item.text}
                 onClick={onClose}
-                sx={{
-                  "&.active": { backgroundColor: "#e0e0e0" },
-                  px: 3,
-                }}
-              >
-                <ListItemIcon>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.text} />
-              </ListItem>
+              />
             ))}
           </List>
         </Box>
 
-        {/* 🔴 Parte inferior: cerrar sesión */}
         <Box>
           <Divider sx={{ my: 1 }} />
           <List>
-            <ListItem button onClick={handleLogout} sx={{ px: 3 }}>
+            <ListItem disableGutters onClick={handleLogout} sx={{ px: 3, cursor: 'pointer' }}>
               <ListItemIcon><LogoutIcon /></ListItemIcon>
               <ListItemText primary="Cerrar sesión" />
             </ListItem>
@@ -109,7 +112,6 @@ const Sidebar = ({ open, onClose }) => {
         </Box>
       </Drawer>
 
-      {/* 🎉 Modal animado de despedida */}
       <AnimatedModal
         isOpen={showByeModal}
         onRequestClose={() => setShowByeModal(false)}

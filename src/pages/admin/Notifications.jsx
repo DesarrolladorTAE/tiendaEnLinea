@@ -117,9 +117,15 @@ const Notifications = () => {
                                 <IconButton onClick={() => setShowEmoji(!showEmoji)}>
                                     <InsertEmoticonIcon />
                                 </IconButton>
-                                <IconButton component="label">
+                                <IconButton component="label" htmlFor="imagen-upload">
                                     <ImageIcon />
-                                    <input hidden type="file" accept="image/*" onChange={handleImagen} />
+                                    <input
+                                        id="imagen-upload"
+                                        hidden
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImagen}
+                                    />
                                 </IconButton>
                             </InputAdornment>
                         )

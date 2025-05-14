@@ -33,21 +33,27 @@ const LoginAgentForm = ({ visible, setRightPanelActive, resetForm, onBack }) => 
                 phone: data.phone,
                 code: data.code,
             });
-
+    
             const { token, user } = response.data;
+    
+            // Guardar el token una sola vez bajo la clave estándar
             localStorage.setItem("POS_TOKEN", token);
+    
+            // Guardar el usuario en Redux
             dispatch(setUser({ user, token }));
-
+    
+            // Mostrar mensaje de bienvenida y redirigir
             setShowWelcome(true);
             setTimeout(() => {
                 setShowWelcome(false);
-                navigate("/home-fashion-three", { replace: true }); // o la ruta que aplique
+                navigate("/home-fashion-agent", { replace: true });
             }, 2000);
         } catch (error) {
             setLoginError(error.response?.data?.message || "Error al iniciar sesión");
             toast.error(error.response?.data?.message || "⚠️ Error al iniciar sesión");
         }
     };
+    
 
     return (
         <Box

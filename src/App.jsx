@@ -41,6 +41,8 @@ const RecargarSaldo = lazy(() => import("./pages/other/RecargarSaldo.jsx"));
 const HistorialRecargas = lazy(() => import("./pages/other/HistorialRecargas.jsx"))
 const Agentes = lazy(() => import("./pages/other/Agentes.jsx"))
 const Loginmui = lazy(() => import("./pages/other/loginmui.jsx"))
+const InicioAgente = lazy (() => import ("./pages/home/InicioAgente.jsx"))
+const SaldoRecarga = lazy (() => import ("./pages/other/SaldoRecarga.jsx"))
 
 //Pages Admin
 const Notifications = lazy(() => import("./pages/admin/Notifications.jsx"));
@@ -102,11 +104,13 @@ const App = () => {
             <Route path="/wallet" element={<Wallet />} />
             {/* <Route path="/login" element={<Login />} /> */}
             <Route path="/cart" element={<Cart />} />
+            <Route path="/saldo-recarga" element={<SaldoRecarga />} />
             <Route path="/mycontacts" element={<MyContacts />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/compare" element={<Compare />} />
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/recargar-saldo" element={<RecargarSaldo />} />
+            <Route path="/home-fashion-agent" element={<InicioAgente />} />
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
             <Route path="/agent-mipages" element={<Agentes />} />
             <Route
