@@ -1,21 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  AppBar,
-  Toolbar,
-  Typography,
-  IconButton,
-  Box,
-  Badge,
-  Paper,
-  List,
-  ListItem,
-  ListItemText,
+  AppBar, Toolbar, Typography, IconButton, Box, Badge,
+  Paper, List, ListItem, ListItemText
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsIcon from "@mui/icons-material/Public";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
+import { setNotificaciones } from "../../store/slices/userSlice";
+import axios from "../../axiosConfig";
 
 const Topbar = ({ onMenuClick }) => {
+  const dispatch = useDispatch();
   const user = useSelector((state) => state.user.user);
   const notificaciones = useSelector((state) => state.user.notificaciones);
   const [openNotifications, setOpenNotifications] = useState(false);
@@ -27,13 +22,22 @@ const Topbar = ({ onMenuClick }) => {
     return String(notificaciones.length);
   };
 
-  // 🔽 Cierra si hace click fuera
+  useEffect(() => {
+    const fetchNotificaciones = async () => {
+      try {
+        const { data } = await axios.get("/mis-notificaciones");
+        dispatch(setNotificaciones(data));
+      } catch (error) {
+        console.error("Error al obtener notificaciones:", error);
+      }
+    };
+
+    fetchNotificaciones();
+  }, [dispatch]);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (
-        notificationRef.current &&
-        !notificationRef.current.contains(event.target)
-      ) {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
         setOpenNotifications(false);
       }
     };
@@ -94,10 +98,13 @@ const Topbar = ({ onMenuClick }) => {
                   </Typography>
                 </Box>
                 <List>
-                  {(notificaciones && notificaciones.length > 0) ? (
+                  {notificaciones.length > 0 ? (
                     notificaciones.map((n, index) => (
                       <ListItem key={index} divider>
-                        <ListItemText primary={n} />
+                        <ListItemText
+                          primary={n.mensaje}
+                          secondary={new Date(n.created_at).toLocaleString()}
+                        />
                       </ListItem>
                     ))
                   ) : (

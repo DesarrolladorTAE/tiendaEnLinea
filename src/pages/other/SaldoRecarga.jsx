@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { useLocation } from "react-router-dom";
+import { useSelector } from "react-redux";
 import axios from "../../axiosConfig";
 import withAuth from "../../components/withAuth";
 import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import SEO from "../../components/seo";
-import Swal from 'sweetalert2';
-import { motion } from 'framer-motion';
-import { NumericFormat } from 'react-number-format';
+import Swal from "sweetalert2";
+import { motion } from "framer-motion";
+import { NumericFormat } from "react-number-format";
 import {
   Container,
   Typography,
@@ -24,57 +25,113 @@ import {
   TableRow,
   CircularProgress,
   useTheme,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 
 const SolicitarRecarga = () => {
   const theme = useTheme();
   const { pathname } = useLocation();
-  const { control, handleSubmit, reset } = useForm({ defaultValues: { amount: "", receipt: undefined } });
+  const user = useSelector((state) => state.user.user);
+  const referencia = `TLR${user?.id}`;
+
+  const { control, handleSubmit, reset } = useForm({ defaultValues: { amount: "" } });
+  const [receiptFile, setReceiptFile] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [filtroEstado, setFiltroEstado] = useState("todos");
 
   const depositInfo = {
-    bank: "🏦 Banco Ejemplo",
-    accountNumber: "1234 5678 9012 3456",
-    clabe: "012345678901234567",
-    beneficiary: "TeLoRecargo S.A. de C.V.",
+    bank: "🏦 Banco 𝗕𝗕𝗩𝗔",
+    accountNumber: "0116325122",
+    clabe: "012261001163251221",
+    beneficiary: "𝐓𝐞𝐜𝐧𝐨𝐥𝐨𝐠í𝐚𝐬 𝐀𝐝𝐦𝐢𝐧𝐢𝐬𝐭𝐫𝐚𝐭𝐢𝐯𝐚𝐬 𝐄𝐥𝐚𝐝 𝐒 𝐝𝐞 𝐑𝐋 𝐝𝐞 𝐂𝐕",
   };
 
-  useEffect(() => { fetchHistory(); }, []);
+  useEffect(() => {
+    fetchHistory();
+  }, []);
 
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const { data } = await axios.get("/ver-recargas");
+      const { data } = await axios.get("/ver-recargastra");
       setHistory(data);
     } catch (error) {
       console.error("Error cargando historial", error);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const onSubmit = async ({ amount, receipt }) => {
+  const onSubmit = async ({ amount }) => {
     setSubmitting(true);
-    const cleanAmount = amount.replace(/[$,]/g, '');
+    const cleanAmount = amount.replace(/[$,]/g, "");
     const formData = new FormData();
     formData.append("monto", cleanAmount);
-    if (receipt && receipt.length) formData.append("comprobante", receipt[0]);
+    if (receiptFile) {
+      formData.append("comprobante", receiptFile);
+    }
+
     try {
-      await axios.post("/recargar-saldo", formData, { headers: { "Content-Type": "multipart/form-data" } });
-      Swal.fire({ icon: 'success', title: '🚀 Solicitud enviada', timer: 1500, showConfirmButton: false });
-      reset(); fetchHistory();
+      await axios.post("/recargar-saldo", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      Swal.fire({
+        icon: "success",
+        title: "🚀 Solicitud enviada",
+        timer: 1500,
+        showConfirmButton: false,
+      }).then(() => {
+        reset({ amount: "" }); // limpia el campo de monto
+        setReceiptFile(null); // limpia el archivo
+        fetchHistory(); // actualiza historial
+      });
+
+      reset();
+      setReceiptFile(null);
+      fetchHistory();
     } catch (error) {
-      Swal.fire({ icon: 'error', title: '❌ Error al solicitar recarga' });
+      Swal.fire({
+        icon: "error",
+        title: "❌ Error al solicitar recarga",
+      }).then(() => {
+        reset({ amount: "" }); // limpia el campo de monto
+        setReceiptFile(null); // limpia el archivo
+        fetchHistory(); // actualiza historial
+      });
       console.error(error);
-    } finally { setSubmitting(false); }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleCopy = () => {
-    const text = `${depositInfo.bank}\nNúmero de Cuenta: ${depositInfo.accountNumber}\nCLABE: ${depositInfo.clabe}\nBeneficiario: ${depositInfo.beneficiary}`;
+    const text = `
+${depositInfo.bank}
+Número de Cuenta: ${depositInfo.accountNumber}
+CLABE: ${depositInfo.clabe}
+Beneficiario: ${depositInfo.beneficiary}
+Referencia: ${referencia}
+    `.trim();
+
     navigator.clipboard.writeText(text).then(() => {
-      Swal.fire({ icon: 'success', title: '✅ Datos copiados', timer: 1500, showConfirmButton: false });
+      Swal.fire({
+        icon: "success",
+        title: "✅ Datos copiados con referencia",
+        timer: 1500,
+        showConfirmButton: false,
+      });
     });
   };
+
+  const historyFiltrada = history.filter((item) => {
+    if (filtroEstado === "todos") return true;
+    return item.status === filtroEstado;
+  });
 
   return (
     <LayoutOne headerTop="visible">
@@ -85,52 +142,38 @@ const SolicitarRecarga = () => {
           💳 Solicitar Recarga de Saldo
         </Typography>
 
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            gap: 4,
-            alignItems: 'stretch',
-            mb: 4,
-          }}
-        >
-          <motion.div
-            initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-          >
-            <Paper sx={{ p: 3, textAlign: 'center', flex: 1 }} elevation={3}>
-              <Typography variant="subtitle1" gutterBottom>📋 Datos para Depósito</Typography>
+        <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 4, alignItems: "stretch", mb: 4 }}>
+          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={{ flex: 1 }}>
+            <Paper sx={{ p: 3, textAlign: "center" }} elevation={3}>
+              <Typography variant="subtitle1" gutterBottom>
+                📋 Datos para Depósito
+              </Typography>
               <Typography>{depositInfo.bank}</Typography>
               <Typography>🆔 Cuenta: {depositInfo.accountNumber}</Typography>
               <Typography>🔗 CLABE: {depositInfo.clabe}</Typography>
               <Typography>👤 Beneficiario: {depositInfo.beneficiary}</Typography>
+              <Typography>🔖 Referencia: <strong>{referencia}</strong></Typography>
+              <Typography fontSize={13} color="text.secondary">
+                Usa esta referencia como concepto al hacer tu depósito
+              </Typography>
               <Box mt={2}>
-                <Button variant="contained" onClick={handleCopy} sx={{ textTransform: 'none' }}>📋 Copiar Datos</Button>
+                <Button variant="contained" onClick={handleCopy} sx={{ textTransform: "none" }}>
+                  📋 Copiar Datos
+                </Button>
               </Box>
             </Paper>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-          >
-            <Paper sx={{ p: 3, flex: 1 }} elevation={3}>
-              <Typography variant="subtitle1" gutterBottom align="center">📝 Formulario de Solicitud</Typography>
-              <Box
-                component="form"
-                onSubmit={handleSubmit(onSubmit)}
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 2, // espacio vertical entre campos
-                  width: '100%',
-                }}
-              >
+          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={{ flex: 1 }}>
+            <Paper sx={{ p: 3 }} elevation={3}>
+              <Typography variant="subtitle1" gutterBottom align="center">
+                📝 Formulario de Solicitud
+              </Typography>
+              <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                 <Controller
                   name="amount"
                   control={control}
-                  rules={{ required: 'Ingresa un monto' }}
+                  rules={{ required: "Ingresa un monto" }}
                   render={({ field: { onChange, onBlur, value }, fieldState }) => (
                     <NumericFormat
                       value={value}
@@ -143,71 +186,116 @@ const SolicitarRecarga = () => {
                       onBlur={onBlur}
                       error={!!fieldState.error}
                       helperText={fieldState.error?.message}
-                      sx={{ width: { xs: '100%', sm: '80%' } }}
+                      sx={{ width: { xs: "100%", sm: "80%" } }}
                     />
                   )}
                 />
 
-                <Controller
-                  name="receipt"
-                  control={control}
-                  rules={{ required: "Sube tu comprobante" }}
-                  render={({ field, fieldState }) => (
-                    <TextField
-                      {...field}
-                      type="file"
-                      inputProps={{ accept: "image/*,.pdf" }}
-                      fullWidth
-                      margin="dense"
-                      error={!!fieldState.error}
-                      helperText={fieldState.error?.message}
-                      sx={{ width: { xs: '100%', sm: '80%' } }}
-                    />
-                  )}
+                <TextField
+                  key={receiptFile ? "hasFile" : "noFile"} // fuerza reinicio visual
+                  type="file"
+                  inputProps={{ accept: "image/*,.pdf" }}
+                  fullWidth
+                  margin="dense"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0])}
+                  sx={{ width: { xs: "100%", sm: "80%" } }}
                 />
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={submitting}
-                  sx={{ px: 4, py: 1.5 }}
-                >
-                  {submitting ? <CircularProgress size={24} /> : '🚀 Enviar Solicitud'}
+
+                <Button type="submit" variant="contained" disabled={submitting} sx={{ px: 4, py: 1.5 }}>
+                  {submitting ? <CircularProgress size={24} /> : "🚀 Enviar Solicitud"}
                 </Button>
               </Box>
             </Paper>
           </motion.div>
         </Box>
 
-        <Typography variant="h5" gutterBottom align="center" sx={{ mb: 2 }}>📜 Historial de Solicitudes</Typography>
+        <Typography variant="h5" gutterBottom align="center" sx={{ mb: 2 }}>
+          📜 Historial de Solicitudes
+        </Typography>
+
+        <FormControl sx={{ mb: 2, minWidth: 200 }}>
+          <InputLabel>Filtrar por Estado</InputLabel>
+          <Select value={filtroEstado} label="Filtrar por Estado" onChange={(e) => setFiltroEstado(e.target.value)}>
+            <MenuItem value="todos">Todos</MenuItem>
+            <MenuItem value="pendiente">Pendiente</MenuItem>
+            <MenuItem value="aprobado">Aprobado</MenuItem>
+            <MenuItem value="rechazado">Rechazado</MenuItem>
+          </Select>
+        </FormControl>
+
         {loading ? (
-          <Box display="flex" justifyContent="center"><CircularProgress /></Box>
+          <Box display="flex" justifyContent="center">
+            <CircularProgress />
+          </Box>
         ) : (
-          <TableContainer component={Paper} elevation={3} sx={{ overflowX: 'auto' }}>
+          <TableContainer component={Paper} elevation={3} sx={{ overflowX: "auto" }}>
             <Table sx={{ minWidth: 300 }}>
               <TableHead sx={{ backgroundColor: theme.palette.primary.main }}>
                 <TableRow>
-                  <TableCell sx={{ color: '#fff' }}>Fecha</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Monto</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Estado</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Comprobante</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Fecha</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Monto</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Referencia</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Descripción</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Estado</TableCell>
+                  <TableCell sx={{ color: "#fff" }}>Comprobante</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {history.length ? history.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell>{new Date(r.created_at).toLocaleString()}</TableCell>
-                    <TableCell>${parseFloat(r.monto).toFixed(2)}</TableCell>
-                    <TableCell>{r.status}</TableCell>
-                    <TableCell>
-                      {r.comprobante_url ? (
-                        <a href={r.comprobante_url} target="_blank" rel="noopener noreferrer">📎 Ver Comprobante</a>
-                      ) : '—'}
-                    </TableCell>
-                  </TableRow>
-                )) : (
+                {historyFiltrada.length ? (
+                  historyFiltrada.map((r) => (
+                    <TableRow
+                      key={r.id}
+                      sx={{
+                        backgroundColor:
+                          r.status === 'pendiente'
+                            ? 'rgba(246, 234, 8, 0.1)'     // Amarillo claro
+                            : r.status === 'aprobado'
+                              ? 'rgba(76, 175, 80, 0.1)'      // Verde claro
+                              : r.status === 'rechazado'
+                                ? 'rgba(244, 67, 54, 0.1)'      // Rojo claro
+                                : 'inherit',
+                      }}
+                    >
+                      <TableCell>{new Date(r.created_at).toLocaleString()}</TableCell>
+                      <TableCell>${parseFloat(r.monto).toFixed(2)}</TableCell>
+                      <TableCell>{r.referencia}</TableCell>
+                      <TableCell>{r.descripcion}</TableCell>
+                      <TableCell>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: 600,
+                            color:
+                              r.status === 'pendiente'
+                                ? 'warning.main'
+                                : r.status === 'aprobado'
+                                  ? 'success.main'
+                                  : r.status === 'rechazado'
+                                    ? 'error.main'
+                                    : 'text.primary',
+                          }}
+                        >
+                          {r.status}
+                        </Typography>
+                      </TableCell>
+
+                      <TableCell>
+                        {r.comprobante_url ? (
+                          <a href={r.comprobante_url} target="_blank" rel="noopener noreferrer">
+                            📎 Ver
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
                   <TableRow>
-                    <TableCell colSpan={4} align="center">No hay solicitudes 😔</TableCell>
+                    <TableCell colSpan={6} align="center">
+                      No hay solicitudes 😔
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>

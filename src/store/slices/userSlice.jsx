@@ -4,6 +4,7 @@ const initialState = {
   user: null,
   token: null,
   isAuthenticated: false,
+  notificaciones: [] // ✅ nuevo estado
 };
 
 const userSlice = createSlice({
@@ -28,6 +29,7 @@ const userSlice = createSlice({
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
+      state.notificaciones = [];
     },
     loadUserFromStorage(state) {
       if (typeof window !== 'undefined') {
@@ -44,23 +46,28 @@ const userSlice = createSlice({
         }
       }
     },
-
-    // ✅ NUEVA ACCIÓN PARA ACTUALIZAR SOLO EL SALDO
     updateSaldo(state, action) {
       const nuevoSaldo = action.payload;
       if (state.user) {
         state.user.saldo = nuevoSaldo;
-
-        // También actualizamos en localStorage
         if (typeof window !== 'undefined') {
           localStorage.setItem('user', JSON.stringify(state.user));
         }
       }
     },
+    setNotificaciones(state, action) {
+      state.notificaciones = action.payload;
+    },
   },
 });
 
+export const {
+  setUser,
+  clearUser,
+  loadUserFromStorage,
+  updateSaldo,
+  setNotificaciones // ✅ exportar
+} = userSlice.actions;
 
-export const { setUser, clearUser, loadUserFromStorage, updateSaldo } = userSlice.actions;
 
 export default userSlice.reducer;
