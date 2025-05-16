@@ -43,6 +43,7 @@ const Agentes = lazy(() => import("./pages/other/Agentes.jsx"))
 const Loginmui = lazy(() => import("./pages/other/loginmui.jsx"))
 const InicioAgente = lazy (() => import ("./pages/home/InicioAgente.jsx"))
 const SaldoRecarga = lazy (() => import ("./pages/other/SaldoRecarga.jsx"))
+const LandingPage = lazy (() => import ("./pages/landing/LandingPage.jsx"))
 
 //Pages Admin
 const Notifications = lazy(() => import("./pages/admin/Notifications.jsx"));
@@ -113,6 +114,7 @@ const App = () => {
             <Route path="/home-fashion-agent" element={<InicioAgente />} />
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
             <Route path="/agent-mipages" element={<Agentes />} />
+            <Route path="/landing" element={<LandingPage />} />
             <Route
               path="/loginmui"
               element={
