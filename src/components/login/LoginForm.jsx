@@ -37,16 +37,15 @@ const LoginForm = ({ onBack }) => {
         password: data.loginPassword,
       });
       const { token, user } = response.data;
-      dispatch(setUser({ user, token }));
-
       setShowWelcome(true);
       setTimeout(() => {
+        dispatch(setUser({ user, token })); // ahora sí activamos la sesión
+
         setShowWelcome(false);
         if (user.role === "superadmin") {
           navigate("/admin/dashboard");
         } else {
           navigate("/home-fashion-three", { replace: true });
-
         }
       }, 3000);
     } catch (error) {
@@ -238,9 +237,9 @@ const LoginForm = ({ onBack }) => {
           >
             ¿Olvidaste tu contraseña?
           </Typography>
-          <Typography>  
+          <Typography>
           </Typography>
-          <Typography>  
+          <Typography>
           </Typography>
 
           <Typography

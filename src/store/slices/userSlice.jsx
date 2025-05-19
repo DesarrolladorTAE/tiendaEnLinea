@@ -4,6 +4,7 @@ const initialState = {
   user: null,
   token: null,
   isAuthenticated: false,
+  sessionLoaded: false, // 🔄 NUEVO
   notificaciones: [] // ✅ nuevo estado
 };
 
@@ -45,6 +46,7 @@ const userSlice = createSlice({
           console.error("Error al cargar user/token desde localStorage", error);
         }
       }
+      state.sessionLoaded = true; // ✅ Indicar que terminó de cargar
     },
     updateSaldo(state, action) {
       const nuevoSaldo = action.payload;

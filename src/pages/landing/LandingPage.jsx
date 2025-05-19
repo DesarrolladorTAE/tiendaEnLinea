@@ -13,11 +13,19 @@ import LandingFooterSection from "../../components/landing/LandingFooterSection"
 
 const LandingPage = () => {
   return (
-    <Box sx={{ scrollBehavior: "smooth", backgroundColor: "#fff" }}>
-      {/* Navbar fija */}
+    <Box
+      sx={{
+        width: '100%',
+        maxWidth: '100vw',
+        overflowX: 'hidden',
+        scrollBehavior: 'smooth',
+        backgroundColor: '#fff',
+        margin: 0,
+        padding: 0,
+      }}
+    >
       <LandingNavbar />
 
-      {/* Secciones principales */}
       <Box id="home">
         <LandingHeroSection />
       </Box>
@@ -42,10 +50,10 @@ const LandingPage = () => {
         <LandingFAQSection />
       </Box>
 
-      {/* Footer */}
       <LandingFooterSection />
     </Box>
   );
 };
+
 
 export default LandingPage;

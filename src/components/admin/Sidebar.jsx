@@ -50,7 +50,7 @@ const Sidebar = ({ open, onClose }) => {
     setShowByeModal(true);
     setTimeout(() => {
       setShowByeModal(false);
-      navigate("/login");
+      navigate("/loginmui");
     }, 3000);
   };
 

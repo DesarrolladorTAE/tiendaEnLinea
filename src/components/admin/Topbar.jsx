@@ -103,7 +103,11 @@ const Topbar = ({ onMenuClick }) => {
                       <ListItem key={index} divider>
                         <ListItemText
                           primary={n.mensaje}
-                          secondary={new Date(n.created_at).toLocaleString()}
+                          secondary={
+                            <span>
+                              {new Date(n.fecha).toLocaleString()} — {n.user?.name} ({n.user?.email})
+                            </span>
+                          }
                         />
                       </ListItem>
                     ))

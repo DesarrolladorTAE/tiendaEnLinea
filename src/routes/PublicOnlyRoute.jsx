@@ -1,10 +1,18 @@
-import { Navigate } from "react-router-dom";
+import React from 'react';
+import { useSelector } from 'react-redux';
+import { Navigate, useLocation } from 'react-router-dom';
 
 const PublicOnlyRoute = ({ children }) => {
-  const token = localStorage.getItem("token"); // Asegúrate de que la clave sea EXACTA
-  if (token) {
+  const { isAuthenticated, sessionLoaded } = useSelector((state) => state.user);
+  const token = localStorage.getItem("token");
+  const location = useLocation();
+
+  if (!sessionLoaded) return null; // 👈 No renderizar nada hasta que cargue la sesión
+
+  if ((isAuthenticated || token) && location.pathname === "/loginmui") {
     return <Navigate to="/home-fashion-three" replace />;
   }
+
   return children;
 };
 

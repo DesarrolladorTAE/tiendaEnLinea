@@ -41,9 +41,9 @@ const RecargarSaldo = lazy(() => import("./pages/other/RecargarSaldo.jsx"));
 const HistorialRecargas = lazy(() => import("./pages/other/HistorialRecargas.jsx"))
 const Agentes = lazy(() => import("./pages/other/Agentes.jsx"))
 const Loginmui = lazy(() => import("./pages/other/loginmui.jsx"))
-const InicioAgente = lazy (() => import ("./pages/home/InicioAgente.jsx"))
-const SaldoRecarga = lazy (() => import ("./pages/other/SaldoRecarga.jsx"))
-const LandingPage = lazy (() => import ("./pages/landing/LandingPage.jsx"))
+const InicioAgente = lazy(() => import("./pages/home/InicioAgente.jsx"))
+const SaldoRecarga = lazy(() => import("./pages/other/SaldoRecarga.jsx"))
+const LandingPage = lazy(() => import("./pages/landing/LandingPage.jsx"))
 
 //Pages Admin
 const Notifications = lazy(() => import("./pages/admin/Notifications.jsx"));
@@ -86,7 +86,7 @@ const App = () => {
         >
           <Routes>
             {/* Redirigir raíz al login */}
-            <Route path="/" element={<Navigate to="/loginmui" replace />} />
+            <Route path="/" element={<LandingPage />} />
 
             {/* Home page */}
             <Route path="/home-fashion-three" element={<HomeFashionThree />} />
