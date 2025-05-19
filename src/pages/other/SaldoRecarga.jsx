@@ -73,6 +73,7 @@ const SolicitarRecarga = () => {
     const formData = new FormData();
     formData.append("monto", cleanAmount);
     if (receiptFile) {
+      console.log("Archivo seleccionado:", receiptFile);
       formData.append("comprobante", receiptFile);
     }
 
@@ -200,6 +201,25 @@ Referencia: ${referencia}
                   onChange={(e) => setReceiptFile(e.target.files?.[0])}
                   sx={{ width: { xs: "100%", sm: "80%" } }}
                 />
+
+                {receiptFile && (
+                  <>
+                    <Typography variant="body2" color="text.secondary">
+                      Archivo seleccionado: {receiptFile.name}
+                    </Typography>
+
+                    {receiptFile.type.startsWith("image/") && (
+                      <Box mt={2}>
+                        <img
+                          src={URL.createObjectURL(receiptFile)}
+                          alt="Vista previa"
+                          style={{ maxWidth: "100%", borderRadius: "8px" }}
+                        />
+                      </Box>
+                    )}
+                  </>
+                )}
+
 
 
                 <Button type="submit" variant="contained" disabled={submitting} sx={{ px: 4, py: 1.5 }}>

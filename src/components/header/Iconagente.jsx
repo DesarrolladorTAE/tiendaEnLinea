@@ -7,11 +7,11 @@ import MenuCart from "./sub-components/MenuCart";
 import { logoutUser } from "../../api";
 import { clearUser } from '../../store/slices/userSlice';
 import AnimatedModal from "../AnimatedModal";
-import { ColorModeContext } from "../../context/ThemeContext";
+// import { ColorModeContext } from "../../context/ThemeContext";
 import { Brightness4, Brightness7 } from "@mui/icons-material";
 
 const IconGroup = ({ iconWhiteClass }) => {
-  const { toggleColorMode, modoOscuro } = useContext(ColorModeContext);
+  // const { toggleColorMode, modoOscuro } = useContext(ColorModeContext);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 

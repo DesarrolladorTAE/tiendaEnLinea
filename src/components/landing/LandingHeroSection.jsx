@@ -127,15 +127,17 @@ const LandingHeroSectionResponsive = () => {
           alignItems="center"
         >
           <Box
+
             component="img"
             src="/assets/img/imagenherosection1.gif"
             alt="App"
             sx={{
-              width: isMobile ? "90%" : "1000px",
-              maxWidth: "none",
+              width: isMobile ? "90%" : "700px", // Reducido
+              maxWidth: "100%",                  // Evita desbordes
               borderRadius: 3,
             }}
           />
+
         </Grid>
       </Grid>
 

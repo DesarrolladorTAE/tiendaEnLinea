@@ -5,11 +5,12 @@ import {
   Avatar, Typography, Stack, Box, Button
 } from "@mui/material";
 import axios from "../../axiosConfig";
-import DetalleTransaccion from "./DetalleTransaccion";
+import ModalRecargaPendiente from "./ModalRecargaPendiente";
+import { toast } from "react-toastify";
 
 const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
   const [mensajes, setMensajes] = useState([]);
-  const [transaccionSeleccionada, setTransaccionSeleccionada] = useState(null);
+  const [recargaSeleccionada, setRecargaSeleccionada] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   const cargarMensajes = async () => {
@@ -29,11 +30,37 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
 
   const verTransaccion = async (transaccion_id) => {
     try {
-      const res = await axios.get(`/admin/transacciones/${transaccion_id}`);
-      setTransaccionSeleccionada(res.data);
+      const res = await axios.get("/admin/recargas-pendientes");
+      const encontrada = res.data.find(r => r.id === transaccion_id);
+
+      if (!encontrada) return toast.error("No se encontró la transacción");
+
+      setRecargaSeleccionada(encontrada);
       setDialogOpen(true);
     } catch (err) {
       console.error("Error al obtener transacción", err);
+    }
+  };
+
+  const confirmarRecarga = async (id) => {
+    try {
+      await axios.post(`/admin/recargas/${id}/confirmar`);
+      toast.success("Recarga confirmada y saldo aplicado");
+      setDialogOpen(false);
+      cargarMensajes();
+    } catch (err) {
+      toast.error("Error al confirmar recarga");
+    }
+  };
+
+  const rechazarRecarga = async (id) => {
+    try {
+      await axios.post(`/admin/recargas/${id}/rechazar`);
+      toast.info("Recarga rechazada");
+      setDialogOpen(false);
+      cargarMensajes();
+    } catch (err) {
+      toast.error("Error al rechazar recarga");
     }
   };
 
@@ -85,10 +112,12 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
         </Table>
       </Paper>
 
-      <DetalleTransaccion
+      <ModalRecargaPendiente
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
-        transaccion={transaccionSeleccionada}
+        recarga={recargaSeleccionada}
+        onConfirmar={confirmarRecarga}
+        onRechazar={rechazarRecarga}
       />
     </>
   );
