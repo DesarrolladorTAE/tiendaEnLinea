@@ -46,19 +46,7 @@
     }
   }
 
-  .notification-dropdown {
-    position: absolute;
-    top: 120%; // asegúrate que sea visible y no encima del ícono
-    right: 0;
-    background-color: white;
-    width: 260px;
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 1300;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    padding: 10px;
-    font-size: 14px;
-  }
+ 
 }
 
 

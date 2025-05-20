@@ -4,8 +4,8 @@ const initialState = {
   user: null,
   token: null,
   isAuthenticated: false,
-  sessionLoaded: false, // 🔄 NUEVO
-  notificaciones: [] // ✅ nuevo estado
+  sessionLoaded: false,
+  notificaciones: []
 };
 
 const userSlice = createSlice({
@@ -46,12 +46,21 @@ const userSlice = createSlice({
           console.error("Error al cargar user/token desde localStorage", error);
         }
       }
-      state.sessionLoaded = true; // ✅ Indicar que terminó de cargar
+      state.sessionLoaded = true;
     },
     updateSaldo(state, action) {
       const nuevoSaldo = action.payload;
       if (state.user) {
         state.user.saldo = nuevoSaldo;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user', JSON.stringify(state.user));
+        }
+      }
+    },
+    updateGanancias(state, action) {
+      const nuevasGanancias = action.payload;
+      if (state.user) {
+        state.user.ganancias = nuevasGanancias;
         if (typeof window !== 'undefined') {
           localStorage.setItem('user', JSON.stringify(state.user));
         }
@@ -68,8 +77,8 @@ export const {
   clearUser,
   loadUserFromStorage,
   updateSaldo,
-  setNotificaciones // ✅ exportar
+  updateGanancias, // ✅ nueva acción exportada
+  setNotificaciones
 } = userSlice.actions;
-
 
 export default userSlice.reducer;

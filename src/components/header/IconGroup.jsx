@@ -113,16 +113,39 @@ const IconGroup = ({ iconWhiteClass }) => {
             </button>
             {openNotifications && (
               <div className="notification-dropdown">
-                <ul>
-                  {notificaciones.length ? (
-                    notificaciones.map((msg, i) => (
-                      <li key={i}>{msg}</li>
-                    ))
-                  ) : (
-                    <li>Aún no tienes notificaciones 💤</li>
-                  )}
-                </ul>
+                {notificaciones.length ? (
+                  <>
+                    <div className="notification-list">
+                      {notificaciones.map((n, i) => (
+                        <div key={i} className="notification-card">
+                          <p className="mensaje">{n.mensaje}</p>
+                          <small className="fecha">
+                            {new Date(n.created_at).toLocaleString()}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="noti-actions">
+                      <button
+                        className="btn-vaciar"
+                        onClick={async () => {
+                          try {
+                            await axios.delete("/mis-notificaciones/vaciar");
+                            dispatch(setNotificaciones([]));
+                          } catch (err) {
+                            console.error("Error al vaciar notificaciones", err);
+                          }
+                        }}
+                      >
+                        Vaciar
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="sin-notificaciones">Aún no tienes notificaciones 💤</div>
+                )}
               </div>
+
             )}
           </div>
 
