@@ -78,6 +78,11 @@ const SolicitarRecarga = () => {
     }
 
     try {
+      console.log("Enviando FormData:");
+      for (let pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+
       await axios.post("/recargar-saldo", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -170,7 +175,13 @@ Referencia: ${referencia}
               <Typography variant="subtitle1" gutterBottom align="center">
                 📝 Formulario de Solicitud
               </Typography>
-              <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+              <Box
+                component="form"
+                onSubmit={handleSubmit(onSubmit)}
+                encType="multipart/form-data"
+                sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}
+              >
+
                 <Controller
                   name="amount"
                   control={control}

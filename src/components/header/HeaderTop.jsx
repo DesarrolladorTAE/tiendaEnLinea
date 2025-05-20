@@ -31,7 +31,7 @@ const HeaderTop = ({ borderStyle }) => {
               </p>
 
               {isBajoSaldo && (
-                <Link to="/recargar-saldo" className="boton-recarga">
+                <Link to="/saldo-recarga" className="boton-recarga">
                   Recarga ahora
                 </Link>
               )}

@@ -140,8 +140,8 @@ const IconGroup = ({ iconWhiteClass }) => {
               <ul>
                 <li><Link to={"/my-account"}>Mi Cuenta</Link></li>
                 <li><Link to={"/agent-mipages"}>Agentes</Link></li>
-                <li><Link to={"/wallet"}>Tarjetas</Link></li>
-                <li><Link to={"*"}>Librerías</Link></li>
+                {/* <li><Link to={"/wallet"}>Tarjetas</Link></li>
+                <li><Link to={"*"}>Librerías</Link></li> */}
                 {user?.role === "superadmin" && (
                   <li><Link to={"/admin/dashboard"}>Administración</Link></li>
                 )}

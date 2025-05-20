@@ -35,8 +35,17 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
 
       if (!encontrada) return toast.error("No se encontró la transacción");
 
-      setRecargaSeleccionada(encontrada);
+      // Asegurar estructura esperada
+      const recarga = {
+        ...encontrada,
+        user: encontrada.user || {}, // prevenir que esté undefined
+        fecha_envio: encontrada.created_at, // mapear si necesario
+        status: encontrada.status || "pendiente" // fallback si no viene bien
+      };
+
+      setRecargaSeleccionada(recarga);
       setDialogOpen(true);
+
     } catch (err) {
       console.error("Error al obtener transacción", err);
     }
