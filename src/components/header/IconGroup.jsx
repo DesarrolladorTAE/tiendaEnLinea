@@ -5,8 +5,10 @@ import { useSelector, useDispatch } from "react-redux";
 import clsx from "clsx";
 import MenuCart from "./sub-components/MenuCart";
 import { logoutUser } from "../../api";
-import { clearUser } from '../../store/slices/userSlice';
+import { clearUser, setNotificaciones } from "../../store/slices/userSlice";
 import AnimatedModal from "../AnimatedModal";
+import axios from "../../axiosConfig";
+
 
 const IconGroup = ({ iconWhiteClass }) => {
   const navigate = useNavigate();
@@ -39,6 +41,7 @@ const IconGroup = ({ iconWhiteClass }) => {
   const { wishlistItems } = useSelector((state) => state.wishlist);
   const { cartItems } = useSelector((state) => state.cart);
   const { user, notificaciones = [] } = useSelector((state) => state.user);
+
 
   const handleLogout = async (e) => {
     e.preventDefault();
@@ -82,6 +85,25 @@ const IconGroup = ({ iconWhiteClass }) => {
     return String(notificaciones.length);
   };
 
+  const handleDeleteNotificacion = async (id) => {
+    try {
+      await axios.delete(`/mis-notificaciones/${id}`);
+      dispatch(setNotificaciones(prev => prev.filter(n => n.id !== id)));
+    } catch (error) {
+      // console.error("❌ Error al eliminar notificación:", error);
+    }
+  };
+
+  const handleVaciarNotificaciones = async () => {
+    try {
+      await axios.delete("/mis-notificaciones/vaciar"); // asegúrate que la ruta esté bien
+      dispatch(setNotificaciones([])); // limpia en redux también
+    } catch (err) {
+      // console.error("Error al vaciar notificaciones", err);
+    }
+  };
+
+
   return (
     <>
       <div className={clsx("header-right-wrap", iconWhiteClass)}>
@@ -113,39 +135,41 @@ const IconGroup = ({ iconWhiteClass }) => {
             </button>
             {openNotifications && (
               <div className="notification-dropdown">
-                {notificaciones.length ? (
-                  <>
-                    <div className="notification-list">
-                      {notificaciones.map((n, i) => (
-                        <div key={i} className="notification-card">
-                          <p className="mensaje">{n.mensaje}</p>
-                          <small className="fecha">
-                            {new Date(n.created_at).toLocaleString()}
-                          </small>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="noti-actions">
-                      <button
-                        className="btn-vaciar"
-                        onClick={async () => {
-                          try {
-                            await axios.delete("/mis-notificaciones/vaciar");
-                            dispatch(setNotificaciones([]));
-                          } catch (err) {
-                            console.error("Error al vaciar notificaciones", err);
-                          }
-                        }}
-                      >
-                        Vaciar
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="sin-notificaciones">Aún no tienes notificaciones 💤</div>
-                )}
-              </div>
+                <div className="header-noti">
+                  <span className="titulo">Mis Notificaciones</span>
+                  <button className="btn-vaciar" onClick={handleVaciarNotificaciones} title="Vaciar todas">
+                    <i className="pe-7s-trash" style={{ fontSize: "18px" }}></i>
+                  </button>
+                </div>
 
+                <div className="notification-list-scroll">
+                  {notificaciones.length ? (
+                    notificaciones.slice(0, 5).map((msg) => (
+                      <div key={msg.id} className="notification-card" style={{ position: "relative" }}>
+                        <button
+                          className="btn-vaciar"
+                          style={{
+                            position: "absolute",
+                            top: "4px",
+                            right: "6px",
+                            fontSize: "16px",
+                            padding: "0",
+                            lineHeight: "1"
+                          }}
+                          onClick={() => handleDeleteNotificacion(msg.id)}
+                          title="Eliminar notificación"
+                        >
+                          ❌
+                        </button>
+                        <p className="mensaje">{msg.mensaje}</p>
+                        <p className="fecha">{new Date(msg.created_at).toLocaleString()}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="sin-notificaciones">Aún no tienes notificaciones 💤</div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
 

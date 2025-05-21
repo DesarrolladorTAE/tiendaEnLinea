@@ -5,14 +5,11 @@ import {
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsIcon from "@mui/icons-material/Public";
-import { useSelector, useDispatch } from "react-redux";
-import { setNotificaciones } from "../../store/slices/userSlice";
-import axios from "../../axiosConfig";
+import { useSelector } from "react-redux";
 
 const Topbar = ({ onMenuClick }) => {
-  const dispatch = useDispatch();
-  const user = useSelector((state) => state.user.user);
   const notificaciones = useSelector((state) => state.user.notificaciones);
+  const user = useSelector((state) => state.user.user);
   const [openNotifications, setOpenNotifications] = useState(false);
   const notificationRef = useRef();
 
@@ -22,18 +19,7 @@ const Topbar = ({ onMenuClick }) => {
     return String(notificaciones.length);
   };
 
-  useEffect(() => {
-    const fetchNotificaciones = async () => {
-      try {
-        const { data } = await axios.get("/mis-notificaciones");
-        dispatch(setNotificaciones(data));
-      } catch (error) {
-        console.error("Error al obtener notificaciones:", error);
-      }
-    };
-
-    fetchNotificaciones();
-  }, [dispatch]);
+  // ⛔️ Ya no necesitas hacer fetch aquí, porque lo hace useRealtimeUserData globalmente
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -51,12 +37,7 @@ const Topbar = ({ onMenuClick }) => {
     <Box sx={{ position: "relative" }}>
       <AppBar position="static" sx={{ backgroundColor: "#4F46E5" }}>
         <Toolbar>
-          <IconButton
-            color="inherit"
-            edge="start"
-            onClick={onMenuClick}
-            sx={{ mr: 2 }}
-          >
+          <IconButton color="inherit" edge="start" onClick={onMenuClick} sx={{ mr: 2 }}>
             <MenuIcon />
           </IconButton>
 
@@ -99,23 +80,24 @@ const Topbar = ({ onMenuClick }) => {
                 </Box>
                 <List>
                   {notificaciones.length > 0 ? (
-                    notificaciones.map((n, index) => (
-                      <ListItem key={index} divider>
-                        <ListItemText
-                          primary={n.mensaje}
-                          secondary={
-                            <span>
-                              {new Date(n.fecha).toLocaleString()} — {n.user?.name} ({n.user?.email})
-                            </span>
-                          }
-                        />
-                      </ListItem>
-                    ))
+                    notificaciones
+                      .filter(n =>
+                        n.visible_para?.includes("admin") || n.visible_para?.includes("superadmin")
+                      )
+                      .map((n, i) => (
+                        <ListItem key={i} divider>
+                          <ListItemText
+                            primary={n.mensaje}
+                            secondary={new Date(n.created_at).toLocaleString()}
+                          />
+                        </ListItem>
+                      ))
                   ) : (
                     <ListItem>
                       <ListItemText primary="Aún no tienes notificaciones 💤" />
                     </ListItem>
                   )}
+
                 </List>
               </Paper>
             )}

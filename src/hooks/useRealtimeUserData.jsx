@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import axios from "../axiosConfig";
 import {
   updateSaldo,
@@ -9,8 +9,11 @@ import {
 
 const useRealtimeUserData = (interval = 5000) => {
   const dispatch = useDispatch();
+  const { token, isAuthenticated } = useSelector((state) => state.user);
 
   useEffect(() => {
+    if (!token || !isAuthenticated) return; // 🔐 Detener si no hay sesión
+
     const intervalo = setInterval(async () => {
       try {
         const { data } = await axios.get("/dashboard/mini");
@@ -27,13 +30,16 @@ const useRealtimeUserData = (interval = 5000) => {
           dispatch(setNotificaciones(data.notificaciones));
         }
 
+        // (Opcional) peticiones paralelas:
+        // const notiRes = await axios.get("/mis-notificaciones");
+        // dispatch(setNotificaciones(notiRes.data));
       } catch (err) {
         console.warn("Error actualizando datos en tiempo real:", err);
       }
     }, interval);
 
     return () => clearInterval(intervalo);
-  }, [ interval]);
+  }, [dispatch, interval, token, isAuthenticated]);
 };
 
 export default useRealtimeUserData;

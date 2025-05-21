@@ -73,14 +73,14 @@ const SolicitarRecarga = () => {
     const formData = new FormData();
     formData.append("monto", cleanAmount);
     if (receiptFile) {
-      console.log("Archivo seleccionado:", receiptFile);
+      // console.log("Archivo seleccionado:", receiptFile);
       formData.append("comprobante", receiptFile);
     }
 
     try {
-      console.log("Enviando FormData:");
+      // console.log("Enviando FormData:");
       for (let pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
+        // console.log(pair[0], pair[1]);
       }
 
       await axios.post("/recargar-saldo", formData, {
@@ -242,7 +242,7 @@ Referencia: ${referencia}
         </Box>
 
         <Typography variant="h5" gutterBottom align="center" sx={{ mb: 2 }}>
-          📜 Historial de Solicitudes
+          📜 Historial de Compras de Saldo
         </Typography>
 
         <FormControl sx={{ mb: 2, minWidth: 200 }}>
@@ -325,7 +325,7 @@ Referencia: ${referencia}
                 ) : (
                   <TableRow>
                     <TableCell colSpan={6} align="center">
-                      No hay solicitudes 😔
+                      No hay Compras 😔
                     </TableCell>
                   </TableRow>
                 )}

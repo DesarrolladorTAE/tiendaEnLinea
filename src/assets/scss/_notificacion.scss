@@ -1,5 +1,5 @@
 .notification-dropdown {
-  width: 280px;
+  width: 400px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 0 8px rgba(0,0,0,0.15);
@@ -10,12 +10,40 @@
   right: 0;
 }
 
+.header-noti {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.header-noti .titulo {
+  font-weight: bold;
+  font-size: 15px;
+  color: #333;
+}
+
+.btn-vaciar {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  color: #dc3545;
+}
+
+.notification-list-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .notification-card {
-  background: #f9f9f9;
+  background: #f1f3f5;
   border-left: 4px solid #4dabf7;
   padding: 10px;
   margin-bottom: 8px;
   border-radius: 4px;
+  position: relative;
 }
 
 .notification-card .mensaje {
@@ -26,24 +54,6 @@
 .notification-card .fecha {
   font-size: 12px;
   color: #888;
-}
-
-.noti-actions {
-  text-align: center;
-  margin-top: 10px;
-}
-
-.btn-vaciar {
-  background-color: #e03131;
-  color: white;
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-vaciar:hover {
-  background-color: #c92a2a;
 }
 
 .sin-notificaciones {

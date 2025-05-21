@@ -61,11 +61,11 @@ const HistorialRecargas = () => {
 
   return (
     <LayoutOne headerTop="visible">
-      <SEO titleTemplate="Historial de Recargas" />
-      <Breadcrumb pages={[{ label: "Inicio", path: "/" }, { label: "Historial de Recargas", path: pathname }]} />
+      <SEO titleTemplate="Ventas" />
+      <Breadcrumb pages={[{ label: "Inicio", path: "/" }, { label: "Ventas", path: pathname }]} />
       <Container sx={{ mt: 4 }}>
         <Typography variant="h4" gutterBottom>
-        📇 Historial de Recargas
+        📇 Historial de Ventas
         </Typography>
 
         <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>

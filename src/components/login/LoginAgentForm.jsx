@@ -31,7 +31,7 @@ const LoginAgentForm = ({ visible, setRightPanelActive, resetForm, onBack }) => 
         try {
             const response = await axios.post("/pos/login", {
                 phone: data.phone,
-                code: data.code,
+                password: data.password,
             });
     
             const { token, user } = response.data;
@@ -120,13 +120,13 @@ const LoginAgentForm = ({ visible, setRightPanelActive, resetForm, onBack }) => 
                     type="text"
                     size="small"
                     fullWidth
-                    {...register("code", {
+                    {...register("password", {
                         required: "El código es obligatorio",
                         minLength: { value: 4, message: "Mínimo 4 caracteres" },
                         maxLength: { value: 8, message: "Máximo 8 caracteres" },
                     })}
-                    error={Boolean(errors.code)}
-                    helperText={errors.code?.message}
+                    error={Boolean(errors.password)}
+                    helperText={errors.passoword?.message}
                     sx={{
                         borderRadius: 50,
                         "& .MuiOutlinedInput-root": {

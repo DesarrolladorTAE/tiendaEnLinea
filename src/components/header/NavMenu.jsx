@@ -40,7 +40,7 @@ const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
          </li>  
           <li>
           <Link to={"/historial-recargas"}>
-              {t("Compras")}
+              {t("Ventas")}
           </Link>
           </li>
         </ul>

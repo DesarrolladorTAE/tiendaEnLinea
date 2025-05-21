@@ -60,7 +60,7 @@ const App = () => {
     dispatch(loadUserFromStorage());
   }, [dispatch]);
 
-  useRealtimeUserData(2000); // 🔁 actualiza cada 5 segundos
+  useRealtimeUserData(5000); // 🔁 actualiza cada 5 segundos
 
   return (
     <Router>
