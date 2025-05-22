@@ -11,7 +11,7 @@ import {
   CircularProgress,
   Box
 } from "@mui/material";
-import Swal from "sweetalert2";
+import { toast } from "react-toastify";
 import axios from "../../axiosConfig";
 import { useDispatch, useSelector } from "react-redux";
 import { updateSaldo } from "../../store/slices/userSlice";
@@ -30,7 +30,6 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [numeroCoincide, setNumeroCoincide] = useState(true);
 
-  // 🔄 Reset al cerrar el modal
   const resetForm = () => {
     setNumero("");
     setConfirmacion("");
@@ -56,7 +55,7 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
 
   useEffect(() => {
     if (!open) {
-      resetForm(); // ✅ siempre que se cierre, reseteamos
+      resetForm();
     }
   }, [open]);
 
@@ -82,15 +81,20 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
     if (!productoSeleccionado) return;
 
     if (numero.length !== 10 || confirmacion.length !== 10) {
-      return Swal.fire("Error", "Son 10 dígitos en ambos campos", "error");
+      return toast.error("Son 10 dígitos en ambos campos");
     }
 
     if (!numeroCoincide) {
-      return Swal.fire("Error", "Los números no coinciden", "error");
+      return toast.error("Los números no coinciden");
     }
 
     if (productoSeleccionado.price > saldo) {
-      return Swal.fire("Saldo insuficiente", "Recarga tu saldo", "warning");
+      const mensaje =
+        user?.role === "agent"
+          ? "Saldo insuficiente. Solicita a tu administrador una recarga de saldo."
+          : "Saldo insuficiente. Por favor, recarga tu saldo.";
+
+      return toast.warning(mensaje);
     }
 
     setIsLoading(true);
@@ -107,8 +111,8 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
       dispatch(updateSaldo(nuevoSaldo));
       localStorage.setItem("user", JSON.stringify({ ...user, saldo: nuevoSaldo }));
 
-      Swal.fire("✅ Recarga exitosa", " ", "success");
-      handleCerrar(); // ✅ cierra y resetea
+      toast.success("✅ Recarga exitosa");
+      handleCerrar();
     } catch (err) {
       console.error(err);
       const mensajeBackend =
@@ -116,10 +120,8 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
         err.response?.data?.message ||
         "Error desconocido";
 
-      handleCerrar(); // ⬅️ primero cierra
-      setTimeout(() => {
-        Swal.fire("Error", mensajeBackend, "error");
-      }, 300);
+      toast.error("❌ " + mensajeBackend);
+      handleCerrar();
     } finally {
       setIsLoading(false);
     }

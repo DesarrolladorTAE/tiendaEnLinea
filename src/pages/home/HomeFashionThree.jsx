@@ -1,13 +1,17 @@
 import React, { Fragment } from "react";
+import { useSelector } from "react-redux";
 import SEO from "../../components/seo";
 import LayoutOne from "../../layouts/LayoutOne";
 import FeatureIconTwo from "../../wrappers/feature-icon/FeatureIconTwo";
-import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
 import HeroSliderTen from "../../wrappers/hero-slider/HeroSliderTen";
 import NewProductGrid from "../../wrappers/product/NewProductGrid";
+import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
 import withAuth from '../../components/withAuth';
 
 const HomeFashionThree = () => {
+  const user = useSelector((state) => state.user.user);
+  const isAgent = user?.role === "agent";
+
   return (
     <Fragment>
       <SEO
@@ -19,19 +23,22 @@ const HomeFashionThree = () => {
         headerPaddingClass="header-padding-2"
         headerTop="visible"
       >
-        {/* hero slider */}
+        {/* Hero principal */}
         <HeroSliderTen />
-        {/* feature icon */}
+
+        {/* Iconos de características */}
         <FeatureIconTwo spaceTopClass="pt-100" spaceBottomClass="pb-60" />
-        {/* product grid */}
-        <NewProductGrid category="accessories" limit={10} />
-        {/* blog featured */}
-        <BlogFeatured spaceBottomClass="pb-55" />
+
+        {/* Solo se muestra si NO es agente */}
+        {!isAgent && (
+          <>
+            <NewProductGrid category="accessories" limit={10} />
+            <BlogFeatured spaceBottomClass="pb-55" />
+          </>
+        )}
       </LayoutOne>
     </Fragment>
   );
 };
 
-// export default HomeFashionThree;
 export default withAuth(HomeFashionThree);
-

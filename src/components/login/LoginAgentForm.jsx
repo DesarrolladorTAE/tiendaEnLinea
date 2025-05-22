@@ -46,7 +46,7 @@ const LoginAgentForm = ({ visible, setRightPanelActive, resetForm, onBack }) => 
             setShowWelcome(true);
             setTimeout(() => {
                 setShowWelcome(false);
-                navigate("/home-fashion-agent", { replace: true });
+                navigate("/home-fashion-three", { replace: true });
             }, 2000);
         } catch (error) {
             setLoginError(error.response?.data?.message || "Error al iniciar sesión");
