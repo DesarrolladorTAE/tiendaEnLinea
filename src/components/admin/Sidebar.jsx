@@ -41,7 +41,7 @@ const Sidebar = ({ open, onClose }) => {
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/admin/dashboard" },
     { text: "Usuarios", icon: <PeopleIcon />, path: "/admin/users" },
-    { text: "Compras", icon: <ShoppingCartIcon />, path: "/admin/purchases" },
+    { text: "Ventas De Saldo", icon: <ShoppingCartIcon />, path: "/admin/purchases" },
     { text: "Notificaciones", icon: <NotificationsIcon />, path: "/admin/notifications" },
   ];
 

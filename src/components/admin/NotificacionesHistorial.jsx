@@ -19,7 +19,13 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
       let data = res.data;
 
       if (soloSolicitudes) {
-        data = data.filter(m => m.mensaje?.toLowerCase().includes("nueva solicitud"));
+        // Filtrar solo solicitudes activas (si aún están pendientes)
+        const pendientesRes = await axios.get("/admin/recargas-pendientes");
+        const idsPendientes = pendientesRes.data.map(r => r.id);
+        data = data.filter(m =>
+          m.mensaje?.toLowerCase().includes("nueva solicitud") &&
+          idsPendientes.includes(m.transaccion_id)
+        );
       }
 
       setMensajes(data);
@@ -35,17 +41,15 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
 
       if (!encontrada) return toast.error("No se encontró la transacción");
 
-      // Asegurar estructura esperada
       const recarga = {
         ...encontrada,
-        user: encontrada.user || {}, // prevenir que esté undefined
-        fecha_envio: encontrada.created_at, // mapear si necesario
-        status: encontrada.status || "pendiente" // fallback si no viene bien
+        user: encontrada.user || {},
+        fecha_envio: encontrada.created_at,
+        status: encontrada.status || "pendiente"
       };
 
       setRecargaSeleccionada(recarga);
       setDialogOpen(true);
-
     } catch (err) {
       console.error("Error al obtener transacción", err);
     }
@@ -55,6 +59,8 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
     try {
       await axios.post(`/admin/recargas/${id}/confirmar`);
       toast.success("Recarga confirmada y saldo aplicado");
+
+      // Notificación se eliminará automáticamente desde el backend
       setDialogOpen(false);
       cargarMensajes();
     } catch (err) {
@@ -66,6 +72,8 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
     try {
       await axios.post(`/admin/recargas/${id}/rechazar`);
       toast.info("Recarga rechazada");
+
+      // Notificación se eliminará automáticamente desde el backend
       setDialogOpen(false);
       cargarMensajes();
     } catch (err) {
