@@ -1,30 +1,38 @@
 // src/components/admin/NotificacionesForm.jsx
 import React, { useState, useEffect, useRef } from "react";
 import {
-  Stack, TextField, MenuItem, Button, IconButton, InputAdornment,
-  FormControlLabel, Checkbox, Box, Dialog, DialogTitle, DialogContent, DialogActions
+  Stack, TextField, Button, IconButton, InputAdornment,
+  FormControlLabel, Checkbox, Box, Dialog, DialogTitle, DialogContent, DialogActions,
+  Paper, Typography, useTheme, useMediaQuery, Slide, Autocomplete
 } from "@mui/material";
 import InsertEmoticonIcon from "@mui/icons-material/InsertEmoticon";
 import ImageIcon from "@mui/icons-material/Image";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
 import EmojiPicker from "emoji-picker-react";
 import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
 
-const mensajesGuardados = [
-  "Hola, tu recarga fue procesada ✅",
-  "Tu saldo está por agotarse 💸",
-  "Gracias por confiar en nosotros 🙌",
-  "Recuerda que puedes recargar saldo en cualquier momento."
-];
-
 const NotificacionesForm = () => {
   const [usuarios, setUsuarios] = useState([]);
+  const [mensajesGuardados, setMensajesGuardados] = useState([
+    "🔧 Hola, estamos trabajando para resolver tu solicitud. ¡Gracias por tu paciencia!",
+    "💳 Recuerda que puedes recargar saldo desde el menú principal.",
+    "⚠️ Si tienes problemas al recargar, actualiza la app o borra caché.",
+    "✅ Tu recarga fue aplicada con éxito. ¡Gracias por usar TeLoRecargo!",
+    "🤝 Nuestro equipo de soporte está disponible por WhatsApp si necesitas ayuda.",
+  ]);
   const [nuevo, setNuevo] = useState({ user_id: "", mensaje: "", imagen: null });
   const [showEmoji, setShowEmoji] = useState(false);
   const [openPredef, setOpenPredef] = useState(false);
   const [masivo, setMasivo] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [editIndex, setEditIndex] = useState(null);
+  const [editText, setEditText] = useState("");
+
   const emojiPickerRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     cargarUsuarios();
@@ -34,7 +42,9 @@ const NotificacionesForm = () => {
 
   const cargarUsuarios = async () => {
     const res = await axios.get("/admin/usuarios");
-    setUsuarios(res.data);
+    const soloUsuarios = res.data.filter(u => u.role === "usuario");
+    setUsuarios(soloUsuarios);
+    setVisible(true);
   };
 
   const handleClickOutside = (e) => {
@@ -48,8 +58,8 @@ const NotificacionesForm = () => {
     if (!file) return;
 
     const validTypes = ["image/jpeg", "image/png", "image/webp"];
-    if (!validTypes.includes(file.type)) return toast.error("Formato no soportado");
-    if (file.size > 1024 * 1024 * 1.5) return toast.error("Máximo 1.5MB");
+    if (!validTypes.includes(file.type)) return toast.error("⚠️ Formato no soportado");
+    if (file.size > 1024 * 1024 * 1.5) return toast.error("⚠️ Máximo 1.5MB");
 
     const reader = new FileReader();
     reader.onload = () => setNuevo({ ...nuevo, imagen: reader.result });
@@ -57,8 +67,8 @@ const NotificacionesForm = () => {
   };
 
   const enviar = async () => {
-    if (!nuevo.mensaje) return toast.warning("El mensaje es obligatorio");
-    if (!masivo && !nuevo.user_id) return toast.warning("Selecciona un usuario");
+    if (!nuevo.mensaje) return toast.warning("✏️ El mensaje es obligatorio");
+    if (!masivo && !nuevo.user_id) return toast.warning("👤 Selecciona un usuario");
 
     const destinatarios = masivo ? usuarios.map(u => u.id) : [nuevo.user_id];
 
@@ -66,94 +76,152 @@ const NotificacionesForm = () => {
       try {
         await axios.post("/admin/notificaciones", { ...nuevo, user_id });
       } catch {
-        toast.error(`Error al enviar a ID ${user_id}`);
+        toast.error(`❌ Error al enviar a ID ${user_id}`);
       }
     }
 
-    toast.success("Mensaje enviado");
+    toast.success("📤 Mensaje enviado correctamente");
     setNuevo({ user_id: "", mensaje: "", imagen: null });
   };
 
-  return (
-    <Box>
-      <Stack spacing={2} direction="row" mb={2} alignItems="center">
-        <TextField
-          select label="Usuario" value={nuevo.user_id}
-          onChange={(e) => setNuevo({ ...nuevo, user_id: e.target.value })}
-          sx={{ minWidth: 200 }} disabled={masivo}
-        >
-          {usuarios.map(u => (
-            <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
-          ))}
-        </TextField>
+  const abrirEdicion = (idx, texto) => {
+    setEditIndex(idx);
+    setEditText(texto);
+  };
 
-        <TextField
-          multiline rows={2}
-          placeholder="Escribe tu mensaje..."
-          value={nuevo.mensaje}
-          onChange={(e) => setNuevo({ ...nuevo, mensaje: e.target.value })}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton onClick={() => setShowEmoji(!showEmoji)}>
-                  <InsertEmoticonIcon />
-                </IconButton>
-                <IconButton component="label" htmlFor="imagen-upload">
-                  <ImageIcon />
-                  <input hidden id="imagen-upload" type="file" accept="image/*" onChange={handleImagen} />
-                </IconButton>
-              </InputAdornment>
-            )
-          }}
-          sx={{ flex: 1 }}
+  const guardarEdicion = () => {
+    const actualizados = [...mensajesGuardados];
+    actualizados[editIndex] = editText;
+    setMensajesGuardados(actualizados);
+    setEditIndex(null);
+    setEditText("");
+  };
+
+  return (
+    <Slide in={visible} direction="up" timeout={500}>
+      <Paper sx={{ p: 3, borderRadius: 3, bgcolor: "#f7f9fc" }} elevation={3}>
+        <Typography variant="h6" mb={2} sx={{ color: "#12344d" }}>
+          ✉️ Enviar Notificación a Usuarios
+        </Typography>
+
+        <Stack
+          spacing={2}
+          direction={isMobile ? "column" : "row"}
+          alignItems="flex-start"
+          mb={2}
+        >
+          <Autocomplete
+            disabled={masivo}
+            options={usuarios}
+            getOptionLabel={(option) => option.name}
+            onChange={(e, value) => setNuevo({ ...nuevo, user_id: value?.id || "" })}
+            renderInput={(params) => (
+              <TextField {...params} label="Buscar usuario..." sx={{ minWidth: 250 }} />
+            )}
+          />
+          <TextField
+            multiline
+            rows={5} // antes estaba en 2
+            placeholder="Escribe tu mensaje personalizado..."
+            value={nuevo.mensaje}
+            onChange={(e) => setNuevo({ ...nuevo, mensaje: e.target.value })}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowEmoji(!showEmoji)}>
+                    <InsertEmoticonIcon />
+                  </IconButton>
+                  <IconButton component="label" htmlFor="imagen-upload">
+                    <ImageIcon />
+                    <input hidden id="imagen-upload" type="file" accept="image/*" onChange={handleImagen} />
+                  </IconButton>
+                </InputAdornment>
+              )
+            }}
+            sx={{ flex: 1, minWidth: 300 }}
+          />
+
+
+          <Button variant="outlined" onClick={() => setOpenPredef(true)}>
+            📚 Mensajes Guardados
+          </Button>
+          <Button variant="contained" sx={{ bgcolor: "#12344d" }} onClick={enviar}>
+            🚀 Enviar
+          </Button>
+        </Stack>
+
+        <FormControlLabel
+          control={<Checkbox checked={masivo} onChange={() => setMasivo(!masivo)} />}
+          label="📢 Enviar a todos los Usuarios"
+          sx={{ mb: 2 }}
         />
 
-        <Button variant="outlined" onClick={() => setOpenPredef(true)}>
-          Mensajes Guardados
-        </Button>
-        <Button variant="contained" onClick={enviar}>Enviar</Button>
-      </Stack>
+        {showEmoji && (
+          <Box ref={emojiPickerRef} sx={{ position: 'absolute', zIndex: 999 }}>
+            <EmojiPicker onEmojiClick={(e) => setNuevo({ ...nuevo, mensaje: nuevo.mensaje + e.emoji })} />
+          </Box>
+        )}
 
-      <FormControlLabel
-        control={<Checkbox checked={masivo} onChange={() => setMasivo(!masivo)} />}
-        label="Enviar a todos los usuarios"
-        sx={{ mb: 2 }}
-      />
+        {nuevo.imagen && (
+          <Box mb={2}>
+            <Stack direction="row" alignItems="center" spacing={1}>
+              <img src={nuevo.imagen} alt="Preview" style={{ maxWidth: 150, borderRadius: 8 }} />
+              <IconButton color="error" onClick={() => setNuevo({ ...nuevo, imagen: null })}>
+                <DeleteIcon />
+              </IconButton>
+            </Stack>
+          </Box>
+        )}
 
-      {showEmoji && (
-        <Box ref={emojiPickerRef} sx={{ position: 'absolute', zIndex: 999 }}>
-          <EmojiPicker onEmojiClick={(e) => setNuevo({ ...nuevo, mensaje: nuevo.mensaje + e.emoji })} />
-        </Box>
-      )}
+        {/* Diálogo de mensajes guardados */}
+        <Dialog open={openPredef} onClose={() => setOpenPredef(false)}>
+          <DialogTitle>💬 Mensajes Predefinidos</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2}>
+              {mensajesGuardados.map((msg, idx) => (
+                <Stack key={idx} direction="row" spacing={1} alignItems="center">
+                  <Button
+                    variant="outlined"
+                    sx={{ flexGrow: 1, justifyContent: "flex-start" }}
+                    onClick={() => {
+                      setNuevo({ ...nuevo, mensaje: msg });
+                      setOpenPredef(false);
+                    }}
+                  >
+                    {msg}
+                  </Button>
+                  <IconButton size="small" onClick={() => abrirEdicion(idx, msg)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ))}
+            </Stack>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenPredef(false)}>Cerrar</Button>
+          </DialogActions>
+        </Dialog>
 
-      {nuevo.imagen && (
-        <Box mb={2}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <img src={nuevo.imagen} alt="Preview" style={{ maxWidth: 150 }} />
-            <IconButton color="error" onClick={() => setNuevo({ ...nuevo, imagen: null })}>
-              <DeleteIcon />
-            </IconButton>
-          </Stack>
-        </Box>
-      )}
-
-      <Dialog open={openPredef} onClose={() => setOpenPredef(false)}>
-        <DialogTitle>Mensajes Predefinidos</DialogTitle>
-        <DialogContent>
-          <Stack spacing={1}>
-            {mensajesGuardados.map((msg, idx) => (
-              <Button key={idx} variant="outlined" onClick={() => {
-                setNuevo({ ...nuevo, mensaje: msg });
-                setOpenPredef(false);
-              }}>{msg}</Button>
-            ))}
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenPredef(false)}>Cerrar</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
+        {/* Diálogo para editar un mensaje */}
+        <Dialog open={editIndex !== null} onClose={() => setEditIndex(null)} maxWidth="md" fullWidth>
+          <DialogTitle>🛠️ Editar Mensaje</DialogTitle>
+          <DialogContent>
+            <TextField
+              fullWidth
+              multiline
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={6} // más alto
+              sx={{ mt: 2, minHeight: 200 }}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setEditIndex(null)}>Cancelar</Button>
+            <Button onClick={guardarEdicion} variant="contained">Guardar</Button>
+          </DialogActions>
+        </Dialog>
+      </Paper>
+    </Slide>
   );
 };
 

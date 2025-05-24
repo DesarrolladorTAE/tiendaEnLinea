@@ -2,7 +2,8 @@
 import React, { useEffect, useState } from "react";
 import {
   Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Avatar, Typography, Stack, Box, Button
+  Avatar, Typography, Stack, Box, Button, useMediaQuery, useTheme,
+  TableContainer, Slide
 } from "@mui/material";
 import axios from "../../axiosConfig";
 import ModalRecargaPendiente from "./ModalRecargaPendiente";
@@ -12,6 +13,10 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
   const [mensajes, setMensajes] = useState([]);
   const [recargaSeleccionada, setRecargaSeleccionada] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const cargarMensajes = async () => {
     try {
@@ -19,7 +24,6 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
       let data = res.data;
 
       if (soloSolicitudes) {
-        // Filtrar solo solicitudes activas (si aún están pendientes)
         const pendientesRes = await axios.get("/admin/recargas-pendientes");
         const idsPendientes = pendientesRes.data.map(r => r.id);
         data = data.filter(m =>
@@ -29,6 +33,7 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
       }
 
       setMensajes(data);
+      setVisible(true);
     } catch (err) {
       console.error("Error al cargar notificaciones", err);
     }
@@ -58,26 +63,22 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
   const confirmarRecarga = async (id) => {
     try {
       await axios.post(`/admin/recargas/${id}/confirmar`);
-      toast.success("Recarga confirmada y saldo aplicado");
-
-      // Notificación se eliminará automáticamente desde el backend
+      toast.success("✅ Recarga confirmada y saldo aplicado");
       setDialogOpen(false);
       cargarMensajes();
     } catch (err) {
-      toast.error("Error al confirmar recarga");
+      toast.error("❌ Error al confirmar recarga");
     }
   };
 
   const rechazarRecarga = async (id) => {
     try {
       await axios.post(`/admin/recargas/${id}/rechazar`);
-      toast.info("Recarga rechazada");
-
-      // Notificación se eliminará automáticamente desde el backend
+      toast.info("🚫 Recarga rechazada");
       setDialogOpen(false);
       cargarMensajes();
     } catch (err) {
-      toast.error("Error al rechazar recarga");
+      toast.error("❌ Error al rechazar recarga");
     }
   };
 
@@ -87,47 +88,71 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
 
   return (
     <>
-      <Typography variant="h5" mt={4} mb={2}>
-        {soloSolicitudes ? "Solicitudes de Recarga" : "Historial de Notificaciones"}
+      <Typography variant="h5" mt={4} mb={1} textAlign="center" color="primary">
+        {soloSolicitudes ? "📝 Solicitudes de Recarga" : "🔔 Historial de Notificaciones"}
       </Typography>
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Usuario</TableCell>
-              <TableCell>Mensaje</TableCell>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {mensajes.map((m) => (
-              <TableRow key={m.id}>
-                <TableCell>
-                  <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar>{m.user?.name?.[0]}</Avatar>
-                    <Box>
-                      <Typography>{m.user?.name}</Typography>
-                    </Box>
-                  </Stack>
-                </TableCell>
-                <TableCell>{m.mensaje}</TableCell>
-                <TableCell>{new Date(m.created_at).toLocaleString()}</TableCell>
-                <TableCell>
-                  <Button
-                    variant="outlined"
-                    onClick={() => verTransaccion(m.transaccion_id)}
-                    disabled={!m.transaccion_id}
-                  >
-                    Ver solicitud
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Paper>
+      <Typography variant="body2" textAlign="center" color="text.secondary" mb={2}>
+        Mostrando: Nombre del usuario 👤, Mensaje 📩, Fecha 📅 y Acciones 🛠️
+      </Typography>
+
+      <Slide in={visible} direction="up" timeout={500}>
+        <Paper elevation={4} sx={{ borderRadius: 3, overflow: "hidden" }}>
+          <TableContainer sx={{ maxHeight: 500 }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow sx={{ bgcolor: "#1976d2" }}>
+                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>👤 Usuario</TableCell>
+                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>📩 Mensaje</TableCell>
+                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>📅 Fecha</TableCell>
+                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>🛠️ Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {mensajes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} align="center">
+                      <Typography variant="body1" color="text.secondary" py={3}>
+                        🚫 Aún no hay solicitudes registradas
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  mensajes.map((m) => (
+                    <TableRow key={m.id} hover>
+                      <TableCell>
+                        <Stack direction="row" spacing={2} alignItems="center">
+                          <Avatar sx={{ bgcolor: "secondary.main" }}>
+                            {m.user?.name?.[0]}
+                          </Avatar>
+                          <Box>
+                            <Typography fontWeight="bold">
+                              {m.user?.name}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>{m.mensaje}</TableCell>
+                      <TableCell>{new Date(m.created_at).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          color="secondary"
+                          onClick={() => verTransaccion(m.transaccion_id)}
+                          disabled={!m.transaccion_id}
+                        >
+                          Ver solicitud
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      </Slide>
 
       <ModalRecargaPendiente
         open={dialogOpen}
