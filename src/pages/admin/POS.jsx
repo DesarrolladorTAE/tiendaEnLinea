@@ -181,7 +181,7 @@ const POS = () => {
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column", p: 3 }}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-        <Typography variant="h4">Gestión de POS</Typography>
+        <Typography variant="h4">Gestión de Puntos de Venta</Typography>
 
         <Box display="flex" gap={1}>
           <Button

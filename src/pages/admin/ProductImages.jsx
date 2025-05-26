@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axiosClient from "../../config/axiosClient";
 import "bootstrap/dist/css/bootstrap.min.css";
 
@@ -9,6 +9,7 @@ const ProductImages = ({ productId, onClose }) => {
   const [variations, setVariations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const MAX_IMAGES = 6;
   const MAX_IMAGE_SIZE_MB = 2;
@@ -70,6 +71,7 @@ const ProductImages = ({ productId, onClose }) => {
       const res = await axiosClient.post(`/admin/products/${productId}/images`, formData);
       setImages((prev) => [...prev, ...res.data]);
       setNewImage([]);
+      fileInputRef.current.value = "";
       setError("");
     } catch (err) {
       setError(err.response?.data?.images?.[0] || "Error al subir la imagen");
@@ -147,6 +149,7 @@ const ProductImages = ({ productId, onClose }) => {
             type="file"
             multiple
             className="form-control"
+            ref={fileInputRef}
             onChange={(e) => setNewImage(Array.from(e.target.files))}
             accept="image/*"
           />

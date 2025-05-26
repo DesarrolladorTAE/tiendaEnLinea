@@ -35,7 +35,7 @@ const Category = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axiosClient.get("categorias");
+      const response = await axiosClient.get("admin/categories");
       setCategories(response.data);
     } catch (error) {
       console.error("Error al cargar categorías:", error);
@@ -56,15 +56,16 @@ const Category = () => {
     setLoading(true);
     try {
       if (form.editingId) {
-        await axiosClient.put(`categorias/${form.editingId}`, { name: form.name });
+        await axiosClient.post(`admin/categories/${form.editingId}`, {
+          name: form.name,
+          _method: "PATCH",
+        });
         setCategories((prev) =>
-          prev.map((cat) =>
-            cat.id === form.editingId ? { ...cat, name: form.name } : cat
-          )
+          prev.map((cat) => (cat.id === form.editingId ? { ...cat, name: form.name } : cat))
         );
         showSnackbar("Categoría actualizada correctamente");
       } else {
-        const response = await axiosClient.post("categorias", { name: form.name });
+        const response = await axiosClient.post("admin/categories", { name: form.name });
         setCategories((prev) => [...prev, response.data]);
         showSnackbar("Categoría creada correctamente");
       }
@@ -84,7 +85,7 @@ const Category = () => {
   const handleDeleteConfirm = async () => {
     setLoading(true);
     try {
-      await axiosClient.delete(`categorias/${deleteDialog.id}`);
+      await axiosClient.delete(`admin/categories/${form.editingId}`);
       setCategories((prev) => prev.filter((cat) => cat.id !== deleteDialog.id));
       showSnackbar("Categoría eliminada correctamente");
       setDeleteDialog({ open: false, id: null });
@@ -184,7 +185,10 @@ const Category = () => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
         anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
           {snackbar.message}
         </Alert>
       </Snackbar>

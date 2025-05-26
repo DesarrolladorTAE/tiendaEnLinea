@@ -42,11 +42,11 @@ const ProductList = () => {
     return (
       <div className="bg-dark text-white p-4">
         <Suspense fallback={<p className="text-white">Cargando imágenes...</p>}>
-        <ProductImages productId={selectedProduct.id} onClose={() => setSelectedProduct(null)} />
+          <ProductImages productId={selectedProduct.id} onClose={() => setSelectedProduct(null)} />
         </Suspense>
       </div>
     );
-  }  
+  }
 
   return (
     <div className="bg-dark text-white p-4 shadow rounded border border-light">
@@ -70,6 +70,7 @@ const ProductList = () => {
             <tr>
               <th>Nombre</th>
               <th>Precio</th>
+              <th>IVA</th>
               <th>Stock</th>
               <th className="text-center">Acciones</th>
             </tr>
@@ -80,6 +81,7 @@ const ProductList = () => {
                 <tr key={product.id}>
                   <td className="fw-semibold">{product.name || "N/A"}</td>
                   <td>${product.price || "0.00"}</td>
+                  <td>{product.iva === null ? "Exento" : `${(product.iva * 100).toFixed(0)}%`}</td>
                   <td>{product.has_variations ? "Con Variaciones" : `${product.stock ?? 0}`}</td>
                   <td className="text-center">
                     <div className="d-flex justify-content-center gap-2">
@@ -102,7 +104,7 @@ const ProductList = () => {
                       <button
                         className="btn btn-sm btn-outline-warning"
                         onClick={() => setSelectedProduct(product)}
-                        title="Agregar Imagenes al Producto" 
+                        title="Agregar Imagenes al Producto"
                       >
                         <ImageIcon fontSize="small" />
                       </button>

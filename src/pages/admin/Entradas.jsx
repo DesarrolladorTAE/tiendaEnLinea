@@ -116,7 +116,7 @@ export default function StockEntryForm() {
       </Typography>
       <Box component="form" onSubmit={handleSubmit} noValidate>
         <TextField
-          label="UUID de la Factura"
+          label="UUID o Folio Identificador de la Factura"
           value={uuidInvoice}
           onChange={(e) => setUuidInvoice(e.target.value)}
           fullWidth

@@ -15,12 +15,13 @@ import currencyReducer from "./slices/currency-slice";
 import cartReducer from "./slices/cart-slice";
 import compareReducer from "./slices/compare-slice";
 import wishlistReducer from "./slices/wishlist-slice";
+import whatsappCartReducer from "./slices/whatsappCartSlice";
 
 const persistConfig = {
     key: "flone",
     version: 1.1,
     storage,
-    blacklist: ["product"]
+    blacklist: ["product", "whatsappCart"]
 }
 
 export const rootReducer = combineReducers({
@@ -28,7 +29,8 @@ export const rootReducer = combineReducers({
     currency: currencyReducer,
     cart: cartReducer,
     compare: compareReducer,
-    wishlist: wishlistReducer
+    wishlist: wishlistReducer,
+    whatsappCart: whatsappCartReducer
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

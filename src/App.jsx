@@ -7,6 +7,7 @@ import WhatsappButton from "./components/WhatsappButton";
 import { Toaster } from "react-hot-toast";
 
 // home pages
+const HomeTest = lazy(() => import("./pages/home/HomeTest.jsx"));
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
 const HomeFashionTwo = lazy(() => import("./pages/home/HomeFashionTwo.jsx"));
 const HomeFashionThree = lazy(() => import("./pages/home/HomeFashionThree.jsx"));
@@ -107,6 +108,7 @@ const App = () => {
             <Route path="/" element={<LandingPage />} />
 
             {/* Homepages */}
+            <Route path={"/home-test"} element={<HomeTest />} />
             <Route path={"/home-fashion"} element={<HomeFashion />} />
             <Route path={"/home-fashion-two"} element={<HomeFashionTwo />} />
             <Route path={"/home-fashion-three"} element={<HomeFashionThree />} />
