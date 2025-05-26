@@ -1,12 +1,36 @@
 import React, { useState } from "react";
-import { Box, Typography, Paper, IconButton, Button } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Paper,
+  IconButton,
+  Button,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  TextField,
+} from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-import PaymentDialog from "./PaymentDialog";
+// import PaymentDialog from "./PaymentDialog";
 
-export default function CartSidebar({ cart, onRemove, onCheckout }) {
-  const [openDialog, setOpenDialog] = useState(false);
+export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnabled }) {
+  // const [openDialog, setOpenDialog] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("efectivo");
+  const [cashReceived, setCashReceived] = useState("");
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const cambio = Math.max(0, parseFloat(cashReceived || 0) - total);
+
+  const handleConfirm = () => {
+    const data = {
+      payment_method: paymentMethod,
+      total_amount: total,
+      paid_amount: paymentMethod === "efectivo" ? parseFloat(cashReceived) : total,
+    };
+    onCheckout(data);
+    setCashReceived("");
+    setPaymentMethod("efectivo");
+  };
 
   return (
     <Box sx={{ position: "sticky", top: 20, alignSelf: "start", zIndex: 1 }}>
@@ -43,10 +67,62 @@ export default function CartSidebar({ cart, onRemove, onCheckout }) {
             ))}
             <Box mt={2} borderTop={1} pt={1} borderColor="divider">
               <Typography variant="subtitle1">Total: ${total.toFixed(2)}</Typography>
+              <Box mt={2}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Método de Pago
+                </Typography>
+                <RadioGroup
+                  value={paymentMethod}
+                  onChange={(e) => {
+                    setPaymentMethod(e.target.value);
+                    setCashReceived("");
+                  }}
+                >
+                  <FormControlLabel value="efectivo" control={<Radio />} label="Efectivo" />
+                  <FormControlLabel value="td" control={<Radio />} label="Tarjeta Débito" />
+                  <FormControlLabel value="tc" control={<Radio />} label="Tarjeta Crédito" />
+                </RadioGroup>
+
+                {paymentMethod === "efectivo" && (
+                  <>
+                    <TextField
+                      label="💵 Efectivo recibido"
+                      type="number"
+                      fullWidth
+                      margin="normal"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      inputProps={{ min: 0 }}
+                      onFocus={() => setScannerEnabled(false)}
+                      onBlur={() => setScannerEnabled(true)}
+                    />
+                    <Typography variant="body2" color="text.secondary">
+                      Total a pagar: <strong>${total.toFixed(2)}</strong>
+                    </Typography>
+                    <Typography variant="body1" sx={{ mt: 1, fontWeight: "bold" }}>
+                      Cambio: ${cambio.toFixed(2)}
+                    </Typography>
+                  </>
+                )}
+
+                <Button
+                  variant="contained"
+                  color="success"
+                  disabled={
+                    cart.length === 0 ||
+                    (paymentMethod === "efectivo" && parseFloat(cashReceived || 0) < total)
+                  }
+                  onClick={handleConfirm}
+                  fullWidth
+                  sx={{ mt: 2 }}
+                >
+                  Confirmar pago
+                </Button>
+              </Box>
             </Box>
           </Box>
         )}
-        <Button
+        {/* <Button
           variant="contained"
           fullWidth
           color="primary"
@@ -55,10 +131,10 @@ export default function CartSidebar({ cart, onRemove, onCheckout }) {
           sx={{ mt: 2 }}
         >
           Cobrar
-        </Button>
+        </Button> */}
       </Paper>
 
-      <PaymentDialog
+      {/* <PaymentDialog
         open={openDialog}
         onClose={() => setOpenDialog(false)}
         total={total}
@@ -66,7 +142,7 @@ export default function CartSidebar({ cart, onRemove, onCheckout }) {
           setOpenDialog(false);
           onCheckout(paymentInfo); // ahora recibe info del pago
         }}
-      />
+      /> */}
     </Box>
   );
 }

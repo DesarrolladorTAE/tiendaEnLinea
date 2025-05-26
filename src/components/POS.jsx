@@ -1,10 +1,19 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
+import axiosClient from "../config/axiosClientPOS";
 import { Box, Typography, TextField, Button, CircularProgress } from "@mui/material";
 import ProductCard from "./POS/ProductCard";
 import Cart from "./POS/Cart";
 import { usePOSLogic } from "../hooks/POS/usePOSLogic";
+import TicketDialog from "./POS/TicketDialog";
 
 export default function POS({ posName }) {
+  const [ticketData, setTicketData] = useState(null);
+  const [showTicket, setShowTicket] = useState(false);
+  const [ticketBlobUrl, setTicketBlobUrl] = useState("");
+  const inputRef = useRef(null);
+  const [barcode, setBarcode] = useState("");
+  const [scannerEnabled, setScannerEnabled] = useState(true);
+
   const {
     search,
     setSearch,
@@ -22,7 +31,53 @@ export default function POS({ posName }) {
     getQuantityInCart,
     getProductImage,
     isVariantProduct,
-  } = usePOSLogic();
+  } = usePOSLogic({ setTicketData, setShowTicket });
+
+  //  Descargar el PDF como blob cuando abrimos el modal
+  useEffect(() => {
+    if (showTicket && ticketData) {
+      (async () => {
+        try {
+          const resp = await axiosClient.get(`/sales/${ticketData.id}/ticket.pdf`, {
+            responseType: "arraybuffer",
+          });
+          const blob = new Blob([resp.data], { type: "application/pdf" });
+          setTicketBlobUrl(URL.createObjectURL(blob));
+        } catch (e) {
+          console.error("Error cargando ticket:", e);
+          alert("❌ No se pudo previsualizar el ticket.");
+          setShowTicket(false);
+        }
+      })();
+    }
+  }, [showTicket, ticketData]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (scannerEnabled && inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [scannerEnabled]);
+
+  // Imprimir abriendo el blob URL
+  const handlePrint = () => {
+    if (ticketBlobUrl) window.open(ticketBlobUrl, "_blank");
+  };
+
+  // Enviar WhatsApp llamando a tu endpoint send-whatsapp
+  const handleSendTicket = async (phone) => {
+    try {
+      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, {
+        phone,
+      });
+      alert("✅ Ticket enviado por WhatsApp");
+    } catch (e) {
+      console.error("Error enviando WhatsApp:", e);
+      alert("❌ No se pudo enviar el ticket por WhatsApp.");
+    }
+  };
 
   if (!products) {
     return (
@@ -32,14 +87,30 @@ export default function POS({ posName }) {
     );
   }
 
-  const filtered = products.filter((p) =>
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleScan = (e) => {
+    if (e.key === "Enter") {
+      const code = barcode.trim();
+      const product = products.find((p) => p.sku === code);
+
+      if (product) {
+        handleAdd(product);
+      } else {
+        alert(`Producto no encontrado para el código: ${code}`);
+      }
+
+      setBarcode("");
+    } else {
+      setBarcode((prev) => prev + e.key);
+    }
+  };
 
   return (
     <Box mt={3} px={5}>
+      {/* Header */}
       <Box display="flex" justifyContent="space-between" mb={2}>
-        <Typography variant="h4">Punto de Venta:</Typography>
+        <Typography variant="h4">Punto de Venta</Typography>
         <Box display="flex" alignItems="center" gap={2}>
           <Typography variant="h5" fontWeight="bold" color="secondary">
             {posName}
@@ -57,20 +128,35 @@ export default function POS({ posName }) {
         </Box>
       </Box>
 
+      {/* Buscador */}
       <TextField
         label="Buscar producto"
         fullWidth
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
+      <input
+        ref={inputRef}
+        type="text"
+        value={barcode}
+        onKeyDown={handleScan}
+        style={{
+          opacity: 0,
+          position: "absolute",
+          zIndex: -1,
+          width: 0,
+          height: 0,
+        }}
+      />
 
+      {/* Contenido */}
       <Box mt={3} display="grid" gridTemplateColumns={{ xs: "1fr", md: "3fr 1fr" }} gap={2}>
-        {/* Productos */}
+        {/* Lista de productos */}
         <Box>
           <Typography variant="h6" gutterBottom>
             Productos
           </Typography>
-          <Box display="grid" gap={2} gridTemplateColumns="repeat(auto-fit, minmax(200px, 1fr))">
+          <Box display="grid" gap={2} gridTemplateColumns="repeat(auto-fit, minmax(200px,1fr))">
             {filtered.map((product) => (
               <ProductCard
                 key={product.id}
@@ -97,6 +183,17 @@ export default function POS({ posName }) {
           cart={cart}
           onRemove={handleRemove}
           onCheckout={handleCheckout}
+          setScannerEnabled={setScannerEnabled}
+        />
+
+        {/* Modal de ticket */}
+        <TicketDialog
+          open={showTicket}
+          onClose={() => setShowTicket(false)}
+          sale={ticketData}
+          ticketUrl={ticketBlobUrl}
+          onPrint={handlePrint}
+          onSend={handleSendTicket}
         />
       </Box>
     </Box>
