@@ -213,7 +213,7 @@ function ProductModal({
               ) : (
                 ""
               )}
-              {product.affiliateLink ? (
+              {/* {product.affiliateLink ? (
                 <div className="pro-details-quality">
                   <div className="pro-details-cart btn-hover">
                     <a
@@ -316,7 +316,7 @@ function ProductModal({
                     </button>
                   </div>
                 </div>
-              )}
+              )} */}
             </div>
           </div>
         </div>

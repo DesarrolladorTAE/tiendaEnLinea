@@ -1,5 +1,6 @@
 import React from "react";
 import { FaWhatsapp } from "react-icons/fa";
+import { useLocation } from "react-router-dom";
 
 const buttonStyle = {
   position: "fixed",
@@ -19,6 +20,9 @@ const buttonStyle = {
 };
 
 const WhatsappButton = () => {
+  const { pathname } = useLocation();
+  if (pathname.startsWith("/tienda/")) return null;
+
   const message = encodeURIComponent("Hola, quiero probar la demo gratis de MITIENDAENLINEAMX");
   const link = `https://wa.me/5217442188925?text=${message}`;
 
@@ -28,6 +32,5 @@ const WhatsappButton = () => {
     </a>
   );
 };
-
 
 export default WhatsappButton;

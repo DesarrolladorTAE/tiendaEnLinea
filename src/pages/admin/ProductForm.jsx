@@ -44,6 +44,10 @@ function ProductForm() {
   const discount = watch("discount");
   const hasVariations = watch("variations").length > 0;
 
+  const price = parseFloat(watch("price")) || 0;
+  const iva = watch("iva") !== "null" ? parseFloat(watch("iva")) || 0 : 0;
+  const basePrice = (price / (1 + iva)).toFixed(2);
+
   const {
     fields: variationFields,
     append: appendVariation,
@@ -56,6 +60,7 @@ function ProductForm() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [activeVariationIndex, setActiveVariationIndex] = useState(null);
+  const [imageFiles, setImageFiles] = useState([]);
 
   useEffect(() => {
     const initializeForm = async () => {
@@ -72,12 +77,12 @@ function ProductForm() {
   const fetchOptions = async () => {
     try {
       const [catRes, tagRes] = await Promise.all([
-        axios.get("https://mitiendaenlineamx.com.mx/api/categorias"),
-        axios.get("https://mitiendaenlineamx.com.mx/api/etiquetas"),
+        axiosClient.get("/admin/categories"), // 🔐 solo categorías del usuario
+        // axios.get("https://mitiendaenlineamx.com.mx/api/etiquetas"),
       ]);
 
       setCategoriesOptions(catRes.data.map((c) => ({ value: c.id, label: c.name })));
-      setTagsOptions(tagRes.data.map((t) => ({ value: t.id, label: t.name })));
+      // setTagsOptions(tagRes.data.map((t) => ({ value: t.id, label: t.name })));
     } catch (error) {
       console.error("Error cargando categorías o etiquetas:", error);
     }
@@ -100,7 +105,10 @@ function ProductForm() {
       reset({
         sku: product.sku || "",
         name: product.name || "",
-        price: product.price?.toString() || "",
+        price:
+          product.base_price && product.iva !== null
+            ? (product.base_price * (1 + product.iva)).toFixed(2)
+            : product.base_price?.toFixed(2) || "",
         stock: product.stock?.toString() || "",
         discount: product.discount?.toString() || "",
         new: Boolean(product.new),
@@ -108,6 +116,7 @@ function ProductForm() {
         rating: product.rating?.toString() || "",
         shortDescription: product.shortDescription || "",
         fullDescription: product.fullDescription || "",
+        iva: product.iva !== null ? product.iva.toString() : "null",
         offerEnd,
         category: product.categories.map((c) => ({
           value: c.id,
@@ -130,67 +139,89 @@ function ProductForm() {
     setMessage("");
     setError("");
 
-    const formattedData = {
-      sku: data.sku,
-      name: data.name,
-      price: Number(data.price), // Convertir a número
-      discount: data.discount ? Number(data.discount) : 0, // Si está vacío, poner 0
-      new: Boolean(data.new),
-      saleCount: data.saleCount ? Number(data.saleCount) : 0,
-      rating: data.rating ? Number(data.rating) : 0,
-      shortDescription: data.shortDescription,
-      fullDescription: data.fullDescription,
-      image: "/assets/img/product/fashion/8.jpg",
-
-      // Convertir las categorías y etiquetas a números
-      category: data.category?.map((c) => Number(c.value)) || [],
-      tag: data.tags?.map((t) => Number(t.value)) || [],
-
-      offerEnd: Number(data.discount) > 0 && data.offerEnd ? data.offerEnd : null,
-    };
-
-    if (hasVariations) {
-      formattedData.variation = data.variations.map(({ color, sizes }) => ({
-        color,
-        image: "/assets/img/product/fashion/8.jpg",
-        size: sizes
-          .filter((size) => size.name.trim() !== "")
-          .map(({ name, stock }) => ({ name, stock: Number(stock) })),
-      }));
-    } else {
-      formattedData.stock = Number(data.stock);
-    }
-
-    console.log("📝 Datos enviados:", JSON.stringify(formattedData, null, 2));
-
     try {
-      let response;
+      const formData = new FormData();
+
+      formData.append("sku", data.sku);
+      formData.append("name", data.name);
+      formData.append("price", data.price?.toString() || "0");
+      formData.append("discount", data.discount?.toString() || "0");
+      formData.append("new", data.new ? "1" : "0");
+      formData.append("saleCount", data.saleCount?.toString() || "0");
+      formData.append("rating", data.rating?.toString() || "0");
+      formData.append("shortDescription", data.shortDescription);
+      formData.append("fullDescription", data.fullDescription);
+      formData.append("base_price", basePrice);
+
+      formData.append("iva", data.iva === "null" ? "null" : data.iva);
+
+      if (data.offerEnd && Number(data.discount) > 0) {
+        const formattedOfferEnd = new Date(data.offerEnd)
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ");
+        formData.append("offerEnd", formattedOfferEnd);
+      }
+
+      if (data.category?.length) {
+        data.category.forEach((cat) => {
+          formData.append("category[]", cat.value);
+        });
+      }
+
+      if (data.tags?.length) {
+        data.tags.forEach((tag) => formData.append("tag[]", tag.value));
+      }
+
+      if (hasVariations) {
+        const variations = data.variations.map(({ color, sizes }) => ({
+          color,
+          image: "", // o podrías asignar una futura imagen
+          size: sizes
+            .filter((s) => s.name.trim() !== "")
+            .map(({ name, stock }) => ({
+              name,
+              stock: Number(stock),
+            })),
+        }));
+        formData.append("variation", JSON.stringify(variations));
+      } else {
+        formData.append("stock", data.stock?.toString() || "0");
+      }
+
+      if (imageFiles.length > 0) {
+        imageFiles.forEach((file) => {
+          formData.append("images[]", file);
+        });
+      }
 
       if (id) {
-        // Modo edición
-        response = await axiosClient.put(
-          `https://mitiendaenlineamx.com.mx/api/admin/products/${id}`,
-          formattedData
-        );
-        setMessage("✏️ Producto actualizado con éxito.");
+        formData.append("_method", "PUT"); // Laravel lo verá como PUT
+        await axiosClient.post(`/admin/products/${id}`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+        setMessage("✅ Producto actualizado con éxito.");
       } else {
-        // Modo creación
-        response = await axiosClient.post(
-          "https://mitiendaenlineamx.com.mx/api/cargar/products",
-          formattedData
-        );
+        await axiosClient.post("/cargar/products", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
         setMessage("✅ Producto creado con éxito.");
-        reset(); // Solo limpiamos si es nuevo
+        reset();
+        setImageFiles([]);
       }
     } catch (error) {
       console.error("❌ Error en la API:", error.response?.data || error);
-
       if (error.response?.data?.errors) {
         setError(`❌ Error en la API:\n${JSON.stringify(error.response.data.errors, null, 2)}`);
       } else {
         setError("Error de conexión con el servidor.");
       }
     }
+    console.log("IVA ENVIADO:", data.iva);
   };
 
   return (
@@ -220,7 +251,7 @@ function ProductForm() {
               errors={errors}
             />
             <ProductField
-              label="Precio"
+              label="Precio Final (incluye IVA)"
               name="price"
               type="number"
               register={register}
@@ -228,22 +259,26 @@ function ProductForm() {
               errors={errors}
             />
             <div className="col-md-4 mb-3">
-              <label className="form-label" htmlFor="ivaRate">
+              <label className="form-label" htmlFor="iva">
                 Tasa de IVA <span className="text-danger">*</span>
               </label>
               <select
-                id="ivaRate"
+                id="iva"
                 className={`form-control bg-secondary border-secondary ${
-                  errors?.ivaRate ? "is-invalid" : ""
+                  errors?.iva ? "is-invalid" : ""
                 }`}
-                {...register("ivaRate", { required: "La tasa de IVA es obligatoria" })}
+                {...register("iva", { required: "La tasa de IVA es obligatoria" })}
               >
                 <option value="">Selecciona una tasa</option>
-                <option value="16">TASA 16%</option>
+                <option value="0.16">TASA 16%</option>
+                <option value="0.08">TASA 8%</option>
                 <option value="0">TASA 0%</option>
-                <option value="exento">EXENTO</option>
+                <option value="null">EXENTO</option>
               </select>
-              {errors.ivaRate && <small className="text-danger">{errors.ivaRate.message}</small>}
+              {errors.iva && <small className="text-danger">{errors.iva.message}</small>}
+              <p className="text-info mt-2">
+                Precio Base Calculado (SIN IVA): <strong>${basePrice} MXN</strong>
+              </p>
             </div>
           </div>
 
@@ -324,18 +359,46 @@ function ProductForm() {
             />
           </div>
 
+          {!id && (
+            <div className="mb-3">
+              <label className="form-label text-white">🖼 Imágenes del producto (hasta 6)</label>
+              <input
+                type="file"
+                className="form-control"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files);
+
+                  if (files.length > 6) {
+                    alert("Solo se permiten hasta 6 imágenes.");
+                    return;
+                  }
+
+                  const tooBig = files.find((f) => f.size > 2 * 1024 * 1024);
+                  if (tooBig) {
+                    alert(`La imagen ${tooBig.name} supera los 2MB permitidos.`);
+                    return;
+                  }
+
+                  setImageFiles(files);
+                }}
+              />
+            </div>
+          )}
+
           {/* Categoría y Etiquetas */}
-          {/* <div className="row">
+          <div className="row">
             <div className="col-md-6 mb-3">
               <label className="form-label">Categoría</label>
               <CustomSelect name="category" control={control} options={categoriesOptions} />
             </div>
 
-            <div className="col-md-6 mb-3">
+            {/* <div className="col-md-6 mb-3">
               <label className="form-label">Tags</label>
               <CustomSelect name="tags" control={control} options={tagsOptions} />
-            </div>
-          </div> */}
+            </div> */}
+          </div>
 
           {/* Variaciones */}
           <h4 className="mt-4 text-white">Variaciones (opcional)</h4>

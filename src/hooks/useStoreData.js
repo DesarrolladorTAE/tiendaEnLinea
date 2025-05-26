@@ -6,6 +6,8 @@ export const useStoreData = (storeSlug) => {
   const [isStoreValid, setIsStoreValid] = useState(null);
   const [products, setProducts] = useState([]);
   const navigate = useNavigate();
+  const [storePhone, setStorePhone] = useState("");
+  const [storeName, setStoreName] = useState("");
 
   // Verificar tienda
   useEffect(() => {
@@ -17,6 +19,8 @@ export const useStoreData = (storeSlug) => {
 
         if (data.valid) {
           setIsStoreValid(true);
+          setStorePhone(data.telefono_whatsapp || "");
+          setStoreName(data.nombre || "");
         } else {
           navigate("/");
         }
@@ -46,5 +50,5 @@ export const useStoreData = (storeSlug) => {
     fetchProducts();
   }, [isStoreValid, storeSlug]);
 
-  return { isStoreValid, products };
+  return { isStoreValid, products, storePhone, storeName };
 };

@@ -44,11 +44,16 @@ export default function Ventas() {
   const [openTicket, setOpenTicket] = useState(false);
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const ticketRef = useRef();
+  const [puntosDeVenta, setPuntosDeVenta] = useState([]);
+  const [filtroPuntoVenta, setFiltroPuntoVenta] = useState("todos");
+  const [fechaInicio, setFechaInicio] = useState("");
+  const [fechaFin, setFechaFin] = useState("");
 
   useEffect(() => {
     axiosClient
       .get("/admin/ventas")
       .then(({ data }) => {
+        console.log("historial", data.data);
         setVentas(
           data.data.map((venta) => ({
             ...venta,
@@ -84,12 +89,22 @@ export default function Ventas() {
         );
       }
 
-      return true; // "todos"
+      if (fechaInicio || fechaFin) {
+        const desde = fechaInicio ? new Date(fechaInicio + "T00:00") : null;
+        const hasta = fechaFin ? new Date(fechaFin + "T23:59") : null;
+        return (!desde || fechaVenta >= desde) && (!hasta || fechaVenta <= hasta);
+      }
+
+      return true;
     });
   };
 
   const ventasFiltradas = useMemo(() => {
     let ventasFiltradas = filtrarPorFecha(ventas);
+
+    if (filtroPuntoVenta !== "todos") {
+      ventasFiltradas = ventasFiltradas.filter((v) => v.pos_location?.id === filtroPuntoVenta);
+    }
 
     if (busqueda) {
       ventasFiltradas = ventasFiltradas.filter(
@@ -100,7 +115,7 @@ export default function Ventas() {
     }
 
     return ventasFiltradas;
-  }, [busqueda, ventas, filtroFecha]);
+  }, [busqueda, ventas, filtroFecha, filtroPuntoVenta, fechaInicio, fechaFin]);
 
   const ventasOrdenadas = useMemo(() => {
     const lista = [...ventasFiltradas];
@@ -197,22 +212,39 @@ export default function Ventas() {
               fullWidth
             />
 
-            <FormControl size="small" fullWidth sx={{ minWidth: 180 }}>
-              <InputLabel>Filtrar por fecha</InputLabel>
-              <Select
-                value={filtroFecha}
-                label="Filtrar por fecha"
-                onChange={(e) => {
-                  setFiltroFecha(e.target.value);
-                  setPagina(1);
-                }}
-              >
-                <MenuItem value="todos">Todas</MenuItem>
-                <MenuItem value="hoy">Hoy</MenuItem>
-                <MenuItem value="7dias">Últimos 7 días</MenuItem>
-                <MenuItem value="mes">Este mes</MenuItem>
-              </Select>
-            </FormControl>
+            <TextField
+              type="date"
+              label="Desde"
+              size="small"
+              value={fechaInicio}
+              onChange={(e) => {
+                setFechaInicio(e.target.value);
+                setPagina(1);
+              }}
+              slotProps={{
+                inputLabel: {
+                  shrink: true,
+                },
+              }}
+              fullWidth
+            />
+
+            <TextField
+              type="date"
+              label="Hasta"
+              size="small"
+              value={fechaFin}
+              onChange={(e) => {
+                setFechaFin(e.target.value);
+                setPagina(1);
+              }}
+              slotProps={{
+                inputLabel: {
+                  shrink: true,
+                },
+              }}
+              fullWidth
+            />
           </Stack>
 
           <Box
@@ -286,15 +318,15 @@ export default function Ventas() {
                       <TableCell>{venta.status === "paid" ? "Pagado" : venta.status}</TableCell>
                       <TableCell align="center">
                         <Stack direction="row" spacing={1} justifyContent="center">
-                          <IconButton color="primary">
+                          {/* <IconButton color="primary">
                             <VisibilityIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton color="secondary" onClick={() => handleOpenTicket(venta)}>
+                          </IconButton> */}
+                          <IconButton color="secondary" onClick={() => window.open(`/api/sales/${venta.id}/ticket.pdf`, '_blank')}>
                             <EditNoteIcon fontSize="small" />
                           </IconButton>
-                          <IconButton>
+                          {/* <IconButton>
                             <MoreHorizIcon fontSize="small" />
-                          </IconButton>
+                          </IconButton> */}
                         </Stack>
                       </TableCell>
                     </TableRow>
