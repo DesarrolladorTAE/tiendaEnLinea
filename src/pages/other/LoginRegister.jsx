@@ -48,6 +48,7 @@ const LoginRegister = () => {
     try {
       const res = await axiosClient.post("/login-store", loginData);
       localStorage.setItem("AUTH_TOKEN", res.data.token);
+      localStorage.setItem("STORE_SLUG", res.data.store.slug);
       navigate("/admin");
     } catch (err) {
       const errorMsg = err.response?.data?.error || err.response?.data?.message || "Error al iniciar sesión";

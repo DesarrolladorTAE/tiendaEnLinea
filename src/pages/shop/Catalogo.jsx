@@ -7,7 +7,7 @@ import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
 import ShopProducts from "../../wrappers/product/ShopProducts";
-import ShopSidebar from '../../wrappers/product/ShopSidebar';
+import ShopSidebar from "../../wrappers/product/ShopSidebar";
 import { useStoreData } from "../../hooks/useStoreData";
 import WhatsAppFloatingButton from "../../components/WhatsAppFloatingButton";
 
@@ -22,6 +22,8 @@ const Catalogo = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [currentData, setCurrentData] = useState([]);
   const [sortedProducts, setSortedProducts] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+
   const sortType = "";
   const sortValue = "";
 
@@ -29,21 +31,31 @@ const Catalogo = () => {
 
   const getLayout = (layout) => setLayout(layout);
 
-  const getFilterSortParams = (sortType, sortValue) => {
-    setFilterSortType(sortType);
-    setFilterSortValue(sortValue);
+  const getFilterSortParams = (type, value) => {
+    if (type === "searchQuery") {
+      setSearchQuery(value);
+    } else {
+      setFilterSortType(type);
+      setFilterSortValue(value);
+    }
   };
 
   useEffect(() => {
-    const sorted = getSortedProducts(
+    let sorted = getSortedProducts(
       getSortedProducts(products, sortType, sortValue),
       filterSortType,
       filterSortValue
     );
 
+    if (searchQuery) {
+      sorted = sorted.filter((product) =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
     setSortedProducts(sorted);
     setCurrentData(sorted.slice(offset, offset + pageLimit));
-  }, [offset, products, sortType, sortValue, filterSortType, filterSortValue]);
+  }, [offset, products, sortType, sortValue, filterSortType, filterSortValue, searchQuery]);
 
   if (isStoreValid === null) return <div>Cargando tienda...</div>;
 
