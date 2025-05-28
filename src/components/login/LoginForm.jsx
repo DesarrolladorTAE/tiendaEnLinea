@@ -32,17 +32,22 @@ const LoginForm = ({ onBack }) => {
 
   const handleLogin = async (data) => {
     try {
-      const response = await axios.post("login", {
+      const response = await axios.post("/login", {
         phone: data.loginPhone,
         password: data.loginPassword,
       });
+
       const { token, user } = response.data;
+
+      localStorage.setItem("user", JSON.stringify(user)); // 👈 importante
+      localStorage.setItem("token", token);
+
       setShowWelcome(true);
       setTimeout(() => {
-        dispatch(setUser({ user, token })); // ahora sí activamos la sesión
-
+        dispatch(setUser({ user, token }));
         setShowWelcome(false);
-        if (user.role === "superadmin") {
+
+        if (["admin", "superadmin"].includes(user.role)) {
           navigate("/admin/dashboard");
         } else {
           navigate("/home-fashion-three", { replace: true });
@@ -53,6 +58,7 @@ const LoginForm = ({ onBack }) => {
       toast.error(error.response?.data?.message || "⚠️ Error en el inicio de sesión");
     }
   };
+
 
   const onError = () => {
     toast.error("⚠️ Por favor, completa todos los campos correctamente.");

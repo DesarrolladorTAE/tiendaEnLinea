@@ -1,9 +1,8 @@
 // src/components/admin/NotificacionesHistorial.jsx
 import React, { useEffect, useState } from "react";
 import {
-  Paper, Table, TableHead, TableRow, TableCell, TableBody,
-  Avatar, Typography, Stack, Box, Button, useMediaQuery, useTheme,
-  TableContainer, Slide
+  Paper, Typography, Avatar, Stack, Box, Button, useMediaQuery,
+  useTheme, Divider
 } from "@mui/material";
 import axios from "../../axiosConfig";
 import ModalRecargaPendiente from "./ModalRecargaPendiente";
@@ -13,7 +12,6 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
   const [mensajes, setMensajes] = useState([]);
   const [recargaSeleccionada, setRecargaSeleccionada] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [visible, setVisible] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -33,7 +31,6 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
       }
 
       setMensajes(data);
-      setVisible(true);
     } catch (err) {
       console.error("Error al cargar notificaciones", err);
     }
@@ -43,17 +40,13 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
     try {
       const res = await axios.get("/admin/recargas-pendientes");
       const encontrada = res.data.find(r => r.id === transaccion_id);
-
       if (!encontrada) return toast.error("No se encontró la transacción");
 
-      const recarga = {
+      setRecargaSeleccionada({
         ...encontrada,
         user: encontrada.user || {},
-        fecha_envio: encontrada.created_at,
         status: encontrada.status || "pendiente"
-      };
-
-      setRecargaSeleccionada(recarga);
+      });
       setDialogOpen(true);
     } catch (err) {
       console.error("Error al obtener transacción", err);
@@ -74,7 +67,7 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
   const rechazarRecarga = async (id) => {
     try {
       await axios.post(`/admin/recargas/${id}/rechazar`);
-      toast.info("🚫 Recarga rechazada");
+      toast.info(" Recarga rechazada");
       setDialogOpen(false);
       cargarMensajes();
     } catch (err) {
@@ -92,67 +85,63 @@ const NotificacionesHistorial = ({ soloSolicitudes = false }) => {
         {soloSolicitudes ? "📝 Solicitudes de Recarga" : "🔔 Historial de Notificaciones"}
       </Typography>
 
-      <Typography variant="body2" textAlign="center" color="text.secondary" mb={2}>
-        Mostrando: Nombre del usuario 👤, Mensaje 📩, Fecha 📅 y Acciones 🛠️
-      </Typography>
 
-      <Slide in={visible} direction="up" timeout={500}>
-        <Paper elevation={4} sx={{ borderRadius: 3, overflow: "hidden" }}>
-          <TableContainer sx={{ maxHeight: 500 }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow sx={{ bgcolor: "#1976d2" }}>
-                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>👤 Usuario</TableCell>
-                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>📩 Mensaje</TableCell>
-                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>📅 Fecha</TableCell>
-                  <TableCell sx={{ color: "#fff", fontWeight: "bold" }}>🛠️ Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {mensajes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} align="center">
-                      <Typography variant="body1" color="text.secondary" py={3}>
-                        🚫 Aún no hay solicitudes registradas
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  mensajes.map((m) => (
-                    <TableRow key={m.id} hover>
-                      <TableCell>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                          <Avatar sx={{ bgcolor: "secondary.main" }}>
-                            {m.user?.name?.[0]}
-                          </Avatar>
-                          <Box>
-                            <Typography fontWeight="bold">
-                              {m.user?.name}
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>{m.mensaje}</TableCell>
-                      <TableCell>{new Date(m.created_at).toLocaleString()}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="contained"
-                          size="small"
-                          color="secondary"
-                          onClick={() => verTransaccion(m.transaccion_id)}
-                          disabled={!m.transaccion_id}
-                        >
-                          Ver solicitud
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      </Slide>
+      {mensajes.length === 0 ? (
+        <Typography textAlign="center" color="text.secondary" py={5}>
+          🚫 Aún no hay solicitudes registradas
+        </Typography>
+      ) : (
+        <Stack spacing={2} px={isMobile ? 1 : 5} pb={4}>
+          {mensajes.map((m) => (
+            <Paper
+              key={m.id}
+              elevation={3}
+              sx={{
+                borderRadius: 3,
+                p: 2,
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                justifyContent: "space-between",
+                alignItems: isMobile ? "flex-start" : "center",
+                gap: 2,
+                borderLeft: "6px solid #1976d2"
+              }}
+            >
+              <Stack direction="row" spacing={2} alignItems="center">
+                <Avatar sx={{ bgcolor: "primary.main" }}>
+                  {m.user?.name?.[0]}
+                </Avatar>
+                <Box>
+                  <Typography fontWeight="bold">
+                    {m.user?.name} {m.user?.apellidos}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {new Date(m.created_at).toLocaleString()}
+                  </Typography>
+                </Box>
+              </Stack>
+
+              <Divider orientation={isMobile ? "horizontal" : "vertical"} flexItem sx={{ my: 1 }} />
+
+              <Box flex={1}>
+                <Typography>{m.mensaje}</Typography>
+              </Box>
+
+              <Box mt={isMobile ? 1 : 0}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  size="small"
+                  onClick={() => verTransaccion(m.transaccion_id)}
+                  disabled={!m.transaccion_id}
+                >
+                  Ver solicitud
+                </Button>
+              </Box>
+            </Paper>
+          ))}
+        </Stack>
+      )}
 
       <ModalRecargaPendiente
         open={dialogOpen}

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -11,12 +11,15 @@ import {
   Chip,
   Divider,
   useMediaQuery,
-  useTheme
+  useTheme,
+  IconButton
 } from "@mui/material";
 import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 
 const getStatusChip = (status) => {
   const normalized = String(status).trim().toLowerCase();
@@ -25,31 +28,15 @@ const getStatusChip = (status) => {
     case "exitosa":
     case "confirmado":
       return (
-        <Chip
-          icon={<CheckCircleIcon />}
-          label="Confirmado"
-          color="success"
-          variant="outlined"
-        />
+        <Chip icon={<CheckCircleIcon />} label="Confirmado" color="success" variant="outlined" />
       );
-
     case "rechazado":
       return (
-        <Chip
-          icon={<CancelIcon />}
-          label="Rechazado"
-          color="error"
-          variant="outlined"
-        />
+        <Chip icon={<CancelIcon />} label="Rechazado" color="error" variant="outlined" />
       );
     case "pendiente":
       return (
-        <Chip
-          icon={<HourglassEmptyIcon />}
-          label="Pendiente"
-          color="warning"
-          variant="outlined"
-        />
+        <Chip icon={<HourglassEmptyIcon />} label="Pendiente" color="warning" variant="outlined" />
       );
     default:
       return (
@@ -66,6 +53,7 @@ const getStatusChip = (status) => {
 const ModalRecargaPendiente = ({ open, onClose, recarga, onConfirmar, onRechazar }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const [zoom, setZoom] = useState(1);
 
   if (!recarga) return null;
 
@@ -73,9 +61,13 @@ const ModalRecargaPendiente = ({ open, onClose, recarga, onConfirmar, onRechazar
   const esImagen = /\.(png|jpe?g|gif|webp)$/i.test(comprobanteURL);
   const esPDF = comprobanteURL.endsWith(".pdf");
 
-  const fechaValida = recarga.fecha_envio && !isNaN(new Date(recarga.fecha_envio))
-    ? new Date(recarga.fecha_envio).toLocaleString()
-    : "Fecha no disponible";
+  const fechaValida =
+    recarga.fecha_envio && !isNaN(Date.parse(recarga.fecha_envio))
+      ? new Date(recarga.fecha_envio).toLocaleString()
+      : "Fecha no disponible";
+
+  const aumentarZoom = () => setZoom((z) => Math.min(z + 0.1, 2));
+  const disminuirZoom = () => setZoom((z) => Math.max(z - 0.1, 0.5));
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -89,8 +81,8 @@ const ModalRecargaPendiente = ({ open, onClose, recarga, onConfirmar, onRechazar
           {/* Información */}
           <Box flex={1}>
             <Stack spacing={2}>
-              <Typography><strong>👤 Usuario:</strong> {recarga.user?.name}</Typography>
-              <Typography><strong>💵 Monto:</strong> ${recarga.monto}</Typography>
+              <Typography><strong>👤 Usuario:</strong> {recarga.user?.name} {recarga.user?.apellidos}</Typography>
+              <Typography><strong>💵 Monto:</strong> ${parseFloat(recarga.monto).toFixed(2)}</Typography>
               <Typography><strong>🔖 Referencia:</strong> {recarga.referencia}</Typography>
               <Typography><strong>📅 Fecha:</strong> {fechaValida}</Typography>
               <Box>
@@ -102,25 +94,45 @@ const ModalRecargaPendiente = ({ open, onClose, recarga, onConfirmar, onRechazar
 
           {/* Comprobante */}
           <Box flex={1} minWidth={250}>
-            <Typography fontWeight="bold" gutterBottom>🧾 Comprobante</Typography>
+            <Typography fontWeight="bold" mb={1}>🧾 Comprobante</Typography>
 
             {esImagen && (
-              <Box
-                component="img"
-                src={recarga.comprobante}
-                alt="Comprobante"
-                sx={{
-                  width: "100%",
-                  height: "auto",
-                  maxHeight: 400,
-                  borderRadius: 2,
-                  objectFit: "contain",
-                  transition: "transform 0.3s ease",
-                  ":hover": {
-                    transform: "scale(1.05)"
-                  }
-                }}
-              />
+              <>
+                <Box
+                  sx={{
+                    position: "relative",
+                    width: "100%",
+                    height: 400,
+                    border: "1px solid #ccc",
+                    borderRadius: 2,
+                    overflow: "hidden",
+                    backgroundColor: "#f9f9f9",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center"
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={recarga.comprobante}
+                    alt="Comprobante"
+                    sx={{
+                      transform: `scale(${zoom})`,
+                      transition: "transform 0.2s ease",
+                      maxHeight: "100%",
+                      maxWidth: "100%",
+                      objectFit: "contain"
+                    }}
+                  />
+                </Box>
+
+                <Box mt={1} display="flex" alignItems="center" gap={1}>
+                  <Typography variant="body2">🔍 Zoom:</Typography>
+                  <IconButton size="small" onClick={disminuirZoom}><RemoveIcon /></IconButton>
+                  <Typography variant="body2">{Math.round(zoom * 100)}%</Typography>
+                  <IconButton size="small" onClick={aumentarZoom}><AddIcon /></IconButton>
+                </Box>
+              </>
             )}
 
             {esPDF && (
@@ -138,15 +150,8 @@ const ModalRecargaPendiente = ({ open, onClose, recarga, onConfirmar, onRechazar
               />
             )}
 
-            {!esImagen && !esPDF && (
-              <Box
-                sx={{
-                  mt: 2,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1
-                }}
-              >
+            {!esImagen && !esPDF && recarga.comprobante && (
+              <Box sx={{ mt: 2 }}>
                 <InsertDriveFileIcon color="disabled" />
                 <Typography variant="body2" color="text.secondary">
                   Archivo no visualizable.{" "}

@@ -21,7 +21,7 @@ const IconGroup = ({ iconWhiteClass }) => {
   const { user, notificaciones = [] } = useSelector((state) => state.user);
   const { compareItems } = useSelector((state) => state.compare);
   const { wishlistItems } = useSelector((state) => state.wishlist);
-  const { cartItems } = useSelector((state) => state.cart);
+
 
   const isAgent = user?.role === "agent";
 

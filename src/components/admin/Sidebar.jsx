@@ -23,9 +23,31 @@ const drawerWidth = 240;
 
 const ListItemLink = forwardRef(function ListItemLink({ icon, primary, to, onClick }, ref) {
   return (
-    <Box component={NavLink} to={to} onClick={onClick} ref={ref} sx={{ textDecoration: "none" }}>
-      <ListItem disableGutters sx={{ px: 3, button: "true" }}>
-        {icon && <ListItemIcon>{icon}</ListItemIcon>}
+    <Box
+      component={NavLink}
+      to={to}
+      onClick={onClick}
+      ref={ref}
+      sx={{
+        textDecoration: "none",
+        color: "inherit",
+        "&.active .MuiListItem-root": {
+          backgroundColor: "#39495e",
+        },
+      }}
+    >
+      <ListItem
+        disableGutters
+        sx={{
+          px: 3,
+          py: 1.5,
+          borderRadius: 1,
+          "&:hover": {
+            backgroundColor: "#283142",
+          },
+        }}
+      >
+        {icon && <ListItemIcon sx={{ color: "#fff" }}>{icon}</ListItemIcon>}
         <ListItemText primary={primary} />
       </ListItem>
     </Box>
@@ -35,7 +57,6 @@ const ListItemLink = forwardRef(function ListItemLink({ icon, primary, to, onCli
 const Sidebar = ({ open, onClose }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-
   const [showByeModal, setShowByeModal] = useState(false);
 
   const menuItems = [
@@ -70,24 +91,44 @@ const Sidebar = ({ open, onClose }) => {
           BackdropProps: { invisible: true },
         }}
         sx={{
+          zIndex: (theme) => theme.zIndex.appBar + 2,
+          top: '64px',
+          height: 'calc(100% - 64px)',
           "& .MuiDrawer-paper": {
+            top: '64px',
+            height: 'calc(100% - 64px)',
             width: drawerWidth,
+            background: "linear-gradient(to right, #1f2937, #111827)", // ✅ gradiente igual al topbar
+            color: "#fff",
             boxSizing: "border-box",
-            backgroundColor: "#f7f7f7",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "space-between"
+            justifyContent: "space-between",
           }
         }}
+
       >
+
         <Box>
           <List>
-            <ListItem disableGutters onClick={goToStore} sx={{ px: 3, cursor: 'pointer' }}>
-              <ListItemIcon><StorefrontIcon /></ListItemIcon>
+            <ListItem
+              disableGutters
+              onClick={goToStore}
+              sx={{
+                px: 3,
+                py: 1.5,
+                borderRadius: 1,
+                cursor: "pointer",
+                "&:hover": { backgroundColor: "#283142" },
+              }}
+            >
+              <ListItemIcon sx={{ color: "#fff" }}>
+                <StorefrontIcon />
+              </ListItemIcon>
               <ListItemText primary="Tienda" />
             </ListItem>
 
-            <Divider sx={{ my: 1 }} />
+            <Divider sx={{ my: 1, borderColor: "#2e3b55" }} />
 
             {menuItems.map((item) => (
               <ListItemLink
@@ -102,10 +143,22 @@ const Sidebar = ({ open, onClose }) => {
         </Box>
 
         <Box>
-          <Divider sx={{ my: 1 }} />
+          <Divider sx={{ my: 1, borderColor: "#2e3b55" }} />
           <List>
-            <ListItem disableGutters onClick={handleLogout} sx={{ px: 3, cursor: 'pointer' }}>
-              <ListItemIcon><LogoutIcon /></ListItemIcon>
+            <ListItem
+              disableGutters
+              onClick={handleLogout}
+              sx={{
+                px: 3,
+                py: 1.5,
+                borderRadius: 1,
+                cursor: "pointer",
+                "&:hover": { backgroundColor: "#283142" },
+              }}
+            >
+              <ListItemIcon sx={{ color: "#fff" }}>
+                <LogoutIcon />
+              </ListItemIcon>
               <ListItemText primary="Cerrar sesión" />
             </ListItem>
           </List>

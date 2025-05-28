@@ -10,6 +10,8 @@ import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
 import { useTheme } from "@mui/material/styles";
 
+
+
 const Topbar = ({ onMenuClick }) => {
   const notificaciones = useSelector((state) => state.user.notificaciones);
   const user = useSelector((state) => state.user.user);
@@ -36,31 +38,38 @@ const Topbar = ({ onMenuClick }) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  useEffect(() => {
-    const fetchSaldo = async () => {
-      try {
-        const res = await axios.get("/saldo-taecel");
-        if (res.data.success) {
-          setSaldoTaecel({
-            saldo_taecel: parseFloat(res.data.data.saldo_taecel),
-            saldo_virtual_asignado: parseFloat(res.data.data.saldo_virtual_asignado),
-            saldo_disponible: parseFloat(res.data.data.saldo_disponible),
-            updated_at: res.data.data.updated_at
-          });
-        }
-      } catch (err) {
-        toast.error("Error al obtener saldo Taecel");
+  const fetchSaldo = async () => {
+    try {
+      const res = await axios.get("/saldo-taecel");
+      if (res.data.success) {
+        setSaldoTaecel({
+          saldo_taecel: parseFloat(res.data.data.saldo_taecel),
+          saldo_virtual_asignado: parseFloat(res.data.data.saldo_virtual_asignado),
+          saldo_disponible: parseFloat(res.data.data.saldo_disponible),
+          updated_at: res.data.data.updated_at
+        });
       }
-    };
+    } catch (err) {
+      toast.error("Error al obtener saldo Taecel");
+    }
+  };
+  useEffect(() => {
+
     fetchSaldo();
   }, []);
+
+  
+
 
   return (
     <Box sx={{ position: "relative" }}>
       <AppBar
-        position="static"
+        position="fixed"
         sx={{
+          top: 0,
+          left: 0,
+          width: "100%",
+          zIndex: 1300,
           background: "linear-gradient(to right, #1f2937, #111827)",
           px: 2,
           boxShadow: "0px 4px 12px rgba(0,0,0,0.3)"
@@ -198,7 +207,7 @@ const Topbar = ({ onMenuClick }) => {
                   }}
                 >
                   <Box sx={{ p: 2 }}>
-                    <Typography variant="subtitle1" fontWeight={600}>
+                    <Typography variant="subtitle1" fontWeight={600} color="white">
                       Notificaciones
                     </Typography>
                   </Box>
@@ -237,6 +246,9 @@ const Topbar = ({ onMenuClick }) => {
           </Box>
         </Toolbar>
       </AppBar>
+
+      {/* Espacio compensatorio para que no tape el contenido */}
+      <Box sx={{ height: isMobile ? 130 : 80 }} />
     </Box>
   );
 };

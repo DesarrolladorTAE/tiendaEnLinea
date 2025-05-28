@@ -11,12 +11,11 @@ import 'swiper/swiper-bundle.min.css';
 import "yet-another-react-lightbox/styles.css";
 import "yet-another-react-lightbox/plugins/thumbnails.css";
 import "./assets/scss/style.scss";
-import './styles/slick/slick.css';
-import './styles/slick/slick-theme.css';
-import "./i18n";
+
+
 
 // MUI Theme
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import {  CssBaseline } from '@mui/material';
 // import { ColorModeProvider } from "./context/ThemeContext";
 
 
