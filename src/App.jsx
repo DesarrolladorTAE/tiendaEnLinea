@@ -76,6 +76,7 @@ const BlogDetailsStandard = lazy(() => import("./pages/blog/BlogDetailsStandard.
 
 // other pages
 const About = lazy(() => import("./pages/other/About.jsx"));
+const Renovar = lazy(() => import("./pages/other/Renovar.jsx"));
 const Contact = lazy(() => import("./pages/other/Contact.jsx"));
 const MyAccount = lazy(() => import("./pages/other/MyAccount.jsx"));
 const LoginRegister = lazy(() => import("./pages/other/LoginRegister.jsx"));
@@ -183,6 +184,7 @@ const App = () => {
             <Route path={"/wishlist"} element={<Wishlist />} />
             <Route path={"/compare"} element={<Compare />} />
             <Route path={"/checkout"} element={<Checkout />} />
+            <Route path="/renovar" element={<Renovar />} />
 
             <Route path="*" element={<NotFound />} />
 
