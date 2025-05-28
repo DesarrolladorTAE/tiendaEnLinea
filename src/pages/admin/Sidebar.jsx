@@ -8,6 +8,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
 
   const isActive = (path) => location.pathname.startsWith(path);
+  const storeSlug = localStorage.getItem("STORE_SLUG");
 
   const handleLogout = () => {
     localStorage.removeItem("AUTH_TOKEN");
@@ -37,6 +38,16 @@ const Sidebar = () => {
       </div>
 
       <div className="text-center mt-auto">
+        {storeSlug && (
+          <a
+            href={`https://mitiendaenlineamx.com.mx/tienda/${storeSlug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-warning btn-sm w-100 mb-2"
+          >
+            Ir a mi página en línea
+          </a>
+        )}
         <button onClick={handleLogout} className="btn btn-outline-light btn-sm w-100">
           🚪 Cerrar Sesión
         </button>
