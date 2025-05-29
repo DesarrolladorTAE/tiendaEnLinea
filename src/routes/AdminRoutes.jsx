@@ -7,9 +7,14 @@ const AdminRoutes = () => {
   const { user } = useSelector((state) => state.user);
 
   if (!user) return <Navigate to="/loginmui" />;
-  if (user.role !== "superadmin") return <Navigate to="/" />;
+
+  // PERMITE admin Y superadmin
+  if (!["admin", "superadmin"].includes(user.role)) {
+    return <Navigate to="/" />;
+  }
 
   return <Outlet />;
 };
+
 
 export default AdminRoutes;

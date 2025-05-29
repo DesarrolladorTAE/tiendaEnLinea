@@ -7,7 +7,7 @@ import {
   CircularProgress,
   Divider,
   useTheme,
-  useMediaQuery
+  useMediaQuery,
 } from "@mui/material";
 import axios from "../../axiosConfig";
 
@@ -25,7 +25,7 @@ const LandingCarrierSection = () => {
       const response = await axios.get("/carriers");
       setCarriers(response.data);
     } catch (error) {
-      console.error("Error al obtener los carriers:", error);
+      console.error("Error al obtener los carriers:", error.message);
     } finally {
       setLoading(false);
     }
@@ -36,10 +36,11 @@ const LandingCarrierSection = () => {
   }, []);
 
   const tiempoAireCarriers = carriers.filter(
-    (c) => c.Categoria?.toLowerCase() === "tiempo aire"
+    (c) => String(c.Categoria).toLowerCase().trim() === "tiempo aire"
   );
+
   const paqueteCarriers = carriers.filter(
-    (c) => c.Categoria?.toLowerCase() === "paquetes"
+    (c) => String(c.Categoria).toLowerCase().trim() === "paquetes"
   );
 
   const getSlidesToShow = () => {
@@ -54,12 +55,13 @@ const LandingCarrierSection = () => {
     infinite: true,
     speed: 3000,
     autoplay: true,
-    autoplaySpeed: 0,
+    autoplaySpeed: 3000, // ✅ no pongas 0
     cssEase: "linear",
     slidesToShow: getSlidesToShow(),
     slidesToScroll: 1,
     pauseOnHover: false,
-    arrows: false
+    arrows: false,
+    accessibility: false, // ✅ evita warnings aria-hidden
   };
 
   const renderCarousel = (data) => (
@@ -72,23 +74,23 @@ const LandingCarrierSection = () => {
               p: 2,
               borderRadius: 3,
               textAlign: "center",
-              backgroundColor: "transparent", // totalmente transparente
+              backgroundColor: "transparent",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              height: { xs: 160, sm: 180, md: 200 }
+              height: { xs: 160, sm: 180, md: 200 },
             }}
           >
             <img
-              src={carrier.Logotipo}
+              src={carrier.Logotipo || "https://via.placeholder.com/90"}
               alt={carrier.Nombre}
               style={{
                 width: "100%",
                 maxWidth: 90,
                 height: 90,
                 objectFit: "contain",
-                marginBottom: 10
+                marginBottom: 10,
               }}
             />
             <Typography
@@ -106,14 +108,26 @@ const LandingCarrierSection = () => {
 
   return (
     <Box sx={{ py: 10, backgroundColor: "#f0f8ff", px: 2 }}>
-      <Typography variant="h4" textAlign="center" fontWeight="bold" gutterBottom>
+      <Typography
+        variant="h4"
+        textAlign="center"
+        fontWeight="bold"
+        gutterBottom
+      >
         Recargas y Paquetes Disponibles
       </Typography>
-      <Typography variant="body1" textAlign="center" maxWidth="md" mx="auto" mb={6}>
+      <Typography
+        variant="body1"
+        textAlign="center"
+        maxWidth="md"
+        mx="auto"
+        mb={6}
+      >
         TeLoRecargo es una plataforma moderna para realizar{" "}
         <strong>recargas de tiempo aire</strong> y adquirir{" "}
-        <strong>paquetes especiales</strong> de diferentes carriers en México. 
-        Compra en tiempo real, usa múltiples métodos de pago, y accede desde cualquier dispositivo de forma segura.
+        <strong>paquetes especiales</strong> de diferentes carriers en México.
+        Compra en tiempo real, usa múltiples métodos de pago, y accede desde
+        cualquier dispositivo de forma segura.
       </Typography>
 
       {loading ? (
@@ -122,20 +136,40 @@ const LandingCarrierSection = () => {
         </Box>
       ) : (
         <>
-          <Typography variant="h5" textAlign="center" fontWeight="bold" mt={5} mb={2}>
+          <Typography
+            variant="h5"
+            textAlign="center"
+            fontWeight="bold"
+            mt={5}
+            mb={2}
+          >
             Tiempo Aire
           </Typography>
-          <Box sx={{ maxWidth: 1200, mx: "auto", mb: 6 }}>
-            {renderCarousel(tiempoAireCarriers)}
+          <Box sx={{ maxWidth: 1200, mx: "auto", mb: 6, minHeight: 200 }}>
+            {tiempoAireCarriers.length > 0 ? (
+              renderCarousel(tiempoAireCarriers)
+            ) : (
+              <Typography textAlign="center">No hay carriers disponibles.</Typography>
+            )}
           </Box>
 
           <Divider variant="middle" sx={{ my: 6 }} />
 
-          <Typography variant="h5" textAlign="center" fontWeight="bold" mt={5} mb={2}>
+          <Typography
+            variant="h5"
+            textAlign="center"
+            fontWeight="bold"
+            mt={5}
+            mb={2}
+          >
             Paquetes Promocionales
           </Typography>
-          <Box sx={{ maxWidth: 1200, mx: "auto" }}>
-            {renderCarousel(paqueteCarriers)}
+          <Box sx={{ maxWidth: 1200, mx: "auto", minHeight: 200 }}>
+            {paqueteCarriers.length > 0 ? (
+              renderCarousel(paqueteCarriers)
+            ) : (
+              <Typography textAlign="center">No hay paquetes disponibles.</Typography>
+            )}
           </Box>
         </>
       )}

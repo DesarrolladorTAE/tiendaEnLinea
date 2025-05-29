@@ -21,6 +21,7 @@ import AnimatedModal from "../AnimatedModal";
 
 const drawerWidth = 240;
 
+// Componente para los links del menú (usa NavLink para rutas)
 const ListItemLink = forwardRef(function ListItemLink({ icon, primary, to, onClick }, ref) {
   return (
     <Box
@@ -54,7 +55,7 @@ const ListItemLink = forwardRef(function ListItemLink({ icon, primary, to, onCli
   );
 });
 
-const Sidebar = ({ open, onClose }) => {
+const Sidebar = ({ open, onClose, variant = "permanent" }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [showByeModal, setShowByeModal] = useState(false);
@@ -85,28 +86,25 @@ const Sidebar = ({ open, onClose }) => {
         anchor="left"
         open={open}
         onClose={onClose}
-        variant="temporary"
+        variant={variant}
         ModalProps={{
           keepMounted: true,
           BackdropProps: { invisible: true },
         }}
         sx={{
           zIndex: (theme) => theme.zIndex.appBar + 2,
-          top: '64px',
-          height: 'calc(100% - 64px)',
+          width: variant === "permanent" ? drawerWidth : undefined,
           "& .MuiDrawer-paper": {
-            top: '64px',
-            height: 'calc(100% - 64px)',
             width: drawerWidth,
-            background: "linear-gradient(to right, #1f2937, #111827)", // ✅ gradiente igual al topbar
+            background: "linear-gradient(to right, #1f2937, #111827)",
             color: "#fff",
             boxSizing: "border-box",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }
+            top: variant === "permanent" ? 0 : '64px', // Solo aplica top en temporal
+            height: "100vh",
+            borderRight: "none",
+            transition: "width 0.3s cubic-bezier(.4,0,.2,1)",
+          },
         }}
-
       >
 
         <Box>
