@@ -1,9 +1,10 @@
-import React from "react";
-import { Fragment } from "react";
+import React, { Fragment } from "react";
 import PropTypes from "prop-types";
 import HeaderOne from "../wrappers/header/HeaderOne";
 import FooterOne from "../wrappers/footer/FooterOne";
 import ScrollToTop from "../components/scroll-to-top";
+import useRealtimeUserData from "../hooks/useRealtimeUserData";
+import { useSelector } from "react-redux";
 
 const LayoutOne = ({
   children,
@@ -12,6 +13,14 @@ const LayoutOne = ({
   headerPaddingClass = "",
   headerPositionClass = ""
 }) => {
+  // Trae el estado de usuario desde Redux
+  const { isAuthenticated, sessionLoaded } = useSelector((state) => state.user);
+
+  // Solo ejecuta el hook cuando la sesión está lista y hay autenticación
+  if (sessionLoaded && isAuthenticated) {
+    useRealtimeUserData(5000); // Cada 5 segundos
+  }
+
   return (
     <Fragment>
       <HeaderOne

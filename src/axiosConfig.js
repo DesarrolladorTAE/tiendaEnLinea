@@ -1,6 +1,7 @@
-// src/axiosConfig.js
 import axios from 'axios';
 import Swal from 'sweetalert2';
+
+let sessionAlertActive = false;
 
 const axiosInstance = axios.create({
   baseURL: 'https://telorecargo.com/api/',
@@ -9,24 +10,27 @@ const axiosInstance = axios.create({
   },
 });
 
-// Interceptor de petición para incluir el token
+// ⬇️ Interceptor de REQUEST - agrega token
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log("[Axios] Enviando header Authorization:", config.headers.Authorization);
+    } else {
+      console.log("[Axios] NO hay token en localStorage.");
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Interceptor de respuesta para detectar token expirado (401)
+// ⬇️ Interceptor de RESPONSE - maneja expiración de sesión
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Mostrar alerta de sesión expirada
+    if (error.response?.status === 401 && !sessionAlertActive) {
+      sessionAlertActive = true;
       await Swal.fire({
         icon: 'info',
         title: 'Sesión expirada',
@@ -34,15 +38,11 @@ axiosInstance.interceptors.response.use(
         confirmButtonText: 'Iniciar sesión nuevamente',
         confirmButtonColor: '#3085d6',
       });
-
-      // Limpiar sesión
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-
-      // Redirigir al login
+      sessionAlertActive = false;
       window.location.href = "/";
     }
-
     return Promise.reject(error);
   }
 );

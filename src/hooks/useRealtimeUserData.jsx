@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import axios from "../axiosConfig";
 import {
@@ -11,34 +11,37 @@ const useRealtimeUserData = (interval = 5000) => {
   const dispatch = useDispatch();
   const { token, isAuthenticated } = useSelector((state) => state.user);
 
-  useEffect(() => {
-    if (!token || !isAuthenticated) return; // 🔐 Detener si no hay sesión
+  const intervalRef = useRef();
 
-    const intervalo = setInterval(async () => {
+  useEffect(() => {
+    // Si no hay sesión, no inicies nada
+    if (!token || !isAuthenticated) return;
+
+    intervalRef.current = setInterval(async () => {
+      // Vuelve a checar el token/estado en cada tick
+      if (!localStorage.getItem("token")) {
+        clearInterval(intervalRef.current);
+        return;
+      }
       try {
         const { data } = await axios.get("/dashboard/mini");
 
         if (data.saldo !== undefined) {
           dispatch(updateSaldo(data.saldo));
         }
-
         if (data.ganancias !== undefined) {
           dispatch(updateGanancias(data.ganancias));
         }
-
         if (data.notificaciones) {
           dispatch(setNotificaciones(data.notificaciones));
         }
-
-        // (Opcional) peticiones paralelas:
-        // const notiRes = await axios.get("/mis-notificaciones");
-        // dispatch(setNotificaciones(notiRes.data));
       } catch (err) {
         console.warn("Error actualizando datos en tiempo real:", err);
       }
     }, interval);
 
-    return () => clearInterval(intervalo);
+    // Limpia el intervalo si desmonta, o cambia el token/estado
+    return () => clearInterval(intervalRef.current);
   }, [dispatch, interval, token, isAuthenticated]);
 };
 

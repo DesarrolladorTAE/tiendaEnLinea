@@ -31,33 +31,34 @@ const LoginForm = ({ onBack }) => {
   } = useForm();
 
   const handleLogin = async (data) => {
-    try {
-      const response = await axios.post("/login", {
-        phone: data.loginPhone,
-        password: data.loginPassword,
-      });
+  try {
+    const response = await axios.post("/login", {
+      phone: data.loginPhone,
+      password: data.loginPassword,
+    });
+    const { token, user } = response.data;
 
-      const { token, user } = response.data;
+    // Set token y user INMEDIATAMENTE
+    localStorage.setItem("user", JSON.stringify(user));
+    localStorage.setItem("token", token);
 
-      localStorage.setItem("user", JSON.stringify(user)); // 👈 importante
-      localStorage.setItem("token", token);
+    dispatch(setUser({ user, token }));
 
-      setShowWelcome(true);
-      setTimeout(() => {
-        dispatch(setUser({ user, token }));
-        setShowWelcome(false);
-
-        if (["admin", "superadmin"].includes(user.role)) {
-          navigate("/admin/dashboard");
-        } else {
-          navigate("/home-fashion-three", { replace: true });
-        }
-      }, 3000);
-    } catch (error) {
-      setLoginError(error.response?.data?.message || "Error en el inicio de sesión");
-      toast.error(error.response?.data?.message || "⚠️ Error en el inicio de sesión");
-    }
-  };
+    // Ya puedes mostrar splash/animación si quieres
+    setShowWelcome(true);
+    setTimeout(() => {
+      setShowWelcome(false);
+      if (["admin", "superadmin"].includes(user.role)) {
+        navigate("/admin/dashboard");
+      } else {
+        navigate("/home-fashion-three", { replace: true });
+      }
+    }, 1500); // más rápido el splash
+  } catch (error) {
+    setLoginError(error.response?.data?.message || "Error en el inicio de sesión");
+    toast.error(error.response?.data?.message || "⚠️ Error en el inicio de sesión");
+  }
+};
 
 
   const onError = () => {

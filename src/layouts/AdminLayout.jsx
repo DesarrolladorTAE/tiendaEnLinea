@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../components/admin/Sidebar";
 import Topbar from "../components/admin/Topbar";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, Navigate } from "react-router-dom";
 import { Box, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import useRealtimeUserData from "../hooks/useRealtimeUserData";
+import { useSelector } from "react-redux";
 
 const drawerWidth = 240;
 
@@ -12,6 +14,17 @@ const AdminLayout = () => {
   const location = useLocation();
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
+
+  // Redux: checa el estado de sesión
+  const { isAuthenticated, sessionLoaded } = useSelector((state) => state.user);
+
+  // Protege la ruta: no renderices nada hasta que cargue la sesión
+  if (!sessionLoaded) return null;
+  // Si no está autenticado, redirige al login
+  if (!isAuthenticated) return <Navigate to="/loginmui" replace />;
+
+  // Solo aquí se activa el polling
+  useRealtimeUserData(5000);
 
   const handleDrawerToggle = () => {
     setOpenSidebar((prev) => !prev);

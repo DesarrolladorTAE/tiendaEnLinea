@@ -6,7 +6,7 @@ import { loadUserFromStorage } from './store/slices/userSlice';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PublicOnlyRoute from "./routes/PublicOnlyRoute.jsx";
-import useRealtimeUserData from "./hooks/useRealtimeUserData";
+// import useRealtimeUserData from "./hooks/useRealtimeUserData";
 
 
 import AdminRoutes from "./routes/AdminRoutes";
@@ -60,7 +60,7 @@ const App = () => {
     dispatch(loadUserFromStorage());
   }, [dispatch]);
 
-  useRealtimeUserData(5000); // 🔁 actualiza cada 5 segundos
+  // useRealtimeUserData(5000); // 🔁 actualiza cada 5 segundos
 
   return (
     <Router>
