@@ -29,7 +29,7 @@ axiosClient.interceptors.response.use(
 
     if (status === 401) {
       // ⚠️ Token inválido o no autenticado
-      window.location.href = "/login";
+      window.location.href = "/login-register";
     }
 
     return Promise.reject(err);
