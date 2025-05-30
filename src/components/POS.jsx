@@ -53,13 +53,24 @@ export default function POS({ posName }) {
   }, [showTicket, ticketData]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (scannerEnabled && inputRef.current) {
-        inputRef.current.focus();
+    let focusTimeout;
+
+    const tryFocus = () => {
+      if (
+        scannerEnabled &&
+        !showTicket && // evitar enfocar mientras hay modal abierto
+        inputRef.current &&
+        document.activeElement !== inputRef.current
+      ) {
+        inputRef.current.focus({ preventScroll: true });
       }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [scannerEnabled]);
+      focusTimeout = setTimeout(tryFocus, 1000);
+    };
+
+    tryFocus();
+
+    return () => clearTimeout(focusTimeout);
+  }, [scannerEnabled, showTicket]);
 
   // Imprimir abriendo el blob URL
   const handlePrint = () => {
@@ -134,18 +145,21 @@ export default function POS({ posName }) {
         fullWidth
         value={search}
         onChange={(e) => setSearch(e.target.value)}
+        onFocus={() => setScannerEnabled(false)}
+        onBlur={() => setScannerEnabled(true)}
       />
       <input
         ref={inputRef}
         type="text"
         value={barcode}
         onKeyDown={handleScan}
+        onChange={() => {}} // prevenir warning
         style={{
+          position: "fixed", // evitar que afecte layout y scroll
+          top: "-1000px",
+          left: "-1000px",
           opacity: 0,
-          position: "absolute",
-          zIndex: -1,
-          width: 0,
-          height: 0,
+          pointerEvents: "none",
         }}
       />
 
