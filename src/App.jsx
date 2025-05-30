@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { useDispatch } from 'react-redux';
-import { loadUserFromStorage } from './store/slices/userSlice';
+import { clearUser, loadUserFromStorage } from './store/slices/userSlice';
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PublicOnlyRoute from "./routes/PublicOnlyRoute.jsx";
@@ -57,7 +57,12 @@ const App = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    // 1. Carga usuario de storage
     dispatch(loadUserFromStorage());
+    // 2. Si no hay token después de cargar, limpia Redux (logout)
+    if (!localStorage.getItem('token')) {
+      dispatch(clearUser());
+    }
   }, [dispatch]);
 
   // useRealtimeUserData(5000); // 🔁 actualiza cada 5 segundos

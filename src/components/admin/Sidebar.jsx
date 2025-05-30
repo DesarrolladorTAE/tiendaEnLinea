@@ -6,7 +6,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  Box
+  Box,
 } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
@@ -22,7 +22,10 @@ import AnimatedModal from "../AnimatedModal";
 const drawerWidth = 240;
 
 // Componente para los links del menú (usa NavLink para rutas)
-const ListItemLink = forwardRef(function ListItemLink({ icon, primary, to, onClick }, ref) {
+const ListItemLink = forwardRef(function ListItemLink(
+  { icon, primary, to, onClick },
+  ref
+) {
   return (
     <Box
       component={NavLink}
@@ -63,8 +66,16 @@ const Sidebar = ({ open, onClose, variant = "permanent" }) => {
   const menuItems = [
     { text: "Dashboard", icon: <DashboardIcon />, path: "/admin/dashboard" },
     { text: "Usuarios", icon: <PeopleIcon />, path: "/admin/users" },
-    { text: "Ventas De Saldo", icon: <ShoppingCartIcon />, path: "/admin/purchases" },
-    { text: "Notificaciones", icon: <NotificationsIcon />, path: "/admin/notifications" },
+    {
+      text: "Ventas De Saldo",
+      icon: <ShoppingCartIcon />,
+      path: "/admin/purchases",
+    },
+    {
+      text: "Notificaciones",
+      icon: <NotificationsIcon />,
+      path: "/admin/notifications",
+    },
   ];
 
   const handleLogout = () => {
@@ -99,14 +110,13 @@ const Sidebar = ({ open, onClose, variant = "permanent" }) => {
             background: "linear-gradient(to right, #1f2937, #111827)",
             color: "#fff",
             boxSizing: "border-box",
-            top: variant === "permanent" ? 0 : '64px', // Solo aplica top en temporal
-            height: "100vh",
+            top: 64, // <-- SIEMPRE la altura del Topbar
+            height: "calc(100vh - 64px)", // <-- SIEMPRE el alto menos el Topbar
             borderRight: "none",
             transition: "width 0.3s cubic-bezier(.4,0,.2,1)",
           },
         }}
       >
-
         <Box>
           <List>
             <ListItem

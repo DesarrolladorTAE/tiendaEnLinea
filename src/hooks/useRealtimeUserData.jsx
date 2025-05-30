@@ -14,6 +14,7 @@ const useRealtimeUserData = (interval = 5000) => {
   const intervalRef = useRef();
 
   useEffect(() => {
+    if (!interval) return; // ⬅️ no activa el polling si el intervalo es null
     // Si no hay sesión, no inicies nada
     if (!token || !isAuthenticated) return;
 

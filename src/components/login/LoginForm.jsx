@@ -284,6 +284,7 @@ const LoginForm = ({ onBack }) => {
         confirmPassword={confirmPassword}
         setConfirmPassword={setConfirmPassword}
         onSubmit={handleResetPasswordSubmit}
+        onClose={() => setIsResetModalOpen(false)}
       />
     </>
   );

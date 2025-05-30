@@ -1,0 +1,22 @@
+// utils/regimenesSat.js
+export const REGIMENES_SAT = [
+  { nombre: "General de Ley Personas Morales", codigo: "601" },
+  { nombre: "Personas Morales con Fines no Lucrativos", codigo: "603" },
+  { nombre: "Sueldos y Salarios e Ingresos Asimilados a Salarios", codigo: "605" },
+  { nombre: "Arrendamiento", codigo: "606" },
+  { nombre: "Régimen de Enajenación o Adquisición de Bienes", codigo: "607" },
+  { nombre: "Demás ingresos", codigo: "608" },
+  { nombre: "Residentes en el Extranjero sin Establecimiento Permanente en México", codigo: "610" },
+  { nombre: "Ingresos por Dividendos (socios y accionistas)", codigo: "611" },
+  { nombre: "Personas Físicas con Actividades Empresariales y Profesionales", codigo: "612" },
+  { nombre: "Ingresos por intereses", codigo: "614" },
+  { nombre: "Régimen de los ingresos por obtención de premios", codigo: "615" },
+  { nombre: "Sin obligaciones fiscales", codigo: "616" },
+  { nombre: "Sociedades Cooperativas de Producción que optan por diferir sus ingresos", codigo: "620" },
+  { nombre: "Incorporación Fiscal", codigo: "621" },
+  { nombre: "Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras", codigo: "622" },
+  { nombre: "Opcional para Grupos de Sociedades", codigo: "623" },
+  { nombre: "Coordinados", codigo: "624" },
+  { nombre: "Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas", codigo: "625" },
+  { nombre: "Régimen Simplificado de Confianza", codigo: "626" },
+];

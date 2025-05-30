@@ -4,17 +4,19 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 const AdminRoutes = () => {
-  const { user } = useSelector((state) => state.user);
+  const { user, sessionLoaded } = useSelector((state) => state.user);
+
+  // Evita flicker/redirecciones hasta cargar sesión
+  if (!sessionLoaded) return null; // o un spinner
 
   if (!user) return <Navigate to="/loginmui" />;
-
-  // PERMITE admin Y superadmin
   if (!["admin", "superadmin"].includes(user.role)) {
     return <Navigate to="/" />;
   }
 
   return <Outlet />;
 };
+
 
 
 export default AdminRoutes;

@@ -139,7 +139,7 @@ const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
                 </p>
 
                 {productoSeleccionado && productoSeleccionado.Monto > saldo && (
-                  <Link to="/recargar-saldo" className="boton-recarga">
+                  <Link to="/saldo-recarga" className="boton-recarga">
                     Recargar ahora
                   </Link>
                 )}

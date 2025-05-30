@@ -9,7 +9,7 @@ const PublicOnlyRoute = ({ children }) => {
 
   if (!sessionLoaded) return null;
 
-  if ((isAuthenticated || token) && location.pathname === "/") {
+  if ((isAuthenticated || token) && location.pathname === "/loginmui") {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     const role = storedUser?.role;
 

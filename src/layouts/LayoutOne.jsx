@@ -17,9 +17,8 @@ const LayoutOne = ({
   const { isAuthenticated, sessionLoaded } = useSelector((state) => state.user);
 
   // Solo ejecuta el hook cuando la sesión está lista y hay autenticación
-  if (sessionLoaded && isAuthenticated) {
-    useRealtimeUserData(5000); // Cada 5 segundos
-  }
+ // ✅ SIEMPRE se llama al hook, y el propio hook decide internamente si hace algo
+  useRealtimeUserData(sessionLoaded && isAuthenticated ? 5000 : null);
 
   return (
     <Fragment>
