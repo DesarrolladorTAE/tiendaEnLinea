@@ -7,10 +7,11 @@ import {
   Typography,
   Checkbox,
   FormControlLabel,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom";
 import axios from "../../axiosConfig";
 import TermsModal from "../modals/TermsModal";
 
@@ -28,6 +29,9 @@ const RegisterForm = ({ setRightPanelActive }) => {
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const {
     register,
@@ -84,18 +88,21 @@ const RegisterForm = ({ setRightPanelActive }) => {
     return (
       <Box
         sx={{
-          width: "50%",
+          width: "100%",
+          maxWidth: 400,
           textAlign: "center",
           display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
-          px: 4,
-          py: 6,
-          backgroundColor: "white",
+          px: { xs: 2, sm: 4 },
+          py: { xs: 5, sm: 6 },
+          bgcolor: "white",
+          borderRadius: 4,
+          boxShadow: 2,
         }}
       >
-        <Typography variant="h4" fontWeight="bold" color="#333">
+        <Typography variant="h5" fontWeight="bold" color="#333">
           🎉 Registro exitoso
         </Typography>
         <Typography mt={2}>
@@ -112,7 +119,12 @@ const RegisterForm = ({ setRightPanelActive }) => {
             borderRadius: 9999,
             color: "#fff",
             fontWeight: "bold",
+            textTransform: "uppercase",
+            fontSize: 16,
+            boxShadow: "none",
+            "&:hover": { bgcolor: "#9e35b4" },
           }}
+          fullWidth
         >
           Iniciar sesión
         </Button>
@@ -125,14 +137,17 @@ const RegisterForm = ({ setRightPanelActive }) => {
       component="form"
       onSubmit={handleSubmit(onSubmit)}
       sx={{
-        width: "50%",
+        width: "100%",
+        maxWidth: 400,
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
-        px: 4,
-        py: 6,
-        backgroundColor: "white",
+        px: { xs: 2, sm: 4 },
+        py: { xs: 5, sm: 6 },
+        bgcolor: "white",
+        borderRadius: 4,
+        boxShadow: 2,
       }}
     >
       {/* Logo arriba del título */}
@@ -141,14 +156,14 @@ const RegisterForm = ({ setRightPanelActive }) => {
         src="/assets/img/logo2.png"
         alt="Logo Te lo recargo"
         sx={{
-          width: 180,
+          width: 110,
           height: "auto",
           mb: 2,
-          mt: -4,
+          mt: -1,
         }}
       />
 
-      <Typography variant="h4" fontWeight="bold" color="#333" gutterBottom>
+      <Typography variant="h5" fontWeight="bold" color="#333" gutterBottom>
         {isVerificationStep ? "Verificación de Código" : "Crea tu Cuenta"}
       </Typography>
 
@@ -170,7 +185,7 @@ const RegisterForm = ({ setRightPanelActive }) => {
               sx={{
                 width: 180,
                 textAlign: "center",
-                "& .MuiOutlinedInput-root": { borderRadius: 50 },
+                ...roundedInputStyle,
                 "& input": {
                   textAlign: "center",
                   letterSpacing: "0.2em",
@@ -190,9 +205,14 @@ const RegisterForm = ({ setRightPanelActive }) => {
               py: 1.5,
               bgcolor: "#be4bdb",
               color: "white",
-              borderRadius: "25px",
+              borderRadius: 9999,
               fontWeight: "bold",
+              textTransform: "uppercase",
+              fontSize: 16,
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#9e35b4" },
             }}
+            fullWidth
           >
             Verificar Código
           </Button>
@@ -204,6 +224,7 @@ const RegisterForm = ({ setRightPanelActive }) => {
               color: "#00bfa5",
               cursor: "pointer",
               textAlign: "center",
+              fontWeight: 500,
               "&:hover": { textDecoration: "underline" },
             }}
           >
@@ -212,7 +233,7 @@ const RegisterForm = ({ setRightPanelActive }) => {
         </>
       ) : (
         <>
-          <Grid container spacing={2}>
+          <Grid container spacing={2} sx={{ maxWidth: 400 }}>
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Nombre"
@@ -336,14 +357,16 @@ const RegisterForm = ({ setRightPanelActive }) => {
               py: 1.5,
               bgcolor: acceptedTerms ? "#be4bdb" : "grey.400",
               color: "#fff",
-              borderRadius: "25px",
+              borderRadius: 9999,
               fontWeight: "bold",
               textTransform: "uppercase",
-              boxShadow: 3,
+              fontSize: 16,
+              boxShadow: "none",
               "&:hover": {
                 bgcolor: acceptedTerms ? "#9e35b4" : "grey.500",
               },
             }}
+            fullWidth
           >
             Registrarme
           </Button>

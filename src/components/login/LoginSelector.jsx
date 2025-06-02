@@ -1,79 +1,90 @@
 import React from "react";
-import { Box, Button, Typography } from "@mui/material";
+import { Box, Button, Typography, Stack, useMediaQuery } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import PersonIcon from "@mui/icons-material/Person";
 import HeadsetMicIcon from "@mui/icons-material/HeadsetMic";
 
 const LoginSelector = ({ onSelect }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
     <Box
       sx={{
-        width: "50%",
+        width: "100%",
+        maxWidth: 420,
+        mx: "auto",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "white",
-        px: 6,
-        py: 0,
-        zIndex: 2,
-        borderTopLeftRadius: 16,
-        borderBottomLeftRadius: 16,
+        bgcolor: "white",
+        borderRadius: 4,
+        py: 4,
+        px: isMobile ? 2 : 6,
+        boxShadow: 2,
+        gap: 2,
       }}
     >
       {/* Logo */}
-      <Box
+      {/* <Box
         component="img"
         src="/assets/img/logo1.png"
         alt="Logo Te lo Recargo"
         sx={{
-          width: 180,
+          width: 140,
           height: "auto",
           mb: 2,
-          mt: -8,
         }}
-      />
+      /> */}
 
       {/* Título */}
-      <Typography variant="h4" fontWeight="bold" color="#444" gutterBottom sx={{ mb: 3 }}>
+      <Typography variant="h5" fontWeight="bold" color="#222" mb={2}>
         Iniciar Sesión
       </Typography>
 
-      {/* Contenedor selector */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          boxShadow: 3,
-          borderRadius: 4,
-          overflow: "hidden",
-          width: "100%",
-          maxWidth: 480,
-        }}
+      {/* Selector de opciones */}
+      <Stack
+        direction={isMobile ? "column" : "row"}
+        spacing={isMobile ? 2 : 3}
+        width="100%"
+        justifyContent="center"
+        alignItems="stretch"
       >
         {/* Opción Usuario */}
         <Box
           sx={{
             flex: 1,
-            py: 5,
+            py: 3,
+            px: 1,
             backgroundColor: "#f8f8f8",
+            borderRadius: 3,
             textAlign: "center",
+            boxShadow: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1,
           }}
         >
-          <PersonIcon sx={{ fontSize: 60, color: "#444" }} />
-          <Typography variant="h6" mt={1}>Usuarios</Typography>
+          <PersonIcon sx={{ fontSize: 48, color: "#555" }} />
+          <Typography variant="h6" fontWeight="500">
+            Usuario
+          </Typography>
           <Button
             variant="contained"
+            fullWidth
             onClick={() => onSelect("usuario")}
             sx={{
-              mt: 2,
-              bgcolor: "#999",
+              mt: 1,
+              bgcolor: "#444",
+              color: "#fff",
               fontWeight: "bold",
-              borderRadius: 3,
-              px: 4,
-              "&:hover": { bgcolor: "#777" },
+              borderRadius: 2,
+              boxShadow: "none",
+              "&:hover": { bgcolor: "#333" },
             }}
           >
-            USUARIOS
+            ENTRAR
           </Button>
         </Box>
 
@@ -81,29 +92,40 @@ const LoginSelector = ({ onSelect }) => {
         <Box
           sx={{
             flex: 1,
-            py: 5,
+            py: 3,
+            px: 1,
             backgroundColor: "#e0f8ff",
+            borderRadius: 3,
             textAlign: "center",
+            boxShadow: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 1,
           }}
         >
-          <HeadsetMicIcon sx={{ fontSize: 60, color: "#000" }} />
-          <Typography variant="h6" mt={1}>Agentes</Typography>
+          <HeadsetMicIcon sx={{ fontSize: 48, color: "#00b5e5" }} />
+          <Typography variant="h6" fontWeight="500">
+            Agente
+          </Typography>
           <Button
             variant="contained"
+            fullWidth
             onClick={() => onSelect("agente")}
             sx={{
-              mt: 2,
+              mt: 1,
               bgcolor: "#00cfff",
+              color: "#fff",
               fontWeight: "bold",
-              borderRadius: 3,
-              px: 4,
+              borderRadius: 2,
+              boxShadow: "none",
               "&:hover": { bgcolor: "#00b5e5" },
             }}
           >
-            AGENTES
+            ENTRAR
           </Button>
         </Box>
-      </Box>
+      </Stack>
     </Box>
   );
 };
