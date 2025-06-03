@@ -53,7 +53,7 @@ const Renovar = () => {
         <p className="text-muted">Si ya realizaste el pago, por favor vuelve a iniciar sesión.</p>
 
         <button
-          onClick={() => (window.location.href = "/login-register")}
+          onClick={() => (window.location.href = "/admin")}
           className="btn btn-secondary"
         >
           Iniciar sesión
