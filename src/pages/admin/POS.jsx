@@ -17,6 +17,7 @@ import cogoToast from "cogo-toast";
 
 const POS = () => {
   const [puntos, setPuntos] = useState([]);
+  const [limite, setLimite] = useState(2);
   const [visibles, setVisibles] = useState({});
   const [editando, setEditando] = useState({});
 
@@ -25,7 +26,8 @@ const POS = () => {
     (async () => {
       try {
         const { data } = await axiosClient.get("/store/pos");
-        setPuntos(data);
+        setPuntos(data.list);
+        setLimite(data.max);
       } catch (err) {
         console.error("Error al cargar POS:", err);
       }
@@ -37,8 +39,8 @@ const POS = () => {
 
   // A) Añadir una fila temporal en modo edición
   const agregarPunto = () => {
-    if (puntos.length >= 6) {
-      cogoToast.warn("Solo se permiten hasta 6 puntos de venta.", {
+    if (puntos.length >= limite) {
+      cogoToast.warn(`Solo se permiten hasta ${limite} puntos de venta.`, {
         position: "top-center",
         hideAfter: 4,
       });
