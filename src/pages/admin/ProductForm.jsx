@@ -36,6 +36,7 @@ function ProductForm() {
       category: [],
       tags: [],
       variations: [],
+      visible: true,
     },
   });
 
@@ -128,6 +129,7 @@ function ProductForm() {
             ...v,
             sizes: v.size || [], // Renombramos correctamente para react-hook-form
           })) || [],
+        visible: Boolean(product.visible),
       });
     } catch (err) {
       console.error("Error al cargar producto para editar:", err);
@@ -154,6 +156,7 @@ function ProductForm() {
       formData.append("base_price", basePrice);
 
       formData.append("iva", data.iva === "null" ? "null" : data.iva);
+      formData.append("visible", data.visible ? "1" : "0");
 
       if (data.offerEnd && Number(data.discount) > 0) {
         const formattedOfferEnd = new Date(data.offerEnd)
@@ -334,6 +337,21 @@ function ProductForm() {
                   checked={watch("new")}
                   onChange={() => setValue("new", !watch("new"))}
                   {...register("new")}
+                  color="primary"
+                  sx={{ transform: "scale(1.5)" }}
+                />
+              </div>
+            </div>
+
+            <div className="col-md-4 mb-3">
+              <label className="form-label" htmlFor="visible-switch">
+                ¿Visible en tu página?
+              </label>
+              <div>
+                <Switch
+                  id="visible-switch"
+                  checked={watch("visible")}
+                  onChange={() => setValue("visible", !watch("visible"))}
                   color="success"
                   sx={{ transform: "scale(1.5)" }}
                 />
