@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Button,
@@ -26,6 +26,24 @@ export default function StockEntryForm() {
   ]);
   const [loading, setLoading] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [stockHistory, setStockHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const { data } = await axiosClient.get("/admin/restocks");
+      setStockHistory(data);
+    } catch (error) {
+      toast.error("Error al cargar historial de entradas.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const debounceRef = useRef(null);
 
@@ -93,7 +111,7 @@ export default function StockEntryForm() {
     setLoading(true);
 
     await toast.promise(
-      axiosClient.post("restocks", {
+      axiosClient.post("/admin/restocks", {
         uuid_invoice: uuidInvoice,
         items,
       }),
@@ -107,6 +125,7 @@ export default function StockEntryForm() {
     setUuidInvoice("");
     setLines([{ id: Date.now(), product: null, product_code: "", unit_price: 0, quantity: 1 }]);
     setLoading(false);
+    fetchHistory();
   };
 
   return (
@@ -245,6 +264,45 @@ export default function StockEntryForm() {
             {loading ? "Guardando..." : "Registrar entrada"}
           </Button>
         </Box>
+      </Box>
+
+      <Box sx={{ mt: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Historial de entradas de stock
+        </Typography>
+
+        {loadingHistory ? (
+          <Typography variant="body2" color="text.secondary">
+            Cargando historial...
+          </Typography>
+        ) : stockHistory.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">
+            No hay registros aún.
+          </Typography>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Fecha</TableCell>
+                <TableCell>ID Factura</TableCell>
+                <TableCell>Producto</TableCell>
+                <TableCell>Precio Unitario</TableCell>
+                <TableCell>Cantidad</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {stockHistory.map((entry, index) => (
+                <TableRow key={index}>
+                  <TableCell>{new Date(entry.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell>{entry.uuid_invoice}</TableCell>
+                  <TableCell>{entry.product?.name || "-"}</TableCell>
+                  <TableCell>{Number(entry.unit_price || 0).toFixed(2)}</TableCell>
+                  <TableCell>{entry.quantity}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </Box>
     </Paper>
   );
