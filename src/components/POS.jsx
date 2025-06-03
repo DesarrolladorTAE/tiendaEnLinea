@@ -98,7 +98,10 @@ export default function POS({ posName }) {
     );
   }
 
-  const filtered = products.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = products.filter((p) => {
+    const term = search.toLowerCase();
+    return p.name.toLowerCase().includes(term) || p.sku?.toLowerCase().includes(term);
+  });
 
   const handleScan = (e) => {
     if (e.key === "Enter") {
