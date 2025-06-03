@@ -108,21 +108,20 @@ const App = () => {
             <Route path="/product/:id" element={<Product />} />
 
             {/* Other pages */}
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
+            {/* <Route path="/about" element={<About />} /> */}
+            {/* <Route path="/contact" element={<Contact />} /> */}
             <Route path="/my-account" element={<MyAccount />} />
             <Route path="/wallet" element={<Wallet />} />
             {/* <Route path="/login" element={<Login />} /> */}
-            <Route path="/cart" element={<Cart />} />
+            {/* <Route path="/cart" element={<Cart />} /> */}
             <Route path="/saldo-recarga" element={<SaldoRecarga />} />
             <Route path="/mycontacts" element={<MyContacts />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/compare" element={<Compare />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/recargar-saldo" element={<RecargarSaldo />} />
-            <Route path="/home-fashion-agent" element={<InicioAgente />} />
+            {/* <Route path="/recargar-saldo" element={<RecargarSaldo />} /> */}
+            {/* <Route path="/home-fashion-agent" element={<InicioAgente />} /> */}
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
-            <Route path="/agent-mipages" element={<Agentes />} />
+            {/* <Route path="/agent-mipages" element={<Agentes />} /> */}
             <Route path="/landing" element={<LandingPage />} />
             <Route
               path="/loginmui"

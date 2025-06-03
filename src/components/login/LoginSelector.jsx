@@ -12,7 +12,7 @@ const LoginSelector = ({ onSelect }) => {
     <Box
       sx={{
         width: "100%",
-        maxWidth: 420,
+        maxWidth: 550,
         mx: "auto",
         display: "flex",
         flexDirection: "column",
@@ -25,24 +25,10 @@ const LoginSelector = ({ onSelect }) => {
         gap: 2,
       }}
     >
-      {/* Logo */}
-      {/* <Box
-        component="img"
-        src="/assets/img/logo1.png"
-        alt="Logo Te lo Recargo"
-        sx={{
-          width: 140,
-          height: "auto",
-          mb: 2,
-        }}
-      /> */}
-
-      {/* Título */}
       <Typography variant="h5" fontWeight="bold" color="#222" mb={2}>
         Iniciar Sesión
       </Typography>
 
-      {/* Selector de opciones */}
       <Stack
         direction={isMobile ? "column" : "row"}
         spacing={isMobile ? 2 : 3}
@@ -64,6 +50,7 @@ const LoginSelector = ({ onSelect }) => {
             flexDirection: "column",
             alignItems: "center",
             gap: 1,
+            cursor: "pointer",
           }}
         >
           <PersonIcon sx={{ fontSize: 48, color: "#555" }} />
@@ -86,6 +73,16 @@ const LoginSelector = ({ onSelect }) => {
           >
             ENTRAR
           </Button>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            mt={1}
+            textAlign="center"
+          >
+            ¿Eres un usuario de TLR? 💠
+            <br />
+            Ingresa aquí
+          </Typography>
         </Box>
 
         {/* Opción Agente */}
@@ -102,6 +99,7 @@ const LoginSelector = ({ onSelect }) => {
             flexDirection: "column",
             alignItems: "center",
             gap: 1,
+            cursor: "pointer",
           }}
         >
           <HeadsetMicIcon sx={{ fontSize: 48, color: "#00b5e5" }} />
@@ -124,6 +122,16 @@ const LoginSelector = ({ onSelect }) => {
           >
             ENTRAR
           </Button>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            mt={1}
+            textAlign="center"
+          >
+            ¿Un usuario de TLR te dio un acceso? 🤔
+            <br />
+            Ingresa aquí
+          </Typography>
         </Box>
       </Stack>
     </Box>

@@ -88,12 +88,12 @@ const LoginAgentForm = ({ onBack }) => {
       </IconButton>
 
       {/* Logo */}
-      <Box
+      {/* <Box
         component="img"
         src="/assets/img/logo1.png"
         alt="Logo Te lo Recargo"
         sx={{ width: 110, height: "auto", mb: 2, mt: -1 }}
-      />
+      /> */}
 
       <Typography variant="h5" fontWeight="bold" color="#444" mb={1}>
         Agente - Acceso

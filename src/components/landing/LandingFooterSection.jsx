@@ -6,11 +6,14 @@ import {
   Link,
   IconButton,
   Container,
-  Divider
+  Divider,
 } from "@mui/material";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import InstagramIcon from "@mui/icons-material/Instagram";
+import TwitterIcon from "@mui/icons-material/Twitter";
+import YouTubeIcon from "@mui/icons-material/YouTube";
+import PinterestIcon from "@mui/icons-material/Pinterest";
 
 const LandingFooterSection = () => {
   return (
@@ -26,69 +29,131 @@ const LandingFooterSection = () => {
                 style={{ width: 160, height: "auto" }}
               />
             </Box>
-            <Typography variant="body2" color="white">
-              Plataforma confiable para enviar recargas electrónicas, gestionar contactos y mantener el control de tu negocio móvil.
+            <Typography variant="body2" color="white" fontSize={16}>
+              Plataforma confiable para enviar recargas electrónicas, gestionar
+              contactos y mantener el control de tu negocio móvil.
             </Typography>
           </Grid>
 
           {/* Enlaces */}
-          <Grid item xs={12} sm={6} md={4} textAlign={{ xs: "center", md: "left" }}>
-            <Typography variant="h6" fontWeight="bold" mb={1}>
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            textAlign={{ xs: "center", md: "left" }}
+          >
+            <Typography variant="h6" fontWeight="bold" mb={1} color="#00bfff">
               Enlaces
             </Typography>
             <Box display="flex" flexDirection="column" gap={0.5}>
-              <Link href="#features" color="inherit" underline="hover">Funciones</Link>
-              <Link href="#pricing" color="inherit" underline="hover">Recargas y Paquetes</Link>
-              <Link href="#faqs" color="inherit" underline="hover">Testimonios</Link>
-              <Link href="/terminos" color="inherit" underline="hover">Términos y Condiciones</Link>
-              <Link href="/contacto" color="inherit" underline="hover">Contáctanos</Link>
+              <Link href="#features" color="inherit" underline="hover">
+                Funciones
+              </Link>
+              <Link href="#pricing" color="inherit" underline="hover">
+                Recargas y Paquetes
+              </Link>
+              <Link href="#faqs" color="inherit" underline="hover">
+                Testimonios
+              </Link>
+              <Link href="/terminos" color="inherit" underline="hover">
+                Términos y Condiciones
+              </Link>
+              <Link href="/contacto" color="inherit" underline="hover">
+                Contáctanos
+              </Link>
             </Box>
           </Grid>
 
           {/* Redes Sociales y Soporte */}
-          <Grid item xs={12} sm={6} md={4} textAlign={{ xs: "center", md: "left" }}>
-            <Typography variant="h6" fontWeight="bold" mb={1}>
+          {/* Redes Sociales y Soporte */}
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            textAlign={{ xs: "center", md: "left" }}
+          >
+            <Typography variant="h6" fontWeight="bold" mb={1} color="#00bfff">
               Síguenos
             </Typography>
-            <Box display="flex" justifyContent={{ xs: "center", md: "flex-start" }} gap={1} mb={2}>
+            <Box
+              display="flex"
+              justifyContent={{ xs: "center", md: "flex-start" }}
+              gap={1}
+              mb={2}
+            >
               <IconButton
                 color="inherit"
-                href="https://facebook.com"
+                href="https://facebook.com/TAELADTI"
                 target="_blank"
                 sx={{
                   transition: "transform 0.3s ease",
-                  "&:hover": { transform: "scale(1.2)", color: "#3b5998" }
+                  "&:hover": { transform: "scale(1.2)", color: "#3b5998" },
                 }}
               >
-                <FacebookIcon />
+                <FacebookIcon sx={{ fontSize: 30 }} />
               </IconButton>
               <IconButton
                 color="inherit"
-                href="https://wa.me/5217442188925"
+                href="https://wa.me/527442188925"
                 target="_blank"
                 sx={{
                   transition: "transform 0.3s ease",
-                  "&:hover": { transform: "scale(1.2)", color: "#25D366" }
+                  "&:hover": { transform: "scale(1.2)", color: "#25D366" },
                 }}
               >
-                <WhatsAppIcon />
+                <WhatsAppIcon sx={{ fontSize: 30 }} />
               </IconButton>
               <IconButton
                 color="inherit"
-                href="https://instagram.com"
+                href="https://www.instagram.com/taeladmx/"
                 target="_blank"
                 sx={{
                   transition: "transform 0.3s ease",
-                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" }
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
                 }}
               >
-                <InstagramIcon />
+                <InstagramIcon sx={{ fontSize: 30 }} />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://twitter.com/TAELAD2?s=09"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                }}
+              >
+                <TwitterIcon sx={{ fontSize: 30 }} />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://youtube.com/channel/UCZqj4INBI_M6b8b9O3Y3H5w"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                }}
+              >
+                <YouTubeIcon sx={{ fontSize: 30 }} />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://www.pinterest.com.mx/TAELADMX/_created/"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                }}
+              >
+                <PinterestIcon sx={{ fontSize: 30 }} />
               </IconButton>
             </Box>
-            <Typography variant="body2" color="gray">
+            <Typography variant="body2" color="white" fontSize={16}>
               Soporte disponible de 9am a 5pm (L-V)
             </Typography>
-            <Typography variant="body2" color="gray">
+            <Typography variant="body2" color="white" fontSize={16}>
               desarrollo@tecnologiasadministrativas.com
             </Typography>
           </Grid>
@@ -98,9 +163,27 @@ const LandingFooterSection = () => {
 
         {/* Footer final */}
         <Box textAlign="center">
-          <Typography variant="body2" color="gray">
-            © {new Date().getFullYear()} TeLoRecargo. Todos los derechos reservados.
+          <Typography variant="body2" color="white" fontSize={16}>
+            © {new Date().getFullYear()} TeLoRecargo. Desarrollado por{" "}
+            <Link
+              href="https://tecnologiasadministrativas.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              underline="hover"
+              color="white"
+              fontWeight="bold"
+            >
+              TAE
+            </Link>
+            . Todos los derechos reservados.
           </Typography>
+
+          <Box
+            component="img"
+            src="/assets/img/logotaeblanco.png" // ✅ Ruta relativa pública
+            alt="TAE sitio web"
+            sx={{ width: 75, height: 75 }} // ✅ Igual que los íconos MUI
+          />
         </Box>
       </Container>
     </Box>

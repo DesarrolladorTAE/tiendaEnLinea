@@ -28,7 +28,11 @@ const sections = [
   { label: "Inicio", href: "#home", icon: <HomeIcon /> },
   { label: "Funciones", href: "#features", icon: <AppsIcon /> },
   { label: "Uso", href: "#about", icon: <InfoIcon /> },
-  { label: "Recargas y Paquetes", href: "#pricing", icon: <MonetizationOnIcon /> },
+  {
+    label: "Recargas y Paquetes",
+    href: "#pricing",
+    icon: <MonetizationOnIcon />,
+  },
   { label: "Testimonios", href: "#testimonials", icon: <EmojiPeopleIcon /> },
   { label: "FAQ", href: "#faqs", icon: <HelpIcon /> },
 ];
@@ -52,11 +56,14 @@ const LandingNavbar = () => {
       <AppBar
         position="fixed"
         sx={{
-          backgroundColor: scrolled ? "#023E8A" : "#0077B6",
+          backgroundImage: scrolled
+            ? "linear-gradient(to bottom right, #023E8A, #023E8A)" // más oscuro al hacer scroll
+            : "linear-gradient(to bottom right, #0077B6, #0077B6)", // igual que hero
+          backgroundColor: scrolled ? "#023E8A" : "#0077B6", // fallback
           transition: "background-color 0.3s ease",
           boxShadow: scrolled ? 3 : 0,
           py: 1,
-          zIndex: theme.zIndex.drawer + 1,
+          zIndex: (theme) => theme.zIndex.drawer + 1,
         }}
       >
         <Toolbar sx={{ justifyContent: "space-between" }}>
@@ -89,7 +96,7 @@ const LandingNavbar = () => {
               variant="contained"
               sx={{
                 backgroundColor: "#00B4D8",
-                px: 4,
+                px: 3,
                 fontWeight: "bold",
                 borderRadius: "50px",
                 color: "#fff", // asegúrate de que el color sea blanco por defecto
@@ -102,9 +109,8 @@ const LandingNavbar = () => {
                 },
               }}
             >
-              Registrarse
+              ¿Empezamos?
             </Button>
-
 
             {isMobile && (
               <IconButton
@@ -169,7 +175,6 @@ const LandingNavbar = () => {
                 onClick={() => setDrawerOpen(false)}
                 sx={{ cursor: "pointer" }}
               >
-
                 <ListItemIcon sx={{ minWidth: 35, color: "#90e0ef" }}>
                   {item.icon}
                 </ListItemIcon>

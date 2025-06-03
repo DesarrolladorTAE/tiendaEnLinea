@@ -135,7 +135,7 @@ const LoginForm = ({ onBack }) => {
         </IconButton>
 
         {/* Logo */}
-        <Box
+        {/* <Box
           component="img"
           src="/assets/img/logo1.png"
           alt="Logo Te lo recargo"
@@ -145,7 +145,7 @@ const LoginForm = ({ onBack }) => {
             mb: 2,
             mt: -1,
           }}
-        />
+        /> */}
 
         <Typography variant="h5" fontWeight="bold" color="#444" mb={1}>
           Iniciar Sesión

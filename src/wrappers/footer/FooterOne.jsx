@@ -1,106 +1,205 @@
 import React from "react";
-import PropTypes from "prop-types";
-import clsx from "clsx";
-import { Link } from "react-router-dom";
-import FooterCopyright from "../../components/footer/FooterCopyright";
-import FooterNewsletter from "../../components/footer/FooterNewsletter";
+import {
+  Box,
+  Typography,
+  Grid,
+  Link,
+  IconButton,
+  Container,
+  Divider,
+} from "@mui/material";
+import FacebookIcon from "@mui/icons-material/Facebook";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import InstagramIcon from "@mui/icons-material/Instagram";
+import TwitterIcon from "@mui/icons-material/Twitter";
+import YouTubeIcon from "@mui/icons-material/YouTube";
+import PinterestIcon from "@mui/icons-material/Pinterest";
+// import LanguageIcon from "@mui/icons-material/Language";
 
-const FooterOne = ({
-  backgroundColorClass,
-  spaceTopClass,
-  spaceBottomClass,
-  spaceLeftClass,
-  spaceRightClass,
-  containerClass,
-  extraFooterClass,
-  sideMenu
-}) => {
+const LandingFooterSection = () => {
   return (
-    <footer className={clsx("footer-area", backgroundColorClass, spaceTopClass, spaceBottomClass, extraFooterClass, spaceLeftClass, spaceRightClass )}>
-      <div className={`${containerClass ? containerClass : "container"}`}>
-        <div className="row">
-          {/* Logo y derechos */}
-          <div className={`${sideMenu ? "col-xl-2 col-sm-4" : "col-lg-2 col-sm-4"}`}>
-            <FooterCopyright
-              footerLogo="/assets/img/logo/logo.png"
-              spaceBottomClass="mb-30"
-            />
-          </div>
+    <Box sx={{ backgroundColor: "#2d3e50", color: "#ffffff", pt: 8, pb: 5 }}>
+      <Container maxWidth="lg">
+        <Grid container spacing={6} justifyContent="center">
+          {/* Logo + descripción */}
+          <Grid item xs={12} md={4} textAlign={{ xs: "center", md: "left" }}>
+            <Box mb={2}>
+              <img
+                src="/assets/img/logo1.png"
+                alt="TeLoRecargo Logo"
+                style={{ width: 160, height: "auto" }}
+              />
+            </Box>
+            <Typography variant="body2" color="white" fontSize={16}>
+              Plataforma confiable para enviar recargas electrónicas, gestionar
+              contactos y mantener el control de tu negocio móvil.
+            </Typography>
+          </Grid>
 
-          {/* Sección Nosotros */}
-          <div className={`${sideMenu ? "col-xl-2 col-sm-4" : "col-lg-2 col-sm-4"}`}>
-            <div className="footer-widget mb-30 ml-30">
-              <div className="footer-title">
-                <h3>Nosotros</h3>
-              </div>
-              <div className="footer-list">
-                <ul>
-                  <li><Link to="/about">Quiénes somos</Link></li>
-                  <li><Link to="/contact">Contacto</Link></li>
-                  <li><Link to="/my-account">Mi cuenta</Link></li>
-                  <li><Link to="/faq">Preguntas frecuentes</Link></li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          {/* Enlaces */}
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            textAlign={{ xs: "center", md: "left" }}
+          >
+            <Typography variant="h6" fontWeight="bold" mb={1} color="#00bfff">
+              Enlaces
+            </Typography>
+            <Box display="flex" flexDirection="column" gap={0.5}>
+              <Link
+                href="/home-fashion-three"
+                color="inherit"
+                underline="hover"
+              >
+                Inicio
+              </Link>
+              <Link
+                href="/shop-grid-right-sidebar"
+                color="inherit"
+                underline="hover"
+              >
+                Recargas
+              </Link>
+              <Link href="/shop-grid-paquet" color="inherit" underline="hover">
+                Paquetes
+              </Link>
+              <Link href="/mycontacts" color="inherit" underline="hover">
+                Contactos
+              </Link>
+              <Link
+                href="/historial-recargas"
+                color="inherit"
+                underline="hover"
+              >
+                Ventas
+              </Link>
+            </Box>
+          </Grid>
 
-          {/* Enlaces útiles */}
-          <div className={`${sideMenu ? "col-xl-2 col-sm-4" : "col-lg-2 col-sm-4"}`}>
-            <div className={`${sideMenu ? "footer-widget mb-30 ml-95" : "footer-widget mb-30 ml-50"}`}>
-              <div className="footer-title">
-                <h3>Enlaces útiles</h3>
-              </div>
-              <div className="footer-list">
-                <ul>
-                  <li><Link to="/terms">Términos y condiciones</Link></li>
-                  <li><Link to="/privacy">Política de privacidad</Link></li>
-                  <li><Link to="/contact">Soporte</Link></li>
-                  <li><Link to="/wallet">Mi cartera</Link></li>
-                </ul>
-              </div>
-            </div>
-          </div>
+          {/* Redes Sociales y Soporte */}
+          <Grid
+            item
+            xs={12}
+            sm={6}
+            md={4}
+            textAlign={{ xs: "center", md: "left" }}
+          >
+            <Typography variant="h6" fontWeight="bold" mb={1} color="#00bfff">
+              Síguenos
+            </Typography>
+            <Box
+              display="flex"
+              justifyContent={{ xs: "center", md: "flex-start" }}
+              gap={1}
+              mb={2}
+            >
+              <IconButton
+                color="inherit"
+                href="https://facebook.com/TAELADTI"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#3b5998" },
+                }}
+              >
+                <FacebookIcon sx={{ fontSize: 30 }}  />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://wa.me/527442188925"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#25D366" },
+                }}
+              >
+                <WhatsAppIcon sx={{ fontSize: 30 }}  />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://www.instagram.com/taeladmx/"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                }}
+              >
+                <InstagramIcon sx={{ fontSize: 30 }} />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://twitter.com/TAELAD2?s=09"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                }}
+              >
+                <TwitterIcon sx={{ fontSize: 30 }}  />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://youtube.com/channel/UCZqj4INBI_M6b8b9O3Y3H5w"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                }}
+              >
+                <YouTubeIcon sx={{ fontSize: 30 }}  />
+              </IconButton>
+              <IconButton
+                color="inherit"
+                href="https://www.pinterest.com.mx/TAELADMX/_created/"
+                target="_blank"
+                sx={{
+                  transition: "transform 0.3s ease",
+                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                }}
+              >
+                <PinterestIcon sx={{ fontSize: 30 }}  />
+              </IconButton>
+            </Box>
+            <Typography variant="body2" color="white" fontSize={16}>
+              Soporte disponible de 9am a 5pm (L-V)
+            </Typography>
+            <Typography variant="body2" color="white" fontSize={16}>
+              desarrollo@tecnologiasadministrativas.com
+            </Typography>
+          </Grid>
+        </Grid>
 
-          {/* Redes sociales */}
-          <div className={`${sideMenu ? "col-xl-3 col-sm-4" : "col-lg-2 col-sm-6"}`}>
-            <div className={`${sideMenu ? "footer-widget mb-30 ml-145" : "footer-widget mb-30 ml-75"}`}>
-              <div className="footer-title">
-                <h3>Síguenos</h3>
-              </div>
-              <div className="footer-list">
-                <ul>
-                  <li><a href="https://facebook.com/telorecargo" target="_blank" rel="noopener noreferrer">Facebook</a></li>
-                  <li><a href="https://twitter.com/telorecargo" target="_blank" rel="noopener noreferrer">Twitter</a></li>
-                  <li><a href="https://instagram.com/telorecargo" target="_blank" rel="noopener noreferrer">Instagram</a></li>
-                  <li><a href="https://youtube.com/@telorecargo" target="_blank" rel="noopener noreferrer">YouTube</a></li>
-                </ul>
-              </div>
-            </div>
-          </div>
+        <Divider sx={{ my: 4, borderColor: "rgba(255,255,255,0.1)" }} />
 
-          {/* Newsletter */}
-          <div className={`${sideMenu ? "col-xl-3 col-sm-8" : "col-lg-4 col-sm-6"}`}>
-            <FooterNewsletter
-              spaceBottomClass="mb-30"
-              spaceLeftClass="ml-70"
-              sideMenu={sideMenu}
-            />
-          </div>
-        </div>
-      </div>
-    </footer>
+        {/* Footer final */}
+        <Box textAlign="center">
+          <Typography variant="body2" color="white" fontSize={16}>
+            © {new Date().getFullYear()} TeLoRecargo. Desarrollado por{" "}
+            <Link
+              href="https://tecnologiasadministrativas.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              underline="hover"
+              color="white"
+              fontWeight="bold"
+            >
+              TAE
+            </Link>
+            . Todos los derechos reservados.
+          </Typography>
+
+          <Box
+            component="img"
+            src="/assets/img/logotaeblanco.png" // ✅ Ruta relativa pública
+            alt="TAE sitio web"
+            sx={{ width: 75, height: 75 }} // ✅ Igual que los íconos MUI
+          />
+        </Box>
+      </Container>
+    </Box>
   );
 };
 
-FooterOne.propTypes = {
-  backgroundColorClass: PropTypes.string,
-  containerClass: PropTypes.string,
-  extraFooterClass: PropTypes.string,
-  sideMenu: PropTypes.bool,
-  spaceBottomClass: PropTypes.string,
-  spaceTopClass: PropTypes.string,
-  spaceLeftClass: PropTypes.string,
-  spaceRightClass: PropTypes.string
-};
-
-export default FooterOne;
+export default LandingFooterSection;

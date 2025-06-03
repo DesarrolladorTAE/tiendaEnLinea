@@ -21,7 +21,7 @@ const roundedInputStyle = {
   },
 };
 
-const RegisterForm = ({ setRightPanelActive }) => {
+const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
   const [isVerificationStep, setIsVerificationStep] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [currentPhone, setCurrentPhone] = useState("");
@@ -64,6 +64,7 @@ const RegisterForm = ({ setRightPanelActive }) => {
         toast.success("✅ Registro exitoso");
         setRegistrationComplete(true);
         reset();
+        onSuccess?.();
       }
     } catch (error) {
       const msg =
@@ -110,7 +111,7 @@ const RegisterForm = ({ setRightPanelActive }) => {
         </Typography>
         <Button
           variant="contained"
-          onClick={() => setRightPanelActive(false)}
+          onClick={() => setRightPanelActive?.(false)}
           sx={{
             mt: 4,
             px: 5,
@@ -138,30 +139,25 @@ const RegisterForm = ({ setRightPanelActive }) => {
       onSubmit={handleSubmit(onSubmit)}
       sx={{
         width: "100%",
-        maxWidth: 400,
+        maxWidth: 600, // ✅ Más espacio para doble columna
         display: "flex",
         flexDirection: "column",
         justifyContent: "center",
+
         alignItems: "center",
-        px: { xs: 2, sm: 4 },
+        px: { xs: 2, sm: 6 },
         py: { xs: 5, sm: 6 },
         bgcolor: "white",
         borderRadius: 4,
         boxShadow: 2,
       }}
     >
-      {/* Logo arriba del título */}
-      <Box
+      {/* <Box
         component="img"
         src="/assets/img/logo2.png"
         alt="Logo Te lo recargo"
-        sx={{
-          width: 110,
-          height: "auto",
-          mb: 2,
-          mt: -1,
-        }}
-      />
+        sx={{ width: 110, height: "auto", mb: 2, mt: -1 }}
+      /> */}
 
       <Typography variant="h5" fontWeight="bold" color="#333" gutterBottom>
         {isVerificationStep ? "Verificación de Código" : "Crea tu Cuenta"}
@@ -172,12 +168,16 @@ const RegisterForm = ({ setRightPanelActive }) => {
           <Typography sx={{ mb: 2 }}>
             Ingresa el código enviado a <b>{currentPhone}</b>
           </Typography>
-          <Box sx={{ display: "flex", justifyContent: "center", width: "100%" }}>
+          <Box
+            sx={{ display: "flex", justifyContent: "center", width: "100%" }}
+          >
             <TextField
               label="Código"
               value={verificationCode}
               onChange={(e) =>
-                setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                setVerificationCode(
+                  e.target.value.replace(/\D/g, "").slice(0, 6)
+                )
               }
               error={Boolean(verificationError)}
               helperText={verificationError}
@@ -233,7 +233,15 @@ const RegisterForm = ({ setRightPanelActive }) => {
         </>
       ) : (
         <>
-          <Grid container spacing={2} sx={{ maxWidth: 400 }}>
+          <Grid
+            container
+            spacing={2}
+            sx={{
+              width: "100%",
+              justifyContent: "center", // ✅ Centra las columnas
+              px: { xs: 0, sm: 2 }, // ✅ Opcional: agrega espacio lateral en escritorio
+            }}
+          >
             <Grid item xs={12} sm={6}>
               <TextField
                 label="Nombre"
@@ -250,7 +258,9 @@ const RegisterForm = ({ setRightPanelActive }) => {
                 label="Apellidos"
                 fullWidth
                 size="small"
-                {...register("apellidos", { required: "Los apellidos son obligatorios" })}
+                {...register("apellidos", {
+                  required: "Los apellidos son obligatorios",
+                })}
                 error={Boolean(errors.apellidos)}
                 helperText={errors.apellidos?.message}
                 sx={roundedInputStyle}
@@ -319,7 +329,6 @@ const RegisterForm = ({ setRightPanelActive }) => {
                 sx={roundedInputStyle}
               />
             </Grid>
-
             <Grid item xs={12}>
               <FormControlLabel
                 control={
@@ -352,8 +361,8 @@ const RegisterForm = ({ setRightPanelActive }) => {
             disabled={!acceptedTerms}
             variant="contained"
             sx={{
-              mt: 4,
-              px: 5,
+              mt: 2,
+              px: 3,
               py: 1.5,
               bgcolor: acceptedTerms ? "#be4bdb" : "grey.400",
               color: "#fff",
@@ -362,6 +371,7 @@ const RegisterForm = ({ setRightPanelActive }) => {
               textTransform: "uppercase",
               fontSize: 16,
               boxShadow: "none",
+              alignSelf: "center", // ✅ centrar sin usar todo el ancho
               "&:hover": {
                 bgcolor: acceptedTerms ? "#9e35b4" : "grey.500",
               },

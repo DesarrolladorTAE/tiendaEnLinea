@@ -20,7 +20,8 @@ const LandingHeroSectionResponsive = () => {
   return (
     <Box
       sx={{
-        background: "linear-gradient(to bottom right, #0077B6)",
+        backgroundImage: "linear-gradient(to bottom right, #0077B6, #0077B6)", // ✅ Color plano pero como gradiente
+        backgroundColor: "#0077B6", // ✅ Fallback
         color: "#fff",
         px: 3,
         minHeight: "100vh",
@@ -99,7 +100,7 @@ const LandingHeroSectionResponsive = () => {
             gap={2}
             justifyContent={isMobile ? "center" : "flex-start"}
           >
-            <Button
+            {/* <Button
               variant="contained"
               onClick={() => navigate("/loginmui")}
               sx={{
@@ -114,7 +115,7 @@ const LandingHeroSectionResponsive = () => {
               }}
             >
               Empezar ahora
-            </Button>
+            </Button> */}
           </Box>
         </Grid>
 
@@ -127,17 +128,15 @@ const LandingHeroSectionResponsive = () => {
           alignItems="center"
         >
           <Box
-
             component="img"
             src="/assets/img/imagenherosection1.gif"
             alt="App"
             sx={{
               width: isMobile ? "90%" : "700px", // Reducido
-              maxWidth: "100%",                  // Evita desbordes
+              maxWidth: "100%", // Evita desbordes
               borderRadius: 3,
             }}
           />
-
         </Grid>
       </Grid>
 
