@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
   Card,
@@ -14,115 +14,101 @@ import {
   Pagination,
   Stack,
   TextField,
+  IconButton,
   MenuItem,
   Select,
-  FormControl,
   InputLabel,
-  IconButton,
+  FormControl,
 } from "@mui/material";
+
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditNoteIcon from "@mui/icons-material/EditNote";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import axiosClient from "../../config/axiosClient";
-
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import Button from "@mui/material/Button";
-import TicketVenta from "../../components/tickets/TicketVenta";
 
 const ITEMS_PER_PAGE = 7;
 
 export default function Ventas() {
   const [ventas, setVentas] = useState([]);
   const [pagina, setPagina] = useState(1);
-  const [busqueda, setBusqueda] = useState("");
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
-  const [filtroFecha, setFiltroFecha] = useState("todos");
-  const [openTicket, setOpenTicket] = useState(false);
-  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
-  const ticketRef = useRef();
-  const [puntosDeVenta, setPuntosDeVenta] = useState([]);
-  const [filtroPuntoVenta, setFiltroPuntoVenta] = useState("todos");
+  const [filtroPuntoVenta, setFiltroPuntoVenta] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFin, setFechaFin] = useState("");
+  const [puntosVenta, setPuntosVenta] = useState([]);
 
-  useEffect(() => {
+  const fetchVentas = (params = {}) => {
     axiosClient
-      .get("/admin/ventas")
+      .get("/admin/ventas", { params })
       .then(({ data }) => {
-        console.log("historial", data.data);
+        console.log("historial", data);
         setVentas(
-          data.data.map((venta) => ({
+          data.map((venta) => ({
             ...venta,
             total_amount: Number(venta.total_amount),
             paid_amount: Number(venta.paid_amount),
           }))
         );
+        setPagina(1);
       })
       .catch((error) => {
         console.error("Error al obtener ventas:", error);
       });
-  }, []);
-
-  const filtrarPorFecha = (ventas) => {
-    const ahora = new Date();
-    return ventas.filter((venta) => {
-      const fechaVenta = new Date(venta.created_at);
-
-      if (filtroFecha === "hoy") {
-        return fechaVenta.toDateString() === ahora.toDateString();
-      }
-
-      if (filtroFecha === "7dias") {
-        const hace7Dias = new Date();
-        hace7Dias.setDate(ahora.getDate() - 7);
-        return fechaVenta >= hace7Dias;
-      }
-
-      if (filtroFecha === "mes") {
-        return (
-          fechaVenta.getMonth() === ahora.getMonth() &&
-          fechaVenta.getFullYear() === ahora.getFullYear()
-        );
-      }
-
-      if (fechaInicio || fechaFin) {
-        const desde = fechaInicio ? new Date(fechaInicio + "T00:00") : null;
-        const hasta = fechaFin ? new Date(fechaFin + "T23:59") : null;
-        return (!desde || fechaVenta >= desde) && (!hasta || fechaVenta <= hasta);
-      }
-
-      return true;
-    });
   };
 
+  const handleFiltrar = () => {
+    const params = {};
+    if (fechaInicio) params.fecha_inicio = fechaInicio;
+    if (fechaFin) params.fecha_fin = fechaFin;
+    if (filtroPuntoVenta) params.pos_location_id = filtroPuntoVenta;
+    fetchVentas(params);
+  };
+
+  useEffect(() => {
+    axiosClient
+      .get("/admin/pos")
+      .then(({ data }) => {
+        setPuntosVenta(data);
+      })
+      .catch((err) => {
+        console.error("Error al cargar puntos de venta", err);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (puntosVenta.length === 0) return;
+
+    const today = new Date();
+    const inicio = new Date(today.getFullYear(), today.getMonth(), 1);
+    const fin = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const yyyyMmDd = (date) => date.toISOString().split("T")[0];
+
+    const fechaInicioStr = yyyyMmDd(inicio);
+    const fechaFinStr = yyyyMmDd(fin);
+
+    setFechaInicio(fechaInicioStr);
+    setFechaFin(fechaFinStr);
+
+    fetchVentas({
+      fecha_inicio: fechaInicioStr,
+      fecha_fin: fechaFinStr,
+      ...(filtroPuntoVenta ? { pos_location_id: filtroPuntoVenta } : {}),
+    });
+  }, [puntosVenta]);
+
   const ventasFiltradas = useMemo(() => {
-    let ventasFiltradas = filtrarPorFecha(ventas);
-
-    if (filtroPuntoVenta !== "todos") {
-      ventasFiltradas = ventasFiltradas.filter((v) => v.pos_location?.id === filtroPuntoVenta);
-    }
-
-    if (busqueda) {
-      ventasFiltradas = ventasFiltradas.filter(
-        (v) =>
-          v.pos_location?.name.toLowerCase().includes(busqueda.toLowerCase()) ||
-          v.status.toLowerCase().includes(busqueda.toLowerCase())
-      );
-    }
-
-    return ventasFiltradas;
-  }, [busqueda, ventas, filtroFecha, filtroPuntoVenta, fechaInicio, fechaFin]);
+    if (!filtroPuntoVenta) return ventas;
+    return ventas.filter(
+      (v) =>
+        v.pos_location?.id === filtroPuntoVenta || v.pos_location?.id === Number(filtroPuntoVenta)
+    );
+  }, [ventas, filtroPuntoVenta]);
 
   const ventasOrdenadas = useMemo(() => {
     const lista = [...ventasFiltradas];
     if (sortConfig.key) {
       lista.sort((a, b) => {
         let aVal, bVal;
-
         if (sortConfig.key === "pos_location.name") {
           aVal = a.pos_location?.name?.toLowerCase() || "";
           bVal = b.pos_location?.name?.toLowerCase() || "";
@@ -132,11 +118,11 @@ export default function Ventas() {
           if (typeof aVal === "string") aVal = aVal.toLowerCase();
           if (typeof bVal === "string") bVal = bVal.toLowerCase();
         }
-
-        if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-        if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       });
+      if (sortConfig.direction === "desc") {
+        lista.reverse();
+      }
     }
     return lista;
   }, [ventasFiltradas, sortConfig]);
@@ -168,29 +154,6 @@ export default function Ventas() {
     return <KeyboardArrowUpIcon fontSize="small" sx={{ opacity: 0.3 }} />;
   };
 
-  const handleOpenTicket = (venta) => {
-    setVentaSeleccionada(venta);
-    setOpenTicket(true);
-  };
-
-  const handleCloseTicket = () => {
-    setOpenTicket(false);
-    setVentaSeleccionada(null);
-  };
-
-  const handlePrint = () => {
-    if (ticketRef.current) {
-      const printWindow = window.open("", "_blank", "width=600,height=800");
-      printWindow.document.write("<html><head><title>Ticket</title></head><body>");
-      printWindow.document.write(ticketRef.current.innerHTML);
-      printWindow.document.write("</body></html>");
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    }
-  };
-
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Card sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
@@ -200,17 +163,24 @@ export default function Ventas() {
           </Typography>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
-            <TextField
-              label="Buscar por estado o punto de venta"
-              value={busqueda}
-              onChange={(e) => {
-                setBusqueda(e.target.value);
-                setPagina(1);
-              }}
-              variant="outlined"
-              size="small"
-              fullWidth
-            />
+            <FormControl size="small" fullWidth>
+              <InputLabel id="punto-venta-label">Punto de Venta</InputLabel>
+              <Select
+                labelId="punto-venta-label"
+                value={filtroPuntoVenta}
+                label="Punto de Venta"
+                onChange={(e) => {
+                  setFiltroPuntoVenta(e.target.value);
+                  setPagina(1);
+                }}
+              >
+                {puntosVenta.map((pv) => (
+                  <MenuItem key={pv.id} value={pv.id}>
+                    {pv.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             <TextField
               type="date"
@@ -221,12 +191,8 @@ export default function Ventas() {
                 setFechaInicio(e.target.value);
                 setPagina(1);
               }}
-              slotProps={{
-                inputLabel: {
-                  shrink: true,
-                },
-              }}
               fullWidth
+              InputLabelProps={{ shrink: true }}
             />
 
             <TextField
@@ -238,13 +204,23 @@ export default function Ventas() {
                 setFechaFin(e.target.value);
                 setPagina(1);
               }}
-              slotProps={{
-                inputLabel: {
-                  shrink: true,
-                },
-              }}
               fullWidth
+              InputLabelProps={{ shrink: true }}
             />
+
+            <button
+              onClick={handleFiltrar}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#1976d2",
+                color: "#fff",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Filtrar
+            </button>
           </Stack>
 
           <Box
@@ -261,51 +237,34 @@ export default function Ventas() {
                   <TableRow>
                     <TableCell
                       onClick={() => requestSort("created_at")}
-                      sx={{
-                        cursor: "pointer",
-                        userSelect: "none",
-                        width: 160,
-                      }}
+                      sx={{ cursor: "pointer", width: 160 }}
                     >
                       <Stack direction="row" alignItems="center" spacing={0.5}>
                         Fecha {renderSortIcon("created_at")}
                       </Stack>
                     </TableCell>
-
                     <TableCell
                       onClick={() => requestSort("total_amount")}
-                      sx={{
-                        cursor: "pointer",
-                        userSelect: "none",
-                        width: 120,
-                      }}
+                      sx={{ cursor: "pointer", width: 120 }}
                     >
                       <Stack direction="row" alignItems="center" spacing={0.5}>
                         Total {renderSortIcon("total_amount")}
                       </Stack>
                     </TableCell>
-
                     <TableCell
                       onClick={() => requestSort("pos_location.name")}
-                      sx={{
-                        cursor: "pointer",
-                        userSelect: "none",
-                        width: 200,
-                      }}
+                      sx={{ cursor: "pointer", width: 200 }}
                     >
                       <Stack direction="row" alignItems="center" spacing={0.5}>
                         Punto de Venta {renderSortIcon("pos_location.name")}
                       </Stack>
                     </TableCell>
-
                     <TableCell sx={{ width: 120 }}>Estado</TableCell>
-
                     <TableCell sx={{ width: 100 }} align="center">
                       Acciones
                     </TableCell>
                   </TableRow>
                 </TableHead>
-
                 <TableBody>
                   {ventasPagina.map((venta) => (
                     <TableRow
@@ -317,17 +276,12 @@ export default function Ventas() {
                       <TableCell>{venta.pos_location?.name || "-"}</TableCell>
                       <TableCell>{venta.status === "paid" ? "Pagado" : venta.status}</TableCell>
                       <TableCell align="center">
-                        <Stack direction="row" spacing={1} justifyContent="center">
-                          {/* <IconButton color="primary">
-                            <VisibilityIcon fontSize="small" />
-                          </IconButton> */}
-                          <IconButton color="secondary" onClick={() => window.open(`/api/sales/${venta.id}/ticket.pdf`, '_blank')}>
-                            <EditNoteIcon fontSize="small" />
-                          </IconButton>
-                          {/* <IconButton>
-                            <MoreHorizIcon fontSize="small" />
-                          </IconButton> */}
-                        </Stack>
+                        <IconButton
+                          color="secondary"
+                          onClick={() => window.open(`/api/sales/${venta.id}/ticket.pdf`, "_blank")}
+                        >
+                          <EditNoteIcon fontSize="small" />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -349,31 +303,6 @@ export default function Ventas() {
           </Box>
         </CardContent>
       </Card>
-
-      <Dialog open={openTicket} onClose={handleCloseTicket} maxWidth="xs" fullWidth>
-        <DialogContent>
-          {ventaSeleccionada && (
-            <div ref={ticketRef}>
-              <TicketVenta
-                venta={ventaSeleccionada}
-                tienda={{
-                  nombre: "Mi Tienda Ejemplo",
-                  direccion: "Calle Falsa 123",
-                  telefono: "555-555-5555",
-                }}
-              />
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handlePrint} variant="contained" color="primary">
-            Imprimir Ticket
-          </Button>
-          <Button onClick={handleCloseTicket} variant="outlined" color="secondary">
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }
