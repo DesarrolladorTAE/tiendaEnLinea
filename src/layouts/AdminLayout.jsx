@@ -40,17 +40,8 @@ const AdminLayout = () => {
         open={isDesktop ? true : openSidebar}
         onClose={handleDrawerToggle}
         variant={isDesktop ? "permanent" : "temporary"}
-        sx={{
-          width: isDesktop ? drawerWidth : 0,
-          flexShrink: 0,
-          "& .MuiDrawer-paper": {
-            width: drawerWidth,
-            boxSizing: "border-box",
-            position: "fixed",
-            height: "100vh",
-          },
-        }}
       />
+
       <Box
         sx={{
           flexGrow: 1,

@@ -7,6 +7,8 @@ import {
   ListItemText,
   Divider,
   Box,
+  Typography,
+  Stack,
 } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
@@ -19,9 +21,8 @@ import { useDispatch } from "react-redux";
 import { clearUser } from "../../store/slices/userSlice";
 import AnimatedModal from "../AnimatedModal";
 
-const drawerWidth = 240;
+const drawerWidth = 270;
 
-// Componente para los links del menú (usa NavLink para rutas)
 const ListItemLink = forwardRef(function ListItemLink(
   { icon, primary, to, onClick },
   ref
@@ -58,7 +59,7 @@ const ListItemLink = forwardRef(function ListItemLink(
   );
 });
 
-const Sidebar = ({ open, onClose, variant = "permanent" }) => {
+const Sidebar = ({ open, onClose, variant = "temporary" }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [showByeModal, setShowByeModal] = useState(false);
@@ -98,27 +99,47 @@ const Sidebar = ({ open, onClose, variant = "permanent" }) => {
         open={open}
         onClose={onClose}
         variant={variant}
-        ModalProps={{
-          keepMounted: true,
-          BackdropProps: { invisible: true },
-        }}
+        ModalProps={{ keepMounted: true }}
         sx={{
-          zIndex: (theme) => theme.zIndex.appBar + 2,
-          width: variant === "permanent" ? drawerWidth : undefined,
+          zIndex: (theme) =>
+            variant === "permanent"
+              ? theme.zIndex.appBar - 1
+              : theme.zIndex.modal + 1,
           "& .MuiDrawer-paper": {
             width: drawerWidth,
-            background: "linear-gradient(to right, #1f2937, #111827)",
+            backgroundColor: "#1b2a41",
             color: "#fff",
-            boxSizing: "border-box",
-            top: 64, // <-- SIEMPRE la altura del Topbar
-            height: "calc(100vh - 64px)", // <-- SIEMPRE el alto menos el Topbar
+            display: "flex",
+            flexDirection: "column",
+            height: "100vh",
+            top: 0,
+            left: 0,
+            position: variant === "permanent" ? "relative" : "fixed",
             borderRight: "none",
-            transition: "width 0.3s cubic-bezier(.4,0,.2,1)",
           },
         }}
       >
-        <Box>
-          <List>
+        {/* Logo superior */}
+        <Box
+          sx={{
+            px: 2,
+            pt: 5,
+            pb: 2,
+            textAlign: "center",
+            borderBottom: "1px solid rgba(255,255,255,0.1)",
+            flexShrink: 0,
+          }}
+        >
+          <img
+            src="/assets/img/logo.png"
+            alt="TeLoRecargo Logo"
+            style={{ width: "120px", maxHeight: "60px", objectFit: "contain" }}
+          />
+        </Box>
+
+        {/* Menú navegable */}
+        <Box sx={{ flexGrow: 1, overflowY: "auto", py: 2 }}>
+          <Stack spacing={2} px={2}>
             <ListItem
               disableGutters
               onClick={goToStore}
@@ -147,11 +168,18 @@ const Sidebar = ({ open, onClose, variant = "permanent" }) => {
                 onClick={onClose}
               />
             ))}
-          </List>
+          </Stack>
         </Box>
 
-        <Box>
-          <Divider sx={{ my: 1, borderColor: "#2e3b55" }} />
+        {/* Footer y logout */}
+        <Box
+          sx={{
+            p: 2,
+            borderTop: "1px solid rgba(255,255,255,0.1)",
+            fontSize: "0.85rem",
+            flexShrink: 0,
+          }}
+        >
           <List>
             <ListItem
               disableGutters
@@ -170,6 +198,16 @@ const Sidebar = ({ open, onClose, variant = "permanent" }) => {
               <ListItemText primary="Cerrar sesión" />
             </ListItem>
           </List>
+
+          <Typography
+            variant="caption"
+            color="white"
+            display="block"
+            mt={2}
+            textAlign="center"
+          >
+            © {new Date().getFullYear()} TeLoRecargo
+          </Typography>
         </Box>
       </Drawer>
 
