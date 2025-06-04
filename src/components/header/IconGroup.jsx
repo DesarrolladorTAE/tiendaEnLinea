@@ -1,44 +1,56 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import PropTypes from "prop-types";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  IconButton,
+  Badge,
+  Menu,
+  MenuItem,
+  Typography,
+  Divider,
+  Box,
+  ListItemText,
+  ListItemIcon,
+  Tooltip,
+  Button,
+  Grid,
+} from "@mui/material";
+import {
+  Notifications as NotificationsIcon,
+  Logout as LogoutIcon,
+  FavoriteBorder as FavoriteIcon,
+  CompareArrows as CompareIcon,
+  Wallet as WalletIcon,
+  Delete as DeleteIcon,
+  Person as PersonIcon,
+  AdminPanelSettings,
+  Group,
+} from "@mui/icons-material";
 import { useSelector, useDispatch } from "react-redux";
-import clsx from "clsx";
-import MenuCart from "./sub-components/MenuCart";
+import { Link, useNavigate } from "react-router-dom";
 import { logoutUser } from "../../api";
 import { clearUser, setNotificaciones } from "../../store/slices/userSlice";
 import AnimatedModal from "../AnimatedModal";
 import axios from "../../axiosConfig";
 
-
-const IconGroup = ({ iconWhiteClass }) => {
-  const navigate = useNavigate();
+const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
   const dispatch = useDispatch();
-
+  const navigate = useNavigate();
   const [showByeModal, setShowByeModal] = useState(false);
-  const [openNotifications, setOpenNotifications] = useState(false);
-  const notifRef = useRef();
+  const [anchorNotif, setAnchorNotif] = useState(null);
+  const [anchorAccount, setAnchorAccount] = useState(null);
 
   const { user, notificaciones = [] } = useSelector((state) => state.user);
   const { compareItems } = useSelector((state) => state.compare);
   const { wishlistItems } = useSelector((state) => state.wishlist);
 
-
   const isAgent = user?.role === "agent";
+  const isSuperAdmin = user?.role === "superadmin" || user?.role === "admin";
 
-  const handleLogout = async (e) => {
-    e.preventDefault();
-    const posToken = localStorage.getItem('POS_TOKEN');
-    const userToken = localStorage.getItem('token');
-
+  const handleLogout = async () => {
     try {
       await logoutUser();
-    } catch (error) {
-      // ignorar errores del logout
-    }
-
-    localStorage.removeItem("POS_TOKEN");
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    } catch {}
+    localStorage.clear();
     dispatch(clearUser());
     setShowByeModal(true);
     setTimeout(() => {
@@ -47,109 +59,207 @@ const IconGroup = ({ iconWhiteClass }) => {
     }, 3000);
   };
 
-  return (
+  const clearAllNotificaciones = async () => {
+    await axios.delete("/mis-notificaciones/vaciar");
+    dispatch(setNotificaciones([]));
+  };
+
+  const handleDeleteNoti = async (id) => {
+    await axios.delete(`/mis-notificaciones/${id}`);
+    dispatch(setNotificaciones((prev) => prev.filter((n) => n.id !== id)));
+  };
+
+  const iconButtons = (
     <>
-      <div className={clsx("header-right-wrap", iconWhiteClass)}>
-        <div className="same-style mobile-off-canvas d-block d-lg-none">
-          <button className="mobile-aside-button" onClick={() => {
-            const offcanvasMobileMenu = document.querySelector("#offcanvas-mobile-menu");
-            offcanvasMobileMenu.classList.add("active");
-          }}>
-            <i className="pe-7s-menu" />
-          </button>
-        </div>
+      {!isAgent && (
+        <>
+          <Tooltip title="Comparar">
+            <IconButton
+              component={Link}
+              to="/compare"
+              sx={{ color: iconColor }}
+            >
+              <Badge badgeContent={compareItems.length || 0} color="primary">
+                <CompareIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
-        <div className="d-none d-lg-flex align-items-center gap-3">
-          {!isAgent && (
-            <>
-              <div className="same-style header-compare">
-                <Link to={"/compare"}>
-                  <i className="pe-7s-shuffle" />
-                  <span className="count-style">{compareItems?.length || 0}</span>
-                </Link>
-              </div>
+          <Tooltip title="Favoritos">
+            <IconButton
+              component={Link}
+              to="/wishlist"
+              sx={{ color: iconColor }}
+            >
+              <Badge badgeContent={wishlistItems.length || 0} color="secondary">
+                <FavoriteIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
-              <div className="same-style header-wishlist">
-                <Link to={"/wishlist"}>
-                  <i className="pe-7s-like" />
-                  <span className="count-style">{wishlistItems?.length || 0}</span>
-                </Link>
-              </div>
+          <Tooltip title="Notificaciones">
+            <IconButton
+              sx={{ color: iconColor }}
+              onClick={(e) => setAnchorNotif(e.currentTarget)}
+            >
+              <Badge
+                badgeContent={
+                  notificaciones.length > 9 ? "9+" : notificaciones.length
+                }
+                color="error"
+              >
+                <NotificationsIcon />
+              </Badge>
+            </IconButton>
+          </Tooltip>
 
-              <div className="same-style header-notification" ref={notifRef}>
-                <button className="icon-notification" onClick={() => setOpenNotifications(!openNotifications)}>
-                  <i className="pe-7s-bell" />
-                  <span className="count-style">
-                    {notificaciones.length > 9 ? "9+" : notificaciones.length || "0"}
-                  </span>
-                </button>
-                {openNotifications && (
-                  <div className="notification-dropdown">
-                    <div className="header-noti">
-                      <span className="titulo">Mis Notificaciones</span>
-                      <button className="btn-vaciar" onClick={async () => {
-                        await axios.delete("/mis-notificaciones/vaciar");
-                        dispatch(setNotificaciones([]));
-                      }}>
-                        <i className="pe-7s-trash" style={{ fontSize: "18px" }}></i>
-                      </button>
-                    </div>
+          <Menu
+            anchorEl={anchorNotif}
+            open={Boolean(anchorNotif)}
+            onClose={() => setAnchorNotif(null)}
+            PaperProps={{ sx: { width: 320 } }}
+          >
+            <Box
+              px={2}
+              py={1}
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Typography variant="subtitle2">Mis Notificaciones</Typography>
+              <IconButton size="small" onClick={clearAllNotificaciones}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+            <Divider />
+            {notificaciones.length ? (
+              notificaciones.slice(0, 5).map((msg) => (
+                <MenuItem key={msg.id} sx={{ whiteSpace: "normal" }}>
+                  <Box>
+                    <Typography variant="body2">{msg.mensaje}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {new Date(msg.created_at).toLocaleString()}
+                    </Typography>
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteNoti(msg.id)}
+                    sx={{ ml: 2 }}
+                  >
+                    ❌
+                  </IconButton>
+                </MenuItem>
+              ))
+            ) : (
+              <MenuItem disabled>Aún no tienes notificaciones 💤</MenuItem>
+            )}
+          </Menu>
 
-                    <div className="notification-list-scroll">
-                      {notificaciones.length ? (
-                        notificaciones.slice(0, 5).map((msg) => (
-                          <div key={msg.id} className="notification-card">
-                            <button
-                              className="btn-vaciar"
-                              style={{ position: "absolute", top: "4px", right: "6px", fontSize: "16px" }}
-                              onClick={async () => {
-                                await axios.delete(`/mis-notificaciones/${msg.id}`);
-                                dispatch(setNotificaciones(prev => prev.filter(n => n.id !== msg.id)));
-                              }}
-                            >
-                              ❌
-                            </button>
-                            <p className="mensaje">{msg.mensaje}</p>
-                            <p className="fecha">{new Date(msg.created_at).toLocaleString()}</p>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="sin-notificaciones">Aún no tienes notificaciones 💤</div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+          <Tooltip title="Recargar Saldo">
+            <IconButton
+              component={Link}
+              to="/saldo-recarga"
+              sx={{ color: iconColor }}
+            >
+              <WalletIcon />
+            </IconButton>
+          </Tooltip>
+        </>
+      )}
 
-              <div className="same-style header-wallet">
-                <Link to={"/saldo-recarga"}>
-                  <i className="pe-7s-wallet" />
-                </Link>
-              </div>
-            </>
-          )}
+      <Tooltip title="Mi Cuenta">
+        <IconButton
+          onClick={(e) => setAnchorAccount(e.currentTarget)}
+          sx={{ color: iconColor }}
+        >
+          <PersonIcon />
+        </IconButton>
+      </Tooltip>
 
-          <div className="same-style account-setting">
-            <button className="account-setting-active" onClick={e => e.currentTarget.nextSibling.classList.toggle("active")}>
-              <i className="pe-7s-user-female" />
-            </button>
-            <div className="account-dropdown">
-              <ul>
-                {!isAgent && (
-                  <>
-                    <li><Link to={"/my-account"}>Mi Cuenta</Link></li>
-                    <li><Link to={"/agent-mipages"}>Agentes</Link></li>
-                    {user?.role === "superadmin" && (
-                      <li><Link to={"/admin/dashboard"}>Administración</Link></li>
-                    )}
-                  </>
-                )}
-                <li><Link to="/" onClick={handleLogout}>Cerrar Sesión</Link></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Menu
+        anchorEl={anchorAccount}
+        open={Boolean(anchorAccount)}
+        onClose={() => setAnchorAccount(null)}
+      >
+        {!isAgent && (
+          <>
+            <MenuItem component={Link} to="/my-account">
+              <ListItemIcon>
+                <PersonIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Mi Cuenta</ListItemText>
+            </MenuItem>
+
+            <MenuItem component={Link} to="/agent-mipages">
+              <ListItemIcon>
+                <Group fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Agentes</ListItemText>
+            </MenuItem>
+
+            {isSuperAdmin && (
+              <MenuItem component={Link} to="/admin/dashboard">
+                <ListItemIcon>
+                  <AdminPanelSettings fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Administración</ListItemText>
+              </MenuItem>
+            )}
+          </>
+        )}
+      </Menu>
+    </>
+  );
+
+  return (
+    <Box>
+      {isMobile ? (
+        <Grid container spacing={1} justifyContent="center">
+          {[...iconButtons.props.children].map((icon, index) => (
+            <Grid
+              item
+              xs={6}
+              key={index}
+              display="flex"
+              justifyContent="center"
+            >
+              {icon}
+            </Grid>
+          ))}
+          <Grid item xs={12} mt={2} display="flex" justifyContent="center">
+            <Button
+              onClick={handleLogout}
+              variant="outlined"
+              color="error"
+              startIcon={<LogoutIcon />}
+            >
+              Cerrar Sesión
+            </Button>
+          </Grid>
+        </Grid>
+      ) : (
+        <Box display="flex" alignItems="center" gap={1}>
+          {iconButtons}
+          <Button
+            onClick={handleLogout}
+            startIcon={<LogoutIcon />}
+            sx={{
+              backgroundColor: "#f44336", // rojo tipo Material UI
+              color: "#fff",
+              fontWeight: "bold",
+              px: 3,
+              py: 1,
+              borderRadius: 2,
+              textTransform: "uppercase",
+              "&:hover": {
+                backgroundColor: "#d32f2f",
+              },
+            }}
+          >
+            Cerrar Sesión
+          </Button>
+        </Box>
+      )}
 
       <AnimatedModal
         isOpen={showByeModal}
@@ -157,12 +267,13 @@ const IconGroup = ({ iconWhiteClass }) => {
         message="¡Hasta luego! Esperamos verte pronto 😊"
         tipo="bye"
       />
-    </>
+    </Box>
   );
 };
 
 IconGroup.propTypes = {
-  iconWhiteClass: PropTypes.string,
+  isMobile: PropTypes.bool,
+  iconColor: PropTypes.string,
 };
 
 export default IconGroup;

@@ -42,12 +42,21 @@ const HistorialRecargas = () => {
   const recargasFiltradas = recargas.filter((r) => {
     const fecha = parseISO(r.created_at);
     switch (filtro) {
-      case "hoy": return isSameDay(fecha, hoy);
-      case "dia": return isSameDay(fecha, fechaSeleccionada);
-      case "semana": return isSameWeek(fecha, hoy);
-      case "mes": return isSameMonth(fecha, hoy);
-      case "año": return isSameYear(fecha, hoy);
-      default: return true;
+      case "hoy":
+        return isSameDay(fecha, hoy);
+      case "dia":
+        return isSameDay(fecha, fechaSeleccionada);
+      case "semana":
+        return isSameWeek(fecha, hoy);
+      case "mes":
+        return (
+          fecha.getMonth() === mesSeleccionado &&
+          fecha.getFullYear() === anioSeleccionado
+        );
+      case "año":
+        return fecha.getFullYear() === anioSeleccionado;
+      default:
+        return true;
     }
   });
 
@@ -111,29 +120,41 @@ const HistorialRecargas = () => {
     <LayoutOne headerTop="visible">
       <SEO titleTemplate="Ventas" />
       <Breadcrumb pages={[{ label: "Inicio", path: "/" }, { label: "Ventas", path: pathname }]} />
-      <Container sx={{ mt: 4 }}>
+      <Container sx={{ mt: 4, pb: 10 }}>
         <Typography variant="h4" gutterBottom>📇 Historial de Ventas</Typography>
 
         {/* Filtros */}
-        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, alignItems: "center", mb: 2 }}>
           {["hoy", "dia", "semana", "mes", "año"].map((item) => (
             <Button key={item} variant={filtro === item ? "contained" : "outlined"} onClick={() => setFiltro(item)} color="primary">
               {item.charAt(0).toUpperCase() + item.slice(1)}
             </Button>
           ))}
+
           {filtro === "dia" && (
-            <DatePicker selected={fechaSeleccionada} onChange={(date) => setFechaSeleccionada(date)} customInput={<Button variant="outlined">Seleccionar Día</Button>} />
+            <DatePicker selected={fechaSeleccionada} onChange={(date) => setFechaSeleccionada(date)} customInput={<Button variant="outlined">📅 Elegir Día</Button>} />
           )}
+
           {filtro === "mes" && (
-            <Select value={mesSeleccionado} onChange={(e) => setMesSeleccionado(Number(e.target.value))} size="small">
-              {[...Array(12)].map((_, i) => (
-                <MenuItem key={i} value={i}>{new Date(0, i).toLocaleString("default", { month: "long" })}</MenuItem>
-              ))}
-            </Select>
+            <>
+              <Select value={mesSeleccionado} onChange={(e) => setMesSeleccionado(Number(e.target.value))} size="small" sx={{ minWidth: 120 }}>
+                {[...Array(12)].map((_, i) => (
+                  <MenuItem key={i} value={i}>{new Date(0, i).toLocaleString("default", { month: "long" })}</MenuItem>
+                ))}
+              </Select>
+              <Select value={anioSeleccionado} onChange={(e) => setAnioSeleccionado(Number(e.target.value))} size="small" sx={{ minWidth: 100 }}>
+                {[2023, 2024, 2025, 2026].map((a) => (
+                  <MenuItem key={a} value={a}>{a}</MenuItem>
+                ))}
+              </Select>
+            </>
           )}
+
           {filtro === "año" && (
-            <Select value={anioSeleccionado} onChange={(e) => setAnioSeleccionado(Number(e.target.value))} size="small">
-              {[2023, 2024, 2025, 2026].map((a) => <MenuItem key={a} value={a}>{a}</MenuItem>) }
+            <Select value={anioSeleccionado} onChange={(e) => setAnioSeleccionado(Number(e.target.value))} size="small" sx={{ minWidth: 100 }}>
+              {[2023, 2024, 2025, 2026].map((a) => (
+                <MenuItem key={a} value={a}>{a}</MenuItem>
+              ))}
             </Select>
           )}
         </Box>

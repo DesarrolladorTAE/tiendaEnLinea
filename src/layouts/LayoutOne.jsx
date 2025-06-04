@@ -8,11 +8,12 @@ import { useSelector } from "react-redux";
 
 const LayoutOne = ({
   children,
-  headerContainerClass = "",
-  headerTop = "",
-  headerPaddingClass = "",
+  headerContainerClass = "container-fluid",
+  headerTop = "visible",
+  headerPaddingClass = "header-padding-2",
   headerPositionClass = ""
 }) => {
+
   // Trae el estado de usuario desde Redux
   const { isAuthenticated, sessionLoaded } = useSelector((state) => state.user);
 

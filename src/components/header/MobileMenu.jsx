@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 // import MobileMenuSearch from "./sub-components/MobileSearch";
-// import MobileLangCurChange from "./sub-components/MobileLangCurrChange";
+// import MdddobileLangCurChange from "./sub-components/MobileLangCurrChange";
 import { Link, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
 import { clearUser } from '../../store/slices/userSlice';

@@ -121,7 +121,7 @@ const App = () => {
             {/* <Route path="/recargar-saldo" element={<RecargarSaldo />} /> */}
             {/* <Route path="/home-fashion-agent" element={<InicioAgente />} /> */}
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
-            {/* <Route path="/agent-mipages" element={<Agentes />} /> */}
+            <Route path="/agent-mipages" element={<Agentes />} />
             <Route path="/landing" element={<LandingPage />} />
             <Route
               path="/loginmui"

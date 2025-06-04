@@ -2,50 +2,45 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import clsx from "clsx";
+import { Stack, Button, Box } from "@mui/material";
 
 const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
   const { t } = useTranslation();
-  
-  return (
-    <div
-    className={clsx(
-      sidebarMenu ? "sidebar-menu" : "main-menu",
-      !sidebarMenu && menuWhiteClass
-    )}
-    >
-      <nav>
-        <ul>
-          <li>
-             <Link to={"/home-fashion-three"}>
-              {t("Inicio")}
-           </Link>
 
-          </li>
-          
-          <li>
-          <Link to={"/shop-grid-right-sidebar"}>
-              {t("Recargas")}
-          </Link>
-          </li> 
-          <li>
-            <Link to={"/shop-grid-paquet"}>
-              {t("Paquetes")}
-            </Link>
-          </li>
-          <li>
-            <Link to={"/mycontacts"}>
-              {t("Contactos")}
-            </Link>
-         </li>  
-          <li>
-          <Link to={"/historial-recargas"}>
-              {t("Ventas")}
-          </Link>
-          </li>
-        </ul>
-      </nav>
-    </div>
+  const links = [
+    { to: "/home-fashion-three", label: t("Inicio") },
+    { to: "/shop-grid-right-sidebar", label: t("Recargas") },
+    { to: "/shop-grid-paquet", label: t("Paquetes") },
+    { to: "/mycontacts", label: t("Contactos") },
+    { to: "/historial-recargas", label: t("Ventas") },
+  ];
+
+  return (
+    <Box className={menuWhiteClass}>
+      <Stack
+        direction={sidebarMenu ? "column" : "row"}
+        spacing={sidebarMenu ? 2 : 4}
+        alignItems={sidebarMenu ? "flex-start" : "center"}
+        justifyContent="center"
+      >
+        {links.map((item) => (
+          <Button
+            key={item.to}
+            component={Link}
+            to={item.to}
+            sx={{
+              color: sidebarMenu ? "white" : "black",
+              fontWeight: 600,
+              fontSize: "1rem",
+              textTransform: "uppercase",
+            }}
+            fullWidth={sidebarMenu}
+          >
+            {item.label}
+          </Button>
+        ))}
+      </Stack>
+    </Box>
   );
 };
 
@@ -55,55 +50,3 @@ NavMenu.propTypes = {
 };
 
 export default NavMenu;
-
-// import React from "react";
-// import PropTypes from "prop-types";
-// import { Link } from "react-router-dom";
-// import { useTranslation } from "react-i18next";
-// import clsx from "clsx";
-
-// const NavMenu = ({ menuWhiteClass, sidebarMenu, onItemClick }) => {
-//   const { t } = useTranslation();
-
-//   return (
-//     <div className={clsx(sidebarMenu ? "sidebar-menu" : `main-menu ${menuWhiteClass || ""}`)}>
-//       <nav>
-//         <ul>
-//           <li>
-//             <Link to="/home-fashion-three" onClick={onItemClick}>
-//               {t("Inicio")}
-//             </Link>
-//           </li>
-//           <li>
-//             <Link to="/shop-grid-right-sidebar" onClick={onItemClick}>
-//               {t("Recargas")}
-//             </Link>
-//           </li>
-//           <li>
-//             <Link to="/shop-grid-paquet" onClick={onItemClick}>
-//               {t("Paquetes")}
-//             </Link>
-//           </li>
-//           {/* <li>
-//             <Link to="/about" onClick={onItemClick}>
-//               {t("Sobre Nosotros")}
-//             </Link>
-//           </li>
-//           <li>
-//             <Link to="/contact" onClick={onItemClick}>
-//               {t("Contáctanos")}
-//             </Link>
-//           </li> */}
-//         </ul>
-//       </nav>
-//     </div>
-//   );
-// };
-
-// NavMenu.propTypes = {
-//   menuWhiteClass: PropTypes.string,
-//   sidebarMenu: PropTypes.bool,
-//   onItemClick: PropTypes.func, // ✅ nuevo prop
-// };
-
-// export default NavMenu;
