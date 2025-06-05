@@ -156,9 +156,8 @@ export default function InventoryTable() {
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Card sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-            <Typography variant="h5">Inventario de Productos 📊</Typography>
-
+          <Box display="flex" justifyContent="space-between" alignItems="center">
+            <Typography variant="h5" gutterBottom>Inventario de Productos 📊</Typography>
             <Tooltip title="Exportar a Excel" arrow>
               <IconButton onClick={confirmExport}>
                 <RiFileExcel2Fill style={{ color: "#217346", fontSize: "1.8rem"}} />

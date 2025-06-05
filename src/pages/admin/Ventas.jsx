@@ -19,12 +19,15 @@ import {
   Select,
   InputLabel,
   FormControl,
+  Tooltip,
 } from "@mui/material";
 
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import axiosClient from "../../config/axiosClient";
+import { RiFileExcel2Fill } from "react-icons/ri";
+import toast from "react-hot-toast";
 
 const ITEMS_PER_PAGE = 7;
 
@@ -154,13 +157,97 @@ export default function Ventas() {
     return <KeyboardArrowUpIcon fontSize="small" sx={{ opacity: 0.3 }} />;
   };
 
+  const confirmExport = () => {
+    toast(
+      (t) => (
+        <span>
+          ¿Quieres descargar el inventario?
+          <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
+            <button
+              onClick={() => {
+                toast.dismiss(t.id);
+                handleExport(); // tu función real
+              }}
+              style={{
+                background: "#217346",
+                color: "white",
+                border: "none",
+                padding: "4px 10px",
+                borderRadius: 4,
+                cursor: "pointer",
+              }}
+            >
+              Sí
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              style={{
+                background: "#ddd",
+                border: "none",
+                padding: "4px 10px",
+                borderRadius: 4,
+                cursor: "pointer",
+              }}
+            >
+              No
+            </button>
+          </div>
+        </span>
+      ),
+      {
+        duration: 10000,
+      }
+    );
+  };
+
+  const handleExport = () => {
+    const params = {};
+    if (fechaInicio) params.fecha_inicio = fechaInicio;
+    if (fechaFin) params.fecha_fin = fechaFin;
+    if (filtroPuntoVenta) params.pos_location_id = filtroPuntoVenta;
+
+    console.log("📤 Enviando filtros a exportar:", params);
+
+    axiosClient
+      .get("/admin/ventas/excel", {
+        params,
+        responseType: "blob",
+      })
+      .then((res) => {
+        const blob = new Blob([res.data], {
+          type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        });
+
+        const inicio = fechaInicio ? fechaInicio : "sin-fecha";
+        const fin = fechaFin ? fechaFin : "sin-fecha";
+        const nombreArchivo = `reporte-ventas-${inicio}_a_${fin}.xlsx`;
+
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = nombreArchivo;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch((err) => {
+        console.error("Error al exportar reporte de ventas:", err);
+        toast.error("Error al generar el archivo.");
+      });
+  };
+
   return (
     <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
       <Card sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <CardContent sx={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <Typography variant="h5" gutterBottom>
-            Historial de Ventas
-          </Typography>
+          <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+            <Typography variant="h5">Historial de Ventas</Typography>
+
+            <Tooltip title="Exportar a Excel" arrow>
+              <IconButton onClick={confirmExport}>
+                <RiFileExcel2Fill style={{ color: "#217346", fontSize: "1.8rem" }} />
+              </IconButton>
+            </Tooltip>
+          </Box>
 
           <Stack direction={{ xs: "column", md: "row" }} spacing={2} sx={{ mb: 2 }}>
             <FormControl size="small" fullWidth>
