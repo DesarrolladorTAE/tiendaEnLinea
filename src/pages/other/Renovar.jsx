@@ -11,16 +11,19 @@ const Renovar = () => {
       console.log("Plan seleccionado:", plan);
       const res = await axiosClient.post("/checkout", {
         nombre_plan: plan.name,
-        precio: plan.priceCentavos,
+        precio: plan.selectedPrice,
+        duracion_meses: plan.selectedDuration,
+        descripcion: plan.description || `${plan.selectedDuration} mes(es)`,
       });
+
       const { url } = res.data;
       if (url) {
-        window.open(url, "_blank")
+        window.open(url, "_blank");
       } else {
         console.error("No se recibió una URL de pago");
       }
     } catch (err) {
-      console.error("Error al crear Checkout:", err);
+      console.error("Error al crear Checkout:", err.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -52,10 +55,7 @@ const Renovar = () => {
 
         <p className="text-muted">Si ya realizaste el pago, por favor vuelve a iniciar sesión.</p>
 
-        <button
-          onClick={() => (window.location.href = "/admin")}
-          className="btn btn-secondary"
-        >
+        <button onClick={() => (window.location.href = "/admin")} className="btn btn-secondary">
           Iniciar sesión
         </button>
       </div>
