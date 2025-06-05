@@ -87,6 +87,7 @@ const Compare = lazy(() => import("./pages/other/Compare.jsx"));
 const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
 
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
+const AdminPanel = lazy(() => import("./pages/superadmin/HomeSuperAdmin.jsx"));
 
 const POSWrapper = lazy(() => import("./wrappers/POSWrapper"));
 
@@ -185,6 +186,7 @@ const App = () => {
             <Route path={"/compare"} element={<Compare />} />
             <Route path={"/checkout"} element={<Checkout />} />
             <Route path="/renovar" element={<Renovar />} />
+            <Route path="/panel" element={<AdminPanel />} />
 
             <Route path="*" element={<NotFound />} />
 
