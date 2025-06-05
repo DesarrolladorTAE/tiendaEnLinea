@@ -25,9 +25,24 @@ export default function ProductCard({
   const canAdd = !isVariantProduct(product) || (selectedVar && selectedSz);
   const stock = getAvailableStock({ ...product, variation: selectedVar, size: selectedSz });
 
+  const isTouchDevice =
+    typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
+  const handleAddOnTouch = () => {
+    if (canAdd && stock > getQuantityInCart(compositeId)) {
+      onAdd({
+        ...product,
+        variation: selectedVar,
+        size: selectedSz,
+        id: compositeId,
+      });
+    }
+  };
+
   return (
     <Paper
       variant="outlined"
+      {...(isTouchDevice && { onTouchEnd: handleAddOnTouch })}
       sx={{
         p: 2,
         backgroundColor: stock === 0 ? "#ffebee" : "inherit",
@@ -35,6 +50,8 @@ export default function ProductCard({
         flexDirection: "column",
         height: "100%",
         minHeight: 320, // ajustable según tus necesidades
+        cursor:
+          isTouchDevice && canAdd && stock > getQuantityInCart(compositeId) ? "pointer" : "default",
       }}
     >
       {getProductImage(product) && (
@@ -47,15 +64,21 @@ export default function ProductCard({
             height: 100,
             objectFit: "contain",
             mb: 1,
+            pointerEvents: "none",
           }}
         />
       )}
 
-      <Typography noWrap variant="subtitle1">
+      <Typography noWrap variant="subtitle1" sx={{ pointerEvents: "none" }}>
         {product.name}
       </Typography>
 
-      <Box display="flex" justifyContent="space-between" alignItems="center">
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        sx={{ pointerEvents: "none" }}
+      >
         <Typography variant="h6" color="primary">
           {product.price_formatted || `$${product.price}`}
         </Typography>
@@ -80,6 +103,7 @@ export default function ProductCard({
               setSelectedVariation((prev) => ({ ...prev, [baseId]: variation }));
               setSelectedSize((prev) => ({ ...prev, [baseId]: "" }));
             }}
+            onClick={(e) => e.stopPropagation()}
           >
             {product.variation.map((v) => (
               <MenuItem key={v.id} value={v.id}>
@@ -99,6 +123,7 @@ export default function ProductCard({
             value={selectedSz || ""}
             onChange={(e) => setSelectedSize((prev) => ({ ...prev, [baseId]: e.target.value }))}
             disabled={!selectedVar}
+            onClick={(e) => e.stopPropagation()}
           >
             {selectedVar?.size?.length ? (
               selectedVar.size.map((s) => (
@@ -114,7 +139,7 @@ export default function ProductCard({
           </TextField>
         </>
       ) : (
-        <Box sx={{ height: 80 }} /> // espacio reservado si no tiene variaciones
+        <Box sx={{ height: 80, pointerEvents: "none" }} /> // espacio reservado si no tiene variaciones
       )}
 
       <Box sx={{ flexGrow: 1 }} />
@@ -124,28 +149,36 @@ export default function ProductCard({
           size="small"
           color="error"
           variant="contained"
-          onClick={() => handleDecrease(compositeId)}
+          // Evitamos que el touch en “–” suba al padre
+          onTouchEnd={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDecrease(compositeId);
+          }}
           disabled={!canAdd}
         >
           –
         </Button>
 
-        <Typography variant="body2">{getQuantityInCart(compositeId)}</Typography>
+        <Typography variant="body2" sx={{ pointerEvents: "none" }}>
+          {getQuantityInCart(compositeId)}
+        </Typography>
 
         <Button
           size="small"
           variant="contained"
-          onClick={() =>
+          // Evitamos que el touch en “+” suba al padre
+          onTouchEnd={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
             onAdd({
               ...product,
               variation: selectedVar,
               size: selectedSz,
               id: compositeId,
-            })
-          }
-          disabled={
-            !canAdd || stock === getQuantityInCart(compositeId) || stock === 0
-          }
+            });
+          }}
+          disabled={!canAdd || stock === getQuantityInCart(compositeId) || stock === 0}
         >
           +
         </Button>
