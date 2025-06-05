@@ -1,7 +1,5 @@
-import React, { Fragment, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Tab from "react-bootstrap/Tab";
-import Nav from "react-bootstrap/Nav";
 import SEO from "../../components/seo";
 import axiosClient from "../../config/axiosClient";
 import VerificationModal from "../../components/login/VerificationModal";
@@ -10,6 +8,7 @@ import RegisterForm from "../../components/login/RegisterForm";
 
 const LoginRegister = () => {
   const navigate = useNavigate();
+  const [modo, setModo] = useState("login"); // "login" o "register"
 
   const [loginData, setLoginData] = useState({ login: "", password: "" });
   const [registerData, setRegisterData] = useState({
@@ -19,6 +18,7 @@ const LoginRegister = () => {
     password: "",
     password_confirmation: "",
   });
+
   const [verificationCode, setVerificationCode] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -51,7 +51,8 @@ const LoginRegister = () => {
       localStorage.setItem("STORE_SLUG", res.data.store.slug);
       navigate("/admin");
     } catch (err) {
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || "Error al iniciar sesión";
+      const errorMsg =
+        err.response?.data?.error || err.response?.data?.message || "Error al iniciar sesión";
       alert(errorMsg);
     } finally {
       setLoading(false);
@@ -72,9 +73,8 @@ const LoginRegister = () => {
         phone_number: registerData.telefono,
         password: registerData.password,
       });
-
       setShowModal(true);
-      startCooldown(); // ⬅️ Inicia cooldown correctamente
+      startCooldown();
     } catch (err) {
       if (err.response?.status === 422) {
         setErrors(err.response.data.errors);
@@ -92,12 +92,8 @@ const LoginRegister = () => {
         phone_number: registerData.telefono,
         password: registerData.password,
       });
-
-      // toast.success("Código reenviado con éxito");
-      startCooldown(); // ⬅️ Bloquea botón nuevamente durante 60s
-    } catch (err) {
-      // toast.error(err.response?.data?.message || "No se pudo reenviar el código");
-    }
+      startCooldown();
+    } catch (err) {}
   };
 
   const handleVerificationCodeSubmit = async () => {
@@ -118,66 +114,80 @@ const LoginRegister = () => {
   };
 
   return (
-    <Fragment>
+    <>
       <SEO
         titleTemplate="Login"
         description="Página de Inicio de Sesión y Registro para el Sistema MiTiendaEnLineaMX"
       />
-      <div className="login-register-area py-5" style={{ minHeight: "100vh" }}>
-        <div className="container">
-          <div className="col-lg-7 col-md-12 ms-auto me-auto">
-            <div className="login-register-wrapper">
-              <Tab.Container defaultActiveKey="register">
-                <Nav variant="pills" className="login-register-tab-list">
-                  <Nav.Item>
-                    <Nav.Link eventKey="login">
-                      <h4>Iniciar Sesión</h4>
-                    </Nav.Link>
-                  </Nav.Item>
-                  <Nav.Item>
-                    <Nav.Link eventKey="register">
-                      <h4>Registrarse</h4>
-                    </Nav.Link>
-                  </Nav.Item>
-                </Nav>
-                <Tab.Content>
-                  <Tab.Pane eventKey="login">
-                    <div className="login-form-container">
-                      <div className="login-register-form">
-                        <LoginForm
-                          loginData={loginData}
-                          setLoginData={setLoginData}
-                          onSubmit={handleLogin}
-                          showPassword={showPassword}
-                          togglePassword={() => setShowPassword(!showPassword)}
-                          loading={loading}
-                        />
-                      </div>
-                    </div>
-                  </Tab.Pane>
 
-                  <Tab.Pane eventKey="register">
-                    <div className="login-form-container">
-                      <div className="login-register-form">
-                        <RegisterForm
-                          registerData={registerData}
-                          setRegisterData={setRegisterData}
-                          errors={errors}
-                          onSubmit={handleRegister}
-                          showPassword={showPassword}
-                          togglePassword={() => setShowPassword(!showPassword)}
-                          loading={loading}
-                          registerBlocked={registerBlocked}
-                        />
-                      </div>
-                    </div>
-                  </Tab.Pane>
-                </Tab.Content>
-              </Tab.Container>
+      <div className="container py-3" style={{ minHeight: "100vh" }}>
+        <div className="row justify-content-center">
+          <div className="col-md-6 col-lg-5">
+            <div className="text-center mb-4">
+              <img
+                src="/assets/logoc.png"
+                alt="Logo de la tienda"
+                className="img-fluid"
+                style={{ maxWidth: "280px", height: "auto" }}
+              />
             </div>
+            {modo === "login" ? (
+              <div className="text-center">
+                <h2 className="text-center mb-2">Iniciar sesión</h2>
+                <LoginForm
+                  loginData={loginData}
+                  setLoginData={setLoginData}
+                  onSubmit={handleLogin}
+                  showPassword={showPassword}
+                  togglePassword={() => setShowPassword(!showPassword)}
+                  loading={loading}
+                />
+                <hr />
+                <div className="text-center mt-3">
+                  <a
+                    href="#"
+                    className="text-primary fs-6"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setModo("register");
+                    }}
+                  >
+                    Crea una cuenta
+                  </a>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <h2 className="text-center mb-2">Crear una cuenta</h2>
+                <RegisterForm
+                  registerData={registerData}
+                  setRegisterData={setRegisterData}
+                  errors={errors}
+                  onSubmit={handleRegister}
+                  showPassword={showPassword}
+                  togglePassword={() => setShowPassword(!showPassword)}
+                  loading={loading}
+                  registerBlocked={registerBlocked}
+                />
+                <hr />
+                <div className="text-center mt-3">
+                  <a
+                    href="#"
+                    className="text-primary fs-6"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setModo("login");
+                    }}
+                  >
+                    ¿Ya tienes una cuenta?
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
       <VerificationModal
         show={showModal}
         onClose={() => setShowModal(false)}
@@ -189,7 +199,7 @@ const LoginRegister = () => {
         resendDisabled={resendDisabled}
         cooldown={cooldown}
       />
-    </Fragment>
+    </>
   );
 };
 

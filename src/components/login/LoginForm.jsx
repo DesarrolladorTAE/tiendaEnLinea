@@ -6,30 +6,27 @@ const LoginForm = ({
   onSubmit,
   showPassword,
   togglePassword,
-  loading
+  loading,
 }) => {
   return (
     <form onSubmit={onSubmit}>
       <input
         type="text"
-        className="form-control"
+        className="form-control mb-3"
         placeholder="Correo electrónico o número de teléfono"
+        style={{ height: "45px" }}
         value={loginData.login}
-        onChange={(e) =>
-          setLoginData({ ...loginData, login: e.target.value })
-        }
+        onChange={(e) => setLoginData({ ...loginData, login: e.target.value })}
         required
       />
 
       <div className="form-group mb-4 d-flex gap-3">
         <input
           type={showPassword ? "text" : "password"}
-          className="form-control mb-0"
+          className="form-control"
           placeholder="Contraseña"
           value={loginData.password}
-          onChange={(e) =>
-            setLoginData({ ...loginData, password: e.target.value })
-          }
+          onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
           required
         />
         <button
@@ -42,7 +39,7 @@ const LoginForm = ({
             cursor: "pointer",
             userSelect: "none",
             border: "1px solid #ccc",
-            borderRadius: "12%"
+            borderRadius: "12%",
           }}
         >
           {showPassword ? "🙈" : "👁️"}
@@ -52,7 +49,7 @@ const LoginForm = ({
       <div className="button-box">
         <button
           type="submit"
-          className="btn w-100"
+          className="btn btn-primary btn-lg w-100"
           disabled={loading}
           style={{ height: "45px", fontWeight: "bold", fontSize: "16px" }}
         >
