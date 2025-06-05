@@ -108,7 +108,7 @@ const RegisterForm = ({
       <div className="button-box">
         <button
           type="submit"
-          className="btn w-100"
+          className="btn btn-success btn-lg w-100 mt-2"
           disabled={loading || registerBlocked}
           style={{ height: "45px", fontWeight: "bold", fontSize: "16px" }}
         >
