@@ -1,8 +1,25 @@
 import React, { useState } from "react";
 import {
-  Box, Typography, Table, TableHead, TableBody, TableRow, TableCell,
-  Paper, Button, IconButton, TablePagination, Modal,
-  TextField, MenuItem, Stack, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions
+  Box,
+  Typography,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  Paper,
+  Button,
+  IconButton,
+  TablePagination,
+  Modal,
+  TextField,
+  MenuItem,
+  Stack,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import CloseIcon from "@mui/icons-material/Close";
@@ -19,29 +36,20 @@ const estados = [
   { value: "aprobado", label: "Aprobado" },
   { value: "rechazada", label: "Rechazada" },
 ];
-
-const RecargaHistory = ({ historyFiltrada }) => {
+const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
   const [pagina, setPagina] = useState(0);
   const [comprobanteSeleccionado, setComprobanteSeleccionado] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [filtros, setFiltros] = useState({
-    estado: "",
-    monto: "",
-  });
+  const [filtros, setFiltros] = useState({ estado: "", monto: "" });
   const [infoOpen, setInfoOpen] = useState(false);
-
-  // Timbrado modal
   const [timbradoModalOpen, setTimbradoModalOpen] = useState(false);
   const [compraATimbrar, setCompraATimbrar] = useState(null);
-  const [timbrando, setTimbrando] = useState(false);
-  const [timbradoOk, setTimbradoOk] = useState(false);
-  const [timbradoError, setTimbradoError] = useState("");
 
-  // Filtro solo por estado y monto
   const filtrarCompras = () => {
     return historyFiltrada.filter((c) => {
       const pasaEstado = !filtros.estado || c.status === filtros.estado;
-      const pasaMonto = !filtros.monto || parseFloat(c.monto) === parseFloat(filtros.monto);
+      const pasaMonto =
+        !filtros.monto || parseFloat(c.monto) === parseFloat(filtros.monto);
       return pasaEstado && pasaMonto;
     });
   };
@@ -62,6 +70,11 @@ const RecargaHistory = ({ historyFiltrada }) => {
     setModalOpen(true);
   };
 
+  const handleEmitirFactura = (recarga) => {
+    setCompraATimbrar(recarga);
+    setTimbradoModalOpen(true);
+  };
+
   const handleCerrarModal = () => {
     setModalOpen(false);
     setTimeout(() => setComprobanteSeleccionado(null), 200);
@@ -73,34 +86,8 @@ const RecargaHistory = ({ historyFiltrada }) => {
   };
 
   const handleLimpiarFiltros = () => {
-    setFiltros({
-      estado: "",
-      monto: "",
-    });
+    setFiltros({ estado: "", monto: "" });
     setPagina(0);
-  };
-
-  // ---- Lógica timbrado ----
-  const handleEmitirFactura = (recarga) => {
-    setCompraATimbrar(recarga);
-    setTimbrando(false);
-    setTimbradoOk(false);
-    setTimbradoError("");
-    setTimbradoModalOpen(true);
-  };
-
-  const handleTimbrar = async (compra) => {
-    setTimbrando(true);
-    setTimbradoError("");
-    try {
-      // Aquí va tu llamada real al timbrado:
-      // await apiTimbrar(compra);
-      await new Promise((res) => setTimeout(res, 1600)); // Simulación
-      setTimbradoOk(true);
-    } catch (e) {
-      setTimbradoError("Error al facturar. Intenta de nuevo.");
-    }
-    setTimbrando(false);
   };
 
   return (
@@ -164,68 +151,129 @@ const RecargaHistory = ({ historyFiltrada }) => {
           <Table stickyHeader>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>Fecha</TableCell>
-                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>Monto</TableCell>
-                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>Referencia</TableCell>
-                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>Descripción</TableCell>
-                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>Estado</TableCell>
-                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>Comprobante</TableCell>
-                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>Factura</TableCell>
+                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>
+                  Fecha
+                </TableCell>
+                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>
+                  Monto
+                </TableCell>
+                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>
+                  Referencia
+                </TableCell>
+                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>
+                  Descripción
+                </TableCell>
+                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>
+                  Estado
+                </TableCell>
+                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>
+                  Comprobante
+                </TableCell>
+                <TableCell sx={{ backgroundColor: "#6C63FF", color: "#fff" }}>
+                  Factura
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {paginatedData.length ? paginatedData.map((r) => (
-                <TableRow key={r.id} hover>
-                  <TableCell>{new Date(r.created_at).toLocaleString()}</TableCell>
-                  <TableCell>${parseFloat(r.monto).toFixed(2)}</TableCell>
-                  <TableCell>{r.referencia}</TableCell>
-                  <TableCell>{r.descripcion}</TableCell>
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 600,
-                        color:
-                          r.status === "pendiente"
-                            ? "warning.main"
-                            : r.status === "aprobado"
-                            ? "success.main"
-                            : r.status === "rechazado"
-                            ? "error.main"
-                            : "text.primary",
-                      }}
-                    >
-                      {r.status}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    {r.comprobante_url ? (
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        onClick={() => handleVerComprobante(r)}
-                        startIcon={<OpenInFullIcon />}
+              {paginatedData.length ? (
+                paginatedData.map((r) => (
+                  <TableRow key={r.id} hover>
+                    <TableCell>
+                      {new Date(r.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell>${parseFloat(r.monto).toFixed(2)}</TableCell>
+                    <TableCell>{r.referencia}</TableCell>
+                    <TableCell>{r.descripcion}</TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                          color:
+                            r.status === "pendiente"
+                              ? "warning.main"
+                              : r.status === "aprobado"
+                              ? "success.main"
+                              : r.status === "rechazado"
+                              ? "error.main"
+                              : "text.primary",
+                        }}
                       >
-                        Ver
-                      </Button>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<ReceiptLongIcon />}
-                      onClick={() => handleEmitirFactura(r)}
-                      disabled={r.status !== "confirmado"}
-                      sx={{ minWidth: 0 }}
-                    >
-                      Emitir
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              )) : (
+                        {r.status}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      {r.comprobante_url ? (
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleVerComprobante(r)}
+                          startIcon={<OpenInFullIcon />}
+                        >
+                          Ver
+                        </Button>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const yaFacturada = r.folio_factura && r.timbrado_json;
+                        const fechaCompra = new Date(r.created_at);
+                        const now = new Date();
+
+                        const esMismoMes =
+                          now.getMonth() === fechaCompra.getMonth() &&
+                          now.getFullYear() === fechaCompra.getFullYear();
+
+                        const lastDayOfMonth = new Date(
+                          fechaCompra.getFullYear(),
+                          fechaCompra.getMonth() + 1,
+                          0
+                        );
+                        const isLastDay =
+                          now.toDateString() === lastDayOfMonth.toDateString();
+                        const isBefore11PM = now.getHours() < 23;
+                        const dentroDeTiempo =
+                          esMismoMes &&
+                          (!isLastDay || (isLastDay && isBefore11PM));
+
+                        const sePuedeTimbrar =
+                          r.status === "confirmado" &&
+                          !yaFacturada &&
+                          dentroDeTiempo;
+
+                        return (
+                          <Tooltip
+                            title={
+                              yaFacturada
+                                ? "Ya facturada"
+                                : !dentroDeTiempo
+                                ? "Fuera del periodo permitido"
+                                : r.status !== "confirmado"
+                                ? "Solo disponible para recargas confirmadas"
+                                : "Emitir factura"
+                            }
+                          >
+                            <span>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                startIcon={<ReceiptLongIcon />}
+                                onClick={() => handleEmitirFactura(r)}
+                                disabled={!sePuedeTimbrar}
+                                sx={{ minWidth: 0 }}
+                              >
+                                Emitir
+                              </Button>
+                            </span>
+                          </Tooltip>
+                        );
+                      })()}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
                 <TableRow>
                   <TableCell colSpan={7} align="center">
                     No hay compras 😔
@@ -242,7 +290,9 @@ const RecargaHistory = ({ historyFiltrada }) => {
           onPageChange={(e, newPage) => setPagina(newPage)}
           rowsPerPage={ITEMS_PER_PAGE}
           rowsPerPageOptions={[ITEMS_PER_PAGE]}
-          labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} de ${count}`
+          }
         />
       </Paper>
 
@@ -285,18 +335,22 @@ const RecargaHistory = ({ historyFiltrada }) => {
           <Typography variant="h6" color="#fff" mb={2}>
             📎 Comprobante
           </Typography>
-          <Box sx={{
-            width: "100%",
-            flex: 1,
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            bgcolor: "#fff",
-            borderRadius: 2,
-            mb: 2,
-            overflow: "auto"
-          }}>
-            <VisorComprobanteModal comprobante={comprobanteSeleccionado?.comprobante_url} />
+          <Box
+            sx={{
+              width: "100%",
+              flex: 1,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              bgcolor: "#fff",
+              borderRadius: 2,
+              mb: 2,
+              overflow: "auto",
+            }}
+          >
+            <VisorComprobanteModal
+              comprobante={comprobanteSeleccionado?.comprobante_url}
+            />
           </Box>
         </Box>
       </Modal>
@@ -306,28 +360,49 @@ const RecargaHistory = ({ historyFiltrada }) => {
         open={timbradoModalOpen}
         onClose={() => setTimbradoModalOpen(false)}
         compra={compraATimbrar}
-        onTimbrar={handleTimbrar}
-        timbrando={timbrando}
-        timbradoOk={timbradoOk}
-        error={timbradoError}
+        onFacturada={() => {
+          setTimbradoModalOpen(false);
+          fetchHistory();
+        }}
       />
 
       {/* Dialog de información para facturación */}
       <Dialog open={infoOpen} onClose={() => setInfoOpen(false)}>
         <DialogTitle>
-          <InfoOutlinedIcon color="info" /> &nbsp;
-          Información para facturación
+          <InfoOutlinedIcon color="info" /> &nbsp; Información para facturación
         </DialogTitle>
-        <DialogContent>
+        <DialogContent dividers>
           <Typography gutterBottom>
-            Para facturar una compra, debes tener registrados tu <strong>RFC</strong> y <strong>Razón Social</strong>.
+            Para poder facturar una compra debes cumplir con lo siguiente:
           </Typography>
-          <Typography gutterBottom>
-            Si aún no tienes estos datos, puedes hacerlo desde la sección <strong>“Mi cuenta”</strong> en el apartado <strong>“Datos fiscales”</strong>.
+          <ul style={{ paddingLeft: "1.25rem", marginTop: 8 }}>
+            <li>
+              Tener registrado un <strong>RFC</strong> y{" "}
+              <strong>Régimen Fiscal</strong> en tu perfil.
+            </li>
+            <li>
+              La compra debe tener el estado <strong>“confirmado”</strong>.
+            </li>
+
+            <li>
+              Tu correo electrónico de TeloRecargo debe esatar activo ya que por eso medio recibirás la factura.
+            </li>
+
+            <li>
+              Sólo puedes facturar hasta antes de las{" "}
+              <strong>11:00 PM del último día</strong> del mes en que se realizó
+              la compra.
+            </li>
+          </ul>
+          <Typography mt={2}>
+            Si aún no tienes tus datos fiscales, puedes agregarlos en la sección{" "}
+            <strong>“Mi cuenta”</strong> &gt; <strong>“Datos fiscales”</strong>.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setInfoOpen(false)} autoFocus>Entendido</Button>
+          <Button onClick={() => setInfoOpen(false)} autoFocus>
+            Entendido
+          </Button>
         </DialogActions>
       </Dialog>
     </>

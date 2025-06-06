@@ -20,31 +20,29 @@ const SolicitarRecarga = () => {
   const user = useSelector((state) => state.user.user);
   const referencia = `TLR${user?.id}`;
 
-  // Estados principales
   const [receiptFile, setReceiptFile] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [filtroEstado, setFiltroEstado] = useState("todos");
 
- const bancos = [
-  {
-    bank: "BBVA",
-    logo: "/assets/img/bbva.png",
-    accountNumber: "0116325122",
-    clabe: "012261001163251221",
-    beneficiary: "Tecnologías Administrativas Elad S de RL de CV®",
-  },
-  {
-    bank: "Scotiabank",
-    logo: "/assets/img/scotiabank.png",
-    accountNumber: "25600737834",
-    clabe: "044261256007378342",
-    oxxo: "5579-2091-3760-4226",
-    beneficiary: "Tecnologías Administrativas Elad S de RL de CV®",
-  },
-];
-
+  const bancos = [
+    {
+      bank: "BBVA",
+      logo: "/assets/img/bbva.png",
+      accountNumber: "0116325122",
+      clabe: "012261001163251221",
+      beneficiary: "Tecnologías Administrativas Elad S de RL de CV®",
+    },
+    {
+      bank: "Scotiabank",
+      logo: "/assets/img/scotiabank.png",
+      accountNumber: "25600737834",
+      clabe: "044261256007378342",
+      oxxo: "5579-2091-3760-4226",
+      beneficiary: "Tecnologías Administrativas Elad S de RL de CV®",
+    },
+  ];
 
   useEffect(() => {
     fetchHistory();
@@ -62,7 +60,6 @@ const SolicitarRecarga = () => {
     }
   };
 
-  // El onSubmit acepta reset para limpiar desde el form hijo
   const onSubmit = async ({ amount }, reset) => {
     setSubmitting(true);
     const cleanAmount = amount.replace(/[$,]/g, "");
@@ -111,8 +108,8 @@ const SolicitarRecarga = () => {
       <Container sx={{ mt: 4, mb: 4, px: { xs: 2, md: 0 } }}>
         <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 4, alignItems: "stretch", mb: 4 }}>
           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={{ flex: 1 }}>
-        <RecargaDepositInfo bancos={bancos} referencia={referencia} />
-        </motion.div>
+            <RecargaDepositInfo bancos={bancos} referencia={referencia} />
+          </motion.div>
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={{ flex: 1 }}>
             <RecargaForm
               submitting={submitting}
