@@ -40,8 +40,10 @@ export default function HomeSuperAdmin() {
   const [loading, setLoading] = useState(true);
   const editableFieldSx = { minWidth: 150, fontSize: "0.9rem" };
 
+  // Tomamos token desde sessionStorage cada vez que llamemos a la API
   const token = sessionStorage.getItem("SUPERADMIN_TOKEN");
 
+  // Mantenemos la declaración original de axiosSuperadmin, pero no lo usamos directamente
   const axiosSuperadmin = axios.create({
     baseURL: "https://mitiendaenlineamx.com.mx/api/",
     headers: {
@@ -57,7 +59,16 @@ export default function HomeSuperAdmin() {
       return;
     }
 
-    axiosSuperadmin
+    // Creamos una instancia “fresca” usando el token actual
+    const axiosInst = axios.create({
+      baseURL: "https://mitiendaenlineamx.com.mx/api/",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    axiosInst
       .get("/admin/me")
       .then((res) => {
         setAdmin(res.data);
@@ -68,10 +79,20 @@ export default function HomeSuperAdmin() {
         sessionStorage.removeItem("SUPERADMIN_TOKEN");
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // <-- no cambiamos esta línea; el efecto corre al montar
 
   const fetchDashboardData = () => {
-    axiosSuperadmin
+    // Volvemos a leer el token y creamos una nueva instancia de Axios antes de llamar a /admin/overview
+    const freshToken = sessionStorage.getItem("SUPERADMIN_TOKEN");
+    const axiosInst = axios.create({
+      baseURL: "https://mitiendaenlineamx.com.mx/api/",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${freshToken}`,
+      },
+    });
+
+    axiosInst
       .get("/admin/overview")
       .then((res) => {
         setStats(res.data.stats);
@@ -92,11 +113,16 @@ export default function HomeSuperAdmin() {
       const token = res.data.token;
       sessionStorage.setItem("SUPERADMIN_TOKEN", token);
 
-      const meRes = await axios.get("https://mitiendaenlineamx.com.mx/api/admin/me", {
+      // Para /admin/me, creamos otra instancia con el token recién guardado
+      const axiosInst = axios.create({
+        baseURL: "https://mitiendaenlineamx.com.mx/api/",
         headers: {
+          Accept: "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
+
+      const meRes = await axiosInst.get("/admin/me");
 
       setAdmin(meRes.data);
       setOpenLogin(false);
@@ -137,7 +163,10 @@ export default function HomeSuperAdmin() {
       <Modal open={openLogin}>
         <Box
           sx={{
-            width: 400,
+            width: {
+              xs: "100%",
+              sm: 400,
+            },
             bgcolor: "background.paper",
             p: 4,
             mx: "auto",
@@ -146,7 +175,7 @@ export default function HomeSuperAdmin() {
             boxShadow: 24,
           }}
         >
-          <Typography variant="h6" mb={2}>
+          <Typography variant="h6" gutterBottom>
             Panel de Admin
           </Typography>
           <TextField
@@ -183,7 +212,7 @@ export default function HomeSuperAdmin() {
                 color="inherit"
                 onClick={() => {
                   sessionStorage.removeItem("SUPERADMIN_TOKEN");
-                  window.location.reload(); // o redirige manualmente si prefieres
+                  window.location.reload();
                 }}
               >
                 Cerrar sesión
