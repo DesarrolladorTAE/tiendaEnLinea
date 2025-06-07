@@ -264,7 +264,7 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
                                 disabled={!sePuedeTimbrar}
                                 sx={{ minWidth: 0 }}
                               >
-                                Emitir
+                                {yaFacturada ? "Facturada" : "Emitir"}
                               </Button>
                             </span>
                           </Tooltip>
@@ -385,9 +385,13 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
             </li>
 
             <li>
-              Tu correo electrónico de TeloRecargo debe esatar activo ya que por eso medio recibirás la factura.
+              Tu correo electrónico de TeloRecargo debe estar activo ya que por
+              eso medio recibirás la factura. Puedes actualizar tu correo
+              en la sección: 
             </li>
-
+             <li>
+             <strong>“Mi cuenta”</strong> &gt;{" "}<strong>“Información personal”</strong>.
+            </li>
             <li>
               Sólo puedes facturar hasta antes de las{" "}
               <strong>11:00 PM del último día</strong> del mes en que se realizó
@@ -395,8 +399,9 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
             </li>
           </ul>
           <Typography mt={2}>
-            Si aún no tienes tus datos fiscales, puedes agregarlos en la sección{" "}
-            <strong>“Mi cuenta”</strong> &gt; <strong>“Datos fiscales”</strong>.
+            Si aún no tienes tus datos fiscales, puedes agregarlos en la sección:
+            <li>{" "}<strong>“Mi cuenta”</strong> &gt; <strong>“Datos fiscales”</strong>.</li>
+            
           </Typography>
         </DialogContent>
         <DialogActions>

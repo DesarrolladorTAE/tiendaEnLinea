@@ -20,6 +20,7 @@ const AccountInfoPanel = ({ expanded, handleChange, user }) => {
   const [values, setValues] = useState({
     name: user?.name || "",
     apellidos: user?.apellidos || "",
+    email: user?.email || "", // ✅ nuevo campo
   });
   const [loading, setLoading] = useState(false);
   const dispatch = useDispatch();
@@ -37,14 +38,14 @@ const AccountInfoPanel = ({ expanded, handleChange, user }) => {
       const res = await axios.put("/users/profile", {
         name: values.name.trim(),
         apellidos: values.apellidos.trim(),
+        email: values.email.trim(), // ✅ incluir email
       });
       toast.success("Datos actualizados correctamente");
-      // Actualiza redux/localStorage
       dispatch(setUser({ user: { ...user, ...res.data }, token: localStorage.getItem("token") }));
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-          "No se pudieron actualizar tus datos, intenta más tarde."
+        "No se pudieron actualizar tus datos, intenta más tarde."
       );
     }
     setLoading(false);
@@ -90,7 +91,13 @@ const AccountInfoPanel = ({ expanded, handleChange, user }) => {
             />
           </Grid>
           <Grid item xs={12} md={6}>
-            <TextField fullWidth label="Correo" value={user?.email || ""} disabled />
+            <TextField
+              fullWidth
+              label="Correo"
+              name="email"
+              value={values.email}
+              onChange={handleInputChange}
+            />
           </Grid>
           <Grid item xs={12} md={6}>
             <TextField fullWidth label="Teléfono" value={user?.phone || ""} disabled />

@@ -104,13 +104,36 @@ const SolicitarRecarga = () => {
   return (
     <LayoutOne headerTop="visible">
       <SEO titleTemplate="Solicitar Recarga" />
-      <Breadcrumb pages={[{ label: "Inicio", path: "/" }, { label: "Recarga", path: pathname }]} />
+      <Breadcrumb
+        pages={[
+          { label: "Inicio", path: "/" },
+          { label: "Recarga", path: pathname },
+        ]}
+      />
       <Container sx={{ mt: 4, mb: 4, px: { xs: 2, md: 0 } }}>
-        <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, gap: 4, alignItems: "stretch", mb: 4 }}>
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={{ flex: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            gap: 4,
+            alignItems: "stretch",
+            mb: 4,
+          }}
+        >
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{ flex: 1 }}
+          >
             <RecargaDepositInfo bancos={bancos} referencia={referencia} />
           </motion.div>
-          <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.5 }} style={{ flex: 1 }}>
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            style={{ flex: 1 }}
+          >
             <RecargaForm
               submitting={submitting}
               onSubmit={onSubmit}
@@ -124,6 +147,7 @@ const SolicitarRecarga = () => {
           loading={loading}
           filtroEstado={filtroEstado}
           setFiltroEstado={setFiltroEstado}
+          fetchHistory={fetchHistory} // <-- ¡Esta es la línea clave!
         />
       </Container>
     </LayoutOne>

@@ -15,7 +15,7 @@ import TwitterIcon from "@mui/icons-material/Twitter";
 import YouTubeIcon from "@mui/icons-material/YouTube";
 import PinterestIcon from "@mui/icons-material/Pinterest";
 
-const LandingFooterSection = () => {
+const LandingFooterSection = ({ showLinks = true }) => {
   return (
     <Box sx={{ backgroundColor: "#2d3e50", color: "#ffffff", pt: 8, pb: 5 }}>
       <Container maxWidth="lg">
@@ -35,45 +35,34 @@ const LandingFooterSection = () => {
             </Typography>
           </Grid>
 
-          {/* Enlaces */}
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            md={4}
-            textAlign={{ xs: "center", md: "left" }}
-          >
-            <Typography variant="h6" fontWeight="bold" mb={1} color="#00bfff">
-              Enlaces
-            </Typography>
-            <Box display="flex" flexDirection="column" gap={0.5}>
-              <Link href="#features" color="inherit" underline="hover">
-                Funciones
-              </Link>
-              <Link href="#pricing" color="inherit" underline="hover">
-                Recargas y Paquetes
-              </Link>
-              <Link href="#faqs" color="inherit" underline="hover">
-                Testimonios
-              </Link>
-              <Link href="/terminos" color="inherit" underline="hover">
-                Términos y Condiciones
-              </Link>
-              <Link href="/contacto" color="inherit" underline="hover">
-                Contáctanos
-              </Link>
-            </Box>
-          </Grid>
+          {/* Enlaces condicionales */}
+          {showLinks && (
+            <Grid item xs={12} sm={6} md={4} textAlign={{ xs: "center", md: "left" }}>
+              <Typography variant="h6" fontWeight="bold" mb={1} color="#00bfff">
+                Enlaces
+              </Typography>
+              <Box display="flex" flexDirection="column" gap={0.5}>
+                <Link href="#features" color="inherit" underline="hover">
+                  Funciones
+                </Link>
+                <Link href="#pricing" color="inherit" underline="hover">
+                  Recargas y Paquetes
+                </Link>
+                <Link href="#faqs" color="inherit" underline="hover">
+                  Testimonios
+                </Link>
+                <Link href="/terminos-condiciones" color="inherit" underline="hover">
+                  Términos y Condiciones
+                </Link>
+                <Link href="/contact" color="inherit" underline="hover">
+                  Contáctanos
+                </Link>
+              </Box>
+            </Grid>
+          )}
 
           {/* Redes Sociales y Soporte */}
-          {/* Redes Sociales y Soporte */}
-          <Grid
-            item
-            xs={12}
-            sm={6}
-            md={4}
-            textAlign={{ xs: "center", md: "left" }}
-          >
+          <Grid item xs={12} sm={6} md={4} textAlign={{ xs: "center", md: "left" }}>
             <Typography variant="h6" fontWeight="bold" mb={1} color="#00bfff">
               Síguenos
             </Typography>
@@ -122,7 +111,7 @@ const LandingFooterSection = () => {
                 target="_blank"
                 sx={{
                   transition: "transform 0.3s ease",
-                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                  "&:hover": { transform: "scale(1.2)", color: "#1DA1F2" },
                 }}
               >
                 <TwitterIcon sx={{ fontSize: 30 }} />
@@ -133,7 +122,7 @@ const LandingFooterSection = () => {
                 target="_blank"
                 sx={{
                   transition: "transform 0.3s ease",
-                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                  "&:hover": { transform: "scale(1.2)", color: "#FF0000" },
                 }}
               >
                 <YouTubeIcon sx={{ fontSize: 30 }} />
@@ -144,7 +133,7 @@ const LandingFooterSection = () => {
                 target="_blank"
                 sx={{
                   transition: "transform 0.3s ease",
-                  "&:hover": { transform: "scale(1.2)", color: "#E4405F" },
+                  "&:hover": { transform: "scale(1.2)", color: "#E60023" },
                 }}
               >
                 <PinterestIcon sx={{ fontSize: 30 }} />
@@ -180,9 +169,9 @@ const LandingFooterSection = () => {
 
           <Box
             component="img"
-            src="/assets/img/logotaeblanco.png" // ✅ Ruta relativa pública
+            src="/assets/img/logotaeblanco.png"
             alt="TAE sitio web"
-            sx={{ width: 75, height: 75 }} // ✅ Igual que los íconos MUI
+            sx={{ width: 75, height: 75 }}
           />
         </Box>
       </Container>

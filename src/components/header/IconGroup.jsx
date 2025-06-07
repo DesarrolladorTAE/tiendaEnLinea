@@ -166,7 +166,7 @@ const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
           </Tooltip>
         </>
       )}
-
+    {!isAgent && (
       <Tooltip title="Mi Cuenta">
         <IconButton
           onClick={(e) => setAnchorAccount(e.currentTarget)}
@@ -175,39 +175,38 @@ const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
           <PersonIcon />
         </IconButton>
       </Tooltip>
+      )}
 
-      <Menu
-        anchorEl={anchorAccount}
-        open={Boolean(anchorAccount)}
-        onClose={() => setAnchorAccount(null)}
-      >
-        {!isAgent && (
-          <>
-            <MenuItem component={Link} to="/my-account">
+      {!isAgent && (
+        <Menu
+          anchorEl={anchorAccount}
+          open={Boolean(anchorAccount)}
+          onClose={() => setAnchorAccount(null)}
+        >
+          <MenuItem component={Link} to="/my-account">
+            <ListItemIcon>
+              <PersonIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Mi Cuenta</ListItemText>
+          </MenuItem>
+
+          <MenuItem component={Link} to="/agent-mipages">
+            <ListItemIcon>
+              <Group fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Agentes</ListItemText>
+          </MenuItem>
+
+          {isSuperAdmin && (
+            <MenuItem component={Link} to="/admin/dashboard">
               <ListItemIcon>
-                <PersonIcon fontSize="small" />
+                <AdminPanelSettings fontSize="small" />
               </ListItemIcon>
-              <ListItemText>Mi Cuenta</ListItemText>
+              <ListItemText>Administración</ListItemText>
             </MenuItem>
-
-            <MenuItem component={Link} to="/agent-mipages">
-              <ListItemIcon>
-                <Group fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Agentes</ListItemText>
-            </MenuItem>
-
-            {isSuperAdmin && (
-              <MenuItem component={Link} to="/admin/dashboard">
-                <ListItemIcon>
-                  <AdminPanelSettings fontSize="small" />
-                </ListItemIcon>
-                <ListItemText>Administración</ListItemText>
-              </MenuItem>
-            )}
-          </>
-        )}
-      </Menu>
+          )}
+        </Menu>
+      )}
     </>
   );
 

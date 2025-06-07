@@ -14,11 +14,12 @@ import {
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import CloseIcon from "@mui/icons-material/Close";
 import axios from "../../axiosConfig";
-import { toast } from "react-toastify";
+import Swal from "sweetalert2";
 
 const usosCfdi = [
   { value: "G01", label: "Adquisición de mercancías" },
   { value: "G03", label: "Gastos en general" },
+  { value: "S01", label: "Sin efectos fiscales" },
 ];
 
 const ModalTimbrado = ({ open, onClose, compra, onFacturada }) => {
@@ -50,29 +51,36 @@ const ModalTimbrado = ({ open, onClose, compra, onFacturada }) => {
     setTimbradoOk(false);
 
     try {
-      // console.log("Datos de la compra:", data);
       const { data } = await axios.post("/timbrar-factura", {
         transaccion_id: compra.id,
         uso_cfdi: usoCfdi,
       });
-      console.log("Respuesta del timbrado:", data);
 
       if (!data.ok) {
         throw new Error(data.message || "Error en el timbrado");
       }
 
       setTimbradoOk(true);
-      toast.success("🎉 Factura emitida correctamente");
+      onClose();
 
-      setTimeout(() => {
-        onClose();
-        if (typeof onFacturada === "function") onFacturada();
-      }, 2500);
+      Swal.fire({
+        icon: "success",
+        title: "🎉 Compra facturada",
+        text: "Tu factura ha sido emitida correctamente.",
+      });
+
+      if (typeof onFacturada === "function") onFacturada();
     } catch (err) {
       const msg =
         err.response?.data?.message || err.message || "Error al timbrar";
       setError(msg);
-      toast.error(`❌ ${msg}`);
+      onClose();
+
+      Swal.fire({
+        icon: "error",
+        title: "❌ Error al facturar",
+        text: msg,
+      });
     }
 
     setTimbrando(false);
@@ -130,10 +138,10 @@ const ModalTimbrado = ({ open, onClose, compra, onFacturada }) => {
             correctos. No podrás timbrar esta compra una segunda vez.
           </Typography>
           <Typography color="info.main" variant="body2">
-            Si presentas problemas, contacta a soporte contacto@telorecargo.com .
+            Si presentas problemas, contacta a soporte contacto@telorecargo.com.
           </Typography>
           <Typography color="info.main" variant="body2">
-            Recibiras tu factura por correo electrónico una vez timbrada.
+            Recibirás tu factura por correo electrónico una vez timbrada.
           </Typography>
         </Box>
 
@@ -151,12 +159,6 @@ const ModalTimbrado = ({ open, onClose, compra, onFacturada }) => {
               Facturando, espera un momento…
             </Typography>
           </Box>
-        )}
-
-        {timbradoOk && (
-          <Typography color="success.main" sx={{ mt: 2 }}>
-            🎉 ¡La compra ha sido facturada correctamente!
-          </Typography>
         )}
 
         {error && (

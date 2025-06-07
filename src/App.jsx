@@ -45,6 +45,7 @@ const Agentes = lazy(() => import("./pages/other/Agentes.jsx"))
 const Loginmui = lazy(() => import("./pages/other/loginmui.jsx"))
 const InicioAgente = lazy(() => import("./pages/home/InicioAgente.jsx"))
 const SaldoRecarga = lazy(() => import("./pages/other/SaldoRecarga.jsx"))
+const LegalTerms = lazy(() => import("./pages/other/LegalTerms.jsx"))
 const LandingPage = lazy(() => import("./pages/landing/LandingPage.jsx"))
 
 //Pages Admin
@@ -109,7 +110,7 @@ const App = () => {
 
             {/* Other pages */}
             {/* <Route path="/about" element={<About />} /> */}
-            {/* <Route path="/contact" element={<Contact />} /> */}
+            <Route path="/contact" element={<Contact />} />
             <Route path="/my-account" element={<MyAccount />} />
             <Route path="/wallet" element={<Wallet />} />
             {/* <Route path="/login" element={<Login />} /> */}
@@ -123,6 +124,7 @@ const App = () => {
             <Route path="/historial-recargas" element={<HistorialRecargas />} />
             <Route path="/agent-mipages" element={<Agentes />} />
             <Route path="/landing" element={<LandingPage />} />
+            <Route path="/terminos-condiciones" element={<LegalTerms />} />
             <Route
               path="/loginmui"
               element={

@@ -334,7 +334,15 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
                 control={
                   <Checkbox
                     checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    onChange={(e) => {
+                      if (acceptedTerms) {
+                        // ✅ Permitir desmarcar directamente
+                        setAcceptedTerms(false);
+                      } else {
+                        // 🚫 No marcar aún: abre modal
+                        setTermsOpen(true);
+                      }
+                    }}
                   />
                 }
                 label={
@@ -381,7 +389,14 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
             Registrarme
           </Button>
 
-          <TermsModal open={termsOpen} onClose={() => setTermsOpen(false)} />
+          <TermsModal
+            open={termsOpen}
+            onClose={() => setTermsOpen(false)}
+            onAccept={() => {
+              setAcceptedTerms(true); // ✅ marcar el checkbox al aceptar
+              setTermsOpen(false); // ✅ cerrar modal
+            }}
+          />
         </>
       )}
     </Box>
