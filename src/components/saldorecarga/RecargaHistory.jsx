@@ -33,7 +33,7 @@ const ITEMS_PER_PAGE = 10;
 const estados = [
   { value: "", label: "Todos" },
   { value: "pendiente", label: "Pendiente" },
-  { value: "aprobado", label: "Aprobado" },
+  { value: "confirmado", label: "Confirmado" },
   { value: "rechazada", label: "Rechazada" },
 ];
 const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
@@ -192,7 +192,7 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
                           color:
                             r.status === "pendiente"
                               ? "warning.main"
-                              : r.status === "aprobado"
+                              : r.status === "confirmado"
                               ? "success.main"
                               : r.status === "rechazado"
                               ? "error.main"
