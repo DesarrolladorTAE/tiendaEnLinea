@@ -27,6 +27,8 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import VisorComprobanteModal from "./VisorComprobanteModal";
 import ModalTimbrado from "./ModalTimbrado";
+import ModalPDFPreview from "../modals/ModalPDFPreview";
+import ModalXMLPreview from "../modals/ModalXMLPreview";
 
 const ITEMS_PER_PAGE = 10;
 
@@ -35,7 +37,9 @@ const estados = [
   { value: "pendiente", label: "Pendiente" },
   { value: "confirmado", label: "Confirmado" },
   { value: "rechazada", label: "Rechazada" },
+  { value: "facturada", label: "Facturada" }, // ✅ NUEVO
 ];
+
 const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
   const [pagina, setPagina] = useState(0);
   const [comprobanteSeleccionado, setComprobanteSeleccionado] = useState(null);
@@ -44,6 +48,8 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
   const [infoOpen, setInfoOpen] = useState(false);
   const [timbradoModalOpen, setTimbradoModalOpen] = useState(false);
   const [compraATimbrar, setCompraATimbrar] = useState(null);
+  const [modalPDF, setModalPDF] = useState({ open: false, url: "" });
+  const [modalXML, setModalXML] = useState({ open: false, url: "" });
 
   const filtrarCompras = () => {
     return historyFiltrada.filter((c) => {
@@ -192,6 +198,8 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
                           color:
                             r.status === "pendiente"
                               ? "warning.main"
+                              : r.status === "facturada"
+                              ? "success.main"
                               : r.status === "confirmado"
                               ? "success.main"
                               : r.status === "rechazado"
@@ -243,6 +251,34 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
                           !yaFacturada &&
                           dentroDeTiempo;
 
+                        if (yaFacturada) {
+                          return (
+                            <Stack direction="row" spacing={1}>
+                              <Button
+                                variant="contained"
+                                size="small"
+                                sx={{ backgroundColor: "error.main" }}
+                                onClick={() => {
+                                  setModalPDF({ open: true, url: r.pdf_url });
+                                }}
+                              >
+                                PDF
+                              </Button>
+
+                              <Button
+                                variant="contained"
+                                size="small"
+                                sx={{ backgroundColor: "success.main" }}
+                                onClick={() =>
+                                  setModalXML({ open: true, url: r.xml_url })
+                                }
+                              >
+                                XML
+                              </Button>
+                            </Stack>
+                          );
+                        }
+
                         return (
                           <Tooltip
                             title={
@@ -264,7 +300,7 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
                                 disabled={!sePuedeTimbrar}
                                 sx={{ minWidth: 0 }}
                               >
-                                {yaFacturada ? "Facturada" : "Emitir"}
+                                Emitir
                               </Button>
                             </span>
                           </Tooltip>
@@ -365,6 +401,19 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
           fetchHistory();
         }}
       />
+      <ModalPDFPreview
+        open={modalPDF.open}
+        pdfUrl={modalPDF.url}
+        onClose={() => setModalPDF({ open: false, url: "" })}
+        nombreArchivo="factura.pdf"
+      />
+
+      <ModalXMLPreview
+        open={modalXML.open}
+        xmlUrl={modalXML.url}
+        onClose={() => setModalXML({ open: false, url: "" })}
+        nombreArchivo="factura.xml"
+      />
 
       {/* Dialog de información para facturación */}
       <Dialog open={infoOpen} onClose={() => setInfoOpen(false)}>
@@ -386,11 +435,12 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
 
             <li>
               Tu correo electrónico de TeloRecargo debe estar activo ya que por
-              eso medio recibirás la factura. Puedes actualizar tu correo
-              en la sección: 
+              eso medio recibirás la factura. Puedes actualizar tu correo en la
+              sección:
             </li>
-             <li>
-             <strong>“Mi cuenta”</strong> &gt;{" "}<strong>“Información personal”</strong>.
+            <li>
+              <strong>“Mi cuenta”</strong> &gt;{" "}
+              <strong>“Información personal”</strong>.
             </li>
             <li>
               Sólo puedes facturar hasta antes de las{" "}
@@ -399,9 +449,13 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
             </li>
           </ul>
           <Typography mt={2}>
-            Si aún no tienes tus datos fiscales, puedes agregarlos en la sección:
-            <li>{" "}<strong>“Mi cuenta”</strong> &gt; <strong>“Datos fiscales”</strong>.</li>
-            
+            Si aún no tienes tus datos fiscales, puedes agregarlos en la
+            sección:
+            <li>
+              {" "}
+              <strong>“Mi cuenta”</strong> &gt;{" "}
+              <strong>“Datos fiscales”</strong>.
+            </li>
           </Typography>
         </DialogContent>
         <DialogActions>

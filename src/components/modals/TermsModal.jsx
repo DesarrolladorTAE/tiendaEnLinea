@@ -7,7 +7,7 @@ import {
   Button,
   Divider,
   Checkbox,
-  FormControlLabel
+  FormControlLabel,
 } from "@mui/material";
 
 const TermsModal = ({ open, onClose, onAccept }) => {
@@ -20,9 +20,8 @@ const TermsModal = ({ open, onClose, onAccept }) => {
 
   const handleAccept = () => {
     if (accepted && typeof onAccept === "function") {
-      onAccept();
+      onAccept(); // ✅ solo esto, no cerrar aquí
     }
-    handleClose();
   };
 
   return (

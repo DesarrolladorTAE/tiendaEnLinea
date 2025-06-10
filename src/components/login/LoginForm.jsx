@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { Box, Button, Stack, TextField, Typography, IconButton } from "@mui/material";
+import {
+  Box,
+  Button,
+  Stack,
+  TextField,
+  Typography,
+  IconButton,
+} from "@mui/material";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
@@ -9,6 +16,7 @@ import { useDispatch } from "react-redux";
 import { setUser } from "../../store/slices/userSlice";
 import ResetPasswordModal from "../../wrappers/AuthVerification/ResetPasswordModal";
 import AnimatedModal from "../../components/AnimatedModal";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const LoginForm = ({ onBack }) => {
   const [loginError, setLoginError] = useState(null);
@@ -18,6 +26,7 @@ const LoginForm = ({ onBack }) => {
   const [resetCode, setResetCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -30,6 +39,8 @@ const LoginForm = ({ onBack }) => {
   } = useForm();
 
   const handleLogin = async (data) => {
+    setLoading(true); // Activar el spinner
+
     try {
       const response = await axios.post("/login", {
         phone: data.loginPhone,
@@ -52,8 +63,14 @@ const LoginForm = ({ onBack }) => {
         }
       }, 1200);
     } catch (error) {
-      setLoginError(error.response?.data?.message || "Error en el inicio de sesión");
-      toast.error(error.response?.data?.message || "⚠️ Error en el inicio de sesión");
+      setLoginError(
+        error.response?.data?.message || "Error en el inicio de sesión"
+      );
+      toast.error(
+        error.response?.data?.message || "⚠️ Error en el inicio de sesión"
+      );
+    } finally {
+      setLoading(false); // Desactivar el spinner
     }
   };
 
@@ -94,7 +111,9 @@ const LoginForm = ({ onBack }) => {
       setIsResetModalOpen(false);
       toast.success("Contraseña actualizada exitosamente.");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Error al cambiar contraseña");
+      toast.error(
+        error.response?.data?.message || "Error al cambiar contraseña"
+      );
     }
   };
 
@@ -133,19 +152,6 @@ const LoginForm = ({ onBack }) => {
         >
           <ArrowBackIosNewIcon />
         </IconButton>
-
-        {/* Logo */}
-        {/* <Box
-          component="img"
-          src="/assets/img/logo1.png"
-          alt="Logo Te lo recargo"
-          sx={{
-            width: 110,
-            height: "auto",
-            mb: 2,
-            mt: -1,
-          }}
-        /> */}
 
         <Typography variant="h5" fontWeight="bold" color="#444" mb={1}>
           Iniciar Sesión
@@ -223,22 +229,20 @@ const LoginForm = ({ onBack }) => {
             type="submit"
             variant="contained"
             sx={{
-              mt: 1,
-              bgcolor: "#00bfff",
-              color: "white",
-              fontWeight: "bold",
-              borderRadius: 9999,
-              py: 1.2,
-              px: 4,
-              alignSelf: "center",
-              textTransform: "uppercase",
-              fontSize: 16,
-              "&:hover": { bgcolor: "#009dff" },
-              boxShadow: "none",
+              mt: 1, bgcolor: "#00bfff", color: "white",
+              fontWeight: "bold", borderRadius: 9999,
+              py: 1.2, px: 4, alignSelf: "center",
+              textTransform: "uppercase", fontSize: 16,
+              "&:hover": { bgcolor: "#009dff" }, boxShadow: "none",
             }}
             fullWidth
+            disabled={loading}
           >
-            Iniciar Sesión
+            {loading ? (
+              <CircularProgress size={24} sx={{ color: "white" }} />
+            ) : (
+              "Iniciar Sesión"
+            )}
           </Button>
 
           <Typography

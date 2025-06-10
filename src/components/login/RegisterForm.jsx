@@ -14,6 +14,7 @@ import { useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 import axios from "../../axiosConfig";
 import TermsModal from "../modals/TermsModal";
+import CircularProgress from "@mui/material/CircularProgress";
 
 const roundedInputStyle = {
   "& .MuiOutlinedInput-root": {
@@ -29,6 +30,7 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
   const [registrationComplete, setRegistrationComplete] = useState(false);
   const [termsOpen, setTermsOpen] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -44,6 +46,8 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
   const password = watch("password");
 
   const onSubmit = async (data) => {
+    setLoading(true); // Activar spinner
+
     try {
       if (!isVerificationStep) {
         await axios.post("/auth/send-code", { phone: data.phone });
@@ -73,6 +77,8 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
         "⚠️ Error en el registro";
       setVerificationError(msg);
       toast.error(msg);
+    } finally {
+      setLoading(false); // Desactivar spinner
     }
   };
 
@@ -198,6 +204,7 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
 
           <Button
             type="submit"
+            disabled={loading}
             variant="contained"
             sx={{
               mt: 4,
@@ -214,7 +221,11 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
             }}
             fullWidth
           >
-            Verificar Código
+            {loading ? (
+              <CircularProgress size={24} sx={{ color: "white" }} />
+            ) : (
+              "Verificar Código"
+            )}
           </Button>
 
           <Typography
@@ -366,7 +377,7 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
 
           <Button
             type="submit"
-            disabled={!acceptedTerms}
+            disabled={!acceptedTerms || loading}
             variant="contained"
             sx={{
               mt: 2,
@@ -379,14 +390,18 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
               textTransform: "uppercase",
               fontSize: 16,
               boxShadow: "none",
-              alignSelf: "center", // ✅ centrar sin usar todo el ancho
+              alignSelf: "center",
               "&:hover": {
                 bgcolor: acceptedTerms ? "#9e35b4" : "grey.500",
               },
             }}
             fullWidth
           >
-            Registrarme
+            {loading ? (
+              <CircularProgress size={24} sx={{ color: "white" }} />
+            ) : (
+              "Registrarme"
+            )}
           </Button>
 
           <TermsModal
