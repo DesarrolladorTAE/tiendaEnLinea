@@ -166,7 +166,7 @@ const LandingFooterSection = () => {
               Soporte disponible de 9am a 5pm (L-V)
             </Typography>
             <Typography variant="body2" color="white" fontSize={16}>
-              desarrollo@tecnologiasadministrativas.com
+              contacto@telorecargo.com
             </Typography>
           </Grid>
         </Grid>
