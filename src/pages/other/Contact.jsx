@@ -48,10 +48,38 @@ const Contact = () => {
 
       {/* Espaciador para el navbar fijo */}
       <Toolbar />
+      <Box sx={{ p: 4, overflowY: "auto", flexGrow: 1 }}>
+       
+        <Box sx={{ mt: 5, textAlign: "center" }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: "bold",
+              color: "primary.main",
+              fontSize: { xs: "1.8rem", md: "2.4rem" },
+            }}
+          >
+            📞 ¿Necesitas ayuda?
+          </Typography>
+          <Typography
+            variant="h6"
+            sx={{
+              mt: 2,
+              color: "text.secondary",
+              fontWeight: 500,
+              fontSize: { xs: "1.4rem", md: "1.6rem" },
+            }}
+          >
+            ✉️ Contacta con el equipo de soporte de{" "}
+            <strong style={{ color: "#6C63FF" }}>TeLoRecargo.com</strong> 💬
+          </Typography>
+        </Box>
+      </Box>
+
       <div className="contact-area pt-100 pb-100">
         <div className="container">
           <div className="contact-map mb-10">
-            <GoogleMap lat={47.444} lng={-122.176} />
+            <GoogleMap lat={16.84769437234485} lng={-99.81158903334735} />
           </div>
           <div className="custom-row-2">
             <div className="col-12 col-lg-4 col-md-5">
@@ -61,8 +89,8 @@ const Contact = () => {
                     <i className="fa fa-phone" />
                   </div>
                   <div className="contact-info-dec">
-                    <p>+012 345 678 102</p>
-                    <p>+012 345 678 102</p>
+                    <p>+52 1 744 218 8925</p>
+                    <p>+52 1 744 164 1922</p>
                   </div>
                 </div>
                 <div className="single-contact-info">
@@ -71,11 +99,11 @@ const Contact = () => {
                   </div>
                   <div className="contact-info-dec">
                     <p>
-                      <a href="mailto:yourname@email.com">yourname@email.com</a>
+                      <a href="mailto:contacto@telorecargo.com">contacto@telorecargo.com</a>
                     </p>
                     <p>
-                      <a href="https://yourwebsitename.com">
-                        yourwebsitename.com
+                      <a href="https://telorecargo.com">
+                        telorecargo.com
                       </a>
                     </p>
                   </div>
@@ -85,35 +113,27 @@ const Contact = () => {
                     <i className="fa fa-map-marker" />
                   </div>
                   <div className="contact-info-dec">
-                    <p>Address goes here, </p>
-                    <p>street, Crossroad 123.</p>
+                    <p>Carr. Cayaco - Puerto Marqués,</p>
+                    <p>Piedra Roja, El Coloso,</p>
+                    <p>39810 Acapulco de Juárez, Gro. </p>
                   </div>
                 </div>
                 <div className="contact-social text-center">
-                  <h3>Follow Us</h3>
+                  <h3>Siguenos</h3>
                   <ul>
                     <li>
-                      <a href="//facebook.com">
+                      <a href="https://facebook.com/TAELADTI">
                         <i className="fa fa-facebook" />
                       </a>
                     </li>
                     <li>
-                      <a href="//pinterest.com">
+                      <a href="https://www.pinterest.com.mx/TAELADMX/_created/">
                         <i className="fa fa-pinterest-p" />
                       </a>
                     </li>
+
                     <li>
-                      <a href="//thumblr.com">
-                        <i className="fa fa-tumblr" />
-                      </a>
-                    </li>
-                    <li>
-                      <a href="//vimeo.com">
-                        <i className="fa fa-vimeo" />
-                      </a>
-                    </li>
-                    <li>
-                      <a href="//twitter.com">
+                      <a href="https://twitter.com/TAELAD2?s=09">
                         <i className="fa fa-twitter" />
                       </a>
                     </li>
@@ -124,31 +144,31 @@ const Contact = () => {
             <div className="col-12 col-lg-8 col-md-7">
               <div className="contact-form">
                 <div className="contact-title mb-30">
-                  <h2>Get In Touch</h2>
+                  <h2>Ponte en Contacto</h2>
                 </div>
                 <form className="contact-form-style">
                   <div className="row">
                     <div className="col-lg-6">
-                      <input name="name" placeholder="Name*" type="text" />
+                      <input name="name" placeholder="Nombre*" type="text" />
                     </div>
                     <div className="col-lg-6">
-                      <input name="email" placeholder="Email*" type="email" />
+                      <input name="email" placeholder="Correo*" type="email" />
                     </div>
                     <div className="col-lg-12">
                       <input
                         name="subject"
-                        placeholder="Subject*"
+                        placeholder="Asunto*"
                         type="text"
                       />
                     </div>
                     <div className="col-lg-12">
                       <textarea
                         name="message"
-                        placeholder="Your Message*"
+                        placeholder="Tu Mensaje*"
                         defaultValue={""}
                       />
                       <button className="submit" type="submit">
-                        SEND
+                        Enviar
                       </button>
                     </div>
                   </div>
