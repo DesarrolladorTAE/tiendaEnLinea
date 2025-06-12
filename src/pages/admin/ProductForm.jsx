@@ -224,7 +224,7 @@ function ProductForm() {
         setError("Error de conexión con el servidor.");
       }
     }
-    console.log("IVA ENVIADO:", data.iva);
+    // console.log("IVA ENVIADO:", data.iva);
   };
 
   return (

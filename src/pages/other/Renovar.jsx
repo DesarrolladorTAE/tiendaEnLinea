@@ -8,7 +8,7 @@ const Renovar = () => {
   const handlePago = async (plan) => {
     setLoading(true);
     try {
-      console.log("Plan seleccionado:", plan);
+      // console.log("Plan seleccionado:", plan);
       const res = await axiosClient.post("/checkout", {
         nombre_plan: plan.name,
         precio: plan.selectedPrice,

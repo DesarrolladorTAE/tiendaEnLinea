@@ -12,7 +12,7 @@ const ProductDetails = () => {
     useEffect(() => {
         const fetchProduct = async () => {
             try {
-                console.log(`🔍 Obteniendo producto con ID: ${id}`);
+                // console.log(`🔍 Obteniendo producto con ID: ${id}`);
 
                 const headers = {
                     "X-Store-Name": "Tienda Zapatos MX",  // ❗ Reemplaza con el nombre de la tienda
@@ -20,7 +20,7 @@ const ProductDetails = () => {
                 };
 
                 const response = await axios.get(`https://mitiendaenlineamx.com.mx/api/products/${id}`, { headers });
-                console.log("✅ Producto obtenido:", response.data);
+                // console.log("✅ Producto obtenido:", response.data);
 
                 setProduct(response.data);
             } catch (error) {
