@@ -948,6 +948,14 @@ const LandingPage = () => {
                               </li>
                             ))}
                           </ul>
+                          <a
+                            href={`https://wa.me/527442188925?text=Hola, estoy interesado en el plan: *${plan.name} - ${formattedPrice}*`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-success btn-sm w-100 mt-auto d-flex align-items-center justify-content-center gap-2"
+                          >
+                            <i className="bi bi-whatsapp"></i> Más información
+                          </a>
                         </div>
                       </div>
                     );
