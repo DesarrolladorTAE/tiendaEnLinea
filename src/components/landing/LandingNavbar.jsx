@@ -19,10 +19,12 @@ import MenuIcon from "@mui/icons-material/Menu";
 import HomeIcon from "@mui/icons-material/Home";
 import AppsIcon from "@mui/icons-material/Apps";
 import InfoIcon from "@mui/icons-material/Info";
+import ContactMailIcon from "@mui/icons-material/ContactMail";
 import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
 import EmojiPeopleIcon from "@mui/icons-material/EmojiPeople";
 import HelpIcon from "@mui/icons-material/Help";
 import { Link as RouterLink } from "react-router-dom";
+import { icon } from "leaflet";
 
 const sections = [
   { label: "Inicio", href: "#home", icon: <HomeIcon /> },
@@ -35,6 +37,8 @@ const sections = [
   },
   { label: "Testimonios", href: "#testimonials", icon: <EmojiPeopleIcon /> },
   { label: "FAQ", href: "#faqs", icon: <HelpIcon /> },
+  { label: "Contactanos", href: "#contact", icon: <ContactMailIcon /> },
+
 ];
 
 const LandingNavbar = () => {

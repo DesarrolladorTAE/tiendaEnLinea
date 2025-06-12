@@ -9,6 +9,7 @@ import LandingAboutSection from "../../components/landing/LandingAboutSection";
 import LandingPricingSection from "../../components/landing/LandingPricingSection";
 import LandingTestimonialsSection from "../../components/landing/LandingTestimonialsSection";
 import LandingFAQSection from "../../components/landing/LandingFAQSection";
+import LandingContactSection from "../../components/landing/LandingContactSection";
 import LandingFooterSection from "../../components/landing/LandingFooterSection";
 
 const LandingPage = () => {
@@ -48,6 +49,10 @@ const LandingPage = () => {
 
       <Box id="faqs">
         <LandingFAQSection />
+      </Box>
+
+      <Box id="contact">  
+        <LandingContactSection/>
       </Box>
 
       <LandingFooterSection />

@@ -54,7 +54,7 @@ const LandingFooterSection = ({ showLinks = true }) => {
                 <Link href="/terminos-condiciones" color="inherit" underline="hover">
                   Términos y Condiciones
                 </Link>
-                <Link href="/contact" color="inherit" underline="hover">
+                <Link href="#contact" color="inherit" underline="hover">
                   Contáctanos
                 </Link>
               </Box>
