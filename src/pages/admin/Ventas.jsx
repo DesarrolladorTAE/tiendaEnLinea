@@ -25,11 +25,12 @@ import {
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import EditNoteIcon from "@mui/icons-material/EditNote";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import axiosClient from "../../config/axiosClient";
 import { RiFileExcel2Fill } from "react-icons/ri";
 import toast from "react-hot-toast";
 
-const ITEMS_PER_PAGE = 7;
+const ITEMS_PER_PAGE = 20;
 
 export default function Ventas() {
   const [ventas, setVentas] = useState([]);
@@ -65,6 +66,90 @@ export default function Ventas() {
     if (fechaFin) params.fecha_fin = fechaFin;
     if (filtroPuntoVenta) params.pos_location_id = filtroPuntoVenta;
     fetchVentas(params);
+  };
+
+  // Función para abrir factura PDF
+  const handleOpenInvoice = async (invoiceId) => {
+    try {
+      // Mostrar loading toast
+      const loadingToast = toast.loading("Cargando factura...");
+      
+      // Usar axios para mejor manejo de blobs
+      const response = await axiosClient.post(
+        "https://taeconta.com/api/public/api/factura/pdf",
+        { id: invoiceId },
+        {
+          responseType: 'blob', // Importante: especificar que esperamos un blob
+          headers: {
+            'Accept': 'application/pdf',
+          }
+        }
+      );
+
+      // El response.data ya es un blob cuando responseType es 'blob'
+      const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
+      
+      // Crear URL del blob
+      const pdfUrl = window.URL.createObjectURL(pdfBlob);
+      
+      // Dismiss loading toast
+      toast.dismiss(loadingToast);
+      
+      // Intentar abrir en nueva pestaña
+      const newWindow = window.open(pdfUrl, "_blank");
+      
+      if (newWindow) {
+        // Si se abrió correctamente
+        toast.success("Factura cargada correctamente");
+        
+        // Liberar la URL después de un tiempo
+        setTimeout(() => {
+          window.URL.revokeObjectURL(pdfUrl);
+        }, 10000); // 10 segundos para dar tiempo a que cargue
+      } else {
+        // Si el navegador bloqueó la ventana emergente, descargar el archivo
+        toast.success("Descargando factura...");
+        
+        const link = document.createElement('a');
+        link.href = pdfUrl;
+        link.download = `factura_${invoiceId}.pdf`;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Liberar la URL
+        setTimeout(() => {
+          window.URL.revokeObjectURL(pdfUrl);
+        }, 1000);
+      }
+      
+    } catch (error) {
+      console.error("Error al abrir factura:", error);
+      
+      // Si el error es por CORS o configuración, intentar abrir en nueva ventana directamente
+      if (error.response && error.response.status === 0) {
+        toast.error("Error de CORS. Intentando método alternativo...");
+        
+        // Método alternativo: crear un formulario y enviarlo
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'https://taeconta.com/api/public/api/factura/pdf';
+        form.target = '_blank';
+        
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'id';
+        input.value = invoiceId;
+        
+        form.appendChild(input);
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+      } else {
+        toast.error("Error al cargar la factura");
+      }
+    }
   };
 
   useEffect(() => {
@@ -206,7 +291,7 @@ export default function Ventas() {
     if (fechaFin) params.fecha_fin = fechaFin;
     if (filtroPuntoVenta) params.pos_location_id = filtroPuntoVenta;
 
-    console.log("📤 Enviando filtros a exportar:", params);
+    // console.log("📤 Enviando filtros a exportar:", params);
 
     axiosClient
       .get("/admin/ventas/excel", {
@@ -363,12 +448,27 @@ export default function Ventas() {
                       <TableCell>{venta.pos_location?.name || "-"}</TableCell>
                       <TableCell>{venta.status === "paid" ? "Pagado" : venta.status}</TableCell>
                       <TableCell align="center">
-                        <IconButton
-                          color="secondary"
-                          onClick={() => window.open(`/api/sales/${venta.id}/ticket.pdf`, "_blank")}
-                        >
-                          <EditNoteIcon fontSize="small" />
-                        </IconButton>
+                        <Stack direction="row" spacing={0.5} justifyContent="center">
+                          <Tooltip title="Ver ticket" arrow>
+                            <IconButton
+                              color="secondary"
+                              onClick={() => window.open(`/api/sales/${venta.id}/ticket.pdf`, "_blank")}
+                            >
+                              <EditNoteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          
+                          {venta.invoice_id && (
+                            <Tooltip title="Ver factura" arrow>
+                              <IconButton
+                                color="primary"
+                                onClick={() => handleOpenInvoice(venta.invoice_id)}
+                              >
+                                <PictureAsPdfIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </Stack>
                       </TableCell>
                     </TableRow>
                   ))}

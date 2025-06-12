@@ -16,7 +16,7 @@ const Checkout = () => {
   const { cartItems } = useSelector((state) => state.cart);
 
   useEffect(() => {
-    console.log("Item", cartItems);
+    // console.log("Item", cartItems);
   }, [cartItems]);
 
   const handlePlaceOrder = async () => {

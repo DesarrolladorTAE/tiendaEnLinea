@@ -54,7 +54,7 @@ export default function StockEntryForm() {
     axiosClient
       .get("/admin/buscar/producto", { params: { search: searchTerm } })
       .then((res) => {
-        console.log("📦 Productos recibidos:", res.data);
+        // console.log("📦 Productos recibidos:", res.data);
         setProducts(res.data);
       })
       .catch(console.error)
@@ -103,10 +103,10 @@ export default function StockEntryForm() {
 
     if (items.length === 0) return toast.error("Agrega al menos un producto con cantidad válida.");
 
-    console.log("🧾 Payload a enviar:", {
-      uuid_invoice: uuidInvoice,
-      items,
-    });
+    // console.log("🧾 Payload a enviar:", {
+    //   uuid_invoice: uuidInvoice,
+    //   items,
+    // });
 
     setLoading(true);
 
