@@ -73,7 +73,7 @@ export default function Ventas() {
     try {
       // Mostrar loading toast
       const loadingToast = toast.loading("Cargando factura...");
-      
+
       // Usar axios para mejor manejo de blobs
       const response = await axiosClient.post(
         "https://taeconta.com/api/public/api/factura/pdf",
@@ -88,20 +88,20 @@ export default function Ventas() {
 
       // El response.data ya es un blob cuando responseType es 'blob'
       const pdfBlob = new Blob([response.data], { type: 'application/pdf' });
-      
+
       // Crear URL del blob
       const pdfUrl = window.URL.createObjectURL(pdfBlob);
-      
+
       // Dismiss loading toast
       toast.dismiss(loadingToast);
-      
+
       // Intentar abrir en nueva pestaña
       const newWindow = window.open(pdfUrl, "_blank");
-      
+
       if (newWindow) {
         // Si se abrió correctamente
         toast.success("Factura cargada correctamente");
-        
+
         // Liberar la URL después de un tiempo
         setTimeout(() => {
           window.URL.revokeObjectURL(pdfUrl);
@@ -109,7 +109,7 @@ export default function Ventas() {
       } else {
         // Si el navegador bloqueó la ventana emergente, descargar el archivo
         toast.success("Descargando factura...");
-        
+
         const link = document.createElement('a');
         link.href = pdfUrl;
         link.download = `factura_${invoiceId}.pdf`;
@@ -117,31 +117,31 @@ export default function Ventas() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        
+
         // Liberar la URL
         setTimeout(() => {
           window.URL.revokeObjectURL(pdfUrl);
         }, 1000);
       }
-      
+
     } catch (error) {
       console.error("Error al abrir factura:", error);
-      
+
       // Si el error es por CORS o configuración, intentar abrir en nueva ventana directamente
       if (error.response && error.response.status === 0) {
         toast.error("Error de CORS. Intentando método alternativo...");
-        
+
         // Método alternativo: crear un formulario y enviarlo
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = 'https://taeconta.com/api/public/api/factura/pdf';
         form.target = '_blank';
-        
+
         const input = document.createElement('input');
         input.type = 'hidden';
         input.name = 'id';
         input.value = invoiceId;
-        
+
         form.appendChild(input);
         document.body.appendChild(form);
         form.submit();
@@ -452,12 +452,19 @@ export default function Ventas() {
                           <Tooltip title="Ver ticket" arrow>
                             <IconButton
                               color="secondary"
-                              onClick={() => window.open(`/api/sales/${venta.id}/ticket.pdf`, "_blank")}
+                              onClick={() => {
+                                const baseUrl = window.location.origin.includes("localhost")
+                                  ? "https://mitiendaenlineamx.com.mx"
+                                  : window.location.origin;
+
+                                window.open(`${baseUrl}/api/sales/${venta.id}/ticket.pdf`, "_blank");
+                              }}
                             >
                               <EditNoteIcon fontSize="small" />
                             </IconButton>
+
                           </Tooltip>
-                          
+
                           {venta.invoice_id && (
                             <Tooltip title="Ver factura" arrow>
                               <IconButton

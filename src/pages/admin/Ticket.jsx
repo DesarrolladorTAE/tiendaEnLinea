@@ -23,6 +23,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
   const [openPreview, setOpenPreview] = useState(false);
   const [openHelp, setOpenHelp] = useState(false);
   const [loading, setLoading] = useState(true);
+  const API_BASE = "https://mitiendaenlineamx.com.mx";
 
   useEffect(() => {
     axiosClient.get('/ticket-view')
@@ -35,7 +36,8 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           mensaje_2: ticket.mensaje_2 || '',
           qr_factura: !!ticket.qr_factura,
           qr_sitio: !!ticket.qr_sitio,
-          logo_preview: ticket.logo ? `/storage/${ticket.logo}?t=${Date.now()}` : ''
+          logo_preview: ticket.logo ? `${API_BASE}/storage/${ticket.logo}?t=${Date.now()}` : ''
+
 
         }));
       })
@@ -112,7 +114,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         qr_factura: !!ticket.qr_factura,
         qr_sitio: !!ticket.qr_sitio,
         logo: null,
-        logo_preview: ticket.logo ? `/storage/${ticket.logo}?t=${Date.now()}` : ''
+        logo_preview: ticket.logo ? `${API_BASE}/storage/${ticket.logo}?t=${Date.now()}` : ''
       }));
 
       showSuccess('✅ Ticket actualizado correctamente');
