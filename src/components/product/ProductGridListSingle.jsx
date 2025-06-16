@@ -25,6 +25,8 @@ const ProductGridListSingle = ({
   const finalDiscountedPrice = +(discountedPrice * currency.currencyRate).toFixed(2);
   const dispatch = useDispatch();
 
+  const IMAGE_BASE = "https://mitiendaenlineamx.com.mx/storage/";
+
   const handleAddToWhatsapp = () => {
     const productToAdd = {
       id: product.id,
@@ -41,9 +43,12 @@ const ProductGridListSingle = ({
         <div className="product-img">
           <div onClick={() => setModalShow(true)} style={{ cursor: "pointer", height: "100%" }}>
             {/* <Link to={ "/product/" + product.id}> */}
-            <img className="default-img" src={product.image[0]} alt="" />
+            <img className="default-img" src={`${IMAGE_BASE}${product.image[0]}`} alt={product.name} />
+
+
             {product.image.length > 1 ? (
-              <img className="hover-img" src={product.image[1]} alt="" />
+              <img className="hover-img" src={`${IMAGE_BASE}${product.image[1]}`} alt={product.name} />
+
             ) : (
               ""
             )}
