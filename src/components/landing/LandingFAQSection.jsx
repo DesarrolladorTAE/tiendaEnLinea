@@ -23,12 +23,12 @@ const faqs = [
   {
     question: "💳 ¿Qué métodos de pago aceptan?",
     answer:
-      "Aceptamos tarjetas de crédito, débito y monederos electrónicos como Conekta para una experiencia sin fricciones."
+      "Aceptamos tranferencias y Depositos en Bancos de Confianza como lo son BBVA y Scotiabank."
   },
   {
     question: "⏱️ ¿Las recargas son instantáneas?",
     answer:
-      "Sí, las recargas se procesan en tiempo real y recibirás un comprobante electrónico al instante."
+      "Sí, las recargas se procesan en tiempo real y podras imprimir, descargar o enviar via Whatsapp en el ticket al instante."
   },
   {
     question: "🔐 ¿Es seguro usar la plataforma?",
@@ -43,12 +43,12 @@ const faqs = [
   {
     question: "📊 ¿La plataforma incluye reportes?",
     answer:
-      "¡Sí! Podrás consultar reportes de ventas, historial de recargas y más desde tu panel de usuario o administrador."
+      "¡Sí! Podrás consultar reportes de ventas, historial de recargas y más."
   },
   {
     question: "🆓 ¿Ofrecen algún plan gratuito?",
     answer:
-      "Sí. Te damos 14 días de prueba gratis para que explores todas las funcionalidades antes de elegir un plan de pago."
+      "No, TeLoRecargo es una plataforma libre de ataduras, tu decides cuando empezar. Recuerda que tu eres tu propio jefe."
   }
 ];
 

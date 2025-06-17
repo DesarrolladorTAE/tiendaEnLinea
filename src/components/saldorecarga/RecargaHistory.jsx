@@ -37,26 +37,83 @@ const estados = [
   { value: "pendiente", label: "Pendiente" },
   { value: "confirmado", label: "Confirmado" },
   { value: "rechazada", label: "Rechazada" },
-  { value: "facturada", label: "Facturada" }, // ✅ NUEVO
+  { value: "facturada", label: "Facturada" },
 ];
+
+// Arreglo de meses y años para el filtro
+const meses = [
+  { value: "", label: "Todos" },
+  { value: 0, label: "Enero" },
+  { value: 1, label: "Febrero" },
+  { value: 2, label: "Marzo" },
+  { value: 3, label: "Abril" },
+  { value: 4, label: "Mayo" },
+  { value: 5, label: "Junio" },
+  { value: 6, label: "Julio" },
+  { value: 7, label: "Agosto" },
+  { value: 8, label: "Septiembre" },
+  { value: 9, label: "Octubre" },
+  { value: 10, label: "Noviembre" },
+  { value: 11, label: "Diciembre" },
+];
+
+const anios = (() => {
+  const ahora = new Date().getFullYear();
+  return [
+    { value: "", label: "Todos" },
+    ...Array.from({ length: 5 }, (_, i) => ({
+      value: ahora - i,
+      label: ahora - i,
+    })),
+  ];
+})();
+
+function extraerNombreArchivoDesdeUrl(url, fallback = "archivo.pdf") {
+  if (!url) return fallback;
+  try {
+    const partes = url.split("/");
+    const nombre = partes[partes.length - 1];
+    return nombre || fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
 
 const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
   const [pagina, setPagina] = useState(0);
   const [comprobanteSeleccionado, setComprobanteSeleccionado] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [filtros, setFiltros] = useState({ estado: "", monto: "" });
+  const [filtros, setFiltros] = useState({
+    estado: "",
+    monto: "",
+    mes: "",
+    anio: "",
+  });
   const [infoOpen, setInfoOpen] = useState(false);
   const [timbradoModalOpen, setTimbradoModalOpen] = useState(false);
   const [compraATimbrar, setCompraATimbrar] = useState(null);
   const [modalPDF, setModalPDF] = useState({ open: false, url: "" });
   const [modalXML, setModalXML] = useState({ open: false, url: "" });
 
+  // Filtro por estado, monto, mes y año
   const filtrarCompras = () => {
     return historyFiltrada.filter((c) => {
       const pasaEstado = !filtros.estado || c.status === filtros.estado;
       const pasaMonto =
         !filtros.monto || parseFloat(c.monto) === parseFloat(filtros.monto);
-      return pasaEstado && pasaMonto;
+
+      let pasaMes = true;
+      let pasaAnio = true;
+      if (filtros.mes !== "") {
+        const fecha = new Date(c.created_at);
+        pasaMes = fecha.getMonth() === Number(filtros.mes);
+      }
+      if (filtros.anio !== "") {
+        const fecha = new Date(c.created_at);
+        pasaAnio = fecha.getFullYear() === Number(filtros.anio);
+      }
+
+      return pasaEstado && pasaMonto && pasaMes && pasaAnio;
     });
   };
 
@@ -92,7 +149,7 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
   };
 
   const handleLimpiarFiltros = () => {
-    setFiltros({ estado: "", monto: "" });
+    setFiltros({ estado: "", monto: "", mes: "", anio: "" });
     setPagina(0);
   };
 
@@ -146,6 +203,36 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
             fullWidth
             size="small"
           />
+          <TextField
+            select
+            label="Mes"
+            name="mes"
+            value={filtros.mes}
+            onChange={handleFiltro}
+            fullWidth
+            size="small"
+          >
+            {meses.map((op) => (
+              <MenuItem key={op.value} value={op.value}>
+                {op.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Año"
+            name="anio"
+            value={filtros.anio}
+            onChange={handleFiltro}
+            fullWidth
+            size="small"
+          >
+            {anios.map((op) => (
+              <MenuItem key={op.value} value={op.value}>
+                {op.label}
+              </MenuItem>
+            ))}
+          </TextField>
           <Button variant="outlined" onClick={handleLimpiarFiltros}>
             Limpiar
           </Button>
@@ -259,18 +346,31 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
                                 size="small"
                                 sx={{ backgroundColor: "error.main" }}
                                 onClick={() => {
-                                  setModalPDF({ open: true, url: r.pdf_url });
+                                  setModalPDF({
+                                    open: true,
+                                    url: r.pdf_url,
+                                    nombre: extraerNombreArchivoDesdeUrl(
+                                      r.pdf_url,
+                                      "factura.pdf"
+                                    ),
+                                  });
                                 }}
                               >
                                 PDF
                               </Button>
-
                               <Button
                                 variant="contained"
                                 size="small"
                                 sx={{ backgroundColor: "success.main" }}
                                 onClick={() =>
-                                  setModalXML({ open: true, url: r.xml_url })
+                                  setModalXML({
+                                    open: true,
+                                    url: r.xml_url,
+                                    nombre: extraerNombreArchivoDesdeUrl(
+                                      r.xml_url,
+                                      "factura.xml"
+                                    ),
+                                  })
                                 }
                               >
                                 XML
@@ -404,15 +504,15 @@ const RecargaHistory = ({ historyFiltrada, fetchHistory }) => {
       <ModalPDFPreview
         open={modalPDF.open}
         pdfUrl={modalPDF.url}
-        onClose={() => setModalPDF({ open: false, url: "" })}
-        nombreArchivo="factura.pdf"
+        onClose={() => setModalPDF({ open: false, url: "", nombre: "" })}
+        nombreArchivo={modalPDF.nombre || "factura.pdf"}
       />
 
       <ModalXMLPreview
         open={modalXML.open}
         xmlUrl={modalXML.url}
-        onClose={() => setModalXML({ open: false, url: "" })}
-        nombreArchivo="factura.xml"
+        onClose={() => setModalXML({ open: false, url: "", nombre: "" })}
+        nombreArchivo={modalXML.nombre || "factura.xml"}
       />
 
       {/* Dialog de información para facturación */}

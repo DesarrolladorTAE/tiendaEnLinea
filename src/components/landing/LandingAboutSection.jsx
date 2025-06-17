@@ -3,11 +3,11 @@ import { Box, Grid, Typography } from "@mui/material";
 
 const steps = [
   { emoji: "🔐", title: "Inicia sesión", desc: "Accede a tu cuenta o crea una en segundos." },
-  { emoji: "📇", title: "Elige un contacto", desc: "Selecciona un número o agrega uno nuevo." },
   { emoji: "🎁", title: "Selecciona un paquete", desc: "Escoge entre muchas opciones de recarga." },
-  { emoji: "💳", title: "Elige tu método de pago", desc: "Tarjeta, monedero o transferencia." },
-  { emoji: "🧾", title: "Recibe tu comprobante", desc: "Obtén un ticket digital al instante." },
+  { emoji: "📇", title: "Elige un contacto", desc: "Selecciona un número o crea uno nuevo." },
+  { emoji: "💳", title: "Verifica tu saldo", desc: "Asegurate que cuentes con suficiente saldo." },
   { emoji: "✅", title: "Recarga completada", desc: "El saldo se aplica en tiempo real." },
+  { emoji: "🧾", title: "Descarga tu comprobante", desc: "Obtén un ticket digital en Ventas." },
   { emoji: "🛟", title: "Soporte disponible", desc: "¿Dudas? Te apoyamos de inmediato." },
 ];
 

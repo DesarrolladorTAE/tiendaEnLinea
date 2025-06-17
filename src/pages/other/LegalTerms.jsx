@@ -32,18 +32,6 @@ const LegalTerms = () => {
             <Button
               component={RouterLink}
               to="/"
-              sx={{
-                color: "#fff",
-                fontWeight: "bold",
-                textTransform: "none",
-                mr: 2,
-              }}
-            >
-              Inicio
-            </Button>
-            <Button
-              component={RouterLink}
-              to="/loginmui"
               variant="contained"
               sx={{
                 bgcolor: "#00B4D8",
@@ -53,7 +41,7 @@ const LegalTerms = () => {
                 "&:hover": { bgcolor: "#009ec1" },
               }}
             >
-              Iniciar sesión / Registrarme
+              Inicio a TeLoRecargo
             </Button>
           </Box>
         </Toolbar>

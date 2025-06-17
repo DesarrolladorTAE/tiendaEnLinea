@@ -1,34 +1,57 @@
-import React from "react";
-import {
-  Box,
-  Grid,
-  Typography,
-  TextField,
-  Button,
-  Paper,
-} from "@mui/material";
+import React, { useState } from "react";
+import { Box, Grid, Typography, TextField, Button, Paper } from "@mui/material";
 import {
   Email as EmailIcon,
   Phone as PhoneIcon,
   Room as RoomIcon,
   Send as SendIcon,
 } from "@mui/icons-material";
-
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import "leaflet/dist/leaflet.css";
-import L from "leaflet";
-
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl:
-    "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-});
+import axios from "../../axiosConfig";
+import Swal from "sweetalert2";
 
 const LandingContactSection = () => {
+  const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [respuesta, setRespuesta] = useState(null);
+
+  const handleSubmit = async () => {
+    setEnviando(true);
+
+    try {
+      await axios.post("/contacto", {
+        nombre,
+        email,
+        telefono,
+        mensaje,
+      });
+
+      Swal.fire({
+        icon: "success",
+        title: "¡Mensaje enviado!",
+        text: "Nos pondremos en contacto contigo pronto.",
+        confirmButtonColor: "#0077B6",
+      });
+
+      setNombre("");
+      setEmail("");
+      setTelefono("");
+      setMensaje("");
+    } catch (error) {
+      console.error(error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Hubo un problema al enviar tu mensaje. Inténtalo más tarde.",
+        confirmButtonColor: "#0077B6",
+      });
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   return (
     <Box
       id="contact"
@@ -117,6 +140,8 @@ const LandingContactSection = () => {
                 label="Nombre"
                 fullWidth
                 variant="filled"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
                 sx={{
                   backgroundColor: "#ffffffdd",
                   borderRadius: 1,
@@ -126,6 +151,8 @@ const LandingContactSection = () => {
                 label="Email"
                 fullWidth
                 variant="filled"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 sx={{
                   backgroundColor: "#ffffffdd",
                   borderRadius: 1,
@@ -135,6 +162,8 @@ const LandingContactSection = () => {
                 label="Teléfono"
                 fullWidth
                 variant="filled"
+                value={telefono}
+                onChange={(e) => setTelefono(e.target.value)}
                 sx={{
                   backgroundColor: "#ffffffdd",
                   borderRadius: 1,
@@ -146,6 +175,8 @@ const LandingContactSection = () => {
                 rows={4}
                 fullWidth
                 variant="filled"
+                value={mensaje}
+                onChange={(e) => setMensaje(e.target.value)}
                 sx={{
                   backgroundColor: "#ffffffdd",
                   borderRadius: 1,
@@ -153,6 +184,8 @@ const LandingContactSection = () => {
               />
               <Button
                 variant="contained"
+                onClick={handleSubmit}
+                disabled={enviando}
                 endIcon={<SendIcon />}
                 sx={{
                   backgroundColor: "#023E8A",
@@ -166,35 +199,10 @@ const LandingContactSection = () => {
                   },
                 }}
               >
-                Enviar Mensaje
+                {enviando ? "Enviando..." : "Enviar Mensaje"}
               </Button>
             </Box>
           </Paper>
-        </Grid>
-
-        {/* Mapa */}
-        <Grid item xs={12} md={10}>
-          <Box
-            sx={{
-              height: 350,
-              mt: 6,
-              borderRadius: 4,
-              overflow: "hidden",
-              boxShadow: 3,
-            }}
-          >
-            <MapContainer
-              center={[16.8531, -99.8237]}
-              zoom={15}
-              scrollWheelZoom={false}
-              style={{ height: "100%", width: "100%" }}
-            >
-              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              <Marker position={[16.8531, -99.8237]}>
-                <Popup>📍 Aquí nos encuentras</Popup>
-              </Marker>
-            </MapContainer>
-          </Box>
         </Grid>
       </Grid>
     </Box>
