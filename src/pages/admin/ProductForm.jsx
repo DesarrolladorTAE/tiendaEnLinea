@@ -199,6 +199,21 @@ function ProductForm() {
       }
 
       if (id) {
+
+        formData.forEach((value, key) => {
+          // Si ya existe la clave (para campos múltiples como checkboxes), conviértelo en array
+          if (formDataObj[key]) {
+            if (Array.isArray(formDataObj[key])) {
+              formDataObj[key].push(value);
+            } else {
+              formDataObj[key] = [formDataObj[key], value];
+            }
+          } else {
+            formDataObj[key] = value;
+          }
+        });
+
+        console.log('formData JSON:', JSON.stringify(formDataObj, null, 2));
         formData.append("_method", "PUT"); // Laravel lo verá como PUT
         await axiosClient.post(`/admin/products/${id}`, formData, {
           headers: {
@@ -267,9 +282,8 @@ function ProductForm() {
               </label>
               <select
                 id="iva"
-                className={`form-control bg-secondary border-secondary ${
-                  errors?.iva ? "is-invalid" : ""
-                }`}
+                className={`form-control bg-secondary border-secondary ${errors?.iva ? "is-invalid" : ""
+                  }`}
                 {...register("iva", { required: "La tasa de IVA es obligatoria" })}
               >
                 <option value="">Selecciona una tasa</option>
