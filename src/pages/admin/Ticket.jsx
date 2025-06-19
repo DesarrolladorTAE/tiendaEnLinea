@@ -28,6 +28,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     qr_sitio: false,
     logo: null,
     logo_preview: "",
+    eliminar_logo: false, // ✅ nuevo campo
   });
   const [open, setOpen] = useState(false);
   const [errors, setErrors] = useState({});
@@ -122,6 +123,8 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         form.append(key, value ?? "");
       }
     });
+    form.append("eliminar_logo", formData.eliminar_logo ? "1" : "0");
+
 
     try {
       await axiosClient.post("/ticket", form, {
@@ -141,6 +144,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         logo_preview: ticket.logo
           ? `${API_BASE}/storage/${ticket.logo}?t=${Date.now()}`
           : "",
+        eliminar_logo: false, // ✅ limpiar la bandera
       }));
 
       showSuccess("✅ Ticket actualizado correctamente");
@@ -325,11 +329,34 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               onChange={handleChange}
             />
           </Button>
+          <Button
+            variant="text"
+            color="error"
+            fullWidth
+            onClick={() => {
+              const confirmado = window.confirm("¿Estás seguro de que deseas eliminar el logo actual?");
+              if (confirmado) {
+                setFormData((prev) => ({
+                  ...prev,
+                  logo: null,
+                  logo_preview: "",
+                  eliminar_logo: true,
+                }));
+                setIsDirty(true);
+                showSuccess("✅ Logo marcado para eliminación. Guarda cambios para aplicar.");
+              }
+            }}
+            disabled={!formData.logo_preview && !formData.logo}
+          >
+            Eliminar logo actual
+          </Button>
+
           {errors.logo && (
             <Typography color="error" fontSize={13}>
               {errors.logo}
             </Typography>
           )}
+
 
           <Divider sx={{ my: 2 }} />
 
@@ -361,6 +388,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               >
                 Vista Previa
               </Button>
+
             </Box>
           </Box>
         </Box>
