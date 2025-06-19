@@ -121,11 +121,20 @@ const ProductList = () => {
             onClick={cargarCSV}
             disabled={cargandoCSV}
           >
-            {cargandoCSV ? 'Importando CSV...' : '📤 Importar productos CSV'}
+            {cargandoCSV ? "Importando CSV..." : "📤 Importar productos CSV"}
           </button>
 
-
+          <div className="mt-2">
+            <a
+              href="/assets/ejemploCSV/productos_diversos.csv"
+              download
+              className="text-decoration-underline text-info"
+            >
+              📄 Descargar CSV de ejemplo
+            </a>
+          </div>
         </div>
+
         <Link to="new" className="btn btn-outline-light d-flex align-items-center gap-2">
           <span className="fs-5">➕</span> Crear Producto
         </Link>
