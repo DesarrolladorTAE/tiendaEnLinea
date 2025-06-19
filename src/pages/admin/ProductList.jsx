@@ -1,17 +1,23 @@
-import React, { Suspense, lazy, useEffect, useState } from "react";
+import React, { Suspense, lazy, useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+import { Box, Button } from "@mui/material";
 const ProductImages = lazy(() => import("./ProductImages"));
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [cargandoCSV, setCargandoCSV] = useState(false)
 
   useEffect(() => {
+    verProducto()
+  }, []);
+
+  const verProducto = () => {
     axiosClient
       .get("/admin/products")
       .then((response) => {
@@ -22,7 +28,7 @@ const ProductList = () => {
         console.error("❌ Error al obtener productos:", error);
         setError(error.response?.data?.error || "Error desconocido");
       });
-  }, []);
+  }
 
   const handleDelete = (id) => {
     if (window.confirm("¿Estás seguro que deseas eliminar este producto?")) {
@@ -48,6 +54,49 @@ const ProductList = () => {
     );
   }
 
+  const fileInputRef = useRef();
+
+  const cargarCSV = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    console.log('file: ', file)
+
+    const formData = new FormData();
+    formData.append("archivo", file);
+    setCargandoCSV(true)
+    try {
+      const response = await axiosClient.post(
+        "https://mitiendaenlineamx.com.mx/api/cargar/importarDesdeCSV",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      ).then((res) => {
+        verProducto()
+        setCargandoCSV(false)
+        const mensaje = res?.data?.message || "✅ Archivo cargado correctamente.";
+        alert(mensaje);
+      });
+
+
+    } catch (error) {
+      console.error("❌ Error al cargar CSV:", error);
+      setCargandoCSV(false)
+
+      const mensaje =
+        error?.response?.data?.message ||
+        (typeof error?.message === "string" ? error.message : "Error inesperado al subir el archivo.");
+
+      alert("❌ Error al cargar CSV:\n" + mensaje);
+    }
+  };
+
   return (
     <div className="bg-dark text-white p-4 shadow rounded border border-light">
       <div className="d-flex justify-content-between align-items-center mb-4">
@@ -57,6 +106,35 @@ const ProductList = () => {
           </span>{" "}
           Lista de Productos
         </h2>
+
+        <div>
+          <input
+            type="file"
+            accept=".csv"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            style={{ display: "none" }}
+          />
+
+          <button
+            className="btn btn-warning me-2"
+            onClick={cargarCSV}
+            disabled={cargandoCSV}
+          >
+            {cargandoCSV ? "Importando CSV..." : "📤 Importar productos CSV"}
+          </button>
+
+          <div className="mt-2">
+            <a
+              href="/assets/ejemploCSV/productos_diversos.csv"
+              download
+              className="text-decoration-underline text-info"
+            >
+              📄 Descargar CSV de ejemplo
+            </a>
+          </div>
+        </div>
+
         <Link to="new" className="btn btn-outline-light d-flex align-items-center gap-2">
           <span className="fs-5">➕</span> Crear Producto
         </Link>
