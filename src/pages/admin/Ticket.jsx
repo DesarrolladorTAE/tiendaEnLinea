@@ -275,7 +275,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           />
 
           <Box display="flex" gap={3} mt={2}>
-            <FormControlLabel
+            {/* <FormControlLabel
               control={
                 <Checkbox
                   name="qr_factura"
@@ -284,7 +284,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                 />
               }
               label="QR Factura"
-            />
+            /> */}
             <FormControlLabel
               control={
                 <Checkbox
@@ -333,7 +333,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
           <Divider sx={{ my: 2 }} />
 
-          <Box display="flex" gap={2} fullWidth>
+          <Box display="flex" gap={2}>
             <Box display="flex" gap={2}>
               <Button
                 type="submit"

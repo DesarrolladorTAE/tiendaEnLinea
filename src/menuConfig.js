@@ -4,9 +4,10 @@ const adminNavItems = [
   // { path: "/admin/etiquetas", label: "🏷️ Tags" },
   { path: "/admin/inventario", label: "🏬 Inventario" },
   { path: "/admin/pos", label: "🏬 Punto de Venta" },
-  { path: "/admin/ventas", label: "Historial de Ventas" },
-  { path: "/admin/compra", label: "Entradas Producto" },
-  // { path: "/admin/ticket", label: "📄Personaliza tu Ticket"},
+  { path: "/admin/ventas", label: "📚Historial de Ventas" },
+  { path: "/admin/compra", label: "📦Entradas Producto" },
+  { path: "/admin/ticket", label: "📄Personaliza tu Ticket"},
+  { path: "/admin/membresia", label: "📑Membresia"},
 ];
 
 export default adminNavItems;

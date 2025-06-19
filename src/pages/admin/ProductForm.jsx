@@ -200,20 +200,10 @@ function ProductForm() {
 
       if (id) {
 
-        formData.forEach((value, key) => {
-          // Si ya existe la clave (para campos múltiples como checkboxes), conviértelo en array
-          if (formDataObj[key]) {
-            if (Array.isArray(formDataObj[key])) {
-              formDataObj[key].push(value);
-            } else {
-              formDataObj[key] = [formDataObj[key], value];
-            }
-          } else {
-            formDataObj[key] = value;
-          }
-        });
+        for (let pair of formData.entries()) {
+          console.log(`${pair[0]}: ${pair[1]}`);
+        }
 
-        console.log('formData JSON:', JSON.stringify(formDataObj, null, 2));
         formData.append("_method", "PUT"); // Laravel lo verá como PUT
         await axiosClient.post(`/admin/products/${id}`, formData, {
           headers: {
