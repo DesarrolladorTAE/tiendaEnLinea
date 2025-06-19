@@ -35,7 +35,7 @@ const ticketHelpContent = {
   qr: {
     title: '� QR en el Ticket',
     details: [
-      'QR Factura: Enlace para que el cliente escanee y facture su compra.',
+      'QR Factura: Enlace para que el cliente escanee y facture su compra. "PRÓXIMAMENTE"',
       'QR Sitio Web: Enlace directo a tu página web o tienda en línea.',
       'Ambos códigos QR son opcionales y se muestran solo si los activas.',
     ],
