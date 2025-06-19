@@ -200,9 +200,22 @@ function ProductForm() {
 
       if (id) {
 
-        for (let pair of formData.entries()) {
-          console.log(`${pair[0]}: ${pair[1]}`);
+        const formDataObj = {};
+
+        for (let [key, value] of formData.entries()) {
+          // Manejar múltiples entradas (como arrays)
+          if (formDataObj[key]) {
+            if (Array.isArray(formDataObj[key])) {
+              formDataObj[key].push(value);
+            } else {
+              formDataObj[key] = [formDataObj[key], value];
+            }
+          } else {
+            formDataObj[key] = value;
+          }
         }
+
+        console.log(JSON.stringify(formDataObj, null, 2));
 
         formData.append("_method", "PUT"); // Laravel lo verá como PUT
         await axiosClient.post(`/admin/products/${id}`, formData, {
