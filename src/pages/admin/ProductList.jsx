@@ -126,7 +126,7 @@ const ProductList = () => {
 
           <div className="mt-2">
             <a
-              href="/assets/ejemploCSV/productos_diversos.csv"
+              href="/assets/ejemploCSV/CSVejemplo.csv"
               download
               className="text-decoration-underline text-info"
             >
