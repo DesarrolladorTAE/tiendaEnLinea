@@ -14,6 +14,7 @@ const Ventas = lazy(() => import("../pages/admin/Ventas"));
 const Entradas = lazy(() => import("../pages/admin/Entradas.jsx"));
 const Ticket = lazy (()=>  import("../pages/admin/Ticket.jsx"));
 const Membresia = lazy (() => import ("../pages/admin/Membresia.jsx"));
+const MiCuenta = lazy (() => import ("../pages/admin/MiCuenta.jsx"));
 
 export const adminRouteConfig = [
   { path: "", element: <Navigate to="products" replace /> },
@@ -30,6 +31,7 @@ export const adminRouteConfig = [
   { path: "ventas", element: <Ventas /> },
   { path: "compra", element: <Entradas /> },
   { path: "ticket", element: <Ticket/>},
-  { path: "membresia", element: <Membresia /> }
+  { path: "membresia", element: <Membresia /> },
+  { path: "micuenta", element: <MiCuenta /> }
 
 ];
