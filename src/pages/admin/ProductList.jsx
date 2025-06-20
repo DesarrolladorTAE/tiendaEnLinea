@@ -5,30 +5,29 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import { Box, Button } from "@mui/material";
+
 const ProductImages = lazy(() => import("./ProductImages"));
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
   const [error, setError] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [cargandoCSV, setCargandoCSV] = useState(false)
+  const [cargandoCSV, setCargandoCSV] = useState(false);
+  const fileInputRef = useRef();
 
   useEffect(() => {
-    verProducto()
+    verProducto();
   }, []);
 
   const verProducto = () => {
     axiosClient
       .get("/admin/products")
-      .then((response) => {
-        // console.log("Respuesta del backend:", response.data);
-        setProducts(response.data);
-      })
+      .then((response) => setProducts(response.data))
       .catch((error) => {
         console.error("❌ Error al obtener productos:", error);
         setError(error.response?.data?.error || "Error desconocido");
       });
-  }
+  };
 
   const handleDelete = (id) => {
     if (window.confirm("¿Estás seguro que deseas eliminar este producto?")) {
@@ -44,18 +43,6 @@ const ProductList = () => {
     }
   };
 
-  if (selectedProduct) {
-    return (
-      <div className="bg-dark text-white p-4">
-        <Suspense fallback={<p className="text-white">Cargando imágenes...</p>}>
-          <ProductImages productId={selectedProduct.id} onClose={() => setSelectedProduct(null)} />
-        </Suspense>
-      </div>
-    );
-  }
-
-  const fileInputRef = useRef();
-
   const cargarCSV = () => {
     fileInputRef.current.click();
   };
@@ -63,13 +50,13 @@ const ProductList = () => {
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    console.log('file: ', file)
 
     const formData = new FormData();
     formData.append("archivo", file);
-    setCargandoCSV(true)
+    setCargandoCSV(true);
+
     try {
-      const response = await axiosClient.post(
+      const res = await axiosClient.post(
         "https://mitiendaenlineamx.com.mx/api/cargar/importarDesdeCSV",
         formData,
         {
@@ -77,27 +64,28 @@ const ProductList = () => {
             "Content-Type": "multipart/form-data",
           },
         }
-      ).then((res) => {
-        verProducto()
-        setCargandoCSV(false)
-        const mensaje = res?.data?.message || "✅ Archivo cargado correctamente.";
-        alert(mensaje);
-      });
-
-
+      );
+      verProducto();
+      setCargandoCSV(false);
+      const mensaje = res?.data?.message || "✅ Archivo cargado correctamente.";
+      alert(mensaje);
     } catch (error) {
       console.error("❌ Error al cargar CSV:", error);
-      setCargandoCSV(false)
-
+      setCargandoCSV(false);
       const mensaje =
         error?.response?.data?.message ||
         (typeof error?.message === "string" ? error.message : "Error inesperado al subir el archivo.");
-
       alert("❌ Error al cargar CSV:\n" + mensaje);
     }
   };
 
-  return (
+  return selectedProduct ? (
+    <div className="bg-dark text-white p-4">
+      <Suspense fallback={<p className="text-white">Cargando imágenes...</p>}>
+        <ProductImages productId={selectedProduct.id} onClose={() => setSelectedProduct(null)} />
+      </Suspense>
+    </div>
+  ) : (
     <div className="bg-dark text-white p-4 shadow rounded border border-light">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="text-white">
@@ -163,13 +151,6 @@ const ProductList = () => {
                   <td>{product.has_variations ? "Con Variaciones" : `${product.stock ?? 0}`}</td>
                   <td className="text-center">
                     <div className="d-flex justify-content-center gap-2">
-                      {/* <Link
-                        to={`/product/${product.id}`}
-                        className="btn btn-sm btn-outline-info"
-                        title="Ver detalles"
-                      >
-                        🔍
-                      </Link> */}
                       <Link
                         to={`edit/${product.id}`}
                         className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
@@ -182,7 +163,7 @@ const ProductList = () => {
                       <button
                         className="btn btn-sm btn-outline-warning"
                         onClick={() => setSelectedProduct(product)}
-                        title="Agregar Imagenes al Producto"
+                        title="Agregar Imágenes al Producto"
                       >
                         <ImageIcon fontSize="small" />
                       </button>
@@ -201,7 +182,7 @@ const ProductList = () => {
               ))
             ) : (
               <tr>
-                <td colSpan="4" className="text-center text-muted py-3">
+                <td colSpan="5" className="text-center text-muted py-3">
                   No hay productos disponibles
                 </td>
               </tr>
