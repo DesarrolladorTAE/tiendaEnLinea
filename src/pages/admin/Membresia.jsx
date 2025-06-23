@@ -1,121 +1,63 @@
-import React from "react";
-import {
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Grid
-} from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+// src/pages/Suscripciones.jsx
+import React, { useState } from "react";
+import { Typography, Button, Stack } from "@mui/material";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import CreditCardOutlinedIcon from "@mui/icons-material/CreditCardOutlined";
+import CuadroPlan from "../../components/suscripciones/CuadroPlan";
+import CuadroComplementos from "../../components/suscripciones/CuadroComplementos";
+import ModalPlanes from "../../components/suscripciones/ModalPlanes";
+import TablaHistorial from "../../components/suscripciones/TablaHistorial";
 
-const Membresia = () => {
-  const plan = {
-    plan: "Premium",
-    vigenteHasta: "2025-06-30",
-    activo: true,
-    beneficios: [
-      "Comisión base: 5%",
-      "Facturación mensual incluida",
-      "Atención prioritaria"
-    ]
-  };
+export default function Suscripciones() {
+  const [modalOpen, setModalOpen] = useState(false);
 
-  const historial = [
-    {
-      fecha: "2025-05-20",
-      concepto: "Renovación Plan Premium",
-      monto: "600.00",
-      metodo: "Transferencia",
-      estatus: "Pagado"
-    },
-    {
-      fecha: "2025-04-20",
-      concepto: "Renovación Plan Premium",
-      monto: "600.00",
-      metodo: "Transferencia",
-      estatus: "Pagado"
-    }
-  ];
+  const handleVerPlanes = () => setModalOpen(true);
+  const handleComoFunciona = () =>
+    alert(
+      "Aquí podrás gestionar tu plan, complementos y ver tu historial de pagos. Tu suscripción te da acceso a servicios exclusivos, facturación y más."
+    );
 
   return (
-    <Grid container spacing={4}>
-      {/* Resumen del plan */}
-      <Grid item xs={12} md={6}>
-        <Card elevation={3}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>Tu Plan Actual</Typography>
-            <Typography variant="subtitle1">{plan.plan}</Typography>
-            <Typography variant="body2">Vigente hasta: {plan.vigenteHasta}</Typography>
-            <Typography variant="body2" color={plan.activo ? "green" : "red"}>
-              {plan.activo ? "Activo" : "Inactivo"}
-            </Typography>
-            <Button variant="contained" color="primary" sx={{ mt: 2 }}>
-              Cambiar o renovar plan
-            </Button>
-          </CardContent>
-        </Card>
-      </Grid>
+    <div className="p-4">
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <Typography variant="h5">
+          📦 Suscripciones
+        </Typography>
 
-      {/* Beneficios del plan */}
-      <Grid item xs={12} md={6}>
-        <Card elevation={3}>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>¿Qué incluye tu plan?</Typography>
-            <List>
-              {plan.beneficios.map((beneficio, i) => (
-                <ListItem key={i}>
-                  <ListItemIcon>
-                    <CheckCircleIcon color="success" />
-                  </ListItemIcon>
-                  <ListItemText primary={beneficio} />
-                </ListItem>
-              ))}
-            </List>
-          </CardContent>
-        </Card>
-      </Grid>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            startIcon={<CreditCardOutlinedIcon />}
+            onClick={handleVerPlanes}
+            color="primary"
+          >
+            Ver planes
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<InfoOutlinedIcon />}
+            onClick={handleComoFunciona}
+            color="secondary"
+          >
+            ¿Cómo funciona?
+          </Button>
+        </Stack>
+      </div>
 
-      {/* Historial de compras */}
-      <Grid item xs={12}>
-        <Typography variant="h6" gutterBottom>Historial de Compras</Typography>
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Fecha</TableCell>
-                <TableCell>Concepto</TableCell>
-                <TableCell>Monto</TableCell>
-                <TableCell>Método</TableCell>
-                <TableCell>Estatus</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {historial.map((item, i) => (
-                <TableRow key={i}>
-                  <TableCell>{item.fecha}</TableCell>
-                  <TableCell>{item.concepto}</TableCell>
-                  <TableCell>${item.monto}</TableCell>
-                  <TableCell>{item.metodo}</TableCell>
-                  <TableCell>{item.estatus}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Grid>
-    </Grid>
+      <div className="row">
+        <div className="col-md-6">
+          <CuadroPlan onRenovar={handleVerPlanes} />
+        </div>
+        <div className="col-md-6">
+          <CuadroComplementos onGestionar={handleVerPlanes} />
+        </div>
+      </div>
+
+      <ModalPlanes open={modalOpen} onClose={() => setModalOpen(false)} />
+
+      <div className="mt-4">
+        <TablaHistorial />
+      </div>
+    </div>
   );
-};
-
-export default Membresia;
+}
