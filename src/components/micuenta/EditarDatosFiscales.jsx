@@ -136,7 +136,7 @@ const EditarDatosFiscales = () => {
             InputProps={{ style: { color: "#fff" } }}
           />
           <TextField
-            label="Domicilio Fiscal (C.P.)"
+            label="Codigo Postal Fiscal"
             name="domicilio_fac"
             value={form.domicilio_fac}
             onChange={handleChange}
@@ -170,7 +170,7 @@ const EditarDatosFiscales = () => {
             InputLabelProps={{ style: { color: "#ccc" } }}
             InputProps={{ style: { color: "#fff" } }}
           />
-          <TextField
+          {/* <TextField
             label="Correo TAEConta (Opcional)"
             name="correo_tae"
             value={form.correo_tae}
@@ -186,7 +186,7 @@ const EditarDatosFiscales = () => {
             type="text"
             InputLabelProps={{ style: { color: "#ccc" } }}
             InputProps={{ style: { color: "#fff" } }}
-          />
+          /> */}
           <Button
             type="submit"
             variant="contained"

@@ -54,8 +54,8 @@ export default function MiCuenta() {
           >
             <Tab label="Datos personales" />
             <Tab label="Datos fiscales" />
-            <Tab label="Teléfono" />
-            <Tab label="Contraseña" />
+            {/* <Tab label="Teléfono" />
+            <Tab label="Contraseña" /> */}
           </Tabs>
         </Box>
 
@@ -66,12 +66,12 @@ export default function MiCuenta() {
           <TabPanel value={tabIndex} index={1}>
             <EditarDatosFiscales />
           </TabPanel>
-          <TabPanel value={tabIndex} index={2}>
+          {/* <TabPanel value={tabIndex} index={2}>
             <EditarNumeroTelefonico />
           </TabPanel>
           <TabPanel value={tabIndex} index={3}>
             <EditarContrasena />
-          </TabPanel>
+          </TabPanel> */}
         </Box>
       </Paper>
     </Container>

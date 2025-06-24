@@ -1,4 +1,3 @@
-// src/pages/Suscripciones.jsx
 import React, { useState } from "react";
 import {
   Typography,
@@ -15,17 +14,16 @@ import CuadroPlan from "../../components/suscripciones/CuadroPlan";
 import CuadroComplementos from "../../components/suscripciones/CuadroComplementos";
 import ModalPlanes from "../../components/suscripciones/ModalPlanes";
 import TablaHistorial from "../../components/suscripciones/TablaHistorial";
+import ModalInformacionFacturacion from "../../components/suscripciones/ModalInformacionFacturacion";
 
 export default function Suscripciones() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalInfoOpen, setModalInfoOpen] = useState(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleVerPlanes = () => setModalOpen(true);
-  const handleComoFunciona = () =>
-    alert(
-      "Aquí podrás gestionar tu plan, complementos y ver tu historial de pagos. Tu suscripción te da acceso a servicios exclusivos, facturación y más."
-    );
+  const handleComoFunciona = () => setModalInfoOpen(true);
 
   return (
     <Box p={2}>
@@ -71,6 +69,10 @@ export default function Suscripciones() {
       </Grid>
 
       <ModalPlanes open={modalOpen} onClose={() => setModalOpen(false)} />
+      <ModalInformacionFacturacion
+        open={modalInfoOpen}
+        onClose={() => setModalInfoOpen(false)}
+      />
 
       <Box mt={4}>
         <TablaHistorial />
