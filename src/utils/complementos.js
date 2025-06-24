@@ -12,7 +12,6 @@ const complementos = [
     nombre: "💳 Implementación de pasarela de pago",
     precio: 499,
     tipo: "único",
-    desde: true
   },
   {
     complemento_id: 3,
@@ -44,7 +43,6 @@ const complementos = [
     nombre: "🤖 WhatsApp Pro automatizado",
     precio: 199,
     tipo: "mensual",
-    desde: true
   }
 ];
 
