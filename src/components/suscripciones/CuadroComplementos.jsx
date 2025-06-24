@@ -12,6 +12,7 @@ import {
   Chip,
   Alert,
   Stack,
+  Box,
 } from "@mui/material";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import axiosClient from "../../config/axiosClient";
@@ -26,8 +27,10 @@ const CuadroComplementos = () => {
     axiosClient
       .get("/mis-complementos")
       .then((res) => {
-        const idsContratados = (res.data.data || []).map(c => c.id);
-        const filtrados = catalogoComplementos.filter(c => idsContratados.includes(c.complemento_id));
+        const idsContratados = (res.data.data || []).map((c) => c.id);
+        const filtrados = catalogoComplementos.filter((c) =>
+          idsContratados.includes(c.complemento_id)
+        );
         setComplementosActivos(filtrados);
       })
       .catch(() => setError(true))
@@ -54,14 +57,27 @@ const CuadroComplementos = () => {
         ) : (
           <List>
             {complementosActivos.map((item) => (
-              <ListItem key={item.complemento_id} divider alignItems="flex-start">
+              <ListItem
+                key={item.complemento_id}
+                divider
+                alignItems="flex-start"
+              >
                 <ListItemIcon>
                   <AddCircleOutlineIcon color="info" />
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                      <Typography variant="body1" sx={{ color: "#fff" }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      flexWrap="wrap"
+                    >
+                      <Typography
+                        variant="body1"
+                        component="span"
+                        sx={{ color: "#fff" }}
+                      >
                         {item.nombre}
                       </Typography>
 
@@ -70,7 +86,7 @@ const CuadroComplementos = () => {
                           label="Pago Único"
                           size="small"
                           sx={{
-                            backgroundColor: "#10b981", // verde
+                            backgroundColor: "#10b981",
                             color: "#fff",
                             fontWeight: "bold",
                             fontSize: "0.75rem",
@@ -93,11 +109,25 @@ const CuadroComplementos = () => {
                   }
                   secondary={
                     <>
-                      <Typography variant="body2" color="#cbd5e1">
-                        💲 {item.precio.toLocaleString("es-MX", { style: "currency", currency: "MXN" })}
+                      <Typography
+                        variant="body2"
+                        component="span"
+                        color="#cbd5e1"
+                        display="block"
+                      >
+                        💲{" "}
+                        {item.precio.toLocaleString("es-MX", {
+                          style: "currency",
+                          currency: "MXN",
+                        })}
                       </Typography>
                       {item.nota && (
-                        <Typography variant="caption" color="#9ca3af" display="block">
+                        <Typography
+                          variant="caption"
+                          component="span"
+                          color="#9ca3af"
+                          display="block"
+                        >
                           📝 {item.nota}
                         </Typography>
                       )}
