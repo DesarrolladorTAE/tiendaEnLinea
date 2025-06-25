@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import ScrollToTop from "./helpers/scroll-top";
 import { useLocation, BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminRoutes from "./routes/AdminRoutes";
+import SuperAdminRoutes from "./routes/SuperAdminRoutes";
 import { Container } from "@mui/material";
 import WhatsappButton from "./components/WhatsappButton";
 import { Toaster } from "react-hot-toast";
@@ -193,6 +194,7 @@ const App = () => {
             <Route path="/tienda/:storeSlug" element={<Catalogo />} />
 
             {AdminRoutes}
+            {SuperAdminRoutes}
 
             <Route
               path="/prueba/pos"
