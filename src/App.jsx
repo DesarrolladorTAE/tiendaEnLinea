@@ -187,7 +187,7 @@ const App = () => {
             <Route path={"/compare"} element={<Compare />} />
             <Route path={"/checkout"} element={<Checkout />} />
             <Route path="/renovar" element={<Renovar />} />
-            <Route path="/panel" element={<AdminPanel />} />
+            {/* <Route path="/panel" element={<AdminPanel />} /> */}
 
             <Route path="*" element={<NotFound />} />
 

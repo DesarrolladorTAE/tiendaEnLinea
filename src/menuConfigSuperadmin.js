@@ -1,8 +1,9 @@
 const superadminNavItems = [
-  { path: "/panel/dashboard", label: "📊 Dashboard" },
-  { path: "/panel/usuarios", label: "👥 Usuarios" },
-  { path: "/panel/tiendas", label: "🏪 Tiendas" },
-  { path: "/panel/soporte", label: "🛠️ Soporte" },
+  { path: "dashboard", label: "📊 Dashboard" },
+  { path: "suscripciones", label: "👥 Suscripciones" },
+  { path: "usuarios", label: "👥 Usuarios" },
+  { path: "tiendas", label: "🏪 Tiendas" },
+  { path: "soporte", label: "🛠️ Soporte" },
 ];
 
 export default superadminNavItems;
