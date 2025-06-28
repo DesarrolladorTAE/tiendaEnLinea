@@ -17,6 +17,8 @@ import { setUser } from "../../store/slices/userSlice";
 import ResetPasswordModal from "../../wrappers/AuthVerification/ResetPasswordModal";
 import AnimatedModal from "../../components/AnimatedModal";
 import CircularProgress from "@mui/material/CircularProgress";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 
 const LoginForm = ({ onBack }) => {
   const [loginError, setLoginError] = useState(null);
@@ -27,6 +29,7 @@ const LoginForm = ({ onBack }) => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -36,8 +39,11 @@ const LoginForm = ({ onBack }) => {
     handleSubmit,
     formState: { errors },
     getValues,
+    setValue, // ← ¡agregado!
+    watch,
+    setError, // ← nuevo
   } = useForm();
-
+  const loginPhone = watch("loginPhone");
   const handleLogin = async (data) => {
     setLoading(true); // Activar el spinner
 
@@ -63,12 +69,35 @@ const LoginForm = ({ onBack }) => {
         }
       }, 1200);
     } catch (error) {
-      setLoginError(
-        error.response?.data?.message || "Error en el inicio de sesión"
-      );
-      toast.error(
-        error.response?.data?.message || "⚠️ Error en el inicio de sesión"
-      );
+      const status = error.response?.status;
+      const message =
+        error.response?.data?.message || "Error en el inicio de sesión";
+
+      if (status === 404 && error.response?.data?.error === "user_not_found") {
+        setError("loginPhone", {
+          type: "manual",
+          message: message,
+        });
+      } else if (
+        status === 401 &&
+        error.response?.data?.error === "invalid_password"
+      ) {
+        setError("loginPassword", {
+          type: "manual",
+          message: message,
+        });
+      } else if (status === 422 && error.response?.data?.errors) {
+        const fieldErrors = error.response.data.errors;
+        Object.entries(fieldErrors).forEach(([field, messages]) => {
+          setError(`login${field.charAt(0).toUpperCase() + field.slice(1)}`, {
+            type: "manual",
+            message: messages[0],
+          });
+        });
+      } else {
+        setLoginError(message);
+        toast.error("⚠️ " + message);
+      }
     } finally {
       setLoading(false); // Desactivar el spinner
     }
@@ -164,6 +193,7 @@ const LoginForm = ({ onBack }) => {
             type="tel"
             size="small"
             fullWidth
+            value={loginPhone || ""} // ← Controlado por React
             {...register("loginPhone", {
               required: "El teléfono es obligatorio",
               pattern: {
@@ -187,10 +217,15 @@ const LoginForm = ({ onBack }) => {
               maxLength: 10,
             }}
             onInput={(e) => {
-              e.target.value = e.target.value.replace(/[^0-9]/g, "");
-              if (e.target.value.length > 10) {
-                e.target.value = e.target.value.slice(0, 10);
-              }
+              const cleaned = e.target.value.replace(/\D/g, "").slice(0, 10);
+              setValue("loginPhone", cleaned);
+            }}
+            onPaste={(e) => {
+              e.preventDefault();
+              const pastedText = e.clipboardData.getData("Text");
+              const onlyNumbers = pastedText.replace(/\D/g, "");
+              const last10Digits = onlyNumbers.slice(-10);
+              setValue("loginPhone", last10Digits);
             }}
             sx={{
               borderRadius: 50,
@@ -201,7 +236,7 @@ const LoginForm = ({ onBack }) => {
           <TextField
             label="Contraseña"
             variant="outlined"
-            type="password"
+            type={showPassword ? "text" : "password"}
             size="small"
             fullWidth
             {...register("loginPassword", {
@@ -213,6 +248,18 @@ const LoginForm = ({ onBack }) => {
             })}
             error={Boolean(errors.loginPassword)}
             helperText={errors.loginPassword?.message}
+            InputProps={{
+              endAdornment: (
+                <IconButton
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  edge="end"
+                  size="small"
+                  sx={{ mr: 1 }}
+                >
+                  {showPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              ),
+            }}
             sx={{
               borderRadius: 50,
               "& .MuiOutlinedInput-root": { borderRadius: 50 },
@@ -229,11 +276,18 @@ const LoginForm = ({ onBack }) => {
             type="submit"
             variant="contained"
             sx={{
-              mt: 1, bgcolor: "#00bfff", color: "white",
-              fontWeight: "bold", borderRadius: 9999,
-              py: 1.2, px: 4, alignSelf: "center",
-              textTransform: "uppercase", fontSize: 16,
-              "&:hover": { bgcolor: "#009dff" }, boxShadow: "none",
+              mt: 1,
+              bgcolor: "#00bfff",
+              color: "white",
+              fontWeight: "bold",
+              borderRadius: 9999,
+              py: 1.2,
+              px: 4,
+              alignSelf: "center",
+              textTransform: "uppercase",
+              fontSize: 16,
+              "&:hover": { bgcolor: "#009dff" },
+              boxShadow: "none",
             }}
             fullWidth
             disabled={loading}

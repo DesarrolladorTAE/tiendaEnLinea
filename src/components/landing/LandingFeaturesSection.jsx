@@ -26,8 +26,8 @@ const features = [
   },
   {
     icon: <AssessmentIcon fontSize="inherit" />,
-    title: "Reportes automáticos",
-    desc: "Generación de reportes de ventas y ganancias al alcance de un clic.",
+    title: "Tickets automáticos",
+    desc: "Generación de tickets de recargas y paquetes al alcance de un clic.",
   },
   {
     icon: <CloudDoneIcon fontSize="inherit" />,

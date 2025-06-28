@@ -163,7 +163,7 @@ const AppContent = () => {
           />
           <Route path="/shop-grid-paquet" element={<ShopGridPaquet />} />
           <Route path="/product/:id" element={<Product />} />
-          <Route path="/contact" element={<Contact />} />
+          {/* <Route path="/contact" element={<Contact />} /> */}
           <Route path="/my-account" element={<MyAccount />} />
           <Route path="/wallet" element={<Wallet />} />
           <Route path="/saldo-recarga" element={<SaldoRecarga />} />

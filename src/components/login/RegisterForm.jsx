@@ -41,6 +41,7 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
     formState: { errors },
     watch,
     reset,
+    setError, // <-- nuevo
   } = useForm();
 
   const password = watch("password");
@@ -71,11 +72,24 @@ const RegisterForm = ({ setRightPanelActive, onSuccess }) => {
         onSuccess?.();
       }
     } catch (error) {
-      const msg =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        "⚠️ Error en el registro";
-      setVerificationError(msg);
+      const status = error.response?.status;
+      const data = error.response?.data || {};
+      const msg = data.message || data.error || "⚠️ Error en el registro";
+
+      if (status === 422 && data.errors) {
+        // Errores por campo
+        Object.entries(data.errors).forEach(([field, messages]) => {
+          setError(field, {
+            type: "manual",
+            message: messages[0],
+          });
+        });
+      } else if (status === 400 || status === 401 || status === 409) {
+        // Código de verificación incorrecto u otros errores lógicos
+        setVerificationError(msg);
+      } else {
+        toast.error(msg);
+      }
       toast.error(msg);
     } finally {
       setLoading(false); // Desactivar spinner

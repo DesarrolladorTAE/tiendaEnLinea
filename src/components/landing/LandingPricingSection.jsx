@@ -125,8 +125,8 @@ const LandingCarrierSection = () => {
       >
         TeLoRecargo es una plataforma moderna para realizar{" "}
         <strong>recargas de tiempo aire</strong> y adquirir{" "}
-        <strong>paquetes especiales</strong> de diferentes carriers en México.
-        Compra en tiempo real, usa múltiples métodos de pago, y accede desde
+        <strong>paquetes especiales</strong> de diferentes Compañias en México.
+        Compra en tiempo real, usa múltiples métodos de pago en tu negocio, y accede desde
         cualquier dispositivo de forma segura.
       </Typography>
 
