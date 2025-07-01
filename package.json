@@ -13,6 +13,7 @@
     "bootstrap": "^5.3.3",
     "clsx": "^1.2.1",
     "cogo-toast": "https://github.com/hasanm95/cogo-toast",
+    "dayjs": "^1.11.13",
     "file-saver": "^2.0.5",
     "google-map-react": "^2.2.0",
     "i18next": "^22.0.4",
