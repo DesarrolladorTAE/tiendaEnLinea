@@ -8,6 +8,8 @@ import LoginForm from "../../components/login/LoginForm";
 import RegisterForm from "../../components/login/RegisterForm";
 import { Modal, Box, Typography, TextField, Button } from "@mui/material";
 
+import PasswordResetModal from "../../components/login/PasswordResetModal";
+
 const LoginRegister = () => {
   const navigate = useNavigate();
   const [modo, setModo] = useState("login");
@@ -31,6 +33,7 @@ const LoginRegister = () => {
   const [registerBlocked, setRegisterBlocked] = useState(false);
   const [showStoreLoginModal, setShowStoreLoginModal] = useState(false);
   const [storeLogin, setStoreLogin] = useState({ login: "", password: "" });
+  const [showResetModal, setShowResetModal] = useState(false);
 
   // ⏱ Cooldown para reenvío de código
   const startCooldown = () => {
@@ -134,7 +137,6 @@ const LoginRegister = () => {
         <div className="row justify-content-center">
           <div className="col-md-6 col-lg-5">
             <div className="text-center mb-4">
-             
               <img
                 src="/assets/logoc.png"
                 alt="Logo de la tienda"
@@ -170,6 +172,18 @@ const LoginRegister = () => {
                   loading={loading}
                 />
                 <hr />
+                <div className="text-center mt-2">
+                  <a
+                    href="#"
+                    className="text-danger"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      setShowResetModal(true);
+                    }}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </a>
+                </div>
                 <div className="text-center mt-3">
                   <a
                     href="#"
@@ -197,6 +211,7 @@ const LoginRegister = () => {
                   registerBlocked={registerBlocked}
                 />
                 <hr />
+
                 <div className="text-center mt-3">
                   <a
                     href="#"
@@ -214,6 +229,10 @@ const LoginRegister = () => {
           </div>
         </div>
       </div>
+      <PasswordResetModal
+        open={showResetModal}
+        onClose={() => setShowResetModal(false)}
+      />
 
       <Modal
         open={showStoreLoginModal}

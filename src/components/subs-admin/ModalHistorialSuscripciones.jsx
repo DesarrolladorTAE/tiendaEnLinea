@@ -18,6 +18,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import axiosSuperadmin from "../../config/axiosSuperadmin";
 import planes from "../../utils/planes";
 import complementos from "../../utils/complementos";
+import dayjs from "dayjs";
 
 const Transition = React.forwardRef((props, ref) => (
   <Slide direction="up" ref={ref} {...props} />
@@ -47,12 +48,7 @@ const ModalHistorialSuscripciones = ({ open, onClose, tienda }) => {
     }
   };
 
-  const formatoFecha = (fecha) =>
-    new Date(fecha).toLocaleDateString("es-MX", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
+  const formatoFecha = (fecha) => dayjs(fecha).format("YYYY-MM-DD HH:mm:ss");
 
   const obtenerNombreConcepto = (item) => {
     if (item.plan_id) {
