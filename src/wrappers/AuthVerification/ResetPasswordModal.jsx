@@ -1,48 +1,100 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
+import { IconButton, LinearProgress } from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
+import { CircularProgress } from "@mui/material";
+
 
 const ResetPasswordModal = ({
   isOpen,
-  phone,
-  code,
-  setCode,
-  newPassword,
-  setNewPassword,
-  confirmPassword,
-  setConfirmPassword,
-  onSubmit,
-  onClose, // <-- NUEVO: función para cerrar el modal
-  error,
+  onClose,
+  onSendCode,
+  onResetPassword,
+  initialPhone = "",
 }) => {
   const modalRef = useRef();
+  const [step, setStep] = useState(1);
+  const [phone, setPhone] = useState(initialPhone);
+  const [code, setCode] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Cerrar al presionar ESC
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      setStep(1);
+      setPhone("");
+      setCode("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setError("");
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
     const onEsc = (e) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
-  }, [isOpen, onClose]);
+  }, [onClose]);
 
-  // Click fuera del modal (backdrop)
   const handleBackdropClick = (e) => {
     if (modalRef.current && !modalRef.current.contains(e.target)) {
       onClose();
     }
   };
 
+  const handleNextStep = async () => {
+    setError("");
+    setIsLoading(true);
+    try {
+      if (step === 1) {
+        if (phone.length !== 10) {
+          setError("Ingresa un número válido de 10 dígitos.");
+          return;
+        }
+        const ok = await onSendCode(phone);
+        if (ok) setStep(2);
+      } else if (step === 2) {
+        if (!/^\d{6}$/.test(code)) {
+          setError("El código debe tener 6 dígitos.");
+          return;
+        }
+        setStep(3);
+      } else if (step === 3) {
+        if (newPassword.length < 8) {
+          setError("La contraseña debe tener al menos 8 caracteres.");
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          setError("Las contraseñas no coinciden.");
+          return;
+        }
+        const success = await onResetPassword({ phone, code, newPassword });
+        setStep(success ? 4 : 3);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  const progressValue = [25, 50, 75, 100][step - 1];
+
   if (!isOpen) return null;
 
   return (
     <div
-      className="auth-modal-backdrop"
       style={{
         position: "fixed",
-        top: 0, left: 0, right: 0, bottom: 0,
+        inset: 0,
+        background: "rgba(0,0,0,0.35)",
         zIndex: 9999,
-        background: "rgba(0,0,0,0.25)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -51,19 +103,23 @@ const ResetPasswordModal = ({
     >
       <div
         ref={modalRef}
-        className="auth-modal"
         style={{
           background: "#fff",
-          borderRadius: 16,
-          maxWidth: 360,
-          width: "92%",
-          padding: "2.5rem 1.5rem 1.5rem 1.5rem",
-          boxShadow: "0 8px 32px 0 rgba(40,60,120,.18)",
+          borderRadius: 12,
+          width: "90%",
+          maxWidth: 420,
+          padding: "1.8rem 1.5rem 1.2rem",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.2)",
           position: "relative",
         }}
-        onMouseDown={e => e.stopPropagation()} // Evita que los clicks internos cierren el modal
+        onMouseDown={(e) => e.stopPropagation()}
       >
-        {/* (Opcional) Botón para cerrar arriba a la derecha */}
+        <LinearProgress
+          variant="determinate"
+          value={progressValue}
+          sx={{ mb: 1.5, height: 4, borderRadius: 2 }}
+        />
+
         <button
           onClick={onClose}
           style={{
@@ -76,64 +132,163 @@ const ResetPasswordModal = ({
             color: "#999",
             cursor: "pointer",
           }}
-          aria-label="Cerrar modal"
-          type="button"
         >
           ×
         </button>
 
-        <h2 style={{ marginBottom: 10, textAlign: "center" }}>Verifica tu identidad</h2>
-        <p style={{ textAlign: "center" }}>
-          Ingresa el código enviado a <strong>{phone}</strong> y tu nueva contraseña
+        <h2 style={{ marginBottom: 8 }}>Recuperar contraseña</h2>
+        <p style={{ marginBottom: 18, fontWeight: 500 }}>
+          Paso {step} de 4:{" "}
+          {step === 1 ? "Número" : step === 2 ? "Código" : step === 3 ? "Nueva contraseña" : "¡Hecho!"}
         </p>
 
-        <form onSubmit={onSubmit} className="auth-modal-form" autoComplete="off" style={{ marginTop: 18 }}>
+        {step === 1 && (
+          <input
+            type="tel"
+            placeholder="Teléfono"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            onPaste={(e) => {
+              e.preventDefault();
+              const text = e.clipboardData.getData("Text").replace(/\D/g, "").slice(-10);
+              setPhone(text);
+            }}
+            inputMode="numeric"
+            maxLength={10}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              fontSize: "16px",
+              marginBottom: 12,
+              border: "1px solid #ccc",
+              borderRadius: 6,
+            }}
+          />
+        )}
+
+        {step === 2 && (
           <input
             type="text"
             placeholder="Código de verificación"
-            maxLength={6}
             value={code}
-            onChange={(e) => setCode(e.target.value)}
-            required
-            style={{ marginBottom: 12, width: "100%", padding: 8, fontSize: 15 }}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            inputMode="numeric"
+            maxLength={6}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              fontSize: "16px",
+              marginBottom: 12,
+              border: "1px solid #ccc",
+              borderRadius: 6,
+            }}
           />
+        )}
 
-          <input
-            type="password"
-            placeholder="Nueva contraseña"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            required
-            style={{ marginBottom: 12, width: "100%", padding: 8, fontSize: 15 }}
-          />
+        {step === 3 && (
+          <>
+            <div style={{ position: "relative", marginBottom: 12 }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Nueva contraseña"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  fontSize: "16px",
+                  border: "1px solid #ccc",
+                  borderRadius: 6,
+                  paddingRight: 40,
+                }}
+              />
+              <IconButton
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: "absolute",
+                  top: "50%",
+                  right: 6,
+                  transform: "translateY(-50%)",
+                }}
+              >
+                {showPassword ? <VisibilityOff /> : <Visibility />}
+              </IconButton>
+            </div>
+            <input
+              type={showPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirmar contraseña"
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                fontSize: "16px",
+                border: "1px solid #ccc",
+                borderRadius: 6,
+                marginBottom: 12,
+              }}
+            />
+          </>
+        )}
 
-          <input
-            type="password"
-            placeholder="Confirmar contraseña"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            style={{ marginBottom: 12, width: "100%", padding: 8, fontSize: 15 }}
-          />
+        {step === 4 && (
+          <>
+            <p style={{ fontWeight: 500, textAlign: "center" }}>
+              ✅ Tu contraseña se actualizó correctamente.
+            </p>
+            <button
+              onClick={onClose}
+              style={{
+                marginTop: 18,
+                width: "100%",
+                background: "#00bfa5",
+                color: "#fff",
+                padding: "10px 0",
+                borderRadius: 6,
+                fontWeight: "bold",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              Cerrar
+            </button>
+          </>
+        )}
 
-          {error && (
-            <p className="auth-modal-error" style={{ color: "#c1121f", marginBottom: 10 }}>{error}</p>
-          )}
-          <button type="submit" className="btn-confirm" style={{
-            width: "100%",
-            background: "#1976d2",
-            color: "#fff",
-            border: "none",
-            borderRadius: 8,
-            fontSize: 16,
-            padding: "10px 0",
-            fontWeight: "bold",
-            letterSpacing: ".5px",
-            cursor: "pointer"
-          }}>
-            Cambiar contraseña
+        {error && (
+          <p style={{ color: "#c1121f", marginBottom: 10, fontSize: 14 }}>{error}</p>
+        )}
+
+        {step < 4 && (
+          <button
+            onClick={handleNextStep}
+            disabled={isLoading}
+            style={{
+              width: "100%",
+              background: isLoading ? "#1565c0" : "#1976d2",
+              color: "#fff",
+              fontWeight: "bold",
+              fontSize: "15px",
+              padding: "10px 0",
+              borderRadius: 6,
+              border: "none",
+              cursor: isLoading ? "default" : "pointer",
+              marginTop: 6,
+              textTransform: "uppercase",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            {isLoading ? (
+              <CircularProgress size={20} sx={{ color: "white" }} />
+            ) : (
+              step === 3 ? "Cambiar contraseña" : "Enviar código"
+            )}
           </button>
-        </form>
+        )}
+
       </div>
     </div>
   );
@@ -141,16 +296,10 @@ const ResetPasswordModal = ({
 
 ResetPasswordModal.propTypes = {
   isOpen: PropTypes.bool.isRequired,
-  phone: PropTypes.string.isRequired,
-  code: PropTypes.string.isRequired,
-  setCode: PropTypes.func.isRequired,
-  newPassword: PropTypes.string.isRequired,
-  setNewPassword: PropTypes.func.isRequired,
-  confirmPassword: PropTypes.string.isRequired,
-  setConfirmPassword: PropTypes.func.isRequired,
-  onSubmit: PropTypes.func.isRequired,
-  error: PropTypes.string,
-  onClose: PropTypes.func.isRequired, // <-- Obligatorio para cerrar modal
+  onClose: PropTypes.func.isRequired,
+  onSendCode: PropTypes.func.isRequired,
+  onResetPassword: PropTypes.func.isRequired,
+  initialPhone: PropTypes.string,
 };
 
 export default ResetPasswordModal;

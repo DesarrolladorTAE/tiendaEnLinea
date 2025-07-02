@@ -24,10 +24,10 @@ const LoginForm = ({ onBack }) => {
   const [loginError, setLoginError] = useState(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [resetPhone, setResetPhone] = useState("");
-  const [resetCode, setResetCode] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  // const [resetPhone, setResetPhone] = useState("");
+  // const [resetCode, setResetCode] = useState("");
+  // const [newPassword, setNewPassword] = useState("");
+  // const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -106,45 +106,32 @@ const LoginForm = ({ onBack }) => {
   const onError = () => {
     toast.error("⚠️ Por favor, completa todos los campos correctamente.");
   };
+  // const handleSendResetCode = () => {
+  //   setIsResetModalOpen(true);
+  // };
 
-  const handleSendResetCode = async () => {
-    const phone = getValues("loginPhone");
 
-    if (!phone) {
-      toast.error("Por favor ingresa tu número de teléfono.");
-      return;
-    }
-    try {
-      await axios.post("/auth/reset-password/send-code", { phone });
-      toast.success("Código enviado correctamente");
-      setResetPhone(phone);
-      setIsResetModalOpen(true);
-    } catch (error) {
-      toast.error(error.response?.data?.error || "Error al enviar el código");
-    }
-  };
-
-  const handleResetPasswordSubmit = async (e) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden");
-      return;
-    }
-    try {
-      await axios.post("/auth/reset-password", {
-        phone: resetPhone,
-        code: resetCode,
-        password: newPassword,
-        password_confirmation: confirmPassword,
-      });
-      setIsResetModalOpen(false);
-      toast.success("Contraseña actualizada exitosamente.");
-    } catch (error) {
-      toast.error(
-        error.response?.data?.message || "Error al cambiar contraseña"
-      );
-    }
-  };
+  // const handleResetPasswordSubmit = async (e) => {
+  //   e.preventDefault();
+  //   if (newPassword !== confirmPassword) {
+  //     toast.error("Las contraseñas no coinciden");
+  //     return;
+  //   }
+  //   try {
+  //     await axios.post("/auth/reset-password", {
+  //       phone: resetPhone,
+  //       code: resetCode,
+  //       password: newPassword,
+  //       password_confirmation: confirmPassword,
+  //     });
+  //     setIsResetModalOpen(false);
+  //     toast.success("Contraseña actualizada exitosamente.");
+  //   } catch (error) {
+  //     toast.error(
+  //       error.response?.data?.message || "Error al cambiar contraseña"
+  //     );
+  //   }
+  // };
 
   return (
     <>
@@ -308,13 +295,11 @@ const LoginForm = ({ onBack }) => {
               cursor: "pointer",
               "&:hover": { textDecoration: "underline" },
             }}
-            onClick={(e) => {
-              e.preventDefault();
-              handleSendResetCode();
-            }}
+            onClick={() => setIsResetModalOpen(true)} // ← simplificado
           >
             ¿Olvidaste tu contraseña?
           </Typography>
+
         </Stack>
 
         <AnimatedModal
@@ -328,16 +313,36 @@ const LoginForm = ({ onBack }) => {
       {/* MODAL FUERA DEL FORM */}
       <ResetPasswordModal
         isOpen={isResetModalOpen}
-        phone={resetPhone}
-        code={resetCode}
-        setCode={setResetCode}
-        newPassword={newPassword}
-        setNewPassword={setNewPassword}
-        confirmPassword={confirmPassword}
-        setConfirmPassword={setConfirmPassword}
-        onSubmit={handleResetPasswordSubmit}
         onClose={() => setIsResetModalOpen(false)}
+        onSendCode={async (phone) => {
+          try {
+            await axios.post("/auth/reset-password/send-code", { phone });
+            toast.success("Código enviado correctamente");
+            return true;
+          } catch (error) {
+            toast.error(error.response?.data?.error || "Error al enviar código");
+            return false;
+          }
+        }}
+        onResetPassword={async ({ phone, code, newPassword }) => {
+          try {
+            await axios.post("/auth/reset-password", {
+              phone,
+              code,
+              password: newPassword,
+              password_confirmation: newPassword,
+            });
+            toast.success("Contraseña actualizada exitosamente.");
+            return true;
+          } catch (error) {
+            toast.error(
+              error.response?.data?.message || "Error al cambiar contraseña"
+            );
+            return false;
+          }
+        }}
       />
+
     </>
   );
 };
