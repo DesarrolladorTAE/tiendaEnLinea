@@ -1,8 +1,18 @@
 import React, { useState } from "react";
 import {
-  Accordion, AccordionSummary, AccordionDetails,
-  TextField, Typography, Grid, Button, Avatar, Select,
-  MenuItem, InputLabel, FormControl, FormHelperText
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  TextField,
+  Typography,
+  Grid,
+  Button,
+  Avatar,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  FormHelperText,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -18,7 +28,7 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
     rfc: user?.rfc || "",
     razon_social: user?.razon_social || "",
     codigo_regimen: user?.codigo_regimen || "",
-    domicilio_fac: user?.domicilio_fac || ""
+    domicilio_fac: user?.domicilio_fac || "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -36,18 +46,20 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
         rfc: fiscalData.rfc.trim().toUpperCase(),
         razon_social: fiscalData.razon_social.trim(),
         codigo_regimen: fiscalData.codigo_regimen.trim(),
-        domicilio_fac: fiscalData.domicilio_fac.trim()
+        domicilio_fac: fiscalData.domicilio_fac.trim(),
       });
 
       toast.success("Datos fiscales actualizados correctamente");
-      dispatch(setUser({
-        user: { ...user, ...res.data },
-        token: localStorage.getItem("token")
-      }));
+      dispatch(
+        setUser({
+          user: { ...user, ...res.data },
+          token: localStorage.getItem("token"),
+        })
+      );
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
-        "No se pudieron actualizar los datos fiscales. Intenta de nuevo."
+          "No se pudieron actualizar los datos fiscales. Intenta de nuevo."
       );
     }
     setSaving(false);
@@ -63,7 +75,11 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
         <Avatar sx={{ bgcolor: "#111c4e", mr: 2, width: 44, height: 44 }}>
           <ReceiptLongIcon />
         </Avatar>
-        <Typography fontWeight={700} fontSize={{ xs: 17, md: 19 }} color="#111c4e">
+        <Typography
+          fontWeight={700}
+          fontSize={{ xs: 17, md: 19 }}
+          color="#111c4e"
+        >
           Datos Fiscales para Facturación
         </Typography>
       </AccordionSummary>
@@ -72,7 +88,9 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
         <Typography variant="body2" sx={{ color: "#5e6c87", mb: 3 }}>
           Estos datos se usarán para emitir tus facturas.
           <br />
-          <b>Verifica que coincidan exactamente con tu constancia fiscal del SAT.</b>
+          <b>
+            Verifica que coincidan exactamente con tu constancia fiscal del SAT.
+          </b>
         </Typography>
 
         <form onSubmit={handleFiscalSubmit}>
@@ -84,8 +102,16 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
                 label="RFC"
                 name="rfc"
                 value={fiscalData.rfc}
-                onChange={handleChangeField("rfc")}
-                inputProps={{ maxLength: 13, style: { letterSpacing: 1.2 } }}
+                onChange={(e) => {
+                  const value = e.target.value.toUpperCase();
+                  if (/^[A-Z0-9]{0,13}$/.test(value)) {
+                    setFiscalData({ ...fiscalData, rfc: value });
+                  }
+                }}
+                inputProps={{
+                  maxLength: 13,
+                  style: { letterSpacing: 1.2 },
+                }}
                 autoComplete="off"
                 sx={{ bgcolor: "#f8fafc", borderRadius: 2 }}
               />
@@ -106,7 +132,10 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
 
             {/* Régimen Fiscal */}
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth sx={{ bgcolor: "#f8fafc", borderRadius: 2 }}>
+              <FormControl
+                fullWidth
+                sx={{ bgcolor: "#f8fafc", borderRadius: 2 }}
+              >
                 <InputLabel id="regimen-label">Régimen Fiscal</InputLabel>
                 <Select
                   labelId="regimen-label"
@@ -121,7 +150,9 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
                   ))}
                 </Select>
                 {!fiscalData.codigo_regimen && (
-                  <FormHelperText>Debes seleccionar un régimen para poder facturar</FormHelperText>
+                  <FormHelperText>
+                    Debes seleccionar un régimen para poder facturar
+                  </FormHelperText>
                 )}
               </FormControl>
             </Grid>
@@ -133,7 +164,17 @@ const FiscalDataPanel = ({ expanded, handleChange, user }) => {
                 label="Código Postal del Domicilio Fiscal"
                 name="domicilio_fac"
                 value={fiscalData.domicilio_fac}
-                onChange={handleChangeField("domicilio_fac")}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  if (/^\d{0,5}$/.test(value)) {
+                    setFiscalData({ ...fiscalData, domicilio_fac: value });
+                  }
+                }}
+                inputProps={{
+                  inputMode: "numeric",
+                  pattern: "[0-9]{5}",
+                  maxLength: 5,
+                }}
                 autoComplete="off"
                 sx={{ bgcolor: "#f8fafc", borderRadius: 2 }}
               />

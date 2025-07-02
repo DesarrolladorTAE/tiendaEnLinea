@@ -71,15 +71,37 @@ const ModalTimbrado = ({ open, onClose, compra, onFacturada }) => {
 
       if (typeof onFacturada === "function") onFacturada();
     } catch (err) {
-      const msg =
-        err.response?.data?.message || err.message || "Error al timbrar";
-      setError(msg);
+      const data = err.response?.data || {};
+      let msg =
+        data.message ||
+        data.respuestaTimbrado?.message ||
+        err.message ||
+        "El timbrado ha fallado. Contacta con un asesor.";
+
+      if (msg.toLowerCase().includes("server error")) {
+        msg = "El timbrado ha fallado. Contacta con un asesor.";
+      }
+
+      const erroresSAT = Array.isArray(data.errores)
+        ? data.errores.join("\n")
+        : "";
+
+      setError(`${msg}${erroresSAT ? "\n" + erroresSAT : ""}`);
       onClose();
 
       Swal.fire({
         icon: "error",
         title: "❌ Error al facturar",
-        text: msg,
+        html: `
+    <strong>${msg}</strong>
+    ${
+      erroresSAT
+        ? `<div style="margin-top:10px; padding:10px; background:#f8f8f8; border-left:4px solid #e53935; font-size:13px; color:#555; white-space:normal; text-align:left;">
+            ${erroresSAT}
+           </div>`
+        : ""
+    }
+  `,
       });
     }
 
