@@ -7,7 +7,7 @@ const adminNavItems = [
   { path: "/admin/ventas", label: "📚Historial de Ventas" },
   { path: "/admin/compra", label: "📦Entradas Producto" },
   { path: "/admin/ticket", label: "📄Personaliza tu Ticket"},
-  { path: "/admin/membresia", label: "📑Membresia"},
+  { path: "/admin/membresia", label: "📑 Suscripciones"},
   { path: "/admin/micuenta", label: "🪪Mi Cuenta"},
 ];
 

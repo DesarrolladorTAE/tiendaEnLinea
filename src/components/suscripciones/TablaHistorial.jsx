@@ -51,10 +51,18 @@ const TablaHistorialSuscripciones = () => {
 
   const filtrarHistorial = (item) => {
     const fecha = new Date(item.created_at);
-    const cumpleMes = filtros.mes ? fecha.getMonth() + 1 === parseInt(filtros.mes) : true;
-    const cumpleAnio = filtros.anio ? fecha.getFullYear() === parseInt(filtros.anio) : true;
-    const cumpleDia = filtros.dia ? fecha.getDate() === parseInt(filtros.dia) : true;
-    const cumpleMonto = filtros.monto ? parseFloat(item.monto) === parseFloat(filtros.monto) : true;
+    const cumpleMes = filtros.mes
+      ? fecha.getMonth() + 1 === parseInt(filtros.mes)
+      : true;
+    const cumpleAnio = filtros.anio
+      ? fecha.getFullYear() === parseInt(filtros.anio)
+      : true;
+    const cumpleDia = filtros.dia
+      ? fecha.getDate() === parseInt(filtros.dia)
+      : true;
+    const cumpleMonto = filtros.monto
+      ? parseFloat(item.monto) === parseFloat(filtros.monto)
+      : true;
     const cumpleStatus = filtros.status ? item.status === filtros.status : true;
     return cumpleMes && cumpleAnio && cumpleDia && cumpleMonto && cumpleStatus;
   };
@@ -93,7 +101,7 @@ const TablaHistorialSuscripciones = () => {
         <TextField
           select
           name="status"
-          label="Estado"
+          label="Metodo de Pago"
           variant="standard"
           InputLabelProps={{ shrink: true }}
           value={filtros.status}
@@ -101,9 +109,9 @@ const TablaHistorialSuscripciones = () => {
           sx={{ minWidth: 120 }}
         >
           <MenuItem value="">Todos</MenuItem>
-          <MenuItem value="active">Activo</MenuItem>
-          <MenuItem value="trial">Prueba</MenuItem>
-          <MenuItem value="expired">Vencido</MenuItem>
+          <MenuItem value="Conekta">Conekta</MenuItem>
+          <MenuItem value="Transferencia">Transferencia</MenuItem>
+          <MenuItem value="Sin confirmar">Sin confirmar</MenuItem>
         </TextField>
 
         <TextField
@@ -127,7 +135,9 @@ const TablaHistorialSuscripciones = () => {
           sx={{ minWidth: 120 }}
         >
           {meses.map((mes) => (
-            <MenuItem key={mes.value} value={mes.value}>{mes.label}</MenuItem>
+            <MenuItem key={mes.value} value={mes.value}>
+              {mes.label}
+            </MenuItem>
           ))}
         </TextField>
 
@@ -163,13 +173,18 @@ const TablaHistorialSuscripciones = () => {
               <TableCell>⏳ Termina</TableCell>
               <TableCell>🧾 Concepto</TableCell>
               <TableCell>$ Monto</TableCell>
-              <TableCell>📌 Estatus</TableCell>
+              <TableCell>📌 Metodo de Pago</TableCell>
               <TableCell>📄 Factura</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {historial.filter(filtrarHistorial).map((item, i) => (
-              <FilaSuscripcion key={i} item={item} planes={planes} onFacturado={obtenerHistorial} />
+              <FilaSuscripcion
+                key={i}
+                item={item}
+                planes={planes}
+                onFacturado={obtenerHistorial}
+              />
             ))}
           </TableBody>
         </Table>
