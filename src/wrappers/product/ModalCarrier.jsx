@@ -1,209 +1,118 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
-  DialogContent,
   DialogActions,
-  TextField,
-  MenuItem,
   Button,
-  Grid,
-  Typography,
-  CircularProgress,
   Box,
+  Stepper,
+  Step,
+  StepLabel,
 } from "@mui/material";
-import LocalPhoneIcon from "@mui/icons-material/LocalPhone";
-import PaymentIcon from "@mui/icons-material/Payment";
-import ContactsIcon from "@mui/icons-material/Contacts";
-import LockIcon from "@mui/icons-material/Lock";
-import { useDispatch, useSelector } from "react-redux";
-import axios from "../../axiosConfig";
-import { toast } from "react-toastify";
-import { updateSaldo } from "../../store/slices/userSlice";
+import RecargaForm from "./RecargaForm";
+import RecargaStatus from "./RecargaStatus";
+import RecargaResultado from "./RecargaResultado";
+import RecargaStepIcon from "./RecargaStepIcon"; // Asegúrate de que este path sea correcto
 
 const ModalCarrier = ({ isOpen, onClose, carrier, productos }) => {
-  const [numero, setNumero] = useState("");
-  const [confirmacion, setConfirmacion] = useState("");
-  const [productoSeleccionado, setProductoSeleccionado] = useState("");
-  const [contactos, setContactos] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const dispatch = useDispatch();
+  const [etapa, setEtapa] = useState(1);
+  const [estadoRecarga, setEstadoRecarga] = useState({
+    loading: false,
+    error: null,
+    data: null,
+  });
 
-  const user = useSelector((state) => state.user.user);
-  const saldo = Number(user?.saldo || 0);
-  const isBajoSaldo = saldo < 100;
+  const handleStartRecarga = (payload, hacerRecarga) => {
+    setEtapa(2);
+    setEstadoRecarga({ loading: true, error: null, data: null });
 
-  useEffect(() => {
-    if (isOpen) {
-      axios
-        .get("/contacts")
-        .then((res) => setContactos(res.data))
-        .catch(() => toast.error("Error al cargar contactos"));
-    }
-  }, [isOpen]);
+    hacerRecarga(payload)
+      .then((res) => {
+        // ✅ Verifica que venga la propiedad transaccion
+        const resultadoEstructurado = {
+          transaccion: {
+            ...res.transaccion,
+            referencia: payload.numero, // complemento para asegurar consistencia
+          },
+        };
 
-  useEffect(() => {
-    if (!isOpen) {
-      setNumero("");
-      setConfirmacion("");
-      setProductoSeleccionado("");
-    }
-  }, [isOpen]);
-
-  const handleRecarga = async () => {
-    const producto = productos.find(p => p.proID === parseInt(productoSeleccionado));
-    if (!producto) return toast.warning("Selecciona un producto");
-    if (numero.length !== 10 || confirmacion.length !== 10) return toast.error("Son 10 dígitos");
-    if (numero !== confirmacion) return toast.error("Los números no coinciden");
-    if (producto.Monto > saldo) return toast.error("Saldo insuficiente");
-
-    setIsLoading(true);
-    try {
-      const res = await axios.post("/recargar", {
-        producto: producto.Codigo,
-        referencia: numero,
+        setEstadoRecarga({
+          loading: false,
+          error: null,
+          data: resultadoEstructurado,
+        });
+        setEtapa(3);
+      })
+      .catch((err) => {
+        setEstadoRecarga({
+          loading: false,
+          error: err?.response?.data?.message || "Error desconocido",
+          data: null,
+        });
       });
-
-      const nuevoSaldo = saldo - producto.Monto;
-      dispatch(updateSaldo(nuevoSaldo));
-      localStorage.setItem("user", JSON.stringify({ ...user, saldo: nuevoSaldo }));
-      toast.success(`✅ Recarga exitosa\nID: ${res.data.transaccion.transID}`);
-      onClose();
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error en la recarga");
-    } finally {
-      setIsLoading(false);
-    }
   };
+
+  const reset = () => {
+    setEtapa(1);
+    setEstadoRecarga({ loading: false, error: null, data: null });
+  };
+
+  const pasos = ["Ingresar datos", "Procesando recarga", "Recarga completada"];
 
   return (
     <Dialog open={isOpen} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
-        Recarga a {carrier?.Nombre}
-        <Box component="img" src={carrier?.Logotipo} alt={carrier?.Nombre} sx={{ height: 40, float: "right" }} />
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          Recarga a {carrier?.Nombre}
+          <Box
+            component="img"
+            src={carrier?.Logotipo}
+            alt={carrier?.Nombre}
+            sx={{ height: 40, borderRadius: 1 }}
+          />
+        </Box>
       </DialogTitle>
 
-      <DialogContent dividers>
-        <Typography
-          variant="body2"
-          color={isBajoSaldo ? "error" : "primary"}
-          gutterBottom
-        >
-          Saldo Disponible: ${saldo.toFixed(2)}
-        </Typography>
+      {/* Stepper superior */}
+      <Box px={3} pt={1}>
+        <Stepper activeStep={etapa - 1} alternativeLabel>
+          {pasos.map((label, index) => (
+            <Step key={index}>
+              <StepLabel StepIconComponent={RecargaStepIcon}>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      </Box>
 
-        <Grid container spacing={2}>
-          {/* Monto */}
-          <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Monto"
-              value={productoSeleccionado}
-              onChange={(e) => setProductoSeleccionado(e.target.value)}
-              InputProps={{
-                startAdornment: <PaymentIcon sx={{ mr: 1 }} />,
-                sx: { height: 56 },
-              }}
-            >
-              {productos
-                .filter((p) => p.Carrier === carrier.Nombre)
-                .sort((a, b) => a.Monto - b.Monto)
-                .map((p) => (
-                  <MenuItem key={p.proID} value={p.proID}>
-                    ${p.Monto}
-                  </MenuItem>
-                ))}
-            </TextField>
-          </Grid>
+      {/* Contenido dinámico */}
+      {etapa === 1 && (
+        <RecargaForm
+          carrier={carrier}
+          productos={productos}
+          onNext={handleStartRecarga}
+          onCancel={onClose}
+        />
+      )}
 
-          {/* Contacto */}
-          <Grid item xs={12} md={3}>
-            <TextField
-              select
-              fullWidth
-              label="Contacto"
-              value=""
-              onChange={(e) => {
-                setNumero(e.target.value);
-                setConfirmacion(e.target.value);
-              }}
-              InputProps={{
-                startAdornment: <ContactsIcon sx={{ mr: 1 }} />,
-                sx: { height: 56 },
-              }}
-            >
-              {contactos.map((c) => (
-                <MenuItem key={c.id} value={c.phone}>
-                  {c.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Grid>
+      {etapa === 2 && (
+        <RecargaStatus estado={estadoRecarga} onRetry={() => setEtapa(1)} />
+      )}
 
-          {/* Número */}
-          <Grid item xs={12} md={3}>
-            <TextField
-              label="Número"
-              fullWidth
-              value={numero}
-              onChange={(e) => setNumero(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              InputProps={{
-                startAdornment: <LocalPhoneIcon sx={{ mr: 1 }} />,
-                sx: { height: 56 },
-              }}
-              error={numero.length > 0 && numero.length < 10}
-              helperText={numero.length > 0 && numero.length < 10 ? "Debe tener 10 dígitos" : ""}
-            />
-          </Grid>
+      {etapa === 3 && (
+        <RecargaResultado
+          resultado={estadoRecarga.data}
+          onClose={onClose}
+          onReiniciar={reset}
+        />
+      )}
 
-          {/* Confirmar Número */}
-          <Grid item xs={12} md={3}>
-            <TextField
-              type="password"
-              label="Confirmar Número"
-              fullWidth
-              value={confirmacion}
-              onChange={(e) => setConfirmacion(e.target.value.replace(/\D/g, "").slice(0, 10))}
-              InputProps={{
-                startAdornment: <LockIcon sx={{ mr: 1 }} />,
-                sx: { height: 56 },
-              }}
-              error={numero !== confirmacion && confirmacion.length === 10}
-              helperText={numero !== confirmacion && confirmacion.length === 10 ? "Los números no coinciden" : ""}
-            />
-          </Grid>
-        </Grid>
-
-        {productoSeleccionado && (
-          <Box mt={3} p={2} bgcolor="#f9f9f9" borderRadius={2}>
-            <Typography variant="body2">
-              <strong>💰 Costo:</strong> ${productos.find(p => p.proID === parseInt(productoSeleccionado)).Monto}
-            </Typography>
-            <Typography variant="body2">
-              <strong>💵 Comisión:</strong> ${productos.find(p => p.proID === parseInt(productoSeleccionado)).suscrip}.00 MXN
-            </Typography>
-            <Typography variant="body2">
-              <strong>⏳ Vigencia:</strong> {productos.find(p => p.proID === parseInt(productoSeleccionado)).Vigencia}
-            </Typography>
-            <Typography variant="body2">
-              <strong>ℹ️ Descripción:</strong> {productos.find(p => p.proID === parseInt(productoSeleccionado)).Descripcion}
-            </Typography>
-          </Box>
-        )}
-      </DialogContent>
-
-      <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button
-          variant="contained"
-          onClick={handleRecarga}
-          disabled={isLoading}
-          startIcon={isLoading ? <CircularProgress size={20} /> : null}
-        >
-          {isLoading ? "Procesando..." : "Enviar Recarga"}
-        </Button>
-      </DialogActions>
+      {etapa === 1 && (
+        <DialogActions>
+          <Button onClick={onClose} variant="outlined">
+            Cancelar
+          </Button>
+        </DialogActions>
+      )}
     </Dialog>
   );
 };
