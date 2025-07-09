@@ -1,0 +1,1 @@
+import{az as c,d as i,r as a,R as e}from"./index-Bo5H6Uby.js";const h=s=>r=>{const o=c(),t=i(u=>u.user.isAuthenticated),[l,n]=a.useState(!1);return a.useEffect(()=>{t||(n(!0),setTimeout(()=>{o("/loginmui")},3e3))},[t]),e.createElement(e.Fragment,null,e.createElement(s,{...r}))};export{h as w};

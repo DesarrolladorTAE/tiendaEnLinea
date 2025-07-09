@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
-  Box, Button, TextField, Typography, Stack, Paper,
-  InputLabel, OutlinedInput
+  Box, Button, TextField, Typography, Stack, Paper
 } from '@mui/material';
 import { UploadFile } from '@mui/icons-material';
 import axios from 'axios';
@@ -9,8 +8,8 @@ import axios from 'axios';
 const EnviarWhatsappDocumentos = () => {
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
-  const [pdf, setPdf] = useState(null);
-  const [xml, setXml] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState('');
+  const [xmlUrl, setXmlUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [resultado, setResultado] = useState(null);
 
@@ -19,17 +18,17 @@ const EnviarWhatsappDocumentos = () => {
     setLoading(true);
     setResultado(null);
 
-    const formData = new FormData();
-    formData.append('phone', phone);
-    formData.append('message', message);
-    if (pdf) formData.append('pdf', pdf);
-    if (xml) formData.append('xml', xml);
-
     try {
+      const payload = {
+        phone,
+        message,
+        ...(pdfUrl && { pdf_url: pdfUrl }),
+        ...(xmlUrl && { xml_url: xmlUrl }),
+      };
+
       const res = await axios.post(
         'https://telorecargo.com/api/enviar-documentos-whatsapp',
-        formData,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        payload
       );
       setResultado(res.data);
     } catch (error) {
@@ -66,19 +65,19 @@ const EnviarWhatsappDocumentos = () => {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
           />
-          <InputLabel>Archivo PDF</InputLabel>
-          <OutlinedInput
-            type="file"
+          <TextField
+            label="URL del archivo PDF"
+            placeholder="https://ejemplo.com/archivo.pdf"
             fullWidth
-            inputProps={{ accept: 'application/pdf' }}
-            onChange={(e) => setPdf(e.target.files[0])}
+            value={pdfUrl}
+            onChange={(e) => setPdfUrl(e.target.value)}
           />
-          <InputLabel>Archivo XML</InputLabel>
-          <OutlinedInput
-            type="file"
+          <TextField
+            label="URL del archivo XML"
+            placeholder="https://ejemplo.com/archivo.xml"
             fullWidth
-            inputProps={{ accept: '.xml,text/xml,application/xml' }}
-            onChange={(e) => setXml(e.target.files[0])}
+            value={xmlUrl}
+            onChange={(e) => setXmlUrl(e.target.value)}
           />
 
           <Button
