@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import planes from "../../utils/planes";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -51,7 +52,8 @@ const LandingPage = () => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           setVisibleElements(
-            (prev) => new Set([...prev, entry.target.id || entry.target.className])
+            (prev) =>
+              new Set([...prev, entry.target.id || entry.target.className])
           );
           entry.target.classList.add("visible");
         }
@@ -561,7 +563,10 @@ const LandingPage = () => {
           >
             <span className="navbar-toggler-icon"></span>
           </button>
-          <div className={`collapse navbar-collapse ${isMenuOpen ? "show" : ""}`} id="navbarNav">
+          <div
+            className={`collapse navbar-collapse ${isMenuOpen ? "show" : ""}`}
+            id="navbarNav"
+          >
             <ul className="navbar-nav ms-auto me-4">
               <li className="nav-item">
                 <button
@@ -609,7 +614,10 @@ const LandingPage = () => {
                 </button>
               </li>
             </ul>
-            <button className="btn btn-primary-custom" onClick={() => navigate("/login-register")}>
+            <button
+              className="btn btn-primary-custom"
+              onClick={() => navigate("/login-register")}
+            >
               INICIAR SESIÓN
             </button>
           </div>
@@ -627,8 +635,9 @@ const LandingPage = () => {
                 <span className="highlight">MITIENDAENLINEAMX</span>
               </h1>
               <p className="animate-on-scroll">
-                Una plataforma pensada para llevar la gestión de tu negocio o comercio al siguiente
-                nivel. Centraliza ventas, inventarios y facturación en un solo lugar.
+                Una plataforma pensada para llevar la gestión de tu negocio o
+                comercio al siguiente nivel. Centraliza ventas, inventarios y
+                facturación en un solo lugar.
               </p>
               <div className="d-flex gap-3 animate-on-scroll">
                 <button
@@ -664,12 +673,20 @@ const LandingPage = () => {
             <div className="platform-icon">
               <i className="bi bi-shop"></i>
             </div>
-            <h2 className="display-5 fw-bold text-gradient mb-4">¿Qué es MITIENDAENLINEAMX?</h2>
-            <p className="lead text-muted mx-auto" style={{ maxWidth: "600px" }}>
-              <strong>MITIENDAENLINEAMX</strong> es tu aliado estratégico. Una plataforma poderosa
-              que centraliza la gestión de tus ventas, inventarios y facturación, todo desde un solo
-              lugar.
-              <strong className="text-gradient"> Fácil, rápido y seguro.</strong>
+            <h2 className="display-5 fw-bold text-gradient mb-4">
+              ¿Qué es MITIENDAENLINEAMX?
+            </h2>
+            <p
+              className="lead text-muted mx-auto"
+              style={{ maxWidth: "600px" }}
+            >
+              <strong>MITIENDAENLINEAMX</strong> es tu aliado estratégico. Una
+              plataforma poderosa que centraliza la gestión de tus ventas,
+              inventarios y facturación, todo desde un solo lugar.
+              <strong className="text-gradient">
+                {" "}
+                Fácil, rápido y seguro.
+              </strong>
             </p>
           </div>
 
@@ -685,7 +702,9 @@ const LandingPage = () => {
                 <ul className="list-unstyled">
                   <li className="d-flex align-items-start mb-2">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
-                    <span>Accede a reportes inteligentes para maximizar tus ventas</span>
+                    <span>
+                      Accede a reportes inteligentes para maximizar tus ventas
+                    </span>
                   </li>
                   <li className="d-flex align-items-start mb-2">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
@@ -693,7 +712,9 @@ const LandingPage = () => {
                   </li>
                   <li className="d-flex align-items-start">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
-                    <span>Administra múltiples sucursales de manera centralizada</span>
+                    <span>
+                      Administra múltiples sucursales de manera centralizada
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -705,16 +726,22 @@ const LandingPage = () => {
                   <div className="icon me-3">
                     <i className="bi bi-box-seam"></i>
                   </div>
-                  <h5 className="mb-0 fw-bold">Control Inteligente de Inventarios</h5>
+                  <h5 className="mb-0 fw-bold">
+                    Control Inteligente de Inventarios
+                  </h5>
                 </div>
                 <ul className="list-unstyled">
                   <li className="d-flex align-items-start mb-2">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
-                    <span>Gestiona entradas, salidas y movimientos automáticamente</span>
+                    <span>
+                      Gestiona entradas, salidas y movimientos automáticamente
+                    </span>
                   </li>
                   <li className="d-flex align-items-start mb-2">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
-                    <span>Alertas para reabastecer antes de que se agote el stock</span>
+                    <span>
+                      Alertas para reabastecer antes de que se agote el stock
+                    </span>
                   </li>
                   <li className="d-flex align-items-start mb-2">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
@@ -722,7 +749,9 @@ const LandingPage = () => {
                   </li>
                   <li className="d-flex align-items-start">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
-                    <span>Reportes detallados para decisiones estratégicas</span>
+                    <span>
+                      Reportes detallados para decisiones estratégicas
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -747,7 +776,9 @@ const LandingPage = () => {
                   </li>
                   <li className="d-flex align-items-start">
                     <i className="bi bi-check-circle-fill me-2 mt-1"></i>
-                    <span>Multiplica tus ingresos a través de canales digitales</span>
+                    <span>
+                      Multiplica tus ingresos a través de canales digitales
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -761,7 +792,8 @@ const LandingPage = () => {
             >
               <h3 className="fw-bold mb-3">Transforma tu negocio hoy</h3>
               <p className="mb-3">
-                Únete a miles de empresarios que ya confían en nuestra plataforma
+                Únete a miles de empresarios que ya confían en nuestra
+                plataforma
               </p>
               {/* <button className="btn btn-light btn-lg fw-bold px-5">
                 <i className="bi bi-arrow-right me-2"></i>
@@ -825,141 +857,112 @@ const LandingPage = () => {
           <div className="text-center mb-5 animate-on-scroll">
             <h2 className="display-6 fw-bold mb-3">Nuestros Planes</h2>
             <p className="lead text-muted">
-              Ofrecemos planes flexibles que se adaptan al tamaño y necesidades de tu negocio.
+              Ofrecemos planes flexibles que se adaptan al tamaño y necesidades
+              de tu negocio.
             </p>
           </div>
 
           {/* Tabs de duración */}
-          <ul className="nav nav-tabs justify-content-center mb-4" role="tablist">
-            <li className="nav-item" role="presentation">
-              <button
-                className={`nav-link ${activeTab === "mensual" ? "active" : ""}`}
-                id="mensual-tab"
-                type="button"
-                role="tab"
-                onClick={() => setActiveTab("mensual")}
-              >
-                Mensual
-              </button>
-            </li>
-            <li className="nav-item" role="presentation">
-              <button
-                className={`nav-link ${activeTab === "semestral" ? "active" : ""}`}
-                id="semestral-tab"
-                type="button"
-                role="tab"
-                onClick={() => setActiveTab("semestral")}
-              >
-                Semestral
-              </button>
-            </li>
-            <li className="nav-item" role="presentation">
-              <button
-                className={`nav-link ${activeTab === "anual" ? "active" : ""}`}
-                id="anual-tab"
-                type="button"
-                role="tab"
-                onClick={() => setActiveTab("anual")}
-              >
-                Anual
-              </button>
-            </li>
+          <ul
+            className="nav nav-tabs justify-content-center mb-4"
+            role="tablist"
+          >
+            {["mensual", "semestral", "anual"].map((tab) => (
+              <li className="nav-item" role="presentation" key={tab}>
+                <button
+                  className={`nav-link ${activeTab === tab ? "active" : ""}`}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              </li>
+            ))}
           </ul>
 
           {/* Contenido de cada duración */}
           <div className="tab-content">
-            {[
-              { id: "mensual", label: "Plan Mensual", multiplier: 1 },
-              { id: "semestral", label: "¡Pagas 6 y obtienes 7 meses!", multiplier: 6 },
-              { id: "anual", label: "¡Pagas 10 y obtienes 12 meses!", multiplier: 10 },
-            ].map((duration, dIndex) => (
+            {Object.entries({
+              mensual: { paga: 1, recibe: 1, label: "Plan mensual" },
+              semestral: {
+                paga: 5,
+                recibe: 6,
+                label: "¡Pagas 5 y obtienes 6 meses!",
+              },
+              anual: {
+                paga: 10,
+                recibe: 12,
+                label: "¡Pagas 10 y obtienes 12 meses!",
+              },
+            }).map(([clave, duracion]) => (
               <div
-                key={duration.id}
-                className={`tab-pane fade ${activeTab === duration.id ? "show active" : ""}`}
-                id={duration.id}
+                key={clave}
+                className={`tab-pane fade ${
+                  activeTab === clave ? "show active" : ""
+                }`}
+                id={clave}
                 role="tabpanel"
-                style={{ display: activeTab === duration.id ? "block" : "none" }}
+                style={{ display: activeTab === clave ? "block" : "none" }}
               >
                 <div className="row g-4 mt-3">
-                  {[
-                    {
-                      name: "Plan Negocio",
-                      basePrice: 19900,
-                      features: [
-                        "2 puntos de venta",
-                        "100 productos",
-                        "Envio de Tickets por WhatsApp",
-                        "Reportes de Ventas",
-                        "Soporte por WhatsApp y correo",
-                      ],
-                      exclude: ["Facturación electrónica"],
-                    },
-                    {
-                      name: "Plan Profesional",
-                      basePrice: 44900,
-                      features: [
-                        "5 puntos de venta",
-                        "Productos ilimitados",
-                        "Reportes detallados",
-                        "Soporte técnico WhatsApp",
-                      ],
-                      extras: ["Facturación disponible (complemento)"],
-                    },
-                    {
-                      name: "Plan Avanzado",
-                      basePrice: 89900,
-                      features: [
-                        "10 puntos de venta",
-                        "Dominio personalizado",
-                        "Reportes por tienda y agente",
-                        "Branding profesional",
-                        "Capacitación mensual",
-                        "Soporte prioritario",
-                      ],
-                      extras: ["Incluye módulo CFDI (folios aparte)"],
-                    },
-                  ].map((plan, index) => {
-                    const total = plan.basePrice * duration.multiplier;
-                    const formattedPrice = new Intl.NumberFormat("es-MX", {
-                      style: "currency",
-                      currency: "MXN",
-                    }).format(total / 100);
+                  {planes
+                    .filter((plan) => !plan.demo)
+                    .map((plan, index) => {
+                      const total = plan.precio_mensual * duracion.paga;
+                      const formattedPrice = new Intl.NumberFormat("es-MX", {
+                        style: "currency",
+                        currency: "MXN",
+                      }).format(total);
 
-                    return (
-                      <div key={index} className="col-lg-4 animate-on-scroll">
-                        <div className="service-card p-4 h-100">
-                          <h5 className="fw-bold mb-2">{plan.name}</h5>
-                          <h6 className="text-primary mb-2">{formattedPrice}</h6>
-                          <p className="small text-muted">{duration.label}</p>
-                          <ul className="list-unstyled small mb-3">
-                            {plan.features.map((f, i) => (
-                              <li key={i} className="d-flex align-items-center mb-1">
-                                <i className="bi bi-check-circle text-success me-2"></i> {f}
-                              </li>
-                            ))}
-                            {plan.exclude?.map((e, i) => (
-                              <li key={`e-${i}`} className="d-flex align-items-center mb-1">
-                                <i className="bi bi-x-circle text-danger me-2"></i> {e}
-                              </li>
-                            ))}
-                            {plan.extras?.map((x, i) => (
-                              <li key={`x-${i}`} className="d-flex align-items-center mb-1">
-                                <i className="bi bi-plus-circle text-info me-2"></i> {x}
-                              </li>
-                            ))}
-                          </ul>
-                          <a
-                            href={`https://wa.me/527442188925?text=Hola, estoy interesado en el plan: *${plan.name} - ${formattedPrice}*`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-success btn-sm w-100 mt-auto d-flex align-items-center justify-content-center gap-2"
-                          >
-                            <i className="bi bi-whatsapp"></i> Más información
-                          </a>
+                      return (
+                        <div key={index} className="col-lg-4 animate-on-scroll">
+                          <div className="service-card p-4 h-100">
+                            <h5 className="fw-bold mb-2">{plan.nombre}</h5>
+                            <h6 className="text-primary mb-2">
+                              {formattedPrice}
+                            </h6>
+                            <p className="small text-muted">{duracion.label}</p>
+                            <ul className="list-unstyled small mb-3">
+                              {plan.beneficios?.map((b, i) => (
+                                <li
+                                  key={`b-${i}`}
+                                  className="d-flex align-items-center mb-1"
+                                >
+                                  <i className="bi bi-check-circle text-success me-2"></i>{" "}
+                                  {b}
+                                </li>
+                              ))}
+                              {plan.restricciones?.map((r, i) => (
+                                <li
+                                  key={`r-${i}`}
+                                  className="d-flex align-items-center mb-1"
+                                >
+                                  <i className="bi bi-x-circle text-danger me-2"></i>{" "}
+                                  {r}
+                                </li>
+                              ))}
+                              {plan.complementosDisponibles?.map((c, i) => (
+                                <li
+                                  key={`c-${i}`}
+                                  className="d-flex align-items-center mb-1"
+                                >
+                                  <i className="bi bi-plus-circle text-info me-2"></i>{" "}
+                                  Complemento: {c}
+                                </li>
+                              ))}
+                            </ul>
+                            <a
+                              href={`https://wa.me/527442188925?text=Hola, estoy interesado en el plan: *${plan.nombre} - ${formattedPrice}*`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-success btn-sm w-100 mt-auto d-flex align-items-center justify-content-center gap-2"
+                            >
+                              <i className="bi bi-whatsapp"></i> Más información
+                            </a>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               </div>
             ))}
@@ -971,7 +974,9 @@ const LandingPage = () => {
       <section id="contact" className="contact-section">
         <div className="container">
           <div className="text-center mb-5 animate-on-scroll">
-            <h2 className="display-6 fw-bold text-white mb-3">¿Listo para comenzar?</h2>
+            <h2 className="display-6 fw-bold text-white mb-3">
+              ¿Listo para comenzar?
+            </h2>
             <p className="lead text-white-50">
               Contáctanos hoy y descubre cómo podemos transformar tu negocio
             </p>
@@ -979,7 +984,9 @@ const LandingPage = () => {
 
           <div className="row g-5">
             <div className="col-lg-6 animate-on-scroll">
-              <h4 className="fw-bold mb-4 text-warning">Información de contacto</h4>
+              <h4 className="fw-bold mb-4 text-warning">
+                Información de contacto
+              </h4>
 
               {[
                 {
@@ -1024,7 +1031,9 @@ const LandingPage = () => {
 
             <div className="col-lg-6 animate-on-scroll">
               <div className="contact-form">
-                <h4 className="fw-bold mb-4 text-warning">Envíanos un mensaje</h4>
+                <h4 className="fw-bold mb-4 text-warning">
+                  Envíanos un mensaje
+                </h4>
                 <div>
                   <div className="row g-3">
                     <div className="col-md-6">
@@ -1093,9 +1102,14 @@ const LandingPage = () => {
         <div className="container">
           <div className="row g-4">
             <div className="col-lg-3">
-              <img src="/assets/logo3.png" alt="Logo" className="img-fluid mb-3" />
+              <img
+                src="/assets/logo3.png"
+                alt="Logo"
+                className="img-fluid mb-3"
+              />
               <p className="text-white">
-                Transformamos negocios con soluciones innovadoras y tecnología de vanguardia.
+                Transformamos negocios con soluciones innovadoras y tecnología
+                de vanguardia.
               </p>
             </div>
 
@@ -1132,13 +1146,18 @@ const LandingPage = () => {
           </div>
           <hr className="my-4" style={{ borderColor: "#1f2937" }} />
           <div className="text-center">
-            <p className="text-white mb-0">© 2025 TAE. Todos los derechos reservados.</p>
+            <p className="text-white mb-0">
+              © 2025 TAE. Todos los derechos reservados.
+            </p>
           </div>
         </div>
       </footer>
 
       {/* Scroll to Top Button */}
-      <button className={`scroll-top ${showScrollTop ? "visible" : ""}`} onClick={scrollToTop}>
+      <button
+        className={`scroll-top ${showScrollTop ? "visible" : ""}`}
+        onClick={scrollToTop}
+      >
         <i className="bi bi-arrow-up"></i>
       </button>
     </div>

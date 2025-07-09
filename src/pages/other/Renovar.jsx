@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import PaymentIcon from "@mui/icons-material/Payment";
-import { showSuccess } from "../../utils/alerts";
+import { showSuccess, showError } from "../../utils/alerts";
 import { useNavigate } from "react-router-dom";
 
 const Renovar = () => {
@@ -21,7 +21,7 @@ const Renovar = () => {
   const [pagoExitoso, setPagoExitoso] = useState(null); // null | true | false
   const [estadoPago, setEstadoPago] = useState(null); // null | 'exito' | 'error'
 
-  // Cargar el script correcto de Conekta Checkout v6
+  // Cargar el script de Conekta
   useEffect(() => {
     const scriptAlreadyLoaded = document.querySelector(
       'script[src="https://pay.conekta.com/v1.0/js/conekta-checkout.min.js"]'
@@ -65,22 +65,6 @@ const Renovar = () => {
   const handleClose = async () => {
     setModalOpen(false);
     setCheckoutId("");
-
-    try {
-      const res = await axiosClient.get("/perfil/mi-tienda");
-
-      if (res.data.is_active) {
-        await showSuccess("✅ Pago verificado correctamente. Redirigiendo...");
-        navigate("/admin/products");
-      } else {
-        await showError(
-          "⚠️ El pago no fue confirmado aún. Por favor espera unos minutos."
-        );
-      }
-    } catch (err) {
-      console.error("Error al verificar tienda:", err);
-      await showError("❌ No se pudo verificar el estado del pago.");
-    }
   };
 
   useEffect(() => {
@@ -107,13 +91,17 @@ const Renovar = () => {
               backgroundMode: "lightMode",
             },
             callbacks: {
-              onFinish: (order) => {
+              onFinish: async (order) => {
                 console.log("✅ Pago completado", order);
                 setEstadoPago("exito");
+                setPagoExitoso(true); // Marcar como pago exitoso
+                await showSuccess("✅ Pago confirmado. Redirigiendo...");
+                setModalOpen(false); // Cierra el modal antes de redirigir
               },
               onErrorPayment: (error) => {
                 console.error("❌ Error en pago", error);
                 setEstadoPago("error");
+                showError("❌ Pago fallido. Intenta nuevamente.");
               },
               onGetInfoSuccess: (loadTime) => {
                 console.log(
@@ -129,6 +117,16 @@ const Renovar = () => {
       }, 300); // Esperar 300ms o más si hace falta
     }
   }, [modalOpen, checkoutId, conektaLoaded]);
+
+  // Redirigir si el pago fue exitoso
+  useEffect(() => {
+    if (pagoExitoso) {
+      // Espera un ciclo de renderizado adicional antes de navegar
+      setTimeout(() => {
+        navigate("/admin/products");
+      }, 500); // Puede ajustar el tiempo de espera si es necesario
+    }
+  }, [pagoExitoso, navigate]);
 
   return (
     <div className="container py-3">
@@ -249,6 +247,7 @@ const Renovar = () => {
         }
       }
     `}
+
         </style>
       </Dialog>
     </div>

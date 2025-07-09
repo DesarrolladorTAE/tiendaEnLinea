@@ -12,7 +12,7 @@ const VistaSuscripcionesSuperAdmin = () => {
 
   const obtenerTiendas = async () => {
     try {
-      const res = await axiosSuperadmin.get("/admin/tiendas");
+      const res = await axiosSuperadmin.get("/admin/tiendaslol");
       setTiendas(res.data.data || []);
     } catch (error) {
       console.error("Error al cargar tiendas:", error);

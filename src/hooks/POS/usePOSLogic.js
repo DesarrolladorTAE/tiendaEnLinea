@@ -37,6 +37,13 @@ export function usePOSLogic({ setTicketData, setShowTicket }) {
 
   const handleAdd = (product) => {
     const availableStock = getAvailableStock(product);
+
+    // Aplicar descuento si existe
+    const unitPrice =
+      product.discount > 0
+        ? parseFloat((product.price * (1 - product.discount / 100)).toFixed(2))
+        : product.price;
+
     setCart((prev) => {
       const index = prev.findIndex((item) => item.id === product.id);
       if (index !== -1) {
@@ -46,7 +53,16 @@ export function usePOSLogic({ setTicketData, setShowTicket }) {
         return updated;
       } else {
         if (availableStock < 1) return prev;
-        return [...prev, { ...product, quantity: 1, originalId: product.originalId || product.id }];
+        return [
+          ...prev,
+          {
+            ...product,
+            quantity: 1,
+            price: unitPrice, // 💰 Precio con descuento
+            price_original: product.price, // 🏷️ Precio original (opcional)
+            originalId: product.originalId || product.id,
+          },
+        ];
       }
     });
   };
@@ -71,7 +87,6 @@ export function usePOSLogic({ setTicketData, setShowTicket }) {
   const handleCheckout = async (paymentInfo) => {
     if (cart.length === 0) return;
 
-    // Prepara payload
     const payload = {
       items: cart.map((item) => {
         const [productId] = item.id.split("-");
@@ -84,7 +99,7 @@ export function usePOSLogic({ setTicketData, setShowTicket }) {
           product_id: parseInt(productId, 10),
           variation_size_id: variationSizeId,
           quantity: item.quantity,
-          unit_price: item.price,
+          unit_price: item.price, // ✅ Ya viene con descuento si aplica
         };
       }),
       payment_method: paymentInfo.payment_method,
@@ -92,7 +107,6 @@ export function usePOSLogic({ setTicketData, setShowTicket }) {
       paid_amount: paymentInfo.paid_amount,
     };
 
-    // 1) Crea la venta
     let saleResponse;
     try {
       saleResponse = await axiosClient.post("/sales", payload);
@@ -104,10 +118,9 @@ export function usePOSLogic({ setTicketData, setShowTicket }) {
       return alert("❌ Error al cobrar. Revisa productos o stock.");
     }
 
-    // 2) Maneja la respuesta (ahora viene solo { message, sale })
     const { sale, message } = saleResponse.data;
     setCart([]);
-    setTicketData(sale);      // guardamos el objeto sale completo
+    setTicketData(sale);
     setShowTicket(true);
     alert(`✅ ${message}`);
   };
