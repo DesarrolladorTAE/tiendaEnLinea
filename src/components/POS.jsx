@@ -1,6 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import axiosClient from "../config/axiosClientPOS";
-import { Box, Typography, TextField, Button, CircularProgress } from "@mui/material";
+import {
+  Box,
+  Typography,
+  TextField,
+  Button,
+  CircularProgress,
+} from "@mui/material";
 import ProductCard from "./POS/ProductCard";
 import Cart from "./POS/Cart";
 import { usePOSLogic } from "../hooks/POS/usePOSLogic";
@@ -13,12 +19,13 @@ export default function POS({ posName }) {
   const inputRef = useRef(null);
   const [barcode, setBarcode] = useState("");
   const [scannerEnabled, setScannerEnabled] = useState(true);
+  const [cart, setCart] = useState([]);
+  const [modalDescuentoActivo, setModalDescuentoActivo] = useState(false);
 
   const {
     search,
     setSearch,
     products,
-    cart,
     selectedVariation,
     selectedSize,
     setSelectedVariation,
@@ -31,16 +38,24 @@ export default function POS({ posName }) {
     getQuantityInCart,
     getProductImage,
     isVariantProduct,
-  } = usePOSLogic({ setTicketData, setShowTicket });
+  } = usePOSLogic({
+    setTicketData,
+    setShowTicket,
+    cart,
+    setCart, // 👈 NECESARIO
+  });
 
   //  Descargar el PDF como blob cuando abrimos el modal
   useEffect(() => {
     if (showTicket && ticketData) {
       (async () => {
         try {
-          const resp = await axiosClient.get(`/sales/${ticketData.id}/ticket.pdf`, {
-            responseType: "arraybuffer",
-          });
+          const resp = await axiosClient.get(
+            `/sales/${ticketData.id}/ticket.pdf`,
+            {
+              responseType: "arraybuffer",
+            }
+          );
           const blob = new Blob([resp.data], { type: "application/pdf" });
           setTicketBlobUrl(URL.createObjectURL(blob));
         } catch (e) {
@@ -58,7 +73,8 @@ export default function POS({ posName }) {
     const tryFocus = () => {
       if (
         scannerEnabled &&
-        !showTicket && // evitar enfocar mientras hay modal abierto
+        !showTicket &&
+        !modalDescuentoActivo && // ✅ evita enfoque si está el modal abierto
         inputRef.current &&
         document.activeElement !== inputRef.current
       ) {
@@ -70,7 +86,7 @@ export default function POS({ posName }) {
     tryFocus();
 
     return () => clearTimeout(focusTimeout);
-  }, [scannerEnabled, showTicket]);
+  }, [scannerEnabled, showTicket, modalDescuentoActivo]); // ✅ agrega la nueva dependencia
 
   // Imprimir abriendo el blob URL
   const handlePrint = () => {
@@ -100,7 +116,9 @@ export default function POS({ posName }) {
 
   const filtered = products.filter((p) => {
     const term = search.toLowerCase();
-    return p.name.toLowerCase().includes(term) || p.sku?.toLowerCase().includes(term);
+    return (
+      p.name.toLowerCase().includes(term) || p.sku?.toLowerCase().includes(term)
+    );
   });
 
   const handleScan = (e) => {
@@ -167,13 +185,22 @@ export default function POS({ posName }) {
       />
 
       {/* Contenido */}
-      <Box mt={3} display="grid" gridTemplateColumns={{ xs: "1fr", md: "3fr 1fr" }} gap={2}>
+      <Box
+        mt={3}
+        display="grid"
+        gridTemplateColumns={{ xs: "1fr", md: "3fr 1fr" }}
+        gap={2}
+      >
         {/* Lista de productos */}
         <Box>
           <Typography variant="h6" gutterBottom>
             Productos
           </Typography>
-          <Box display="grid" gap={2} gridTemplateColumns="repeat(auto-fit, minmax(200px,1fr))">
+          <Box
+            display="grid"
+            gap={2}
+            gridTemplateColumns="repeat(auto-fit, minmax(200px,1fr))"
+          >
             {filtered.map((product) => (
               <ProductCard
                 key={product.id}
@@ -198,9 +225,11 @@ export default function POS({ posName }) {
         {/* Carrito */}
         <Cart
           cart={cart}
+          setCart={setCart}
           onRemove={handleRemove}
           onCheckout={handleCheckout}
           setScannerEnabled={setScannerEnabled}
+          setModalDescuentoActivo={setModalDescuentoActivo}
         />
 
         {/* Modal de ticket */}

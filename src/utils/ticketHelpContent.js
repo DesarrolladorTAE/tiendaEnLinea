@@ -26,18 +26,27 @@ const ticketHelpContent = {
     title: '💬 Mensajes Personalizados',
     details: [
       'Puedes personalizar dos mensajes:',
-      '- Mensaje 1 (despues de la compra)',
+      '- Mensaje 1 (después de la compra)',
       '- Mensaje 2 (al pie del ticket)',
       'Límite: 25 caracteres cada uno (con espacios)',
       'Ejemplos: "Gracias por su compra", "Vuelva pronto"',
     ],
   },
   qr: {
-    title: '� QR en el Ticket',
+    title: '📲 QR en el Ticket',
     details: [
       'QR Factura: Enlace para que el cliente escanee y facture su compra. "PRÓXIMAMENTE"',
       'QR Sitio Web: Enlace directo a tu página web o tienda en línea.',
       'Ambos códigos QR son opcionales y se muestran solo si los activas.',
+    ],
+  },
+  mostrar_iva: {
+    title: '💡 Mostrar IVA Desglosado',
+    details: [
+      'Activa esta opción si deseas que el ticket muestre el desglose de IVA.',
+      'Si está desactivado, solo se mostrará el total sin separar el IVA.',
+      'Ideal para negocios que quieren claridad en impuestos.',
+      'Esta opción aplica solo a tickets físicos, no es factura electrónica.',
     ],
   },
 };

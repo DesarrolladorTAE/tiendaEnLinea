@@ -82,7 +82,9 @@ function ProductForm() {
         // axios.get("https://mitiendaenlineamx.com.mx/api/etiquetas"),
       ]);
 
-      setCategoriesOptions(catRes.data.map((c) => ({ value: c.id, label: c.name })));
+      setCategoriesOptions(
+        catRes.data.map((c) => ({ value: c.id, label: c.name }))
+      );
       // setTagsOptions(tagRes.data.map((t) => ({ value: t.id, label: t.name })));
     } catch (error) {
       console.error("Error cargando categorías o etiquetas:", error);
@@ -155,7 +157,12 @@ function ProductForm() {
       formData.append("fullDescription", data.fullDescription);
       formData.append("base_price", basePrice);
 
-      formData.append("iva", data.iva === "null" ? "null" : data.iva);
+      if (data.iva === "null" || data.iva === "") {
+        formData.append("iva", "");
+      } else {
+        formData.append("iva", data.iva);
+      }
+
       formData.append("visible", data.visible ? "1" : "0");
 
       if (data.offerEnd && Number(data.discount) > 0) {
@@ -199,7 +206,6 @@ function ProductForm() {
       }
 
       if (id) {
-
         const formDataObj = {};
 
         for (let [key, value] of formData.entries()) {
@@ -237,7 +243,13 @@ function ProductForm() {
     } catch (error) {
       console.error("❌ Error en la API:", error.response?.data || error);
       if (error.response?.data?.errors) {
-        setError(`❌ Error en la API:\n${JSON.stringify(error.response.data.errors, null, 2)}`);
+        setError(
+          `❌ Error en la API:\n${JSON.stringify(
+            error.response.data.errors,
+            null,
+            2
+          )}`
+        );
       } else {
         setError("Error de conexión con el servidor.");
       }
@@ -285,9 +297,12 @@ function ProductForm() {
               </label>
               <select
                 id="iva"
-                className={`form-control bg-secondary border-secondary ${errors?.iva ? "is-invalid" : ""
-                  }`}
-                {...register("iva", { required: "La tasa de IVA es obligatoria" })}
+                className={`form-control bg-secondary border-secondary ${
+                  errors?.iva ? "is-invalid" : ""
+                }`}
+                {...register("iva", {
+                  required: "La tasa de IVA es obligatoria",
+                })}
               >
                 <option value="">Selecciona una tasa</option>
                 <option value="0.16">TASA 16%</option>
@@ -295,9 +310,12 @@ function ProductForm() {
                 <option value="0">TASA 0%</option>
                 <option value="null">EXENTO</option>
               </select>
-              {errors.iva && <small className="text-danger">{errors.iva.message}</small>}
+              {errors.iva && (
+                <small className="text-danger">{errors.iva.message}</small>
+              )}
               <p className="text-info mt-2">
-                Precio Base Calculado (SIN IVA): <strong>${basePrice} MXN</strong>
+                Precio Base Calculado (SIN IVA):{" "}
+                <strong>${basePrice} MXN</strong>
               </p>
             </div>
           </div>
@@ -396,7 +414,9 @@ function ProductForm() {
 
           {!id && (
             <div className="mb-3">
-              <label className="form-label text-white">🖼 Imágenes del producto (hasta 6)</label>
+              <label className="form-label text-white">
+                🖼 Imágenes del producto (hasta 6)
+              </label>
               <input
                 type="file"
                 className="form-control"
@@ -412,7 +432,9 @@ function ProductForm() {
 
                   const tooBig = files.find((f) => f.size > 2 * 1024 * 1024);
                   if (tooBig) {
-                    alert(`La imagen ${tooBig.name} supera los 2MB permitidos.`);
+                    alert(
+                      `La imagen ${tooBig.name} supera los 2MB permitidos.`
+                    );
                     return;
                   }
 
@@ -426,7 +448,11 @@ function ProductForm() {
           <div className="row">
             <div className="col-md-6 mb-3">
               <label className="form-label">Categoría</label>
-              <CustomSelect name="category" control={control} options={categoriesOptions} />
+              <CustomSelect
+                name="category"
+                control={control}
+                options={categoriesOptions}
+              />
             </div>
 
             {/* <div className="col-md-6 mb-3">

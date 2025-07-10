@@ -26,6 +26,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     mensaje_2: "",
     qr_factura: false,
     qr_sitio: false,
+    mostrar_iva: true, // ✅ nuevo campo
     logo: null,
     logo_preview: "",
     eliminar_logo: false, // ✅ nuevo campo
@@ -50,13 +51,17 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           mensaje_2: ticket.mensaje_2 || "",
           qr_factura: !!ticket.qr_factura,
           qr_sitio: !!ticket.qr_sitio,
+          mostrar_iva:
+            ticket.mostrar_iva !== undefined ? !!ticket.mostrar_iva : true,
           logo_preview: ticket.logo
             ? `${API_BASE}/storage/${ticket.logo}?t=${Date.now()}`
             : "",
         }));
       })
       .catch(() => {
-        showError("❌ No haz personalizado tu Ticket para tus ventas. Revisa las especificaciones en el icono ---ℹ️---   😊 Empieza ahora.");
+        showError(
+          "❌ No haz personalizado tu Ticket para tus ventas. Revisa las especificaciones en el icono ---ℹ️---   😊 Empieza ahora."
+        );
       })
       .finally(() => setLoading(false));
   }, []);
@@ -125,7 +130,6 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     });
     form.append("eliminar_logo", formData.eliminar_logo ? "1" : "0");
 
-
     try {
       await axiosClient.post("/ticket", form, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -160,27 +164,54 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
   const renderHelpSection = () => (
     <Modal open={openHelp} onClose={() => setOpenHelp(false)}>
-      <Paper
-        sx={{ p: 4, maxWidth: 600, m: "auto", mt: "10%", borderRadius: 3 }}
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: "90%",
+          maxWidth: 600,
+          bgcolor: "background.paper",
+          boxShadow: 24,
+          borderRadius: 3,
+          maxHeight: "80vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
       >
-        <Typography variant="h6" gutterBottom>
-          ℹ️ Guía para personalizar el ticket
-        </Typography>
-        {Object.entries(ticketHelpContent).map(([key, section]) => (
-          <Box key={key} mb={2}>
-            <Typography variant="subtitle1" fontWeight="bold">
-              {section.title}
-            </Typography>
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
-              {section.details.map((line, idx) => (
-                <li key={idx}>
-                  <Typography variant="body2">{line}</Typography>
-                </li>
-              ))}
-            </ul>
-          </Box>
-        ))}
-      </Paper>
+        <Box
+          sx={{
+            position: "sticky",
+            top: 0,
+            bgcolor: "background.paper",
+            zIndex: 2,
+            p: 2,
+            borderBottom: "1px solid #ddd",
+          }}
+        >
+          <Typography variant="h6">
+            ℹ️ Guía para personalizar el ticket
+          </Typography>
+        </Box>
+
+        <Box sx={{ p: 3, overflowY: "auto" }}>
+          {Object.entries(ticketHelpContent).map(([key, section]) => (
+            <Box key={key} mb={2}>
+              <Typography variant="subtitle1" fontWeight="bold">
+                {section.title}
+              </Typography>
+              <ul style={{ margin: 0, paddingLeft: 20 }}>
+                {section.details.map((line, idx) => (
+                  <li key={idx}>
+                    <Typography variant="body2">{line}</Typography>
+                  </li>
+                ))}
+              </ul>
+            </Box>
+          ))}
+        </Box>
+      </Box>
     </Modal>
   );
 
@@ -299,6 +330,16 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               }
               label="QR Sitio Web"
             />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  name="mostrar_iva"
+                  checked={formData.mostrar_iva}
+                  onChange={handleChange}
+                />
+              }
+              label="Mostrar desglose de IVA"
+            />
           </Box>
 
           {formData.logo_preview && (
@@ -334,7 +375,9 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
             color="error"
             fullWidth
             onClick={() => {
-              const confirmado = window.confirm("¿Estás seguro de que deseas eliminar el logo actual?");
+              const confirmado = window.confirm(
+                "¿Estás seguro de que deseas eliminar el logo actual?"
+              );
               if (confirmado) {
                 setFormData((prev) => ({
                   ...prev,
@@ -343,7 +386,9 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                   eliminar_logo: true,
                 }));
                 setIsDirty(true);
-                showSuccess("✅ Logo marcado para eliminación. Guarda cambios para aplicar.");
+                showSuccess(
+                  "✅ Logo marcado para eliminación. Guarda cambios para aplicar."
+                );
               }
             }}
             disabled={!formData.logo_preview && !formData.logo}
@@ -356,7 +401,6 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               {errors.logo}
             </Typography>
           )}
-
 
           <Divider sx={{ my: 2 }} />
 
@@ -388,7 +432,6 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               >
                 Vista Previa
               </Button>
-
             </Box>
           </Box>
         </Box>

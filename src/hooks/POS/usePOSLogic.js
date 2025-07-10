@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../config/axiosClientPOS";
 
-export function usePOSLogic({ setTicketData, setShowTicket }) {
+export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState(null);
-  const [cart, setCart] = useState([]);
+  // const [cart, setCart] = useState([]);
   const [selectedVariation, setSelectedVariation] = useState({});
   const [selectedSize, setSelectedSize] = useState({});
 
@@ -36,36 +36,36 @@ export function usePOSLogic({ setTicketData, setShowTicket }) {
     cart.find((item) => item.id === id)?.quantity || 0;
 
   const handleAdd = (product) => {
-    const availableStock = getAvailableStock(product);
+  const existe = cart.find(item => item.id === product.id);
+  const descuento = product.discount ?? 0;
+  const precioConDescuento = parseFloat(
+    (product.price * (1 - descuento / 100)).toFixed(2)
+  );
 
-    // Aplicar descuento si existe
-    const unitPrice =
-      product.discount > 0
-        ? parseFloat((product.price * (1 - product.discount / 100)).toFixed(2))
-        : product.price;
+  if (existe) {
+    const actualizado = cart.map(item =>
+      item.id === product.id
+        ? { ...item, quantity: item.quantity + 1 }
+        : item
+    );
+    setCart(actualizado);
+  } else {
+    setCart([
+      ...cart,
+      {
+        id: product.id,
+        name: product.name,
+        price_original: product.price,
+        discount: descuento,
+        price: precioConDescuento,
+        quantity: 1,
+        variation: product.variation,
+        size: product.size,
+      },
+    ]);
+  }
+};
 
-    setCart((prev) => {
-      const index = prev.findIndex((item) => item.id === product.id);
-      if (index !== -1) {
-        const updated = [...prev];
-        if (updated[index].quantity >= availableStock) return prev;
-        updated[index].quantity += 1;
-        return updated;
-      } else {
-        if (availableStock < 1) return prev;
-        return [
-          ...prev,
-          {
-            ...product,
-            quantity: 1,
-            price: unitPrice, // 💰 Precio con descuento
-            price_original: product.price, // 🏷️ Precio original (opcional)
-            originalId: product.originalId || product.id,
-          },
-        ];
-      }
-    });
-  };
 
   const handleDecrease = (id) => {
     setCart((prev) => {

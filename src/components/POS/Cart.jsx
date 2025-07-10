@@ -9,14 +9,23 @@ import {
   FormControlLabel,
   Radio,
   TextField,
+  Tooltip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
-// import PaymentDialog from "./PaymentDialog";
+import DiscountIcon from "@mui/icons-material/Percent";
+import ModalCambioDescuento from "./ModalCambioDescuento";
 
-export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnabled }) {
-  // const [openDialog, setOpenDialog] = useState(false);
+export default function CartSidebar({
+  cart,
+  onRemove,
+  onCheckout,
+  setScannerEnabled,
+  setModalDescuentoActivo,
+  setCart,
+}) {
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
   const [cashReceived, setCashReceived] = useState("");
+  const [productoEditar, setProductoEditar] = useState(null);
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cambio = Math.max(0, parseFloat(cashReceived || 0) - total);
@@ -25,11 +34,33 @@ export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnab
     const data = {
       payment_method: paymentMethod,
       total_amount: total,
-      paid_amount: paymentMethod === "efectivo" ? parseFloat(cashReceived) : total,
+      paid_amount:
+        paymentMethod === "efectivo" ? parseFloat(cashReceived) : total,
     };
     onCheckout(data);
     setCashReceived("");
     setPaymentMethod("efectivo");
+  };
+
+  const aplicarCambioProducto = (nuevoProducto) => {
+    const actualizado = cart.map((item) => {
+      const mismaVariacion =
+        item.id === nuevoProducto.id &&
+        item.size === nuevoProducto.size &&
+        item.variation?.color === nuevoProducto.variation?.color;
+
+      if (mismaVariacion) {
+        return {
+          ...item,
+          price: nuevoProducto.price,
+          discount: nuevoProducto.discount,
+        };
+      }
+
+      return item;
+    });
+
+    setCart(actualizado);
   };
 
   return (
@@ -53,20 +84,41 @@ export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnab
               >
                 <Box>
                   <Typography variant="body2">
-                    {item.name} {item.variation?.color} {item.size ? `- ${item.size}` : ""} x
-                    {item.quantity}
+                    {item.name} {item.variation?.color}{" "}
+                    {item.size ? `- ${item.size}` : ""} x{item.quantity}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
                     ${(item.price * item.quantity).toFixed(2)}
                   </Typography>
                 </Box>
-                <IconButton size="small" onClick={() => onRemove(item.id)} color="error">
-                  <DeleteIcon fontSize="small" />
-                </IconButton>
+                <Box>
+                  <Tooltip title="Editar descuento">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => {
+                        setProductoEditar(item);
+                        setModalDescuentoActivo(true); // ✅ Activamos manualmente aquí también
+                      }}
+                    >
+                      <DiscountIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <IconButton
+                    size="small"
+                    onClick={() => onRemove(item.id)}
+                    color="error"
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Box>
               </Box>
             ))}
+
             <Box mt={2} borderTop={1} pt={1} borderColor="divider">
-              <Typography variant="subtitle1">Total: ${total.toFixed(2)}</Typography>
+              <Typography variant="subtitle1">
+                Total: ${total.toFixed(2)}
+              </Typography>
               <Box mt={2}>
                 <Typography variant="subtitle2" gutterBottom>
                   Método de Pago
@@ -78,9 +130,21 @@ export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnab
                     setCashReceived("");
                   }}
                 >
-                  <FormControlLabel value="efectivo" control={<Radio />} label="Efectivo" />
-                  <FormControlLabel value="td" control={<Radio />} label="Tarjeta Débito" />
-                  <FormControlLabel value="tc" control={<Radio />} label="Tarjeta Crédito" />
+                  <FormControlLabel
+                    value="efectivo"
+                    control={<Radio />}
+                    label="Efectivo"
+                  />
+                  <FormControlLabel
+                    value="td"
+                    control={<Radio />}
+                    label="Tarjeta Débito"
+                  />
+                  <FormControlLabel
+                    value="tc"
+                    control={<Radio />}
+                    label="Tarjeta Crédito"
+                  />
                 </RadioGroup>
 
                 {paymentMethod === "efectivo" && (
@@ -99,7 +163,10 @@ export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnab
                     <Typography variant="body2" color="text.secondary">
                       Total a pagar: <strong>${total.toFixed(2)}</strong>
                     </Typography>
-                    <Typography variant="body1" sx={{ mt: 1, fontWeight: "bold" }}>
+                    <Typography
+                      variant="body1"
+                      sx={{ mt: 1, fontWeight: "bold" }}
+                    >
                       Cambio: ${cambio.toFixed(2)}
                     </Typography>
                   </>
@@ -110,7 +177,8 @@ export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnab
                   color="success"
                   disabled={
                     cart.length === 0 ||
-                    (paymentMethod === "efectivo" && parseFloat(cashReceived || 0) < total)
+                    (paymentMethod === "efectivo" &&
+                      parseFloat(cashReceived || 0) < total)
                   }
                   onClick={handleConfirm}
                   fullWidth
@@ -122,27 +190,24 @@ export default function CartSidebar({ cart, onRemove, onCheckout, setScannerEnab
             </Box>
           </Box>
         )}
-        {/* <Button
-          variant="contained"
-          fullWidth
-          color="primary"
-          disabled={cart.length === 0}
-          onClick={() => setOpenDialog(true)}
-          sx={{ mt: 2 }}
-        >
-          Cobrar
-        </Button> */}
       </Paper>
 
-      {/* <PaymentDialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-        total={total}
-        onConfirm={(paymentInfo) => {
-          setOpenDialog(false);
-          onCheckout(paymentInfo); // ahora recibe info del pago
-        }}
-      /> */}
+      {productoEditar && (
+        <ModalCambioDescuento
+          open={!!productoEditar}
+          product={productoEditar}
+          onApply={(nuevoProducto) => {
+            aplicarCambioProducto(nuevoProducto);
+            setProductoEditar(null);
+            setModalDescuentoActivo(false); // ❗ Al cerrar
+          }}
+          onClose={() => {
+            setProductoEditar(null);
+            setModalDescuentoActivo(false); // ❗ Al cerrar
+          }}
+          onOpen={() => setModalDescuentoActivo(true)} // ❗ Nuevo
+        />
+      )}
     </Box>
   );
 }
