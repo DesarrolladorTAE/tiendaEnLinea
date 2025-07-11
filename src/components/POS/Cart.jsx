@@ -36,7 +36,30 @@ export default function CartSidebar({
       total_amount: total,
       paid_amount:
         paymentMethod === "efectivo" ? parseFloat(cashReceived) : total,
+      items: cart.map((item) => ({
+        product_id: item.id,
+        variation_size_id: item.variation_id || null,
+        quantity: item.quantity,
+        unit_price: parseFloat(item.price),
+        original_price:
+          parseFloat(
+            item.original_price ||
+              item.base_price ||
+              item.precio_base ||
+              item.precio_sin_descuento ||
+              item.original ||
+              item.originalPrice
+          ) || parseFloat(item.price), // fallback
+        discount_percent: parseFloat(item.discount || 0), // toma de 'discount'
+
+      })),
     };
+
+    // console.log(
+    //   "🧾 Datos enviados a la venta:\n",
+    //   JSON.stringify(data, null, 2)
+    // );
+
     onCheckout(data);
     setCashReceived("");
     setPaymentMethod("efectivo");
@@ -53,7 +76,8 @@ export default function CartSidebar({
         return {
           ...item,
           price: nuevoProducto.price,
-          discount: nuevoProducto.discount,
+          discount: nuevoProducto.discount, // guarda como 'discount'
+          original_price: nuevoProducto.original_price,
         };
       }
 

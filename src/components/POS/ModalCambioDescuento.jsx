@@ -85,7 +85,8 @@ const ModalCambioDescuento = ({ open, onClose, product, onApply, onOpen }) => {
     onApply({
       ...product,
       price: precio,
-      discount: porcentaje,
+      discount_percent: porcentaje, // 👈 este es el nombre correcto
+      original_price: original,
     });
 
     showSuccess("Descuento aplicado correctamente");
