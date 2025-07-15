@@ -13,6 +13,27 @@ import terminos from "../../utils/terminos";
 import LandingFooterSection from "../../components/landing/LandingFooterSection";
 
 const LegalTerms = () => {
+  const renderContenido = (contenido) => {
+    const contieneHTML = /<\/?[a-z][\s\S]*>/i.test(contenido);
+    if (contieneHTML) {
+      return (
+        <Box
+          sx={{ color: "#333", fontSize: "1rem", lineHeight: 1.7 }}
+          dangerouslySetInnerHTML={{ __html: contenido }}
+        />
+      );
+    } else {
+      return (
+        <Typography
+          variant="body1"
+          sx={{ whiteSpace: "pre-line", color: "#333" }}
+        >
+          {contenido}
+        </Typography>
+      );
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -64,12 +85,7 @@ const LegalTerms = () => {
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               {seccion.titulo}
             </Typography>
-            <Typography
-              variant="body1"
-              sx={{ whiteSpace: "pre-line", color: "#333" }}
-            >
-              {seccion.contenido}
-            </Typography>
+            {renderContenido(seccion.contenido)}
           </Box>
         ))}
       </Container>

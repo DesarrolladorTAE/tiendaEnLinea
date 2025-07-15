@@ -27,7 +27,7 @@ const terminosCondiciones = {
     {
       titulo: "🎁 5️⃣ Bonificación por compra",
       contenido:
-        "• TLR otorga un +3.5% en cada compra.\n• Este bono puede cambiar o suspenderse sin previo aviso.\n💡 Puede llegar a 5% si hay acuerdo con la administración.",
+        "• TLR otorga un 5% en cada compra.\n• Este bono puede cambiar o suspenderse sin previo aviso.\n💡 Puede llegar a 10% segun se cumpla con los requisitos.",
     },
     {
       titulo: "🧾 6️⃣ Autofacturación",
@@ -104,6 +104,70 @@ const terminosCondiciones = {
       contenido:
         "Todos los registros digitales y acciones del usuario en la plataforma tienen validez legal equivalente a una firma física bajo la NOM-151 y el Código de Comercio.",
     },
+    {
+      titulo: "📝 Última actualización: ",
+      contenido: `📅 Julio 2025
+
+Al registrarte y utilizar la plataforma TeLoRecargo.com, aceptas los siguientes términos y condiciones relacionados con el esquema de comisiones vigente.
+
+<hr/>
+
+🔢 <strong>1. ESQUEMA DE COMISIONES</strong><br/><br/>
+TeLoRecargo.com ofrece un sistema de comisiones por la compra y reventa de tiempo aire para todas las marcas disponibles. Las comisiones se otorgan en base al monto de compra mensual o al plan contratado con MiTiendaEnLineaMX.com.mx.
+
+<h4>📊 1.1 Comisión por Rango de Compra Mensual:</h4>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width:100%; font-size: 14px;">
+  <thead>
+    <tr>
+      <th>Rango de compra mensual</th>
+      <th>Porcentaje de comisión</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>$0 a $4,999 MXN</td><td>5.0%</td></tr>
+    <tr><td>$5,000 a $9,999 MXN</td><td>5.5%</td></tr>
+    <tr><td>$10,000 a $24,999 MXN</td><td>6.0%</td></tr>
+    <tr><td>$25,000 a $49,999 MXN</td><td>6.5%</td></tr>
+    <tr><td>$50,000 a $74,999 MXN</td><td>6.7%</td></tr>
+    <tr><td>$75,000 a $99,999 MXN</td><td>6.8%</td></tr>
+    <tr><td>$100,000 o más</td><td>6.9%</td></tr>
+  </tbody>
+</table>
+
+<h4>🧾 1.2 Comisión por Plan Contratado (MiTiendaEnLineaMX):</h4>
+<table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width:100%; font-size: 14px;">
+  <thead>
+    <tr>
+      <th>Plan contratado</th>
+      <th>Comisión aplicada</th>
+      <th>Límite mensual de compra</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Plan Negocios</td><td>8.0%</td><td>Hasta $5,000 MXN</td></tr>
+    <tr><td>Plan Profesional</td><td>10.0%</td><td>Hasta $10,000 MXN</td></tr>
+  </tbody>
+</table>
+
+📌 Las comisiones por plan contratado no se acumulan con las de compra mensual. Se aplicará la más alta entre ambas, considerando sus respectivos topes.
+
+🎁 <strong>1.3 Comisión de Bienvenida:</strong><br/>
+Todo nuevo usuario recibe una comisión del 10% en su primera recarga, sin importar el monto. Esta comisión es única y no acumulable con otros beneficios.
+
+<hr/>
+
+📌 <strong>2. CONDICIONES GENERALES</strong><br/>
+• Las comisiones se reflejan al momento de realizar la recarga y pueden consultarse en el historial de transacciones.<br/>
+• Para conservar un nivel de comisión mensual, debe mantenerse el volumen de compras correspondiente cada mes.<br/>
+• En caso de inactividad mayor a 60 días, la cuenta podrá ser suspendida o reiniciada al nivel mínimo de comisión.
+
+<hr/>
+
+🔄 <strong>3. MODIFICACIONES AL ESQUEMA DE COMISIONES</strong><br/>
+TeLoRecargo.com se reserva el derecho de modificar estos términos y el esquema de comisiones sin previo aviso. Cualquier cambio será publicado en la plataforma y notificado por medios oficiales.
+`,
+},
+
     {
       titulo: "📬 2️⃣1️⃣ Contacto",
       contenido:
