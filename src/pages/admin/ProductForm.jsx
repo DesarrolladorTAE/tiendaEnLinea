@@ -8,6 +8,7 @@ import CustomSelect from "../../components/admin/CustomSelect";
 import ProductField from "../../components/admin/ProductField";
 import TextAreaField from "../../components/admin/TextAreaField";
 import { FormControlLabel, Switch } from "@mui/material";
+import useLimiteProductos from "../../hooks/useLimiteProductos";
 
 function ProductForm() {
   const { id } = useParams();
@@ -256,6 +257,23 @@ function ProductForm() {
     }
     // console.log("IVA ENVIADO:", data.iva);
   };
+
+
+
+  
+  const { puedeCrear, cargando, totalProductos, limitePermitido } = useLimiteProductos();
+
+  if (cargando) return <p className="text-center text-muted">Cargando datos...</p>;
+
+  if (!puedeCrear) {
+    return (
+      <div className="alert alert-warning text-center mt-5">
+        🚫 Has alcanzado el límite de <strong>{limitePermitido}</strong> productos para tu plan. <br />
+        Elimina productos o mejora tu plan para seguir agregando más.
+      </div>
+    );
+  }
+  console.log({ puedeCrear, totalProductos, limitePermitido });
 
   return (
     <div className="container">

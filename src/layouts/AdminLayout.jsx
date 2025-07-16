@@ -1,17 +1,40 @@
 import React, { useState, Suspense } from "react";
 import { Outlet } from "react-router-dom";
-import { Drawer, IconButton, Box } from "@mui/material";
+import { Drawer, IconButton, Box, CircularProgress, Typography } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import Sidebar from "../pages/admin/Sidebar";
+import { TiendaProvider, useTienda } from "../context/TiendaContext";
 
 const drawerWidth = 240;
 
-const AdminLayout = () => {
+const AdminContent = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { loading } = useTienda();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "column",
+          backgroundColor: "#f5f5f5",
+        }}
+      >
+        <CircularProgress color="primary" />
+        <Typography sx={{ mt: 2 }} color="text.secondary">
+          Cargando información de la tienda...
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ display: "flex", height: "100vh", overflow: "hidden" }}>
@@ -78,5 +101,11 @@ const AdminLayout = () => {
     </Box>
   );
 };
+
+const AdminLayout = () => (
+  <TiendaProvider>
+    <AdminContent />
+  </TiendaProvider>
+);
 
 export default AdminLayout;
