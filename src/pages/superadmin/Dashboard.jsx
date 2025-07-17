@@ -7,48 +7,56 @@ import {
   Box,
   CircularProgress,
 } from "@mui/material";
-import axios from "axios";
-import BarChartIcon from "@mui/icons-material/BarChart";
-import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import axiosSuperadmin from "../../config/axiosSuperadmin";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
+import GraficasEstadisticas from "../../components/superadmin-dash/GraficasEstadisticas";
+import TiendasNuevasDelMes from "../../components/superadmin-dash/TiendasNuevasDelMes";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const token = sessionStorage.getItem("SUPERADMIN_TOKEN");
+  const [registrosPorMes, setRegistrosPorMes] = useState([]);
+  const [ventasPorMes, setVentasPorMes] = useState([]);
+  const [tiendasNuevas, setTiendasNuevas] = useState(0);
+  const [tiendasMuertas, setTiendasMuertas] = useState(0);
+  const [topTiendas, setTopTiendas] = useState([]);
 
   useEffect(() => {
-    if (!token) return;
-    axios
-      .get("https://mitiendaenlineamx.com.mx/api/admin/overview", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    axiosSuperadmin
+      .get("/admin/overview")
       .then((res) => setStats(res.data.stats))
-      .catch((err) => console.error("Error cargando estadísticas", err))
+      .catch(console.error)
       .finally(() => setLoading(false));
-  }, [token]);
+    axiosSuperadmin
+      .get("/admin/estadisticas/registros-mes")
+      .then((res) => setRegistrosPorMes(res.data.data))
+      .catch(console.error);
+    axiosSuperadmin
+      .get("/admin/estadisticas/pagos-mes")
+      .then((res) => setVentasPorMes(res.data.data))
+      .catch(console.error);
+    axiosSuperadmin
+      .get("/admin/estadisticas/top-tiendas")
+      .then((res) => setTopTiendas(res.data.data))
+      .catch(console.error);
+  }, []);
 
   const statCards = [
     {
-      label: "Usuarios",
-      value: stats?.usuarios ?? 0,
-      icon: <PeopleAltIcon fontSize="large" color="primary" />,
-    },
-    {
-      label: "Ventas totales",
-      value: `$${(stats?.ventas ?? 0).toLocaleString()}`,
-      icon: <ShowChartIcon fontSize="large" color="success" />,
-    },
-    {
       label: "Tiendas registradas",
       value: stats?.tiendas ?? 0,
-      icon: <StorefrontIcon fontSize="large" color="secondary" />,
+      icon: <StorefrontIcon fontSize="inherit" sx={{ color: "#9c27b0" }} />,
     },
     {
-      label: "Visitas",
-      value: stats?.visitas ?? 0,
-      icon: <BarChartIcon fontSize="large" color="warning" />,
+      label: "Ventas en Planes",
+      value: `$${(stats?.ventas_planes ?? 0).toLocaleString()}`,
+      icon: <ShowChartIcon fontSize="inherit" sx={{ color: "#2e7d32" }} />,
+    },
+    {
+      label: "Ventas en Complementos",
+      value: `$${(stats?.ventas_complementos ?? 0).toLocaleString()}`,
+      icon: <ShowChartIcon fontSize="inherit" sx={{ color: "#1976d2" }} />,
     },
   ];
 
@@ -66,21 +74,53 @@ const Dashboard = () => {
         📊 Panel de Estadísticas Generales
       </Typography>
 
-      <Grid container spacing={3} mt={1}>
-        {statCards.map((stat) => (
-          <Grid item xs={12} sm={6} md={3} key={stat.label}>
-            <Card sx={{ display: "flex", alignItems: "center", p: 2 }}>
-              <Box sx={{ mr: 2 }}>{stat.icon}</Box>
-              <CardContent sx={{ flex: 1 }}>
-                <Typography variant="subtitle2" color="textSecondary">
-                  {stat.label}
-                </Typography>
-                <Typography variant="h6">{stat.value}</Typography>
-              </CardContent>
-            </Card>
+      {/* Zona superior: Tabla a la izquierda, tarjetas a la derecha */}
+      <Grid container spacing={3} alignItems="flex-start">
+        {/* Columna izquierda */}
+        <Grid item xs={12} md={4}>
+          <TiendasNuevasDelMes />
+        </Grid>
+
+        {/* Columna derecha */}
+        <Grid item xs={12} md={8}>
+          <Grid container spacing={3} justifyContent="center" mt={18}>
+            {statCards.map((stat) => (
+              <Grid item xs={12} sm={6} md={4} key={stat.label}>
+                <Card
+                  sx={{
+                    p: 3,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    textAlign: "center",
+                    boxShadow: 3,
+                    borderRadius: 3,
+                    height: "100%",
+                    minWidth: 220,
+                  }}
+                >
+                  <Box sx={{ fontSize: 50, mb: 1 }}>{stat.icon}</Box>
+                  <Typography variant="subtitle2" color="textSecondary">
+                    {stat.label}
+                  </Typography>
+                  <Typography variant="h5" fontWeight={700}>
+                    {stat.value}
+                  </Typography>
+                </Card>
+              </Grid>
+            ))}
           </Grid>
-        ))}
+        </Grid>
       </Grid>
+
+      {/* Zona inferior: Gráficas */}
+      <Box mt={5}>
+        <GraficasEstadisticas
+          registrosPorMes={registrosPorMes}
+          topTiendas={topTiendas}
+          ventasPorMes={ventasPorMes}
+        />
+      </Box>
     </Box>
   );
 };
