@@ -87,7 +87,7 @@ const GraficasEstadisticas = ({
           }}
         >
           <Typography variant="subtitle1" gutterBottom>
-            💳 Ventas por Membresía por Mes
+            💳 Ventas por Mes
           </Typography>
           <ResponsiveContainer width="100%" height={340}>
             <BarChart data={ventasFormateadas}>
@@ -111,7 +111,7 @@ const GraficasEstadisticas = ({
           }}
         >
           <Typography variant="subtitle1" gutterBottom>
-            🏆 Top 3 Tiendas por Ventas
+            🏆 Top 3 Tiendas con mas Subscripciones
           </Typography>
           <ResponsiveContainer width="100%" height={340}>
             <BarChart data={topTiendas}>

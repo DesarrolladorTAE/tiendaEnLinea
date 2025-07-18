@@ -46,6 +46,16 @@ const TiendasNuevasDelMes = () => {
   const open = Boolean(anchorEl);
   const id = open ? "popover-tiendas" : undefined;
 
+  const formatearFechaLarga = (fechaISO) => {
+    if (!fechaISO) return "N/D";
+    const fecha = new Date(fechaISO);
+    return fecha.toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  };
+
   return (
     <Box mt={5}>
       <Typography variant="h6" gutterBottom>
@@ -103,21 +113,19 @@ const TiendasNuevasDelMes = () => {
         }}
       >
         {selectedTienda && (
-          <Box p={2} maxWidth={300}>
+          <Box p={2} maxWidth={600}>
             <Typography variant="subtitle1" fontWeight="bold">
               {selectedTienda.nombre}
             </Typography>
             <Typography>📞 Tel: {selectedTienda.telefono || "N/D"}</Typography>
-            <Typography>
-              📦 Plan: {selectedTienda.plan || "Sin plan"}
-            </Typography>
+            <Typography>📦 Plan: {selectedTienda.plan || "Sin plan"}</Typography>
             <Typography>
               🗓️ Registro:{" "}
-              {selectedTienda.fecha_creacion
-                ? new Date(selectedTienda.fecha_creacion).toLocaleString(
-                    "es-MX"
-                  )
-                : "N/D"}
+              {formatearFechaLarga(selectedTienda.fecha_creacion)}
+            </Typography>
+            <Typography>
+              ⏳ Vencimiento:{" "}
+              {formatearFechaLarga(selectedTienda.fecha_vencimiento)}
             </Typography>
             <Box mt={2} textAlign="right">
               <Button size="small" onClick={handleClose}>

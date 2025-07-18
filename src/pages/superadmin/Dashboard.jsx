@@ -7,19 +7,19 @@ import {
   Box,
   CircularProgress,
 } from "@mui/material";
+import { Link } from "react-router-dom";
 import axiosSuperadmin from "../../config/axiosSuperadmin";
 import StorefrontIcon from "@mui/icons-material/Storefront";
 import ShowChartIcon from "@mui/icons-material/ShowChart";
 import GraficasEstadisticas from "../../components/superadmin-dash/GraficasEstadisticas";
 import TiendasNuevasDelMes from "../../components/superadmin-dash/TiendasNuevasDelMes";
+import TiendasPorVencer from "../../components/superadmin-dash/TiendasPorVencer";
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registrosPorMes, setRegistrosPorMes] = useState([]);
   const [ventasPorMes, setVentasPorMes] = useState([]);
-  const [tiendasNuevas, setTiendasNuevas] = useState(0);
-  const [tiendasMuertas, setTiendasMuertas] = useState(0);
   const [topTiendas, setTopTiendas] = useState([]);
 
   useEffect(() => {
@@ -47,6 +47,7 @@ const Dashboard = () => {
       label: "Tiendas registradas",
       value: stats?.tiendas ?? 0,
       icon: <StorefrontIcon fontSize="inherit" sx={{ color: "#9c27b0" }} />,
+      linkTo: "/panel/tiendas",
     },
     {
       label: "Ventas en Planes",
@@ -74,42 +75,57 @@ const Dashboard = () => {
         📊 Panel de Estadísticas Generales
       </Typography>
 
-      {/* Zona superior: Tabla a la izquierda, tarjetas a la derecha */}
-      <Grid container spacing={3} alignItems="flex-start">
-        {/* Columna izquierda */}
-        <Grid item xs={12} md={4}>
+      {/* Tarjetas centradas */}
+      <Grid container justifyContent="center" spacing={3} mb={3}>
+        {statCards.map((stat) => {
+          const card = (
+            <Card
+              sx={{
+                p: 3,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center",
+                boxShadow: 3,
+                borderRadius: 3,
+                height: "100%",
+                minWidth: 220,
+                cursor: stat.linkTo ? "pointer" : "default",
+                transition: "transform 0.2s",
+                "&:hover": stat.linkTo ? { transform: "scale(1.02)" } : {},
+              }}
+            >
+              <Box sx={{ fontSize: 50, mb: 1 }}>{stat.icon}</Box>
+              <Typography variant="subtitle2" color="textSecondary">
+                {stat.label}
+              </Typography>
+              <Typography variant="h5" fontWeight={700}>
+                {stat.value}
+              </Typography>
+            </Card>
+          );
+
+          return (
+            <Grid item xs={12} sm={6} md={4} key={stat.label}>
+              {stat.linkTo ? (
+                <Box component={Link} to={stat.linkTo} sx={{ textDecoration: "none" }}>
+                  {card}
+                </Box>
+              ) : (
+                card
+              )}
+            </Grid>
+          );
+        })}
+      </Grid>
+
+      {/* Dos tablas lado a lado */}
+      <Grid container spacing={3}>
+        <Grid item xs={12} md={6}>
           <TiendasNuevasDelMes />
         </Grid>
-
-        {/* Columna derecha */}
-        <Grid item xs={12} md={8}>
-          <Grid container spacing={3} justifyContent="center" mt={18}>
-            {statCards.map((stat) => (
-              <Grid item xs={12} sm={6} md={4} key={stat.label}>
-                <Card
-                  sx={{
-                    p: 3,
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    textAlign: "center",
-                    boxShadow: 3,
-                    borderRadius: 3,
-                    height: "100%",
-                    minWidth: 220,
-                  }}
-                >
-                  <Box sx={{ fontSize: 50, mb: 1 }}>{stat.icon}</Box>
-                  <Typography variant="subtitle2" color="textSecondary">
-                    {stat.label}
-                  </Typography>
-                  <Typography variant="h5" fontWeight={700}>
-                    {stat.value}
-                  </Typography>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+        <Grid item xs={12} md={6}>
+          <TiendasPorVencer />
         </Grid>
       </Grid>
 
