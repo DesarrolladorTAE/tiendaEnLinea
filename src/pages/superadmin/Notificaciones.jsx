@@ -75,7 +75,7 @@ const EnviarNotificacionConFiltros = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
-    axiosSuperadmin.get("/admin/tiendas").then((res) => setTiendas(res.data));
+    axiosSuperadmin.get("/admin/tiendas23").then((res) => setTiendas(res.data));
   }, []);
 
   useEffect(() => {
@@ -161,7 +161,7 @@ const EnviarNotificacionConFiltros = () => {
                   {filtrosDisponibles.map((f) => (
                     <FormControlLabel
                       key={f.key}
-                      control={<Checkbox checked={filtros[f.key]} onChange={() => toggleFiltro(f.key)} disabled={f.deshabilitado || modoTodos || tiendaIndividual} />}
+                      control={<Checkbox checked={filtros[f.key]} onChange={() => toggleFiltro(f.key)} disabled={f.deshabilitado || modoTodos || !!tiendaIndividual} />}
                       label={f.label}
                     />
                   ))}
@@ -180,7 +180,7 @@ const EnviarNotificacionConFiltros = () => {
                           <Checkbox
                             checked={tiendasSeleccionadas.includes(tienda.id)}
                             onChange={() => toggleSeleccionTienda(tienda.id)}
-                            disabled={modoTodos || tiendaIndividual}
+                            disabled={modoTodos || !!tiendaIndividual}
                           />
                         }
                         label={tienda.name}
@@ -205,7 +205,7 @@ const EnviarNotificacionConFiltros = () => {
 
               <Grid item xs={12} md={3}>
                 <FormControlLabel
-                  control={<Switch checked={modoTodos} onChange={toggleModoTodos} color="primary" disabled={tiendaIndividual} />}
+                  control={<Switch checked={modoTodos} onChange={toggleModoTodos} color="primary" disabled={!!tiendaIndividual} />}
                   label="📦 Seleccionar TODAS las tiendas"
                 />
                 <Divider sx={{ my: 2 }} />
