@@ -31,11 +31,12 @@ const GraficasEstadisticas = ({
   // Convierte mes "2025-07" => "julio 2025"
   const registrosFormateados = registrosPorMes.map((item) => ({
     ...item,
-    mes: dayjs(item.mes).locale("es").format("MMMM YYYY"),
+    mes: dayjs(item.mes, "YYYY-MM").locale("es").format("MMMM YYYY"),
   }));
+
   const ventasFormateadas = ventasPorMes.map((item) => ({
     ...item,
-    mes: dayjs(item.mes).locale("es").format("MMMM YYYY"),
+    mes: dayjs(item.mes, "YYYY-MM").locale("es").format("MMMM YYYY"),
   }));
 
   return (
@@ -75,7 +76,7 @@ const GraficasEstadisticas = ({
         </Box>
 
         {/* Gráfica 2 */}
-       
+
         <Box
           component={Paper}
           elevation={3}

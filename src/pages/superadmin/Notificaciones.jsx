@@ -75,7 +75,7 @@ const EnviarNotificacionConFiltros = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
-    axiosSuperadmin.get("/admin/tiendas").then((res) => setTiendas(res.data));
+    axiosSuperadmin.get("/admin/tiendas23").then((res) => setTiendas(res.data));
   }, []);
 
   useEffect(() => {
