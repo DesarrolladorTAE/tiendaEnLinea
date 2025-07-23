@@ -2,13 +2,18 @@ import React, { useState, useEffect } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useParams } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
-import "bootstrap/dist/css/bootstrap.min.css";
-import VariationItem from "../../components/admin/VariationItem";
-import CustomSelect from "../../components/admin/CustomSelect";
-import ProductField from "../../components/admin/ProductField";
-import TextAreaField from "../../components/admin/TextAreaField";
-import { FormControlLabel, Switch } from "@mui/material";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
+
+// Componentes modulares
+import FormularioBasico from "../../components/admin/producto/FormularioBasico";
+import FormularioDescripciones from "../../components/admin/producto/FormularioDescripciones";
+import FormularioImagenes from "../../components/admin/producto/FormularioImagenes";
+import FormularioCategoriaEtiquetas from "../../components/admin/producto/FormularioCategoriaEtiquetas";
+import FormularioVariaciones from "../../components/admin/producto/FormularioVariaciones";
+import FormularioBotones from "../../components/admin/producto/FormularioBotones";
+
+// Alertas
+import { showSuccess, showError } from "../../utils/alerts";
 
 function ProductForm() {
   const { id } = useParams();
@@ -38,72 +43,48 @@ function ProductForm() {
       tags: [],
       variations: [],
       visible: true,
+      iva: "", // ✅ inicia vacío
     },
   });
-
-  const [categoriesOptions, setCategoriesOptions] = useState([]);
-  const [tagsOptions, setTagsOptions] = useState([]);
-  const discount = watch("discount");
-  const hasVariations = watch("variations").length > 0;
-
-  const price = parseFloat(watch("price")) || 0;
-  const iva = watch("iva") !== "null" ? parseFloat(watch("iva")) || 0 : 0;
-  const basePrice = (price / (1 + iva)).toFixed(2);
 
   const {
     fields: variationFields,
     append: appendVariation,
     remove: removeVariation,
-  } = useFieldArray({
-    control,
-    name: "variations",
-  });
+  } = useFieldArray({ control, name: "variations" });
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [activeVariationIndex, setActiveVariationIndex] = useState(null);
+  const [categoriesOptions, setCategoriesOptions] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
+  const [activeVariationIndex, setActiveVariationIndex] = useState(null);
 
-  useEffect(() => {
-    const initializeForm = async () => {
-      await fetchOptions(); // ⏳ Primero cargamos las opciones
-
-      if (id) {
-        await fetchProduct(id); // 🧠 Luego cargamos los datos si estamos en modo edición
-      }
-    };
-
-    initializeForm();
-  }, [id]);
+  const discount = watch("discount");
+  const price = parseFloat(watch("price")) || 0;
+  const ivaValor = watch("iva");
+  const iva = ivaValor === "null" || ivaValor === "" ? 0 : parseFloat(ivaValor) || 0;
+  const basePrice = (price / (1 + iva)).toFixed(2);
+  const hasVariations = watch("variations").length > 0;
 
   const fetchOptions = async () => {
     try {
-      const [catRes, tagRes] = await Promise.all([
-        axiosClient.get("/admin/categories"), // 🔐 solo categorías del usuario
-        // axios.get("https://mitiendaenlineamx.com.mx/api/etiquetas"),
-      ]);
-
+      const catRes = await axiosClient.get("/admin/categories");
       setCategoriesOptions(
         catRes.data.map((c) => ({ value: c.id, label: c.name }))
       );
-      // setTagsOptions(tagRes.data.map((t) => ({ value: t.id, label: t.name })));
-    } catch (error) {
-      console.error("Error cargando categorías o etiquetas:", error);
+    } catch (err) {
+      showError("Error al cargar categorías.");
+      console.error(err);
     }
   };
 
   const fetchProduct = async (productId) => {
     try {
-      const response = await axiosClient.get(
-        `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`
-      );
-      const product = response.data;
+      const res = await axiosClient.get(`/admin/products/${productId}`);
+      const product = res.data;
 
       let offerEnd = "";
-
       if (product.offerEnd) {
         const date = new Date(product.offerEnd);
-        offerEnd = date.toISOString().slice(0, 16); // formato: "YYYY-MM-DDTHH:MM"
+        offerEnd = date.toISOString().slice(0, 16);
       }
 
       reset({
@@ -120,64 +101,62 @@ function ProductForm() {
         rating: product.rating?.toString() || "",
         shortDescription: product.shortDescription || "",
         fullDescription: product.fullDescription || "",
-        iva: product.iva !== null ? product.iva.toString() : "null",
+        iva: product.iva !== null ? product.iva.toString() : "", // ✅ vacío si es null
         offerEnd,
         category: product.categories.map((c) => ({
           value: c.id,
           label: c.name,
         })),
-        tags: product.tags.map((t) => ({ value: t.id, label: t.name })),
+        tags: product.tags.map((t) => ({
+          value: t.id,
+          label: t.name,
+        })),
         variations:
           product.variation?.map((v) => ({
             ...v,
-            sizes: v.size || [], // Renombramos correctamente para react-hook-form
+            sizes: v.size || [],
           })) || [],
         visible: Boolean(product.visible),
       });
     } catch (err) {
-      console.error("Error al cargar producto para editar:", err);
-      setError("No se pudo cargar el producto para edición.");
+      showError("No se pudo cargar el producto para edición.");
+      console.error(err);
     }
   };
 
-  const onSubmit = async (data) => {
-    setMessage("");
-    setError("");
+  useEffect(() => {
+    fetchOptions();
+    if (id) fetchProduct(id);
+  }, [id]);
 
+  const onSubmit = async (data) => {
     try {
       const formData = new FormData();
-
       formData.append("sku", data.sku);
       formData.append("name", data.name);
-      formData.append("price", data.price?.toString() || "0");
-      formData.append("discount", data.discount?.toString() || "0");
+      formData.append("price", data.price);
+      formData.append("base_price", basePrice);
+      formData.append("discount", data.discount === "" ? "0" : data.discount);
       formData.append("new", data.new ? "1" : "0");
-      formData.append("saleCount", data.saleCount?.toString() || "0");
-      formData.append("rating", data.rating?.toString() || "0");
+      formData.append("saleCount", data.saleCount || "0");
+      formData.append("rating", data.rating || "0");
       formData.append("shortDescription", data.shortDescription);
       formData.append("fullDescription", data.fullDescription);
-      formData.append("base_price", basePrice);
-
-      if (data.iva === "null" || data.iva === "") {
-        formData.append("iva", "");
-      } else {
-        formData.append("iva", data.iva);
-      }
-
+      formData.append("iva", data.iva === "null" || data.iva === "" ? "" : data.iva);
       formData.append("visible", data.visible ? "1" : "0");
 
       if (data.offerEnd && Number(data.discount) > 0) {
-        const formattedOfferEnd = new Date(data.offerEnd)
+        const offerFormatted = new Date(data.offerEnd)
           .toISOString()
           .slice(0, 19)
           .replace("T", " ");
-        formData.append("offerEnd", formattedOfferEnd);
+        formData.append("offerEnd", offerFormatted);
       }
 
       if (data.category?.length) {
-        data.category.forEach((cat) => {
-          formData.append("category[]", cat.value);
-        });
+        data.category.forEach((cat) =>
+          formData.append("category[]", cat.value)
+        );
       }
 
       if (data.tags?.length) {
@@ -187,7 +166,7 @@ function ProductForm() {
       if (hasVariations) {
         const variations = data.variations.map(({ color, sizes }) => ({
           color,
-          image: "", // o podrías asignar una futura imagen
+          image: "",
           size: sizes
             .filter((s) => s.name.trim() !== "")
             .map(({ name, stock }) => ({
@@ -201,79 +180,47 @@ function ProductForm() {
       }
 
       if (imageFiles.length > 0) {
-        imageFiles.forEach((file) => {
-          formData.append("images[]", file);
-        });
+        imageFiles.forEach((file) => formData.append("images[]", file));
       }
 
       if (id) {
-        const formDataObj = {};
-
-        for (let [key, value] of formData.entries()) {
-          // Manejar múltiples entradas (como arrays)
-          if (formDataObj[key]) {
-            if (Array.isArray(formDataObj[key])) {
-              formDataObj[key].push(value);
-            } else {
-              formDataObj[key] = [formDataObj[key], value];
-            }
-          } else {
-            formDataObj[key] = value;
-          }
-        }
-
-        console.log(JSON.stringify(formDataObj, null, 2));
-
-        formData.append("_method", "PUT"); // Laravel lo verá como PUT
+        formData.append("_method", "PUT");
         await axiosClient.post(`/admin/products/${id}`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
-        setMessage("✅ Producto actualizado con éxito.");
+        showSuccess("✅ Producto actualizado con éxito.");
       } else {
         await axiosClient.post("/cargar/products", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
-        setMessage("✅ Producto creado con éxito.");
+        showSuccess("✅ Producto creado con éxito.");
         reset();
         setImageFiles([]);
       }
-    } catch (error) {
-      console.error("❌ Error en la API:", error.response?.data || error);
-      if (error.response?.data?.errors) {
-        setError(
-          `❌ Error en la API:\n${JSON.stringify(
-            error.response.data.errors,
-            null,
-            2
-          )}`
-        );
+    } catch (err) {
+      const errores = err?.response?.data?.errors;
+      if (errores) {
+        const mensaje = Object.values(errores).flat().join("\n");
+        showError(`❌ Error:\n${mensaje}`);
       } else {
-        setError("Error de conexión con el servidor.");
+        showError("❌ Error al guardar el producto.");
       }
+      console.error(err);
     }
-    // console.log("IVA ENVIADO:", data.iva);
   };
 
+  const { puedeCrear, cargando, limitePermitido } = useLimiteProductos();
 
-
-  
-  const { puedeCrear, cargando, totalProductos, limitePermitido } = useLimiteProductos();
-
-  if (cargando) return <p className="text-center text-muted">Cargando datos...</p>;
+  if (cargando) return <p>Cargando...</p>;
 
   if (!puedeCrear) {
     return (
       <div className="alert alert-warning text-center mt-5">
-        🚫 Has alcanzado el límite de <strong>{limitePermitido}</strong> productos para tu plan. <br />
-        Elimina productos o mejora tu plan para seguir agregando más.
+        🚫 Has alcanzado el límite de <strong>{limitePermitido}</strong>{" "}
+        productos para tu plan.
       </div>
     );
   }
-  console.log({ puedeCrear, totalProductos, limitePermitido });
 
   return (
     <div className="container">
@@ -281,236 +228,38 @@ function ProductForm() {
         <h2 className="text-center text-primary">
           {id ? "✏️ Editar Producto" : "📝 Crear Producto"}
         </h2>
-        {message && <div className="alert alert-success">{message}</div>}
-        {error && <div className="alert alert-danger">{error}</div>}
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          {/* Primera fila */}
-          <div className="row">
-            <ProductField
-              label="Código"
-              name="sku"
-              register={register}
-              errors={errors}
-              validation={{ required: "El codigo es obligatorio" }}
-            />
-            <ProductField
-              label="Nombre"
-              name="name"
-              register={register}
-              validation={{ required: "El nombre es obligatorio" }}
-              errors={errors}
-            />
-            <ProductField
-              label="Precio Final (incluye IVA)"
-              name="price"
-              type="number"
-              register={register}
-              validation={{ required: "El precio es obligatorio" }}
-              errors={errors}
-            />
-            <div className="col-md-4 mb-3">
-              <label className="form-label" htmlFor="iva">
-                Tasa de IVA <span className="text-danger">*</span>
-              </label>
-              <select
-                id="iva"
-                className={`form-control bg-secondary border-secondary ${
-                  errors?.iva ? "is-invalid" : ""
-                }`}
-                {...register("iva", {
-                  required: "La tasa de IVA es obligatoria",
-                })}
-              >
-                <option value="">Selecciona una tasa</option>
-                <option value="0.16">TASA 16%</option>
-                <option value="0.08">TASA 8%</option>
-                <option value="0">TASA 0%</option>
-                <option value="null">EXENTO</option>
-              </select>
-              {errors.iva && (
-                <small className="text-danger">{errors.iva.message}</small>
-              )}
-              <p className="text-info mt-2">
-                Precio Base Calculado (SIN IVA):{" "}
-                <strong>${basePrice} MXN</strong>
-              </p>
-            </div>
-          </div>
+          <FormularioBasico
+            register={register}
+            errors={errors}
+            watch={watch}
+            setValue={setValue}
+            discount={discount}
+            basePrice={basePrice}
+            hasVariations={hasVariations}
+          />
 
-          {/* Segunda fila */}
-          <div className="row">
-            {/* Mostrar stock solo si no hay variaciones */}
-            {!hasVariations && (
-              <ProductField
-                label="Stock"
-                name="stock"
-                type="number"
-                register={register}
-                errors={errors}
-              />
-            )}
+          <FormularioDescripciones register={register} errors={errors} />
 
-            <ProductField
-              label="Descuento (%)"
-              name="discount"
-              type="number"
-              register={register}
-              errors={errors}
-            />
+          {!id && <FormularioImagenes setImageFiles={setImageFiles} />}
 
-            {Number(discount) > 0 && (
-              <ProductField
-                label="Fin de la Oferta"
-                name="offerEnd"
-                type="datetime-local"
-                register={register}
-                errors={errors}
-              />
-            )}
-          </div>
+          <FormularioCategoriaEtiquetas
+            control={control}
+            options={categoriesOptions}
+          />
 
-          {/* Tercera fila */}
-          <div className="row">
-            <ProductField
-              label="Calificación (0-5)"
-              name="rating"
-              type="number"
-              register={register}
-              errors={errors}
-            />
+          <FormularioVariaciones
+            control={control}
+            register={register}
+            variationFields={variationFields}
+            appendVariation={appendVariation}
+            removeVariation={removeVariation}
+            activeVariationIndex={activeVariationIndex}
+            setActiveVariationIndex={setActiveVariationIndex}
+          />
 
-            <div className="col-md-4 mb-3">
-              <label className="form-label" htmlFor="new-switch">
-                ¿Es nuevo?
-              </label>
-              <div>
-                <Switch
-                  id="new-switch"
-                  checked={watch("new")}
-                  onChange={() => setValue("new", !watch("new"))}
-                  {...register("new")}
-                  color="primary"
-                  sx={{ transform: "scale(1.5)" }}
-                />
-              </div>
-            </div>
-
-            <div className="col-md-4 mb-3">
-              <label className="form-label" htmlFor="visible-switch">
-                ¿Visible en tu página?
-              </label>
-              <div>
-                <Switch
-                  id="visible-switch"
-                  checked={watch("visible")}
-                  onChange={() => setValue("visible", !watch("visible"))}
-                  color="success"
-                  sx={{ transform: "scale(1.5)" }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Descripciones */}
-          <div className="row">
-            <TextAreaField
-              label="Descripción Corta"
-              name="shortDescription"
-              register={register}
-              validation={{ required: "Las descripción corta es obligatoria" }}
-              errors={errors}
-            />
-            <TextAreaField
-              label="Descripción Larga"
-              name="fullDescription"
-              register={register}
-              validation={{ required: "Las descripción larga es obligatoria" }}
-              errors={errors}
-            />
-          </div>
-
-          {!id && (
-            <div className="mb-3">
-              <label className="form-label text-white">
-                🖼 Imágenes del producto (hasta 6)
-              </label>
-              <input
-                type="file"
-                className="form-control"
-                accept="image/*"
-                multiple
-                onChange={(e) => {
-                  const files = Array.from(e.target.files);
-
-                  if (files.length > 6) {
-                    alert("Solo se permiten hasta 6 imágenes.");
-                    return;
-                  }
-
-                  const tooBig = files.find((f) => f.size > 2 * 1024 * 1024);
-                  if (tooBig) {
-                    alert(
-                      `La imagen ${tooBig.name} supera los 2MB permitidos.`
-                    );
-                    return;
-                  }
-
-                  setImageFiles(files);
-                }}
-              />
-            </div>
-          )}
-
-          {/* Categoría y Etiquetas */}
-          <div className="row">
-            <div className="col-md-6 mb-3">
-              <label className="form-label">Categoría</label>
-              <CustomSelect
-                name="category"
-                control={control}
-                options={categoriesOptions}
-              />
-            </div>
-
-            {/* <div className="col-md-6 mb-3">
-              <label className="form-label">Tags</label>
-              <CustomSelect name="tags" control={control} options={tagsOptions} />
-            </div> */}
-          </div>
-
-          {/* Variaciones */}
-          <h4 className="mt-4 text-white">Variaciones (opcional)</h4>
-          {variationFields.map((variation, vIndex) => (
-            <VariationItem
-              key={variation.id}
-              control={control}
-              register={register}
-              variation={variation}
-              vIndex={vIndex}
-              removeVariation={removeVariation}
-              isActive={activeVariationIndex === vIndex}
-              setActiveVariationIndex={setActiveVariationIndex}
-            />
-          ))}
-
-          <button
-            type="button"
-            className="btn btn-primary w-100 mt-3"
-            onClick={() =>
-              appendVariation({
-                color: "",
-                image: null,
-                sizes: [{ name: "", stock: "" }],
-              })
-            }
-          >
-            ➕ Agregar Variación
-          </button>
-
-          <button type="submit" className="btn btn-success w-100 mt-4">
-            {id ? "✏️ Actualizar Producto" : "✅ Guardar Producto"}
-          </button>
+          <FormularioBotones id={id} />
         </form>
       </div>
     </div>
