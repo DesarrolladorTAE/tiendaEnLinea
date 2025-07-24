@@ -9,6 +9,10 @@ import ProductField from "../../components/admin/ProductField";
 import TextAreaField from "../../components/admin/TextAreaField";
 import { FormControlLabel, Switch } from "@mui/material";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
+import {
+  buscarClavesProducto,
+  buscarClavesUnidad,
+} from "../../services/taecontaApi";
 
 function ProductForm() {
   const { id } = useParams();
@@ -67,6 +71,10 @@ function ProductForm() {
   const [error, setError] = useState("");
   const [activeVariationIndex, setActiveVariationIndex] = useState(null);
   const [imageFiles, setImageFiles] = useState([]);
+  const [opcionesClaveProducto, setOpcionesClaveProducto] = useState([]);
+  const [opcionesClaveUnidad, setOpcionesClaveUnidad] = useState([]);
+  const [claveProdInput, setClaveProdInput] = useState("");
+  const [claveUnidadInput, setClaveUnidadInput] = useState("");
 
   useEffect(() => {
     const initializeForm = async () => {
@@ -163,9 +171,11 @@ function ProductForm() {
       formData.append("base_price", basePrice);
       formData.append("unidad_medida", data.unidad_medida || "");
       formData.append("costo_compra", data.costo_compra?.toString() || "0");
-      formData.append("clave_producto_servicio", data.clave_producto_servicio || "");
+      formData.append(
+        "clave_producto_servicio",
+        data.clave_producto_servicio || ""
+      );
       formData.append("clave_unidad", data.clave_unidad || "");
-
 
       if (data.iva === "null" || data.iva === "") {
         formData.append("iva", "");
@@ -231,7 +241,7 @@ function ProductForm() {
           }
         }
 
-        console.log(JSON.stringify(formDataObj, null, 2));
+        // console.log(JSON.stringify(formDataObj, null, 2));
 
         formData.append("_method", "PUT"); // Laravel lo verá como PUT
         await axiosClient.post(`/admin/products/${id}`, formData, {
@@ -282,7 +292,7 @@ function ProductForm() {
       </div>
     );
   }
-  console.log({ puedeCrear, totalProductos, limitePermitido });
+  // console.log({ puedeCrear, totalProductos, limitePermitido });
 
   return (
     <div className="container">
@@ -395,21 +405,107 @@ function ProductForm() {
               errors={errors}
             />
 
-            <ProductField
-              label="Clave Producto/Servicio"
-              name="clave_producto_servicio"
-              type="text"
-              register={register}
-              errors={errors}
-            />
+            <div className="position-relative col-md-6 mb-3">
+              <label className="form-label text-white">
+                Clave Producto/Servicio
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Buscar clave SAT (ej. 10101502, perros...)"
+                value={claveProdInput}
+                onChange={async (e) => {
+                  const value = e.target.value;
+                  setClaveProdInput(value);
+                  setValue("clave_producto_servicio", value);
+                  if (value.length >= 2) {
+                    const resultados = await buscarClavesProducto(value);
+                    setOpcionesClaveProducto(resultados);
+                  } else {
+                    setOpcionesClaveProducto([]);
+                  }
+                }}
+              />
+              {opcionesClaveProducto.length > 0 && (
+                <div
+                  className="position-absolute bg-white border rounded shadow"
+                  style={{
+                    zIndex: 10,
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    maxHeight: "200px",
+                    overflowY: "auto",
+                  }}
+                >
+                  {opcionesClaveProducto.map((item) => (
+                    <div
+                      key={item.clave}
+                      className="px-2 py-1 text-dark hover-bg-light"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => {
+                        const valor = `${item.clave} - ${item.descripcion}`;
+                        setClaveProdInput(valor);
+                        setValue("clave_producto_servicio", item.clave);
+                        setOpcionesClaveProducto([]);
+                      }}
+                    >
+                      {item.clave} - {item.descripcion}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-            <ProductField
-              label="Clave Unidad"
-              name="clave_unidad"
-              type="text"
-              register={register}
-              errors={errors}
-            />
+            <div className="position-relative col-md-6 mb-3">
+              <label className="form-label text-white">Clave Unidad</label>
+              <input
+                type="text"
+                className="form-control"
+                placeholder="Buscar unidad (ej. kilogramo, A41...)"
+                value={claveUnidadInput}
+                onChange={async (e) => {
+                  const value = e.target.value;
+                  setClaveUnidadInput(value);
+                  setValue("clave_unidad", value);
+                  if (value.length >= 2) {
+                    const resultados = await buscarClavesUnidad(value);
+                    setOpcionesClaveUnidad(resultados);
+                  } else {
+                    setOpcionesClaveUnidad([]);
+                  }
+                }}
+              />
+              {opcionesClaveUnidad.length > 0 && (
+                <div
+                  className="position-absolute bg-white border rounded shadow"
+                  style={{
+                    zIndex: 10,
+                    top: "100%",
+                    left: 0,
+                    right: 0,
+                    maxHeight: "200px",
+                    overflowY: "auto",
+                  }}
+                >
+                  {opcionesClaveUnidad.map((item) => (
+                    <div
+                      key={item.clave}
+                      className="px-2 py-1 text-dark hover-bg-light"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => {
+                        const valor = `${item.clave} - ${item.descripcion}`;
+                        setClaveUnidadInput(valor);
+                        setValue("clave_unidad", item.clave);
+                        setOpcionesClaveUnidad([]);
+                      }}
+                    >
+                      {item.clave} - {item.descripcion}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Tercera fila */}

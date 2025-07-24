@@ -4,6 +4,9 @@ import { Provider } from "react-redux";
 import App from "./App.jsx";
 import { store } from "./store/store.jsx";
 import PersistProvider from "./store/providers/persist-provider.jsx";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+
 
 // Estilos y librerías
 // import "animate.css";
