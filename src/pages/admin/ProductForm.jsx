@@ -3,7 +3,7 @@ import { useForm, useFieldArray } from "react-hook-form";
 import { useParams } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import "bootstrap/dist/css/bootstrap.min.css";
-import VariationItem from "../../components/admin/VariationItem";
+// import VariationItem from "../../components/admin/VariationItem";
 import CustomSelect from "../../components/admin/CustomSelect";
 import ProductField from "../../components/admin/ProductField";
 import TextAreaField from "../../components/admin/TextAreaField";
@@ -12,7 +12,10 @@ import useLimiteProductos from "../../hooks/useLimiteProductos";
 import {
   buscarClavesProducto,
   buscarClavesUnidad,
+  buscarUnidadesMedida,
 } from "../../services/taecontaApi";
+import { showSuccess, showError } from "../../utils/alerts";
+import { useNavigate } from "react-router-dom";
 
 function ProductForm() {
   const { id } = useParams();
@@ -50,10 +53,9 @@ function ProductForm() {
   });
 
   const [categoriesOptions, setCategoriesOptions] = useState([]);
-  const [tagsOptions, setTagsOptions] = useState([]);
+  // const [tagsOptions, setTagsOptions] = useState([]);
   const discount = watch("discount");
   const hasVariations = watch("variations").length > 0;
-
   const price = parseFloat(watch("price")) || 0;
   const iva = watch("iva") !== "null" ? parseFloat(watch("iva")) || 0 : 0;
   const basePrice = (price / (1 + iva)).toFixed(2);
@@ -69,12 +71,15 @@ function ProductForm() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [activeVariationIndex, setActiveVariationIndex] = useState(null);
+  // const [activeVariationIndex, setActiveVariationIndex] = useState(null);
   const [imageFiles, setImageFiles] = useState([]);
   const [opcionesClaveProducto, setOpcionesClaveProducto] = useState([]);
   const [opcionesClaveUnidad, setOpcionesClaveUnidad] = useState([]);
   const [claveProdInput, setClaveProdInput] = useState("");
   const [claveUnidadInput, setClaveUnidadInput] = useState("");
+  const [unidadMedidaInput, setUnidadMedidaInput] = useState("");
+  const [opcionesUnidadMedida, setOpcionesUnidadMedida] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const initializeForm = async () => {
@@ -142,13 +147,24 @@ function ProductForm() {
         variations:
           product.variation?.map((v) => ({
             ...v,
-            sizes: v.size || [], // Renombramos correctamente para react-hook-form
+            sizes: v.size || [],
           })) || [],
         visible: Boolean(product.visible),
+
+        // Nuevos campos 👇
+        costo_compra: product.purchase_cost?.toString() || "",
+        unidad_medida: product.unidad_medida_id || "",
+        clave_producto_servicio: product.clave_producto_sat || "",
+        clave_unidad: product.clave_unidad_sat || "",
       });
+      // Mostrar texto en los inputs visuales
+setUnidadMedidaInput(data.unidad_medida || "");
+setClaveProdInput(product.clave_producto_sat || "");
+setClaveUnidadInput(product.clave_unidad_sat || "");
+
     } catch (err) {
       console.error("Error al cargar producto para editar:", err);
-      setError("No se pudo cargar el producto para edición.");
+      showError("No se pudo cargar el producto para edición.");
     }
   };
 
@@ -169,13 +185,10 @@ function ProductForm() {
       formData.append("shortDescription", data.shortDescription);
       formData.append("fullDescription", data.fullDescription);
       formData.append("base_price", basePrice);
-      formData.append("unidad_medida", data.unidad_medida || "");
-      formData.append("costo_compra", data.costo_compra?.toString() || "0");
-      formData.append(
-        "clave_producto_servicio",
-        data.clave_producto_servicio || ""
-      );
-      formData.append("clave_unidad", data.clave_unidad || "");
+      formData.append("unidad_medida_id", data.unidad_medida || ""); // enviar el ID real
+      formData.append("clave_producto_sat", data.clave_producto_servicio || ""); // ← texto tipo "10101502"
+      formData.append("clave_unidad_sat", data.clave_unidad || ""); // ← texto tipo "H87"
+      formData.append("purchase_cost", data.costo_compra?.toString() || "0");
 
       if (data.iva === "null" || data.iva === "") {
         formData.append("iva", "");
@@ -249,21 +262,23 @@ function ProductForm() {
             "Content-Type": "multipart/form-data",
           },
         });
-        setMessage("✅ Producto actualizado con éxito.");
+        showSuccess("✅ Producto actualizado con éxito.");
+        navigate("/admin/products");
       } else {
         await axiosClient.post("/cargar/products", formData, {
           headers: {
             "Content-Type": "multipart/form-data",
           },
         });
-        setMessage("✅ Producto creado con éxito.");
+        showSuccess("✅ Producto creado con éxito.");
+        navigate("/admin/products");
         reset();
         setImageFiles([]);
       }
     } catch (error) {
       console.error("❌ Error en la API:", error.response?.data || error);
       if (error.response?.data?.errors) {
-        setError(
+        showError(
           `❌ Error en la API:\n${JSON.stringify(
             error.response.data.errors,
             null,
@@ -271,7 +286,7 @@ function ProductForm() {
           )}`
         );
       } else {
-        setError("Error de conexión con el servidor.");
+        showError("Error de conexión con el servidor.");
       }
     }
     // console.log("IVA ENVIADO:", data.iva);
@@ -305,6 +320,14 @@ function ProductForm() {
 
         <form onSubmit={handleSubmit(onSubmit)}>
           {/* Primera fila */}
+
+          <div className="row mt-4">
+            <div className="col-12">
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
+                🛒 Información del Producto
+              </h4>
+            </div>
+          </div>
           <div className="row">
             <ProductField
               label="Código"
@@ -355,9 +378,24 @@ function ProductForm() {
                 <strong>${basePrice} MXN</strong>
               </p>
             </div>
+            <ProductField
+              label="Costo de Compra"
+              name="costo_compra"
+              type="text"
+              register={register}
+              errors={errors}
+            />
           </div>
 
           {/* Segunda fila */}
+
+          <div className="row mt-4">
+            <div className="col-12">
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
+                📦 Inventario y Descuento
+              </h4>
+            </div>
+          </div>
           <div className="row">
             {/* Mostrar stock solo si no hay variaciones */}
             {!hasVariations && (
@@ -369,6 +407,60 @@ function ProductForm() {
                 errors={errors}
               />
             )}
+
+<div className="position-relative col-md-6 mb-3">
+  <label className="form-label text-white">Unidad de Medida</label>
+
+  <input
+    type="text"
+    className="form-control"
+    placeholder="Buscar unidad (ej. cajas, piezas, kg...)"
+    value={unidadMedidaInput}
+    onChange={async (e) => {
+      const value = e.target.value;
+      setUnidadMedidaInput(value); // muestra texto
+      if (value.length >= 2) {
+        const resultados = await buscarUnidadesMedida(value);
+        setOpcionesUnidadMedida(resultados);
+      } else {
+        setOpcionesUnidadMedida([]);
+      }
+    }}
+  />
+
+  {/* Oculto, guarda el ID en el form */}
+  <input type="hidden" {...register("unidad_medida_id")} />
+
+  {opcionesUnidadMedida.length > 0 && (
+    <div
+      className="position-absolute bg-white border rounded shadow"
+      style={{
+        zIndex: 10,
+        top: "100%",
+        left: 0,
+        right: 0,
+        maxHeight: "200px",
+        overflowY: "auto",
+      }}
+    >
+      {opcionesUnidadMedida.map((item) => (
+        <div
+          key={item.id}
+          className="px-2 py-1 text-dark hover-bg-light"
+          style={{ cursor: "pointer" }}
+          onClick={() => {
+            const valor = `${item.simbolo} - ${item.texto}`;
+            setUnidadMedidaInput(valor); // se muestra al usuario
+            setValue("unidad_medida_id", item.id); // se guarda el ID
+            setOpcionesUnidadMedida([]);
+          }}
+        >
+          {item.simbolo} - {item.texto}
+        </div>
+      ))}
+    </div>
+  )}
+</div>
 
             <ProductField
               label="Descuento (%)"
@@ -388,23 +480,15 @@ function ProductForm() {
               />
             )}
           </div>
+
+          <div className="row mt-4">
+            <div className="col-12">
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
+                📄 Facturación
+              </h4>
+            </div>
+          </div>
           <div className="row">
-            <ProductField
-              label="Costo de Compra"
-              name="costo_compra"
-              type="number"
-              register={register}
-              errors={errors}
-            />
-
-            <ProductField
-              label="Unidad de Medida"
-              name="unidad_medida"
-              type="text"
-              register={register}
-              errors={errors}
-            />
-
             <div className="position-relative col-md-6 mb-3">
               <label className="form-label text-white">
                 Clave Producto/Servicio
@@ -446,7 +530,7 @@ function ProductForm() {
                       onClick={() => {
                         const valor = `${item.clave} - ${item.descripcion}`;
                         setClaveProdInput(valor);
-                        setValue("clave_producto_servicio", item.clave);
+                        setValue("clave_producto_servicio", item.clave); // guardar solo el ID
                         setOpcionesClaveProducto([]);
                       }}
                     >
@@ -496,7 +580,7 @@ function ProductForm() {
                       onClick={() => {
                         const valor = `${item.clave} - ${item.descripcion}`;
                         setClaveUnidadInput(valor);
-                        setValue("clave_unidad", item.clave);
+                        setValue("clave_unidad", item.clave); // guardar solo el ID
                         setOpcionesClaveUnidad([]);
                       }}
                     >
@@ -509,6 +593,14 @@ function ProductForm() {
           </div>
 
           {/* Tercera fila */}
+          <div className="row mt-4">
+            <div className="col-12">
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
+                🌐 Sitio Web
+              </h4>
+            </div>
+          </div>
+
           <div className="row">
             <ProductField
               label="Calificación (0-5)"
@@ -551,6 +643,14 @@ function ProductForm() {
           </div>
 
           {/* Descripciones */}
+
+          <div className="row mt-4">
+            <div className="col-12">
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
+                📑 Descripciones
+              </h4>
+            </div>
+          </div>
           <div className="row">
             <TextAreaField
               label="Descripción Corta"
@@ -566,6 +666,14 @@ function ProductForm() {
               validation={{ required: "Las descripción larga es obligatoria" }}
               errors={errors}
             />
+          </div>
+
+          <div className="row mt-4">
+            <div className="col-12">
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
+                🖼️ Imagenes del Producto
+              </h4>
+            </div>
           </div>
 
           {!id && (
@@ -600,6 +708,14 @@ function ProductForm() {
             </div>
           )}
 
+          <div className="row mt-4">
+            <div className="col-12">
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
+                ✅ Categorias
+              </h4>
+            </div>
+          </div>
+
           {/* Categoría y Etiquetas */}
           <div className="row">
             <div className="col-md-6 mb-3">
@@ -618,7 +734,7 @@ function ProductForm() {
           </div>
 
           {/* Variaciones */}
-          <h4 className="mt-4 text-white">Variaciones (opcional)</h4>
+          {/* <h4 className="mt-4 text-white">Variaciones (opcional)</h4>
           {variationFields.map((variation, vIndex) => (
             <VariationItem
               key={variation.id}
@@ -630,9 +746,9 @@ function ProductForm() {
               isActive={activeVariationIndex === vIndex}
               setActiveVariationIndex={setActiveVariationIndex}
             />
-          ))}
+          ))} */}
 
-          <button
+          {/* <button
             type="button"
             className="btn btn-primary w-100 mt-3"
             onClick={() =>
@@ -644,7 +760,7 @@ function ProductForm() {
             }
           >
             ➕ Agregar Variación
-          </button>
+          </button> */}
 
           <button type="submit" className="btn btn-success w-100 mt-4">
             {id ? "✏️ Actualizar Producto" : "✅ Guardar Producto"}

@@ -21,4 +21,16 @@ return Array.isArray(res.data.clavesUnidades) ? res.data.clavesUnidades : [];
   }
 };
 
+export const buscarUnidadesMedida = async (filtro) => {
+  try {
+    const res = await axios.get(`/taeconta/unidades-medida`, {
+      params: { search: filtro },
+    });
+    return res.data.unidades;
+  } catch (error) {
+    console.error("Error al buscar unidades de medida:", error);
+    return [];
+  }
+};
+
 
