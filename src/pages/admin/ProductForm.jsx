@@ -153,12 +153,13 @@ function ProductForm() {
 
         // Nuevos campos 👇
         costo_compra: product.purchase_cost?.toString() || "",
-        unidad_medida: product.unidad_medida_id || "",
+        unidad_medida_id: product.unidad_medida_id || "",
         clave_producto_servicio: product.clave_producto_sat || "",
         clave_unidad: product.clave_unidad_sat || "",
       });
       // Mostrar texto en los inputs visuales
-setUnidadMedidaInput(data.unidad_medida || "");
+console.log("Texto unidad:", product.unidad_medida_texto);
+setUnidadMedidaInput(product.unidad_medida_texto || "");
 setClaveProdInput(product.clave_producto_sat || "");
 setClaveUnidadInput(product.clave_unidad_sat || "");
 
@@ -185,7 +186,7 @@ setClaveUnidadInput(product.clave_unidad_sat || "");
       formData.append("shortDescription", data.shortDescription);
       formData.append("fullDescription", data.fullDescription);
       formData.append("base_price", basePrice);
-      formData.append("unidad_medida_id", data.unidad_medida || ""); // enviar el ID real
+      formData.append("unidad_medida_id", data.unidad_medida_id || "");// enviar el ID real
       formData.append("clave_producto_sat", data.clave_producto_servicio || ""); // ← texto tipo "10101502"
       formData.append("clave_unidad_sat", data.clave_unidad || ""); // ← texto tipo "H87"
       formData.append("purchase_cost", data.costo_compra?.toString() || "0");
@@ -346,7 +347,7 @@ setClaveUnidadInput(product.clave_unidad_sat || "");
             <ProductField
               label="Precio Final (incluye IVA)"
               name="price"
-              type="number"
+              type="text"
               register={register}
               validation={{ required: "El precio es obligatorio" }}
               errors={errors}
@@ -429,7 +430,9 @@ setClaveUnidadInput(product.clave_unidad_sat || "");
   />
 
   {/* Oculto, guarda el ID en el form */}
-  <input type="hidden" {...register("unidad_medida_id")} />
+<input type="hidden" {...register("unidad_medida_id")} />
+
+
 
   {opcionesUnidadMedida.length > 0 && (
     <div
