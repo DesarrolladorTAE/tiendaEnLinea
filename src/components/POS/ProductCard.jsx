@@ -1,4 +1,5 @@
 import React from "react";
+import { useState, useEffect } from "react";
 import {
   Paper,
   Box,
@@ -52,6 +53,14 @@ export default function ProductCard({
       });
     }
   };
+  // Dentro del componente ProductCard:
+  const [inputQty, setInputQty] = useState("");
+
+  // Sincronizar cuando cambia el producto o el carrito
+  useEffect(() => {
+    const qty = getQuantityInCart(compositeId);
+    setInputQty(qty > 0 ? qty.toString() : "");
+  }, [compositeId, cart]); // <- importante incluir el carrito aquí
 
   return (
     <Paper
@@ -221,10 +230,33 @@ export default function ProductCard({
         >
           –
         </Button>
+        
+        <TextField
+          type="number"
+          variant="standard"
+          inputProps={{
+            step: "any",
+            min: 0,
+            style: { textAlign: "center", width: 60 },
+          }}
+          value={inputQty}
+          onChange={(e) => {
+            const val = e.target.value;
+            setInputQty(val); // dejar que el usuario escriba lo que quiera
 
-        <Typography variant="body2" sx={{ pointerEvents: "none" }}>
-          {getQuantityInCart(compositeId)}
-        </Typography>
+            const value = parseFloat(val);
+            if (!isNaN(value) && value >= 0 && value <= stock) {
+              onAdd({
+                ...product,
+                variation: selectedVar,
+                size: selectedSz,
+                id: compositeId,
+                quantity: value,
+              });
+            }
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
 
         <Button
           size="small"

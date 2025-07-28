@@ -39,7 +39,7 @@ export default function CartSidebar({
       items: cart.map((item) => ({
         product_id: item.id,
         variation_size_id: item.variation_id || null,
-        quantity: item.quantity,
+        quantity: parseFloat(item.quantity),
         unit_price: parseFloat(item.price),
         original_price:
           parseFloat(

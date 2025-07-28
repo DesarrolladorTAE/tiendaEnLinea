@@ -36,16 +36,23 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     cart.find((item) => item.id === id)?.quantity || 0;
 
   const handleAdd = (product) => {
-  const existe = cart.find(item => item.id === product.id);
+  const cantidadNueva = typeof product.quantity === "number"
+    ? product.quantity
+    : 1;
+
+  const existe = cart.find((item) => item.id === product.id);
   const descuento = product.discount ?? 0;
   const precioConDescuento = parseFloat(
     (product.price * (1 - descuento / 100)).toFixed(2)
   );
 
   if (existe) {
-    const actualizado = cart.map(item =>
+    const actualizado = cart.map((item) =>
       item.id === product.id
-        ? { ...item, quantity: item.quantity + 1 }
+        ? {
+            ...item,
+            quantity: cantidadNueva, // 👈 Reemplaza directamente la cantidad
+          }
         : item
     );
     setCart(actualizado);
@@ -58,13 +65,14 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         price_original: product.price,
         discount: descuento,
         price: precioConDescuento,
-        quantity: 1,
+        quantity: cantidadNueva, // 👈 Desde el principio puede venir decimal
         variation: product.variation,
         size: product.size,
       },
     ]);
   }
 };
+
 
 
   const handleDecrease = (id) => {
