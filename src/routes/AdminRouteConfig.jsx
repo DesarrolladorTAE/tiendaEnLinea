@@ -17,6 +17,8 @@ const Membresia = lazy (() => import ("../pages/admin/Membresia.jsx"));
 const MiCuenta = lazy (() => import ("../pages/admin/MiCuenta.jsx"));
 const Reporte = lazy (() => import ("../pages/admin/Reporte.jsx"));
 const ReporteVentas = lazy(() => import("../components/ventas/ReporteVentas.jsx"));
+const POSHeader  = lazy(() => import("../wrappers/POSWrapper.jsx"));
+
 
 export const adminRouteConfig = [
   { path: "", element: <Navigate to="products" replace /> },
@@ -37,5 +39,6 @@ export const adminRouteConfig = [
   { path: "micuenta", element: <MiCuenta /> },
   { path: "reportes", element: <Reporte /> },
   { path: "reportes/ventas", element: <ReporteVentas /> },
+  { path: "prueba/pos", element: <POSHeader /> },
 
 ];

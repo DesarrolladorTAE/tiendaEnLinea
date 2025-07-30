@@ -7,6 +7,7 @@ import useLimitePOS from "../../hooks/useLimitePOS";
 import { useTienda } from "../../context/TiendaContext";
 import POSHeader from "../../components/adminpos/POSHeader";
 import POSCard from "../../components/adminpos/POSCard";
+import { useNavigate } from "react-router-dom";
 
 const POS = () => {
   const [puntos, setPuntos] = useState([]);
@@ -14,6 +15,8 @@ const POS = () => {
   const [visibles, setVisibles] = useState({});
   const [editando, setEditando] = useState({});
   const { tienda } = useTienda();
+
+  const navigate = useNavigate();
 
   const nombrePlan = tienda?.plan_id
     ? tienda?.nombre_plan || `Plan ${tienda.plan_id}`
@@ -29,6 +32,12 @@ const POS = () => {
       }
     })();
   }, []);
+
+  const iniciarSesionPOS = (pos) => {
+    navigate("/admin/prueba/pos", {
+      state: { pos }, // ← Enviamos el objeto del punto de venta
+    });
+  };
 
   const agregarPunto = () => {
     if (puntos.length >= limite) {
@@ -125,6 +134,7 @@ const POS = () => {
                 guardarCambios={guardarCambios}
                 eliminarPunto={eliminarPunto}
                 setEditando={setEditando}
+                onIniciarSesion={iniciarSesionPOS}
               />
             </Grid>
           ))}

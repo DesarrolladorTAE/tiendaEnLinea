@@ -107,10 +107,84 @@ export default function CartSidebar({
                 mb={1}
               >
                 <Box>
-                  <Typography variant="body2">
-                    {item.name} {item.variation?.color}{" "}
-                    {item.size ? `- ${item.size}` : ""} x{item.quantity}
-                  </Typography>
+<Box display="flex" alignItems="center" gap={1}>
+  <Typography variant="body2">
+    {item.name} {item.variation?.color}{" "}
+    {item.size ? `- ${item.size}` : ""}
+  </Typography>
+
+  <IconButton
+    size="small"
+    onClick={() => {
+      if (item.quantity > 1) {
+        setCart((prev) =>
+          prev.map((prod) =>
+            prod.id === item.id
+              ? { ...prod, quantity: Math.floor(prod.quantity) - 1 }
+              : prod
+          )
+        );
+      }
+    }}
+  >
+    -
+  </IconButton>
+
+  <TextField
+  value={item.inputValue ?? item.quantity}
+  type="text"
+  inputProps={{
+    inputMode: "decimal", // importante para móviles
+    style: { textAlign: "center", width: 60 },
+  }}
+  onChange={(e) => {
+    const val = e.target.value;
+
+    // Solo permitir números válidos, incluyendo punto decimal solo
+    if (/^\d*\.?\d*$/.test(val)) {
+      setCart((prev) =>
+        prev.map((prod) =>
+          prod.id === item.id
+            ? {
+                ...prod,
+                inputValue: val, // estado temporal mientras escribe
+                quantity:
+                  val === "" || val === "." ? 0 : parseFloat(val), // actualizar quantity real solo si es válido
+              }
+            : prod
+        )
+      );
+    }
+  }}
+  onBlur={() => {
+    setCart((prev) =>
+      prev.map((prod) =>
+        prod.id === item.id
+          ? { ...prod, inputValue: undefined }
+          : prod
+      )
+    );
+  }}
+  size="small"
+/>
+
+
+  <IconButton
+    size="small"
+    onClick={() => {
+      setCart((prev) =>
+        prev.map((prod) =>
+          prod.id === item.id
+            ? { ...prod, quantity: Math.floor(prod.quantity) + 1 }
+            : prod
+        )
+      );
+    }}
+  >
+    +
+  </IconButton>
+</Box>
+
                   <Typography variant="caption" color="text.secondary">
                     ${(item.price * item.quantity).toFixed(2)}
                   </Typography>

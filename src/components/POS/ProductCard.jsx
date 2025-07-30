@@ -1,5 +1,4 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Paper,
   Box,
@@ -44,27 +43,22 @@ export default function ProductCard({
     ("ontouchstart" in window || navigator.maxTouchPoints > 0);
 
   const handleAddOnTouch = () => {
-    if (canAdd && stock > getQuantityInCart(compositeId)) {
+    const qtyInCart = getQuantityInCart(compositeId);
+    if (canAdd && qtyInCart < stock) {
       onAdd({
         ...product,
         variation: selectedVar,
         size: selectedSz,
         id: compositeId,
+        quantity: qtyInCart + 1,
       });
     }
   };
-  // Dentro del componente ProductCard:
-  const [inputQty, setInputQty] = useState("");
-
-  // Sincronizar cuando cambia el producto o el carrito
-  useEffect(() => {
-    const qty = getQuantityInCart(compositeId);
-    setInputQty(qty > 0 ? qty.toString() : "");
-  }, [compositeId, cart]); // <- importante incluir el carrito aquí
 
   return (
     <Paper
       variant="outlined"
+      onClick={handleAddOnTouch}
       {...(isTouchDevice && { onTouchEnd: handleAddOnTouch })}
       sx={{
         p: 2,
@@ -72,9 +66,9 @@ export default function ProductCard({
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        minHeight: 320, // ajustable según tus necesidades
+        minHeight: 320,
         cursor:
-          isTouchDevice && canAdd && stock > getQuantityInCart(compositeId)
+          canAdd && stock > getQuantityInCart(compositeId)
             ? "pointer"
             : "default",
       }}
@@ -184,7 +178,10 @@ export default function ProductCard({
             sx={{ mt: 1 }}
             value={selectedSz || ""}
             onChange={(e) =>
-              setSelectedSize((prev) => ({ ...prev, [baseId]: e.target.value }))
+              setSelectedSize((prev) => ({
+                ...prev,
+                [baseId]: e.target.value,
+              }))
             }
             disabled={!selectedVar}
             onClick={(e) => e.stopPropagation()}
@@ -205,80 +202,23 @@ export default function ProductCard({
           </TextField>
         </>
       ) : (
-        <Box sx={{ height: 80, pointerEvents: "none" }} /> // espacio reservado si no tiene variaciones
+        <Box sx={{ height: 80, pointerEvents: "none" }} />
       )}
 
       <Box sx={{ flexGrow: 1 }} />
 
-      <Box
-        mt={1}
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
+      <Button
+        fullWidth
+        variant="contained"
+        color="primary"
+        onClick={(e) => {
+          e.stopPropagation(); // evita doble trigger en móvil
+          handleAddOnTouch();
+        }}
+        disabled={!canAdd || stock === 0}
       >
-        <Button
-          size="small"
-          color="error"
-          variant="contained"
-          // Evitamos que el touch en “–” suba al padre
-          onTouchEnd={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleDecrease(compositeId);
-          }}
-          disabled={!canAdd}
-        >
-          –
-        </Button>
-        
-        <TextField
-          type="number"
-          variant="standard"
-          inputProps={{
-            step: "any",
-            min: 0,
-            style: { textAlign: "center", width: 60 },
-          }}
-          value={inputQty}
-          onChange={(e) => {
-            const val = e.target.value;
-            setInputQty(val); // dejar que el usuario escriba lo que quiera
-
-            const value = parseFloat(val);
-            if (!isNaN(value) && value >= 0 && value <= stock) {
-              onAdd({
-                ...product,
-                variation: selectedVar,
-                size: selectedSz,
-                id: compositeId,
-                quantity: value,
-              });
-            }
-          }}
-          onClick={(e) => e.stopPropagation()}
-        />
-
-        <Button
-          size="small"
-          variant="contained"
-          // Evitamos que el touch en “+” suba al padre
-          onTouchEnd={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onAdd({
-              ...product,
-              variation: selectedVar,
-              size: selectedSz,
-              id: compositeId,
-            });
-          }}
-          disabled={
-            !canAdd || stock === getQuantityInCart(compositeId) || stock === 0
-          }
-        >
-          +
-        </Button>
-      </Box>
+        Agregar al carrito
+      </Button>
     </Paper>
   );
 }

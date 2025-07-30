@@ -4,7 +4,6 @@ import axiosClient from "../../config/axiosClientPOS";
 export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState(null);
-  // const [cart, setCart] = useState([]);
   const [selectedVariation, setSelectedVariation] = useState({});
   const [selectedSize, setSelectedSize] = useState({});
 
@@ -36,44 +35,68 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     cart.find((item) => item.id === id)?.quantity || 0;
 
   const handleAdd = (product) => {
-  const cantidadNueva = typeof product.quantity === "number"
-    ? product.quantity
-    : 1;
+    setCart((prevCart) => {
+      const existingItem = prevCart.find((item) => item.id === product.id);
+      const descuento = product.discount ?? 0;
+      const precioConDescuento = parseFloat(
+        (product.price * (1 - descuento / 100)).toFixed(2)
+      );
 
-  const existe = cart.find((item) => item.id === product.id);
-  const descuento = product.discount ?? 0;
-  const precioConDescuento = parseFloat(
-    (product.price * (1 - descuento / 100)).toFixed(2)
-  );
+      const stockDisponible = parseFloat(getAvailableStock(product));
 
-  if (existe) {
-    const actualizado = cart.map((item) =>
-      item.id === product.id
-        ? {
-            ...item,
-            quantity: cantidadNueva, // 👈 Reemplaza directamente la cantidad
-          }
-        : item
+      if (existingItem) {
+        const cantidadActual = parseFloat(existingItem.quantity);
+        const nuevaCantidad = parseFloat((cantidadActual + 1).toFixed(2));
+
+        if (nuevaCantidad > stockDisponible) {
+          alert("⚠️ Stock insuficiente.");
+          return prevCart;
+        }
+
+        return prevCart.map((item) =>
+          item.id === product.id
+            ? { ...item, quantity: nuevaCantidad }
+            : item
+        );
+      } else {
+        return [
+          ...prevCart,
+          {
+            id: product.id,
+            name: product.name,
+            price_original: product.price,
+            discount: descuento,
+            price: precioConDescuento,
+            quantity: 1,
+            variation: product.variation,
+            size: product.size,
+          },
+        ];
+      }
+    });
+  };
+
+  const handleSetQuantity = (product, nuevaCantidad) => {
+    const stockDisponible = parseFloat(getAvailableStock(product));
+
+    if (nuevaCantidad > stockDisponible) {
+      alert("⚠️ Stock insuficiente.");
+      return;
+    }
+
+    if (!nuevaCantidad || nuevaCantidad <= 0) {
+      setCart((prev) => prev.filter((item) => item.id !== product.id));
+      return;
+    }
+
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.id === product.id
+          ? { ...item, quantity: parseFloat(nuevaCantidad.toFixed(2)) }
+          : item
+      )
     );
-    setCart(actualizado);
-  } else {
-    setCart([
-      ...cart,
-      {
-        id: product.id,
-        name: product.name,
-        price_original: product.price,
-        discount: descuento,
-        price: precioConDescuento,
-        quantity: cantidadNueva, // 👈 Desde el principio puede venir decimal
-        variation: product.variation,
-        size: product.size,
-      },
-    ]);
-  }
-};
-
-
+  };
 
   const handleDecrease = (id) => {
     setCart((prev) => {
@@ -81,7 +104,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       if (index === -1) return prev;
       const updated = [...prev];
       if (updated[index].quantity > 1) {
-        updated[index].quantity -= 1;
+        updated[index].quantity = parseFloat((updated[index].quantity - 1).toFixed(2));
         return updated;
       }
       return prev.filter((item) => item.id !== id);
@@ -107,7 +130,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           product_id: parseInt(productId, 10),
           variation_size_id: variationSizeId,
           quantity: item.quantity,
-          unit_price: item.price, // ✅ Ya viene con descuento si aplica
+          unit_price: item.price,
         };
       }),
       payment_method: paymentInfo.payment_method,
@@ -145,6 +168,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     handleAdd,
     handleRemove,
     handleDecrease,
+    handleSetQuantity,
     handleCheckout,
     getAvailableStock,
     getQuantityInCart,

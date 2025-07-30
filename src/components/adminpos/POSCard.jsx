@@ -32,6 +32,7 @@ const POSCard = ({
   guardarCambios,
   eliminarPunto,
   setEditando,
+  onIniciarSesion,
 }) => {
   const { tienda } = useTienda();
   const [copiado, setCopiado] = React.useState(false);
@@ -57,13 +58,25 @@ const POSCard = ({
   return (
     <Card
       variant="outlined"
-      sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        p: 2,
+        boxShadow: 3,
+        borderRadius: 3,
+      }}
     >
       <CardContent sx={{ flexGrow: 1 }}>
-        <Box display="flex" justifyContent="space-between" alignItems="center">
+        {/* Encabezado */}
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={1}
+        >
           {editando[pos.id] ? (
             <TextField
-              required
               value={pos.name}
               onChange={(e) => handleChangeNombre(pos.id, e.target.value)}
               fullWidth
@@ -74,7 +87,7 @@ const POSCard = ({
             />
           ) : (
             <Typography variant="h6" fontWeight="bold">
-              {pos.name || "Sin nombre"}
+              {pos.name || "Sucursal sin nombre"}
             </Typography>
           )}
           <IconButton
@@ -84,14 +97,15 @@ const POSCard = ({
           </IconButton>
         </Box>
 
-        <Typography
-          variant="subtitle2"
-          sx={{ mt: 2, fontSize: "0.95rem", color: "text.secondary" }}
-        >
-          <b>Usuario:</b>{" "}
-          <span style={{ fontFamily: "monospace" }}>{pos.code || "—"}</span>
+        {/* Usuario */}
+        <Typography variant="body2" color="text.secondary">
+          <strong>Usuario:</strong>{" "}
+          <span style={{ fontFamily: "monospace", fontSize: "0.95rem" }}>
+            {pos.code || "—"}
+          </span>
         </Typography>
 
+        {/* Contraseña */}
         <TextField
           label="Contraseña"
           variant="standard"
@@ -107,7 +121,7 @@ const POSCard = ({
                     onClick={() => handleGenerate(pos.id)}
                     sx={{ visibility: visibles[pos.id] ? "visible" : "hidden" }}
                   >
-                    <Replay />
+                    <Replay fontSize="small" />
                   </IconButton>
                 </Tooltip>
                 <Tooltip title="Ver/Ocultar">
@@ -119,31 +133,56 @@ const POSCard = ({
             ),
           }}
           sx={{
-            mt: 0.5,
-            "& .MuiInputBase-root": { minHeight: 40 },
+            mt: 1,
             "& .MuiInputBase-input": { fontFamily: "monospace" },
           }}
         />
 
-        <Box display="flex" justifyContent="end" mt={2}>
-          <Tooltip
-            title={copiado ? "¡Copiado!" : "Copiar usuario y contraseña"}
-          >
-            <Button
-              size="small"
-              startIcon={<ContentCopy />}
-              onClick={copiarAccesos}
-              color="primary"
-              variant="outlined"
+        {/* Botones de acción */}
+        <Box mt={3}>
+          <Stack spacing={1}>
+            <Tooltip
+              title={copiado ? "¡Copiado!" : "Copiar usuario y contraseña"}
             >
-              Copiar accesos
+              <Button
+                onClick={copiarAccesos}
+                startIcon={<ContentCopy />}
+                variant="outlined"
+                color="primary"
+                fullWidth
+                sx={{
+                  fontWeight: "500",
+                  textTransform: "none",
+                  borderRadius: 2,
+                  height: 42,
+                }}
+              >
+                Copiar accesos
+              </Button>
+            </Tooltip>
+
+            <Button
+              onClick={() => onIniciarSesion(pos)}
+              variant="contained"
+              color="success"
+              fullWidth
+              sx={{
+                fontWeight: "bold",
+                textTransform: "none",
+                borderRadius: 2,
+                height: 45,
+                boxShadow: "0px 2px 8px rgba(0, 128, 0, 0.3)",
+              }}
+            >
+              Iniciar sesión
             </Button>
-          </Tooltip>
+          </Stack>
         </Box>
       </CardContent>
 
-      <Box px={2} pb={2}>
-        <Stack direction="row" spacing={1}>
+      {/* Pie: guardar/eliminar */}
+      <Box mt="auto" px={2} pb={1}>
+        <Stack direction="row" spacing={1} justifyContent="space-between">
           <Button
             startIcon={<Save />}
             onClick={() => guardarCambios(pos.id)}
@@ -152,6 +191,7 @@ const POSCard = ({
           >
             Guardar
           </Button>
+
           <Button
             variant="outlined"
             color="error"

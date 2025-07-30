@@ -1,13 +1,13 @@
 import axios from "axios";
 
-const axiosClient = axios.create({
+const axiosClientPOS = axios.create({
   baseURL: "https://mitiendaenlineamx.com.mx/api/",
   headers: {
     Accept: "application/json",
-  }
+  },
 });
 
-axiosClient.interceptors.request.use((config) => {
+axiosClientPOS.interceptors.request.use((config) => {
   const token = localStorage.getItem("POS_TOKEN");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -15,4 +15,4 @@ axiosClient.interceptors.request.use((config) => {
   return config;
 });
 
-export default axiosClient;
+export default axiosClientPOS;

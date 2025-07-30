@@ -83,8 +83,8 @@ const ModalDatosFiscales = ({ open, onClose, tienda }) => {
               />
               <TextField
                 label="Domicilio fiscal"
-                name="domicilio_fiscal"
-                value={datos.domicilio_fiscal || ""}
+                name="domicilio_fac"
+                value={datos.domicilio_fac || ""}
                 onChange={handleChange}
                 fullWidth
               />

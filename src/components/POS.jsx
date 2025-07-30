@@ -5,14 +5,19 @@ import {
   Typography,
   TextField,
   Button,
+  Stack,
   CircularProgress,
 } from "@mui/material";
 import ProductCard from "./POS/ProductCard";
 import Cart from "./POS/Cart";
 import { usePOSLogic } from "../hooks/POS/usePOSLogic";
 import TicketDialog from "./POS/TicketDialog";
+import { useLocation } from "react-router-dom";
+import HistoryIcon from "@mui/icons-material/History";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import DashboardIcon from "@mui/icons-material/Dashboard";
 
-export default function POS({ posName }) {
+export default function POS({ posName, cambiarVista }) {
   const [ticketData, setTicketData] = useState(null);
   const [showTicket, setShowTicket] = useState(false);
   const [ticketBlobUrl, setTicketBlobUrl] = useState("");
@@ -21,6 +26,10 @@ export default function POS({ posName }) {
   const [scannerEnabled, setScannerEnabled] = useState(true);
   const [cart, setCart] = useState([]);
   const [modalDescuentoActivo, setModalDescuentoActivo] = useState(false);
+  const location = useLocation();
+  // const posDesdeAdmin = location.state?.pos || null;
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
 
   const {
     search,
@@ -74,9 +83,10 @@ export default function POS({ posName }) {
       if (
         scannerEnabled &&
         !showTicket &&
-        !modalDescuentoActivo && // ✅ evita enfoque si está el modal abierto
+        !modalDescuentoActivo &&
         inputRef.current &&
-        document.activeElement !== inputRef.current
+        document.activeElement !== inputRef.current &&
+        document.activeElement.tagName === "BODY"
       ) {
         inputRef.current.focus({ preventScroll: true });
       }
@@ -92,7 +102,9 @@ export default function POS({ posName }) {
   const handlePrint = () => {
     if (ticketBlobUrl) window.open(ticketBlobUrl, "_blank");
   };
-
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
   // Enviar WhatsApp llamando a tu endpoint send-whatsapp
   const handleSendTicket = async (phone) => {
     try {
@@ -106,7 +118,9 @@ export default function POS({ posName }) {
     }
   };
 
-  if (!products) {
+  const loading = !Array.isArray(products);
+
+  if (loading) {
     return (
       <Box mt={4} textAlign="center">
         <CircularProgress />
@@ -114,12 +128,25 @@ export default function POS({ posName }) {
     );
   }
 
-  const filtered = products.filter((p) => {
-    const term = search.toLowerCase();
-    return (
-      p.name.toLowerCase().includes(term) || p.sku?.toLowerCase().includes(term)
-    );
-  });
+  // Filtro de productos
+  const filteredProducts = Array.isArray(products)
+    ? products.filter((p) => {
+        const term = search.toLowerCase();
+        return (
+          p.name?.toLowerCase().includes(term) ||
+          p.sku?.toLowerCase().includes(term)
+        );
+      })
+    : [];
+
+  // Lógica de paginación
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Reinicia página cuando cambia el buscador
 
   const handleScan = (e) => {
     if (e.key === "Enter") {
@@ -141,23 +168,69 @@ export default function POS({ posName }) {
   return (
     <Box mt={3} px={5}>
       {/* Header */}
-      <Box display="flex" justifyContent="space-between" mb={2}>
-        <Typography variant="h4">Punto de Venta</Typography>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Typography variant="h5" fontWeight="bold" color="secondary">
-            {posName}
-          </Typography>
+      <Box display="flex" justifyContent="center" mb={4}>
+        <Stack direction="row" spacing={3}>
           <Button
             variant="contained"
-            color="error"
-            onClick={() => {
-              localStorage.removeItem("POS_TOKEN");
-              window.location.href = "/prueba/pos";
+            color="secondary"
+            size="large"
+            startIcon={<HistoryIcon />}
+            sx={{
+              borderRadius: 3,
+              paddingX: 3,
+              paddingY: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
             }}
+            onClick={() => cambiarVista("historial")}
           >
-            Cerrar sesión
+            Historial
           </Button>
-        </Box>
+
+          <Button
+            variant="contained"
+            color="warning"
+            size="large"
+            startIcon={<ReceiptLongIcon />}
+            sx={{
+              borderRadius: 3,
+              paddingX: 3,
+              paddingY: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
+            }}
+            onClick={() => cambiarVista("facturas")}
+          >
+            Facturas
+          </Button>
+
+          <Button
+            variant="outlined"
+            color="success"
+            size="large"
+            startIcon={<DashboardIcon />}
+            sx={{
+              borderRadius: 3,
+              paddingX: 3,
+              paddingY: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              borderWidth: 2,
+              boxShadow: 2,
+              "&:hover": {
+                borderWidth: 2,
+              },
+            }}
+            onClick={() => cambiarVista("menu")}
+          >
+            Regresar al Panel
+          </Button>
+        </Stack>
       </Box>
 
       {/* Buscador */}
@@ -201,7 +274,7 @@ export default function POS({ posName }) {
             gap={2}
             gridTemplateColumns="repeat(auto-fit, minmax(200px,1fr))"
           >
-            {filtered.map((product) => (
+            {paginatedProducts.map((product) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -219,6 +292,33 @@ export default function POS({ posName }) {
                 isVariantProduct={isVariantProduct}
               />
             ))}
+          </Box>
+          <Box
+            mt={2}
+            display="flex"
+            justifyContent="center"
+            gap={2}
+            alignItems="center"
+          >
+            <Button
+              variant="outlined"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((prev) => prev - 1)}
+            >
+              Anterior
+            </Button>
+
+            <Typography fontWeight="bold">
+              Página {currentPage} de {totalPages || 1}
+            </Typography>
+
+            <Button
+              variant="outlined"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((prev) => prev + 1)}
+            >
+              Siguiente
+            </Button>
           </Box>
         </Box>
 
