@@ -7,6 +7,7 @@ import {
   MenuItem,
   Button,
 } from "@mui/material";
+import { showError, showSuccess } from "../../utils/alerts";
 
 export default function ProductCard({
   product,
@@ -88,7 +89,7 @@ export default function ProductCard({
         />
       )}
 
-      <Typography noWrap variant="subtitle1" sx={{ pointerEvents: "none" }}>
+      <Typography  variant="subtitle1" sx={{ pointerEvents: "none" }}>
         {product.name}
       </Typography>
 

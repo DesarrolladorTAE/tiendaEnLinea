@@ -16,6 +16,7 @@ import { useLocation } from "react-router-dom";
 import HistoryIcon from "@mui/icons-material/History";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import { showError, showSuccess } from "../utils/alerts"; // Ajusta la ruta si es necesario
 
 export default function POS({ posName, cambiarVista }) {
   const [ticketData, setTicketData] = useState(null);
@@ -69,7 +70,7 @@ export default function POS({ posName, cambiarVista }) {
           setTicketBlobUrl(URL.createObjectURL(blob));
         } catch (e) {
           console.error("Error cargando ticket:", e);
-          alert("❌ No se pudo previsualizar el ticket.");
+          showError("❌ No se pudo previsualizar el ticket.");
           setShowTicket(false);
         }
       })();
@@ -111,10 +112,10 @@ export default function POS({ posName, cambiarVista }) {
       await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, {
         phone,
       });
-      alert("✅ Ticket enviado por WhatsApp");
+      showSuccess("✅ Ticket enviado por WhatsApp");
     } catch (e) {
       console.error("Error enviando WhatsApp:", e);
-      alert("❌ No se pudo enviar el ticket por WhatsApp.");
+      showSuccess("❌ No se pudo enviar el ticket por WhatsApp.");
     }
   };
 

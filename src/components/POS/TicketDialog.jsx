@@ -1,4 +1,3 @@
-// components/POS/TicketDialog.jsx
 import React, { useState } from "react";
 import {
   Dialog,
@@ -8,10 +7,41 @@ import {
   Button,
   TextField,
   Typography,
+  CircularProgress,
 } from "@mui/material";
+import { showSuccess, showError } from "../../utils/alerts"; // ajusta si es necesario
 
 export default function TicketDialog({ open, onClose, sale, ticketUrl, onPrint, onSend }) {
   const [phone, setPhone] = useState("");
+  const [loadingSend, setLoadingSend] = useState(false);
+  const [loadingPrint, setLoadingPrint] = useState(false);
+
+  const handleSend = async () => {
+    if (!phone.match(/^\+?[0-9]{10,}$/)) return;
+
+    setLoadingSend(true);
+    try {
+      await onSend(phone); // debe ser una función async que devuelva una Promise
+      showSuccess("📨 Ticket enviado por WhatsApp");
+    } catch (err) {
+      console.error(err);
+      showError("❌ Error al enviar por WhatsApp");
+    } finally {
+      setLoadingSend(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    setLoadingPrint(true);
+    try {
+      await onPrint(); // también se asume que devuelve una Promise
+    } catch (err) {
+      console.error(err);
+      showError("❌ Error al imprimir ticket");
+    } finally {
+      setLoadingPrint(false);
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
@@ -39,9 +69,11 @@ export default function TicketDialog({ open, onClose, sale, ticketUrl, onPrint, 
         />
       </DialogContent>
       <DialogActions>
-        <Button onClick={onPrint}>🖨️ Imprimir</Button>
-        <Button onClick={() => onSend(phone)} disabled={!phone.match(/^\+?[0-9]{10,}$/)}>
-          ✉️ Enviar
+        <Button onClick={handlePrint} disabled={loadingPrint}>
+          {loadingPrint ? <CircularProgress size={20} /> : "🖨️ Imprimir"}
+        </Button>
+        <Button onClick={handleSend} disabled={!phone.match(/^\+?[0-9]{10,}$/) || loadingSend}>
+          {loadingSend ? <CircularProgress size={20} /> : "✉️ Enviar"}
         </Button>
         <Button onClick={onClose}>Cerrar</Button>
       </DialogActions>

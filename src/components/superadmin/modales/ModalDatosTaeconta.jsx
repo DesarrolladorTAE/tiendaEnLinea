@@ -9,13 +9,19 @@ import {
   CircularProgress,
   TextField,
   Box,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
+import Visibility from "@mui/icons-material/Visibility";
+import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import axiosSuperadmin from "../../../config/axiosSuperadmin";
+import { showSuccess, showError } from "../../../utils/alerts";
 
 const ModalDatosTaeconta = ({ open, onClose, tienda }) => {
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (open && tienda?.id) {
@@ -30,6 +36,7 @@ const ModalDatosTaeconta = ({ open, onClose, tienda }) => {
       setDatos(res.data);
     } catch (error) {
       console.error("Error al cargar datos de TAECONTA", error);
+      showError("No se pudieron cargar los datos de TAECONTA.");
     } finally {
       setCargando(false);
     }
@@ -40,17 +47,25 @@ const ModalDatosTaeconta = ({ open, onClose, tienda }) => {
   };
 
   const handleGuardar = async () => {
+    if (!datos?.correo_tae || !datos?.contra_tae) {
+      showError("El correo y la contraseña son obligatorios.");
+      return;
+    }
+
     setGuardando(true);
     try {
       await axiosSuperadmin.put(`/admin/tiendas/${tienda.id}/taeconta`, datos);
-      console.log("Datos de TAECONTA actualizados correctamente");
+      showSuccess("Datos de TAECONTA actualizados correctamente.");
       onClose();
     } catch (error) {
       console.error("Error al actualizar datos de TAECONTA", error);
+      showError("Ocurrió un error al guardar los datos.");
     } finally {
       setGuardando(false);
     }
   };
+
+  const toggleShowPassword = () => setShowPassword((prev) => !prev);
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
@@ -59,7 +74,9 @@ const ModalDatosTaeconta = ({ open, onClose, tienda }) => {
       </DialogTitle>
       <DialogContent dividers>
         {cargando || !datos ? (
-          <CircularProgress />
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight={150}>
+            <CircularProgress />
+          </Box>
         ) : (
           <>
             {!datos.correo_tae && !datos.contra_tae && (
@@ -83,7 +100,16 @@ const ModalDatosTaeconta = ({ open, onClose, tienda }) => {
                 value={datos.contra_tae || ""}
                 onChange={handleChange}
                 fullWidth
-                type="password"
+                type={showPassword ? "text" : "password"}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={toggleShowPassword} edge="end">
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
             </Box>
           </>
@@ -106,3 +132,4 @@ const ModalDatosTaeconta = ({ open, onClose, tienda }) => {
 };
 
 export default ModalDatosTaeconta;
+

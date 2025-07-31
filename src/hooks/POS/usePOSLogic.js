@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axiosClient from "../../config/axiosClientPOS";
+import { showError, showSuccess } from "../../utils/alerts"; // Adjust the path if necessary
 
 export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [search, setSearch] = useState("");
@@ -49,7 +50,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         const nuevaCantidad = parseFloat((cantidadActual + 1).toFixed(2));
 
         if (nuevaCantidad > stockDisponible) {
-          alert("⚠️ Stock insuficiente.");
+          showError("⚠️ Stock insuficiente.");
           return prevCart;
         }
 
@@ -80,7 +81,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     const stockDisponible = parseFloat(getAvailableStock(product));
 
     if (nuevaCantidad > stockDisponible) {
-      alert("⚠️ Stock insuficiente.");
+      showError("⚠️ Stock insuficiente.");
       return;
     }
 
@@ -144,17 +145,19 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     } catch (err) {
       const resp = err.response?.data;
       if (resp?.errors) {
-        return alert("⚠️ Error:\n" + JSON.stringify(resp.errors, null, 2));
+        return showError("⚠️ Error:\n" + JSON.stringify(resp.errors, null, 2));
       }
-      return alert("❌ Error al cobrar. Revisa productos o stock.");
+      return showError("❌ Error al cobrar. Revisa productos o stock.");
     }
 
     const { sale, message } = saleResponse.data;
     setCart([]);
     setTicketData(sale);
-    setShowTicket(true);
-    alert(`✅ ${message}`);
+
+    await showSuccess(`✅ ${message}`); // ✅ se espera el click del usuario
+    setShowTicket(true); // 👉 solo después de dar "Aceptar"
   };
+
 
   return {
     search,

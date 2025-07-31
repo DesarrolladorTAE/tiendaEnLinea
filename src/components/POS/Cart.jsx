@@ -14,6 +14,8 @@ import {
 import DeleteIcon from "@mui/icons-material/Delete";
 import DiscountIcon from "@mui/icons-material/Percent";
 import ModalCambioDescuento from "./ModalCambioDescuento";
+import { showError, showSuccess } from "../../utils/alerts"; // ajusta la ruta si es necesario
+
 
 export default function CartSidebar({
   cart,
@@ -26,11 +28,23 @@ export default function CartSidebar({
   const [paymentMethod, setPaymentMethod] = useState("efectivo");
   const [cashReceived, setCashReceived] = useState("");
   const [productoEditar, setProductoEditar] = useState(null);
+  const [referencia, setReferencia] = useState("");
+  const [ultimos4, setUltimos4] = useState("");
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const cambio = Math.max(0, parseFloat(cashReceived || 0) - total);
 
   const handleConfirm = () => {
+    // ✅ Validación para métodos con tarjeta
+    if (
+      (paymentMethod === "td" || paymentMethod === "tc") &&
+      (!referencia.trim() || ultimos4.length !== 4)
+    ) {
+      showError("Por favor, completa la referencia y los 4 dígitos de la tarjeta.");
+      return;
+    }
+
+    // ✅ Armar el objeto de venta
     const data = {
       payment_method: paymentMethod,
       total_amount: total,
@@ -49,20 +63,24 @@ export default function CartSidebar({
               item.precio_sin_descuento ||
               item.original ||
               item.originalPrice
-          ) || parseFloat(item.price), // fallback
-        discount_percent: parseFloat(item.discount || 0), // toma de 'discount'
-
+          ) || parseFloat(item.price),
+        discount_percent: parseFloat(item.discount || 0),
       })),
     };
 
-    // console.log(
-    //   "🧾 Datos enviados a la venta:\n",
-    //   JSON.stringify(data, null, 2)
-    // );
+    // ✅ Agregar referencia y últimos 4 dígitos si aplica
+    if (paymentMethod === "td" || paymentMethod === "tc") {
+      data.referencia = referencia.trim();
+      data.ultimos_4 = ultimos4;
+    }
 
     onCheckout(data);
+
+    // ✅ Limpiar estados
     setCashReceived("");
     setPaymentMethod("efectivo");
+    setReferencia("");
+    setUltimos4("");
   };
 
   const aplicarCambioProducto = (nuevoProducto) => {
@@ -107,83 +125,90 @@ export default function CartSidebar({
                 mb={1}
               >
                 <Box>
-<Box display="flex" alignItems="center" gap={1}>
-  <Typography variant="body2">
-    {item.name} {item.variation?.color}{" "}
-    {item.size ? `- ${item.size}` : ""}
-  </Typography>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Typography variant="body2">
+                      {item.name} {item.variation?.color}{" "}
+                      {item.size ? `- ${item.size}` : ""}
+                    </Typography>
 
-  <IconButton
-    size="small"
-    onClick={() => {
-      if (item.quantity > 1) {
-        setCart((prev) =>
-          prev.map((prod) =>
-            prod.id === item.id
-              ? { ...prod, quantity: Math.floor(prod.quantity) - 1 }
-              : prod
-          )
-        );
-      }
-    }}
-  >
-    -
-  </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        if (item.quantity > 1) {
+                          setCart((prev) =>
+                            prev.map((prod) =>
+                              prod.id === item.id
+                                ? {
+                                    ...prod,
+                                    quantity: Math.floor(prod.quantity) - 1,
+                                  }
+                                : prod
+                            )
+                          );
+                        }
+                      }}
+                    >
+                      -
+                    </IconButton>
 
-  <TextField
-  value={item.inputValue ?? item.quantity}
-  type="text"
-  inputProps={{
-    inputMode: "decimal", // importante para móviles
-    style: { textAlign: "center", width: 60 },
-  }}
-  onChange={(e) => {
-    const val = e.target.value;
+                    <TextField
+                      value={item.inputValue ?? item.quantity}
+                      type="text"
+                      inputProps={{
+                        inputMode: "decimal", // importante para móviles
+                        style: { textAlign: "center", width: 60 },
+                      }}
+                      onChange={(e) => {
+                        const val = e.target.value;
 
-    // Solo permitir números válidos, incluyendo punto decimal solo
-    if (/^\d*\.?\d*$/.test(val)) {
-      setCart((prev) =>
-        prev.map((prod) =>
-          prod.id === item.id
-            ? {
-                ...prod,
-                inputValue: val, // estado temporal mientras escribe
-                quantity:
-                  val === "" || val === "." ? 0 : parseFloat(val), // actualizar quantity real solo si es válido
-              }
-            : prod
-        )
-      );
-    }
-  }}
-  onBlur={() => {
-    setCart((prev) =>
-      prev.map((prod) =>
-        prod.id === item.id
-          ? { ...prod, inputValue: undefined }
-          : prod
-      )
-    );
-  }}
-  size="small"
-/>
+                        // Solo permitir números válidos, incluyendo punto decimal solo
+                        if (/^\d*\.?\d*$/.test(val)) {
+                          setCart((prev) =>
+                            prev.map((prod) =>
+                              prod.id === item.id
+                                ? {
+                                    ...prod,
+                                    inputValue: val, // estado temporal mientras escribe
+                                    quantity:
+                                      val === "" || val === "."
+                                        ? 0
+                                        : parseFloat(val), // actualizar quantity real solo si es válido
+                                  }
+                                : prod
+                            )
+                          );
+                        }
+                      }}
+                      onBlur={() => {
+                        setCart((prev) =>
+                          prev.map((prod) =>
+                            prod.id === item.id
+                              ? { ...prod, inputValue: undefined }
+                              : prod
+                          )
+                        );
+                      }}
+                      size="small"
+                    />
 
-
-  <IconButton
-    size="small"
-    onClick={() => {
-      setCart((prev) =>
-        prev.map((prod) =>
-          prod.id === item.id
-            ? { ...prod, quantity: Math.floor(prod.quantity) + 1 }
-            : prod
-        )
-      );
-    }}
-  >
-    +
-  </IconButton>
-</Box>
+                    <IconButton
+                      size="small"
+                      onClick={() => {
+                        setCart((prev) =>
+                          prev.map((prod) =>
+                            prod.id === item.id
+                              ? {
+                                  ...prod,
+                                  quantity: Math.floor(prod.quantity) + 1,
+                                }
+                              : prod
+                          )
+                        );
+                      }}
+                    >
+                      +
+                    </IconButton>
+                  </Box>
 
                   <Typography variant="caption" color="text.secondary">
                     ${(item.price * item.quantity).toFixed(2)}
@@ -267,6 +292,36 @@ export default function CartSidebar({
                     >
                       Cambio: ${cambio.toFixed(2)}
                     </Typography>
+                  </>
+                )}
+
+                {(paymentMethod === "td" || paymentMethod === "tc") && (
+                  <>
+                    <TextField
+                      label="Número de Referencia"
+                      fullWidth
+                      margin="normal"
+                      value={referencia}
+                      onChange={(e) => setReferencia(e.target.value)}
+                    />
+                    <TextField
+                      label="Últimos 4 dígitos"
+                      fullWidth
+                      margin="normal"
+                      value={ultimos4}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, ""); // Solo números
+                        if (val.length <= 4) setUltimos4(val);
+                      }}
+                      placeholder="2541"
+                      InputProps={{
+                        startAdornment: (
+                          <Typography sx={{ mr: 1, whiteSpace: "nowrap" }}>
+                            **** **** ****
+                          </Typography>
+                        ),
+                      }}
+                    />
                   </>
                 )}
 

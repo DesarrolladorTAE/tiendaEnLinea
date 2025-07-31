@@ -2,7 +2,7 @@
 import Swal from 'sweetalert2';
 
 export const showSuccess = (text = "Operación realizada correctamente") => {
-  Swal.fire({
+  return Swal.fire({
     icon: 'success',
     title: 'Éxito',
     text,
@@ -11,7 +11,7 @@ export const showSuccess = (text = "Operación realizada correctamente") => {
 };
 
 export const showError = (text = "Ocurrió un error") => {
-  Swal.fire({
+  return Swal.fire({
     icon: 'error',
     title: 'Error',
     text,

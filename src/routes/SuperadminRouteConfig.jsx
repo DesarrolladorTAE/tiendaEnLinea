@@ -8,6 +8,7 @@ const Notificaciones = lazy(() => import("../pages/superadmin/Notificaciones"));
 // const Usuarios = lazy(() => import("../pages/superadmin/Usuarios"));
 const Tiendas = lazy(() => import("../pages/superadmin/Tiendas"));
 // const Soporte = lazy(() => import("../pages/superadmin/Soporte"));
+const VentasSA = lazy(() => import("../pages/superadmin/VentasSA"));
 
 export const superadminRouteConfig = [
   { path: "", element: <Navigate to="dashboard" replace /> },
@@ -16,5 +17,6 @@ export const superadminRouteConfig = [
   { path: "notificaciones", element: <Notificaciones /> },
   // { path: "usuarios", element: <Usuarios /> },
   { path: "tiendas", element: <Tiendas /> },
+  { path: "ventas", element: <VentasSA /> },
   // { path: "soporte", element: <Soporte /> }
 ];
