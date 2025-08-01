@@ -15,6 +15,7 @@ import {
   TablePagination,
   TextField,
   IconButton,
+  MenuItem,
   Grid,
 } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
@@ -27,10 +28,12 @@ import { es } from "date-fns/locale";
 import ModalTicketVenta from "./ModalTicketVenta";
 
 export default function HistorialPOS({ cambiarVista }) {
+  const hoy = new Date().toISOString().slice(0, 10);
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState("");
+  const [fechaInicio, setFechaInicio] = useState(hoy);
+  const [fechaFin, setFechaFin] = useState(hoy);
+  const [tipoPago, setTipoPago] = useState("");
   const [pagina, setPagina] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [modalTicketOpen, setModalTicketOpen] = useState(false);
@@ -41,20 +44,23 @@ export default function HistorialPOS({ cambiarVista }) {
     setModalTicketOpen(true);
   };
 
-  // 🔹 Consulta inicial: todas las ventas
-  const cargarVentasIniciales = async () => {
+  const cargarVentasDelDia = async () => {
     setLoading(true);
     try {
-      const { data } = await axiosClient.get("/ventas/pos/historial");
+      const { data } = await axiosClient.get("/ventas/mis-ventas", {
+        params: {
+          fecha_inicio: hoy,
+          fecha_fin: hoy,
+        },
+      });
       setVentas(data);
     } catch (error) {
-      console.error("Error al cargar el historial del POS", error);
+      console.error("Error al cargar ventas del día", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔹 Consulta filtrada
   const cargarVentasFiltradas = async () => {
     setLoading(true);
     try {
@@ -62,6 +68,7 @@ export default function HistorialPOS({ cambiarVista }) {
         params: {
           fecha_inicio: fechaInicio || undefined,
           fecha_fin: fechaFin || undefined,
+          tipo_pago: tipoPago || undefined,
         },
       });
       setVentas(data);
@@ -73,13 +80,17 @@ export default function HistorialPOS({ cambiarVista }) {
   };
 
   useEffect(() => {
-    cargarVentasIniciales();
+    cargarVentasDelDia();
   }, []);
 
   const handleChangePage = (event, newPage) => setPagina(newPage);
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPagina(0);
+  };
+
+  const getTotalVentas = () => {
+    return ventas.reduce((acum, v) => acum + Number(v.total_amount || 0), 0);
   };
 
   return (
@@ -153,13 +164,35 @@ export default function HistorialPOS({ cambiarVista }) {
         </Stack>
       </Box>
 
-      {/* Filtros + Tabla lado a lado */}
+      {/* Total de ventas con estilo */}
+      <Paper
+        elevation={3}
+        sx={{
+          backgroundColor: "#e8f5e9",
+          border: "1px solid #a5d6a7",
+          padding: 2,
+          mb: 2,
+          width: "fit-content",
+          mx: "auto",
+        }}
+      >
+        <Typography
+          variant="h6"
+          fontWeight="bold"
+          color="green"
+          textAlign="center"
+        >
+          💵 Total de ventas Del Dia : ${getTotalVentas().toFixed(2)}
+        </Typography>
+      </Paper>
+
+      {/* Filtros + Tabla */}
       <Grid container spacing={3}>
-        {/* 🔍 Filtros en columna izquierda */}
+        {/* Filtros */}
         <Grid item xs={12} md={3}>
           <Paper sx={{ p: 2 }}>
             <Typography fontWeight="bold" gutterBottom>
-              Filtros por fecha
+              Filtros
             </Typography>
             <Stack spacing={2}>
               <TextField
@@ -176,6 +209,17 @@ export default function HistorialPOS({ cambiarVista }) {
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
               />
+              <TextField
+                select
+                label="Tipo de pago"
+                value={tipoPago}
+                onChange={(e) => setTipoPago(e.target.value)}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="efectivo">Efectivo</MenuItem>
+                <MenuItem value="tarjeta_credito">Tarjeta de crédito</MenuItem>
+                <MenuItem value="tarjeta_debito">Tarjeta de débito</MenuItem>
+              </TextField>
               <Button
                 variant="contained"
                 fullWidth
@@ -187,7 +231,7 @@ export default function HistorialPOS({ cambiarVista }) {
                 variant="outlined"
                 fullWidth
                 color="secondary"
-                onClick={cargarVentasIniciales}
+                onClick={cargarVentasDelDia}
               >
                 Limpiar filtros
               </Button>
@@ -195,7 +239,7 @@ export default function HistorialPOS({ cambiarVista }) {
           </Paper>
         </Grid>
 
-        {/* 📊 Tabla en columna derecha */}
+        {/* Tabla */}
         <Grid item xs={12} md={9}>
           <Paper elevation={4} sx={{ padding: 3 }}>
             <Typography variant="h6" gutterBottom fontWeight="bold">
@@ -212,13 +256,11 @@ export default function HistorialPOS({ cambiarVista }) {
                   <Table size="small">
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                        <TableCell>Folio</TableCell>
-                        <TableCell>Fecha</TableCell>
-                        <TableCell>Total</TableCell>
-                        <TableCell>Pagado</TableCell>
-                        <TableCell>Items</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Acciones</TableCell>
+                        <TableCell><strong>Folio</strong></TableCell>
+                        <TableCell><strong>Fecha</strong></TableCell>
+                        <TableCell><strong>Total</strong></TableCell>
+                        <TableCell><strong>Tipo de pago</strong></TableCell>
+                        <TableCell><strong>Acciones</strong></TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -228,7 +270,7 @@ export default function HistorialPOS({ cambiarVista }) {
                           pagina * rowsPerPage + rowsPerPage
                         )
                         .map((venta) => (
-                          <TableRow key={venta.id}>
+                          <TableRow key={venta.id} hover sx={{ "&:hover": { backgroundColor: "#f9f9f9" } }}>
                             <TableCell>{venta.id}</TableCell>
                             <TableCell>
                               {format(
@@ -241,13 +283,7 @@ export default function HistorialPOS({ cambiarVista }) {
                               ${Number(venta.total_amount || 0).toFixed(2)}
                             </TableCell>
                             <TableCell>
-                              ${Number(venta.paid_amount || 0).toFixed(2)}
-                            </TableCell>
-                            <TableCell>{venta.items_count}</TableCell>
-                            <TableCell>
-                              {venta.status === "paid"
-                                ? "Pagado"
-                                : "Pendiente"}
+                              {venta.tipo_pago?.replace("_", " ")?.toUpperCase() || "—"}
                             </TableCell>
                             <TableCell>
                               <IconButton

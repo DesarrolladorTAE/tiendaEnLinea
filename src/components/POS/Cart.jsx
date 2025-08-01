@@ -74,6 +74,8 @@ export default function CartSidebar({
       data.ultimos_4 = ultimos4;
     }
 
+     console.log("🧾 Payload enviado al backend:", data);
+
     onCheckout(data);
 
     // ✅ Limpiar estados

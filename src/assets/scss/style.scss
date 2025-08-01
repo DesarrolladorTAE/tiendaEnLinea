@@ -40,3 +40,12 @@
   background-color: #f0f0f0;
 }
 
+.swal-popup-override {
+  z-index: 1600 !important;
+}
+
+/* Fuerza a que el popup de SweetAlert esté por encima del Dialog */
+.swal2-container {
+  z-index: 2000 !important;
+}
+

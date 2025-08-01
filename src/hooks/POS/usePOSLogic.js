@@ -137,7 +137,15 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       payment_method: paymentInfo.payment_method,
       total_amount: paymentInfo.total_amount,
       paid_amount: paymentInfo.paid_amount,
+      // ✅ Solo si es tarjeta
+      ...(paymentInfo.payment_method === "td" || paymentInfo.payment_method === "tc"
+        ? {
+          referencia: paymentInfo.referencia?.toString().trim(),
+          ultimos_4: paymentInfo.ultimos_4?.toString().trim(),
+        }
+        : {}),
     };
+
 
     let saleResponse;
     try {
@@ -145,8 +153,10 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     } catch (err) {
       const resp = err.response?.data;
       if (resp?.errors) {
-        return showError("⚠️ Error:\n" + JSON.stringify(resp.errors, null, 2));
+        const mensajes = Object.values(resp.errors).flat().join("\n");
+        return showError("⚠️ " + mensajes);
       }
+
       return showError("❌ Error al cobrar. Revisa productos o stock.");
     }
 

@@ -6,7 +6,11 @@ export const showSuccess = (text = "Operación realizada correctamente") => {
     icon: 'success',
     title: 'Éxito',
     text,
-    confirmButtonColor: '#3085d6'
+    confirmButtonColor: '#3085d6',
+    backdrop: true,
+    customClass: {
+      popup: 'swal-popup-override'
+    }
   });
 };
 
