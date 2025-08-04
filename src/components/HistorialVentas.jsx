@@ -1,33 +1,18 @@
 import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Paper,
-  Typography,
-  Table,
-  TableHead,
-  TableBody,
-  TableRow,
-  TableCell,
-  CircularProgress,
-  Stack,
-  Button,
-  TableContainer,
-  TablePagination,
-  TextField,
-  IconButton,
-  MenuItem,
-  Grid,
-} from "@mui/material";
+import { Box, Chip, Paper, Typography, Table, TableHead, TableBody, TableRow, TableCell, CircularProgress, Stack, Button, Divider, TablePagination, TextField, IconButton, MenuItem, } from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PrintIcon from "@mui/icons-material/Print";
 import axiosClient from "../config/axiosClientPOS";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import ModalTicketVenta from "./ModalTicketVenta";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import ModalDetallesVenta from "./ModalDetallesVenta";
 
 export default function HistorialPOS({ cambiarVista }) {
+  const [modoConsulta, setModoConsulta] = useState("dia");
   const hoy = new Date().toISOString().slice(0, 10);
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -38,39 +23,35 @@ export default function HistorialPOS({ cambiarVista }) {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [modalTicketOpen, setModalTicketOpen] = useState(false);
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+  const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
 
   const abrirModalTicket = (ventaId) => {
     setVentaSeleccionada(ventaId);
     setModalTicketOpen(true);
   };
 
-  const cargarVentasDelDia = async () => {
-    setLoading(true);
-    try {
-      const { data } = await axiosClient.get("/ventas/mis-ventas", {
-        params: {
-          fecha_inicio: hoy,
-          fecha_fin: hoy,
-        },
-      });
-      setVentas(data);
-    } catch (error) {
-      console.error("Error al cargar ventas del día", error);
-    } finally {
-      setLoading(false);
-    }
+  const abrirModalDetalles = (ventaId) => {
+    setVentaSeleccionada(ventaId);
+    setModalDetallesOpen(true);
   };
 
-  const cargarVentasFiltradas = async () => {
+
+  // Función para manejar la lógica del botón filtrar
+  const handleFiltrar = async () => {
     setLoading(true);
+
+    const params = {
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+    };
+
+    if (tipoPago !== "") {
+      params.tipo_pago = tipoPago;
+    }
+
     try {
-      const { data } = await axiosClient.get("/ventas/mis-ventas", {
-        params: {
-          fecha_inicio: fechaInicio || undefined,
-          fecha_fin: fechaFin || undefined,
-          tipo_pago: tipoPago || undefined,
-        },
-      });
+      const { data } = await axiosClient.get("/ventas/mis-ventas", { params });
+      console.log("👉 Datos de ventas desde el backend:", data);
       setVentas(data);
     } catch (error) {
       console.error("Error al filtrar ventas", error);
@@ -79,9 +60,21 @@ export default function HistorialPOS({ cambiarVista }) {
     }
   };
 
+
+  const getTotalVentas = () => {
+    return ventas.reduce((acum, v) => acum + Number(v.total_amount || 0), 0);
+  };
+
+  const textoTotalVentas =
+    modoConsulta === "dia"
+      ? `💵 Total de ventas del día: $ ${getTotalVentas().toFixed(2)} pesos MXN.`
+      : `💵 Total de ventas del ${format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })} al ${format(parseISO(fechaFin), "d 'de' MMMM 'del' yyyy", { locale: es })}: $ ${getTotalVentas().toFixed(2)} pesos MXN.`;
+
   useEffect(() => {
-    cargarVentasDelDia();
+    handleFiltrar(); // para que cargue las ventas del día en el primer render
   }, []);
+
+
 
   const handleChangePage = (event, newPage) => setPagina(newPage);
   const handleChangeRowsPerPage = (event) => {
@@ -89,238 +82,255 @@ export default function HistorialPOS({ cambiarVista }) {
     setPagina(0);
   };
 
-  const getTotalVentas = () => {
-    return ventas.reduce((acum, v) => acum + Number(v.total_amount || 0), 0);
-  };
 
   return (
-    <Box>
+    <Box sx={{ p: 4 }}>
       {/* Botones de navegación */}
-      <Box display="flex" justifyContent="center" mb={4}>
-        <Stack direction="row" spacing={3}>
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={<ShoppingCartIcon />}
-            sx={{
-              backgroundColor: "#4CAF50",
-              borderRadius: 3,
-              paddingX: 3,
-              paddingY: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              boxShadow: 3,
-              "&:hover": {
-                backgroundColor: "#45A049",
-              },
-            }}
-            onClick={() => cambiarVista("venta")}
-          >
-            Ventas
-          </Button>
-
-          <Button
-            variant="contained"
-            color="warning"
-            size="large"
-            startIcon={<ReceiptLongIcon />}
-            sx={{
-              borderRadius: 3,
-              paddingX: 3,
-              paddingY: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              boxShadow: 3,
-            }}
-            onClick={() => cambiarVista("facturas")}
-          >
-            Facturas
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="success"
-            size="large"
-            startIcon={<DashboardIcon />}
-            sx={{
-              borderRadius: 3,
-              paddingX: 3,
-              paddingY: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              borderWidth: 2,
-              boxShadow: 2,
-              "&:hover": {
-                borderWidth: 2,
-              },
-            }}
-            onClick={() => cambiarVista("menu")}
-          >
-            Regresar al Panel
-          </Button>
-        </Stack>
-      </Box>
-
-      {/* Total de ventas con estilo */}
-      <Paper
-        elevation={3}
-        sx={{
-          backgroundColor: "#e8f5e9",
-          border: "1px solid #a5d6a7",
-          padding: 2,
-          mb: 2,
-          width: "fit-content",
-          mx: "auto",
-        }}
-      >
-        <Typography
-          variant="h6"
-          fontWeight="bold"
-          color="green"
-          textAlign="center"
+      <Stack direction="row" spacing={2} justifyContent="center" mb={4}>
+        <Button
+          variant="contained"
+          startIcon={<ShoppingCartIcon />}
+          onClick={() => cambiarVista("venta")}
+          sx={{ fontWeight: "bold" }}
         >
-          💵 Total de ventas Del Dia : ${getTotalVentas().toFixed(2)}
-        </Typography>
-      </Paper>
+          Ventas
+        </Button>
+        <Button
+          variant="contained"
+          color="warning"
+          startIcon={<ReceiptLongIcon />}
+          onClick={() => cambiarVista("facturas")}
+          sx={{ fontWeight: "bold" }}
+        >
+          Facturas
+        </Button>
+        <Button
+          variant="outlined"
+          color="success"
+          startIcon={<DashboardIcon />}
+          onClick={() => cambiarVista("menu")}
+          sx={{ fontWeight: "bold" }}
+        >
+          Regresar al Panel
+        </Button>
+      </Stack>
 
-      {/* Filtros + Tabla */}
-      <Grid container spacing={3}>
+      <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
         {/* Filtros */}
-        <Grid item xs={12} md={3}>
-          <Paper sx={{ p: 2 }}>
-            <Typography fontWeight="bold" gutterBottom>
-              Filtros
-            </Typography>
-            <Stack spacing={2}>
+        <Paper
+          elevation={3}
+          sx={{ width: { xs: "100%", md: 300 }, p: 3, borderRadius: 2 }}
+        >
+          <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+            Filtros
+          </Typography>
+          <Divider sx={{ mb: 2 }} />
+
+          <Stack spacing={2}>
+            <TextField
+              select
+              label="Modo de consulta"
+              value={modoConsulta}
+              size="small"
+              onChange={(e) => {
+                setModoConsulta(e.target.value);
+                if (e.target.value === "dia") {
+                  setFechaInicio(hoy);
+                  setFechaFin(hoy);
+                }
+              }}
+              fullWidth
+            >
+              <MenuItem value="dia">Ventas del día</MenuItem>
+              <MenuItem value="personalizada">Personalizada</MenuItem>
+            </TextField>
+
+            {modoConsulta === "dia" ? (
               <TextField
                 type="date"
-                label="Fecha inicio"
+                label="Fecha"
+                size="small"
                 InputLabelProps={{ shrink: true }}
                 value={fechaInicio}
-                onChange={(e) => setFechaInicio(e.target.value)}
-              />
-              <TextField
-                type="date"
-                label="Fecha fin"
-                InputLabelProps={{ shrink: true }}
-                value={fechaFin}
-                onChange={(e) => setFechaFin(e.target.value)}
-              />
-              <TextField
-                select
-                label="Tipo de pago"
-                value={tipoPago}
-                onChange={(e) => setTipoPago(e.target.value)}
-              >
-                <MenuItem value="">Todos</MenuItem>
-                <MenuItem value="efectivo">Efectivo</MenuItem>
-                <MenuItem value="tarjeta_credito">Tarjeta de crédito</MenuItem>
-                <MenuItem value="tarjeta_debito">Tarjeta de débito</MenuItem>
-              </TextField>
-              <Button
-                variant="contained"
+                onChange={(e) => {
+                  setFechaInicio(e.target.value);
+                  setFechaFin(e.target.value);
+                }}
                 fullWidth
-                onClick={cargarVentasFiltradas}
-              >
-                Filtrar
-              </Button>
-              <Button
-                variant="outlined"
-                fullWidth
-                color="secondary"
-                onClick={cargarVentasDelDia}
-              >
-                Limpiar filtros
-              </Button>
-            </Stack>
-          </Paper>
-        </Grid>
-
-        {/* Tabla */}
-        <Grid item xs={12} md={9}>
-          <Paper elevation={4} sx={{ padding: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Historial de Ventas del POS
-            </Typography>
-
-            {loading ? (
-              <Box display="flex" justifyContent="center" mt={4}>
-                <CircularProgress />
-              </Box>
+              />
             ) : (
               <>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead>
-                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                        <TableCell><strong>Folio</strong></TableCell>
-                        <TableCell><strong>Fecha</strong></TableCell>
-                        <TableCell><strong>Total</strong></TableCell>
-                        <TableCell><strong>Tipo de pago</strong></TableCell>
-                        <TableCell><strong>Acciones</strong></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {ventas
-                        .slice(
-                          pagina * rowsPerPage,
-                          pagina * rowsPerPage + rowsPerPage
-                        )
-                        .map((venta) => (
-                          <TableRow key={venta.id} hover sx={{ "&:hover": { backgroundColor: "#f9f9f9" } }}>
-                            <TableCell>{venta.id}</TableCell>
-                            <TableCell>
-                              {format(
-                                new Date(venta.created_at),
-                                "d 'de' MMMM 'del' yyyy, HH:mm",
-                                { locale: es }
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              ${Number(venta.total_amount || 0).toFixed(2)}
-                            </TableCell>
-                            <TableCell>
-                              {venta.tipo_pago?.replace("_", " ")?.toUpperCase() || "—"}
-                            </TableCell>
-                            <TableCell>
-                              <IconButton
-                                color="primary"
-                                onClick={() => abrirModalTicket(venta.id)}
-                              >
-                                <PrintIcon />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-
-                <TablePagination
-                  component="div"
-                  count={ventas.length}
-                  page={pagina}
-                  onPageChange={handleChangePage}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={handleChangeRowsPerPage}
-                  labelRowsPerPage="Filas por página"
-                  rowsPerPageOptions={[5, 10, 25]}
+                <TextField
+                  type="date"
+                  label="Fecha inicio"
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                  fullWidth
+                />
+                <TextField
+                  type="date"
+                  label="Fecha fin"
+                  size="small"
+                  InputLabelProps={{ shrink: true }}
+                  value={fechaFin}
+                  onChange={(e) => setFechaFin(e.target.value)}
+                  fullWidth
                 />
               </>
             )}
-          </Paper>
-        </Grid>
-      </Grid>
 
-      {/* Modal para ver ticket */}
+            <TextField
+              select
+              label="Tipo de pago"
+              value={tipoPago}
+              onChange={(e) => setTipoPago(e.target.value)}
+              size="small"
+              fullWidth
+            >
+              <MenuItem value="">Todos</MenuItem>
+              <MenuItem value="efectivo">Efectivo</MenuItem>
+              <MenuItem value="tc">Tarjeta de crédito</MenuItem>
+              <MenuItem value="td">Tarjeta de débito</MenuItem>
+            </TextField>
+
+
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={handleFiltrar}
+              disabled={loading}
+            >
+              {loading ? "Filtrando..." : "Filtrar"}
+            </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              fullWidth
+              onClick={() => {
+                setModoConsulta("dia");
+                setFechaInicio(hoy);
+                setFechaFin(hoy);
+                setTipoPago("");
+                handleFiltrar();
+              }}
+            >
+              Limpiar filtros
+            </Button>
+          </Stack>
+        </Paper>
+
+        {/* Tabla */}
+        <Paper sx={{ flex: 1, p: 3, borderRadius: 2 }}>
+          <Typography variant="h6" fontWeight="bold" gutterBottom>
+            Historial de Ventas del POS
+          </Typography>
+
+          <Box
+            sx={{
+              backgroundColor: "#e8f5e9",
+              border: "1px solid #a5d6a7",
+              borderRadius: 1,
+              p: 2,
+              mb: 2,
+              textAlign: "center",
+            }}
+          >
+            <Typography fontWeight="bold" color="green">
+              {textoTotalVentas}
+            </Typography>
+          </Box>
+
+          {loading ? (
+            <Box display="flex" justifyContent="center" mt={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box sx={{ maxHeight: 420, overflowY: "auto" }}>
+              <Table size="small" stickyHeader>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                    <TableCell><strong>Folio</strong></TableCell>
+                    <TableCell><strong>Fecha</strong></TableCell>
+                    <TableCell><strong>Total</strong></TableCell>
+                    <TableCell><strong>Tipo de pago</strong></TableCell>
+                    <TableCell><strong>Acciones</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {ventas
+                    .slice(pagina * rowsPerPage, pagina * rowsPerPage + rowsPerPage)
+                    .map((venta) => (
+
+                      <TableRow key={venta.id} hover>
+                        <TableCell>{venta.id}</TableCell>
+                        <TableCell>
+                          {format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })}
+                        </TableCell>
+                        <TableCell>${Number(venta.total_amount || 0).toFixed(2)}</TableCell>
+                        <TableCell>
+                          {venta.payment_method === "efectivo" && (
+                            <Chip label="Efectivo" color="success" size="small" />
+                          )}
+                          {venta.payment_method === "tc" && (
+                            <Chip label="Tarjeta de crédito" color="primary" size="small" />
+                          )}
+                          {venta.payment_method === "td" && (
+                            <Chip label="Tarjeta de débito" color="info" size="small" />
+                          )}
+                          {!["efectivo", "tc", "td"].includes(venta.payment_method) && (
+                            <Chip label="—" variant="outlined" size="small" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Stack direction="row" spacing={1}>
+                            <IconButton
+                              color="primary"
+                              onClick={() => abrirModalTicket(venta.id)}
+                            >
+                              <PrintIcon />
+                            </IconButton>
+                            <IconButton
+                              color="secondary"
+                              onClick={() => abrirModalDetalles(venta.id)}
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </Box>
+          )}
+
+          <TablePagination
+            component="div"
+            count={ventas.length}
+            page={pagina}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage="Filas por página"
+            rowsPerPageOptions={[5, 10, 25]}
+          />
+        </Paper>
+      </Stack>
+
+      {/* Modales */}
       <ModalTicketVenta
         open={modalTicketOpen}
         onClose={() => setModalTicketOpen(false)}
         ventaId={ventaSeleccionada}
       />
+      <ModalDetallesVenta
+        open={modalDetallesOpen}
+        onClose={() => setModalDetallesOpen(false)}
+        ventaId={ventaSeleccionada}
+      />
     </Box>
   );
+
 }
