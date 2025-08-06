@@ -4,9 +4,6 @@ import { useNavigate } from "react-router-dom";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
-import ReporteVentas from "../../components/ventas/ReporteVentas.jsx";
-
-
 
 export default function Reportes() {
   const navigate = useNavigate();
@@ -17,6 +14,12 @@ export default function Reportes() {
       descripcion: "Visualiza las utilidades por punto de venta.",
       icono: <AssessmentIcon sx={{ fontSize: 48, color: "#43a047" }} />,
       ruta: "/admin/reportes/ventas",
+    },
+    {
+      titulo: "Reporte de Ventas",
+      descripcion: "Consulta las ventas filtradas por fecha, sucursal y forma de pago.",
+      icono: <ReceiptLongIcon sx={{ fontSize: 48, color: "#1976d2" }} />,
+      ruta: "/admin/reportes/tipo-venta",
     },
     {
       titulo: "Más reportes en camino",
@@ -30,7 +33,7 @@ export default function Reportes() {
   return (
     <Box sx={{ p: 4 }}>
       <Typography variant="h4" gutterBottom>
-       📓 Reportes
+        📓 Reportes
       </Typography>
 
       <Grid container spacing={5}>
@@ -49,7 +52,15 @@ export default function Reportes() {
                   if (tarjeta.ruta) navigate(tarjeta.ruta);
                 }}
               >
-                <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", px: 4, py: 5}}>
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    px: 4,
+                    py: 5,
+                  }}
+                >
                   {tarjeta.icono}
                   <Typography variant="h6" sx={{ mt: 2 }}>
                     {tarjeta.titulo}

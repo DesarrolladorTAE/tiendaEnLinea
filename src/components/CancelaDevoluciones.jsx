@@ -18,92 +18,75 @@ import {
   IconButton,
   MenuItem,
 } from "@mui/material";
+import CancelIcon from "@mui/icons-material/Cancel";
+import PrintIcon from "@mui/icons-material/Print";
+import ReplayIcon from "@mui/icons-material/Replay";
+import { format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+import axiosClient from "../config/axiosClientPOS";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import PrintIcon from "@mui/icons-material/Print";
-import axiosClient from "../config/axiosClientPOS";
-import { format, parseISO } from "date-fns";
-import { es } from "date-fns/locale";
-import ModalTicketVenta from "./ModalTicketVenta";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import ModalDetallesVenta from "./ModalDetallesVenta";
-import ReplayIcon from "@mui/icons-material/Replay";
+import HistoryIcon from "@mui/icons-material/History";
 
-export default function HistorialPOS({ cambiarVista }) {
-  const [modoConsulta, setModoConsulta] = useState("dia");
+//Modales
+import ModalTicketVenta from "./ModalTicketVenta";
+import ModalCancelarVenta from "./ModalCancelarVenta";
+import ModalDevolverVenta from "./ModalDevolverVenta";
+
+export default function CancelaDevoluciones({ cambiarVista }) {
   const hoy = new Date().toISOString().slice(0, 10);
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fechaInicio, setFechaInicio] = useState(hoy);
   const [fechaFin, setFechaFin] = useState(hoy);
-  const [tipoPago, setTipoPago] = useState("");
   const [pagina, setPagina] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [modalTicketOpen, setModalTicketOpen] = useState(false);
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
-  const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
+  const [modalTicketAbierto, setModalTicketAbierto] = useState(false);
+  const [modalCancelarAbierto, setModalCancelarAbierto] = useState(false);
+  const [modalDevolverAbierto, setModalDevolverAbierto] = useState(false);
 
-  const abrirModalTicket = (ventaId) => {
-    setVentaSeleccionada(ventaId);
-    setModalTicketOpen(true);
-  };
-
-  const abrirModalDetalles = (ventaId) => {
-    setVentaSeleccionada(ventaId);
-    setModalDetallesOpen(true);
-  };
-
-  // Función para manejar la lógica del botón filtrar
   const handleFiltrar = async () => {
     setLoading(true);
-
-    const params = {
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    };
-
-    // Solo agrega el filtro si está definido y no está vacío
-    if (tipoPago && tipoPago !== "") {
-      params.payment_method = tipoPago;
-    }
-
     try {
-      const { data } = await axiosClient.get("/ventas/mis-ventas", { params });
-      // console.log("👉 Datos de ventas desde el backend:", data);
+      const { data } = await axiosClient.get("/ventas/mis-ventas", {
+        params: { fecha_inicio: fechaInicio, fecha_fin: fechaFin },
+      });
       setVentas(data);
     } catch (error) {
-      console.error("Error al filtrar ventas", error);
+      console.error("Error al cargar ventas:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getTotalVentas = () => {
-    return ventas.reduce((acum, v) => acum + Number(v.total_amount || 0), 0);
-  };
-
-  const textoTotalVentas =
-    modoConsulta === "dia"
-      ? `💵 Total de ventas del día: $ ${getTotalVentas().toFixed(
-          2
-        )} pesos MXN.`
-      : `💵 Total de ventas del ${format(
-          parseISO(fechaInicio),
-          "d 'de' MMMM 'del' yyyy",
-          { locale: es }
-        )} al ${format(parseISO(fechaFin), "d 'de' MMMM 'del' yyyy", {
-          locale: es,
-        })}: $ ${getTotalVentas().toFixed(2)} pesos MXN.`;
-
   useEffect(() => {
-    handleFiltrar(); // para que cargue las ventas del día en el primer render
+    handleFiltrar();
   }, []);
 
   const handleChangePage = (event, newPage) => setPagina(newPage);
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPagina(0);
+  };
+
+  const abrirModalAccion = (ventaId) => {
+    console.log("Abrir acción para venta ID:", ventaId);
+  };
+  const abrirModalTicket = (ventaId) => {
+    setVentaSeleccionada(ventaId);
+    setModalTicketAbierto(true);
+  };
+
+  const manejarCancelacion = (ventaId) => {
+    setVentaSeleccionada(ventaId);
+    setModalCancelarAbierto(true);
+  };
+
+  const manejarDevolucion = (ventaId) => {
+    setVentaSeleccionada(ventaId);
+    setModalDevolverAbierto(true);
   };
 
   return (
@@ -138,9 +121,9 @@ export default function HistorialPOS({ cambiarVista }) {
           </Button>
           <Button
             variant="contained"
-            color="error"
+            color="secondary"
             size="large"
-            startIcon={<ReplayIcon />}
+            startIcon={<HistoryIcon />}
             sx={{
               borderRadius: 3,
               paddingX: 3,
@@ -150,9 +133,9 @@ export default function HistorialPOS({ cambiarVista }) {
               fontSize: "1rem",
               boxShadow: 3,
             }}
-            onClick={() => cambiarVista("cancelaciones")}
+            onClick={() => cambiarVista("historial")}
           >
-            Cancelaciones / Devoluciones
+            Historial
           </Button>
 
           <Button
@@ -211,76 +194,25 @@ export default function HistorialPOS({ cambiarVista }) {
             Filtros
           </Typography>
           <Divider sx={{ mb: 2 }} />
-
           <Stack spacing={2}>
             <TextField
-              select
-              label="Modo de consulta"
-              value={modoConsulta}
+              type="date"
+              label="Desde"
               size="small"
-              onChange={(e) => {
-                setModoConsulta(e.target.value);
-                if (e.target.value === "dia") {
-                  setFechaInicio(hoy);
-                  setFechaFin(hoy);
-                }
-              }}
+              InputLabelProps={{ shrink: true }}
+              value={fechaInicio}
+              onChange={(e) => setFechaInicio(e.target.value)}
               fullWidth
-            >
-              <MenuItem value="dia">Ventas del día</MenuItem>
-              <MenuItem value="personalizada">Personalizada</MenuItem>
-            </TextField>
-
-            {modoConsulta === "dia" ? (
-              <TextField
-                type="date"
-                label="Fecha"
-                size="small"
-                InputLabelProps={{ shrink: true }}
-                value={fechaInicio}
-                onChange={(e) => {
-                  setFechaInicio(e.target.value);
-                  setFechaFin(e.target.value);
-                }}
-                fullWidth
-              />
-            ) : (
-              <>
-                <TextField
-                  type="date"
-                  label="Fecha inicio"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  value={fechaInicio}
-                  onChange={(e) => setFechaInicio(e.target.value)}
-                  fullWidth
-                />
-                <TextField
-                  type="date"
-                  label="Fecha fin"
-                  size="small"
-                  InputLabelProps={{ shrink: true }}
-                  value={fechaFin}
-                  onChange={(e) => setFechaFin(e.target.value)}
-                  fullWidth
-                />
-              </>
-            )}
-
+            />
             <TextField
-              select
-              label="Tipo de pago"
-              value={tipoPago}
-              onChange={(e) => setTipoPago(e.target.value)}
+              type="date"
+              label="Hasta"
               size="small"
+              InputLabelProps={{ shrink: true }}
+              value={fechaFin}
+              onChange={(e) => setFechaFin(e.target.value)}
               fullWidth
-            >
-              <MenuItem value="">Todos</MenuItem>
-              <MenuItem value="efectivo">Efectivo</MenuItem>
-              <MenuItem value="tc">Tarjeta de crédito</MenuItem>
-              <MenuItem value="td">Tarjeta de débito</MenuItem>
-            </TextField>
-
+            />
             <Button
               variant="contained"
               fullWidth
@@ -294,10 +226,8 @@ export default function HistorialPOS({ cambiarVista }) {
               color="secondary"
               fullWidth
               onClick={() => {
-                setModoConsulta("dia");
                 setFechaInicio(hoy);
                 setFechaFin(hoy);
-                setTipoPago("");
                 handleFiltrar();
               }}
             >
@@ -309,23 +239,8 @@ export default function HistorialPOS({ cambiarVista }) {
         {/* Tabla */}
         <Paper sx={{ flex: 1, p: 3, borderRadius: 2 }}>
           <Typography variant="h6" fontWeight="bold" gutterBottom>
-            Historial de Ventas del POS
+            🧾 Cancelaciones y Devoluciones
           </Typography>
-
-          <Box
-            sx={{
-              backgroundColor: "#e8f5e9",
-              border: "1px solid #a5d6a7",
-              borderRadius: 1,
-              p: 2,
-              mb: 2,
-              textAlign: "center",
-            }}
-          >
-            <Typography fontWeight="bold" color="green">
-              {textoTotalVentas}
-            </Typography>
-          </Box>
 
           {loading ? (
             <Box display="flex" justifyContent="center" mt={4}>
@@ -336,34 +251,22 @@ export default function HistorialPOS({ cambiarVista }) {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell
-                      align="center"
-                      sx={{ textAlign: "center", verticalAlign: "middle" }}
-                    >
+                    <TableCell align="center">
                       <strong>Folio</strong>
                     </TableCell>
-                    <TableCell
-                      align="center"
-                      sx={{ textAlign: "center", verticalAlign: "middle" }}
-                    >
+                    <TableCell align="center">
                       <strong>Fecha</strong>
                     </TableCell>
-                    <TableCell
-                      align="center"
-                      sx={{ textAlign: "center", verticalAlign: "middle" }}
-                    >
+                    <TableCell align="center">
                       <strong>Total</strong>
                     </TableCell>
-                    <TableCell
-                      align="center"
-                      sx={{ textAlign: "center", verticalAlign: "middle" }}
-                    >
+                    <TableCell align="center">
                       <strong>Tipo de pago</strong>
                     </TableCell>
-                    <TableCell
-                      align="center"
-                      sx={{ textAlign: "center", verticalAlign: "middle" }}
-                    >
+                    <TableCell align="center">
+                      <strong>Estado</strong>
+                    </TableCell>
+                    <TableCell align="center">
                       <strong>Acciones</strong>
                     </TableCell>
                   </TableRow>
@@ -375,27 +278,31 @@ export default function HistorialPOS({ cambiarVista }) {
                       pagina * rowsPerPage + rowsPerPage
                     )
                     .map((venta) => (
-                      <TableRow key={venta.id} hover>
-                        <TableCell
-                          align="center"
-                          sx={{ textAlign: "center", verticalAlign: "middle" }}
-                        >
-                          {venta.id}
-                        </TableCell>
-                        <TableCell
-                          align="center"
-                          sx={{ textAlign: "center", verticalAlign: "middle" }}
-                        >
+                      <TableRow
+                        key={venta.id}
+                        hover
+                        sx={{
+                          backgroundColor:
+                            venta.status === "cancelled"
+                              ? "#ffebee"
+                              : venta.status === "devuelta"
+                              ? "#e3f2fd"
+                              : venta.status === "partially_cancelled"
+                              ? "#fff3e0"
+                              : "inherit",
+                        }}
+                      >
+                        <TableCell align="center">{venta.id}</TableCell>
+                        <TableCell align="center">
                           {format(
-                            parseISO(fechaInicio),
+                            parseISO(venta.created_at),
                             "d 'de' MMMM 'del' yyyy",
-                            { locale: es }
+                            {
+                              locale: es,
+                            }
                           )}
                         </TableCell>
-                        <TableCell
-                          align="center"
-                          sx={{ textAlign: "center", verticalAlign: "middle" }}
-                        >
+                        <TableCell align="center">
                           ${Number(venta.total_amount || 0).toFixed(2)}
                         </TableCell>
                         <TableCell
@@ -429,28 +336,92 @@ export default function HistorialPOS({ cambiarVista }) {
                             <Chip label="—" variant="outlined" size="small" />
                           )}
                         </TableCell>
-                        <TableCell sx={{ p: 1 }}>
-                          <Box
-                            display="flex"
+                        <TableCell align="center">
+                          <Chip
+                            label={
+                              venta.status === "cancelled"
+                                ? "Cancelada"
+                                : venta.status === "partially_cancelled"
+                                ? "Parcial"
+                                : venta.status === "devuelta"
+                                ? "Devuelta"
+                                : venta.status === "paid"
+                                ? "Pagada"
+                                : "Desconocido"
+                            }
+                            color={
+                              venta.status === "cancelled"
+                                ? "error"
+                                : venta.status === "partially_cancelled"
+                                ? "warning"
+                                : venta.status === "devuelta"
+                                ? "info"
+                                : venta.status === "paid"
+                                ? "success"
+                                : "default"
+                            }
+                            size="small"
+                            variant={
+                              venta.status === "paid" ? "outlined" : "filled"
+                            }
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Stack
+                            direction="row"
+                            spacing={1}
                             justifyContent="center"
-                            alignItems="center"
-                            height="100%"
                           >
-                            <Stack direction="row" spacing={1}>
-                              <IconButton
-                                color="primary"
-                                onClick={() => abrirModalTicket(venta.id)}
-                              >
-                                <PrintIcon />
-                              </IconButton>
-                              <IconButton
-                                color="secondary"
-                                onClick={() => abrirModalDetalles(venta.id)}
-                              >
-                                <VisibilityIcon />
-                              </IconButton>
-                            </Stack>
-                          </Box>
+                            {venta.status === "cancelled" ? (
+                              <>
+                                <Chip
+                                  label="Cancelada"
+                                  color="error"
+                                  size="small"
+                                />
+                                <IconButton
+                                  color="primary"
+                                  onClick={() => abrirModalTicket(venta.id)}
+                                  title="Imprimir ticket"
+                                >
+                                  <PrintIcon />
+                                </IconButton>
+                              </>
+                            ) : venta.status === "devuelta" ? (
+                              <>
+                                <Chip
+                                  label="Devuelta"
+                                  color="info"
+                                  size="small"
+                                />
+                                <IconButton
+                                  color="primary"
+                                  onClick={() => abrirModalTicket(venta.id)}
+                                  title="Imprimir ticket"
+                                >
+                                  <PrintIcon />
+                                </IconButton>
+                              </>
+                            ) : (
+                              <>
+                                <IconButton
+                                  color="error"
+                                  onClick={() => manejarCancelacion(venta.id)}
+                                  title="Cancelar venta"
+                                >
+                                  <CancelIcon />
+                                </IconButton>
+
+                                <IconButton
+                                  color="info"
+                                  onClick={() => manejarDevolucion(venta.id)}
+                                  title="Devolver venta"
+                                >
+                                  <ReplayIcon />
+                                </IconButton>
+                              </>
+                            )}
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -469,20 +440,26 @@ export default function HistorialPOS({ cambiarVista }) {
             labelRowsPerPage="Filas por página"
             rowsPerPageOptions={[5, 10, 25]}
           />
+          <ModalTicketVenta
+            open={modalTicketAbierto}
+            onClose={() => setModalTicketAbierto(false)}
+            ventaId={ventaSeleccionada}
+          />
+
+          <ModalCancelarVenta
+            open={modalCancelarAbierto}
+            onClose={() => setModalCancelarAbierto(false)}
+            ventaId={ventaSeleccionada}
+            onSuccess={handleFiltrar}
+          />
+
+          <ModalDevolverVenta
+            open={modalDevolverAbierto}
+            onClose={() => setModalDevolverAbierto(false)}
+            ventaId={ventaSeleccionada}
+          />
         </Paper>
       </Stack>
-
-      {/* Modales */}
-      <ModalTicketVenta
-        open={modalTicketOpen}
-        onClose={() => setModalTicketOpen(false)}
-        ventaId={ventaSeleccionada}
-      />
-      <ModalDetallesVenta
-        open={modalDetallesOpen}
-        onClose={() => setModalDetallesOpen(false)}
-        ventaId={ventaSeleccionada}
-      />
     </Box>
   );
 }

@@ -18,6 +18,7 @@ const MiCuenta = lazy (() => import ("../pages/admin/MiCuenta.jsx"));
 const Reporte = lazy (() => import ("../pages/admin/Reporte.jsx"));
 const ReporteVentas = lazy(() => import("../components/ventas/ReporteVentas.jsx"));
 const POSHeader  = lazy(() => import("../wrappers/POSWrapper.jsx"));
+const ReporteTipoVenta = lazy(() => import("../components/ventas/ReporteTipoVenta.jsx"));
 
 
 export const adminRouteConfig = [
@@ -40,5 +41,6 @@ export const adminRouteConfig = [
   { path: "reportes", element: <Reporte /> },
   { path: "reportes/ventas", element: <ReporteVentas /> },
   { path: "prueba/pos", element: <POSHeader /> },
+  {path: "reportes/tipo-venta", element: <ReporteTipoVenta /> },
 
 ];

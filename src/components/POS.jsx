@@ -16,7 +16,8 @@ import { useLocation } from "react-router-dom";
 import HistoryIcon from "@mui/icons-material/History";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import { showError, showSuccess } from "../utils/alerts"; // Ajusta la ruta si es necesario
+import { showError, showSuccess } from "../utils/alerts";
+import ReplayIcon from "@mui/icons-material/Replay"; // Ajusta la ruta si es necesario
 
 export default function POS({ posName, cambiarVista }) {
   const [ticketData, setTicketData] = useState(null);
@@ -173,7 +174,7 @@ export default function POS({ posName, cambiarVista }) {
         <Stack direction="row" spacing={3}>
           <Button
             variant="contained"
-            color="secondary"
+            color="primary"
             size="large"
             startIcon={<HistoryIcon />}
             sx={{
@@ -188,6 +189,24 @@ export default function POS({ posName, cambiarVista }) {
             onClick={() => cambiarVista("historial")}
           >
             Historial
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            size="large"
+            startIcon={<ReplayIcon/>}
+            sx={{
+              borderRadius: 3,
+              paddingX: 3,
+              paddingY: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
+            }}
+            onClick={() => cambiarVista("cancelaciones")}
+          >
+            Cancelaciones / Devoluciones
           </Button>
 
           <Button
