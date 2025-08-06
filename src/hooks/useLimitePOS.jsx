@@ -7,8 +7,8 @@ const useLimitePOS = () => {
   const limites = {
     1: 1,
     2: 2,
-    3: 10,
-    4: Infinity,
+    3: 5,
+    4: 10,
   };
 
   const limitePermitido = tienda?.plan_id ? limites[tienda.plan_id] ?? 0 : 0;

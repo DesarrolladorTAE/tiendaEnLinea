@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -6,11 +6,20 @@ import {
   DialogActions,
   Button,
   IconButton,
+  TextField,
+  CircularProgress,
+  Stack,
 } from "@mui/material";
 import PrintIcon from "@mui/icons-material/Print";
 import CloseIcon from "@mui/icons-material/Close";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import axiosClient from "../config/axiosClientPOS";
+import { showSuccess, showError } from "../utils/alerts";
 
 export default function ModalTicketVenta({ open, onClose, ventaId }) {
+  const [numero, setNumero] = useState("");
+  const [sending, setSending] = useState(false);
+
   if (!ventaId) return null;
 
   const baseUrl = window.location.origin.includes("localhost")
@@ -21,8 +30,34 @@ export default function ModalTicketVenta({ open, onClose, ventaId }) {
 
   const handlePrint = () => {
     const iframe = document.getElementById("iframe-ticket");
-    iframe.contentWindow.focus();
-    iframe.contentWindow.print();
+    if (iframe?.contentWindow) {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    }
+  };
+
+  const handleNumeroChange = (e) => {
+    const input = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setNumero(input);
+  };
+
+  const handleEnviarWhatsapp = async () => {
+    if (numero.length !== 10) {
+      showError("Ingresa un número válido de 10 dígitos.");
+      return;
+    }
+
+    setSending(true);
+    try {
+      await axiosClient.post(`/sales/${ventaId}/send-whatsapp`, { phone : numero });
+      showSuccess("Ticket enviado por WhatsApp correctamente.");
+      setNumero(""); // <-- Limpia el input después del envío
+    } catch (error) {
+      console.error("Error al enviar WhatsApp:", error);
+      showError("No se pudo enviar el ticket.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -47,7 +82,27 @@ export default function ModalTicketVenta({ open, onClose, ventaId }) {
         />
       </DialogContent>
 
-      <DialogActions>
+      <DialogActions sx={{ px: 3, pb: 2 }}>
+        <Stack spacing={1} direction="row" alignItems="center" sx={{ flexGrow: 1 }}>
+          <TextField
+            label="Número para WhatsApp"
+            value={numero}
+            onChange={handleNumeroChange}
+            placeholder="5522334455"
+            size="small"
+            inputProps={{ inputMode: "numeric", maxLength: 10 }}
+          />
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<WhatsAppIcon />}
+            onClick={handleEnviarWhatsapp}
+            disabled={sending || numero.length !== 10}
+          >
+            {sending ? <CircularProgress size={20} color="inherit" /> : "Enviar"}
+          </Button>
+        </Stack>
+
         <Button
           onClick={handlePrint}
           variant="contained"
@@ -56,6 +111,7 @@ export default function ModalTicketVenta({ open, onClose, ventaId }) {
         >
           Imprimir
         </Button>
+
         <Button onClick={onClose} variant="outlined" color="secondary">
           Cerrar
         </Button>

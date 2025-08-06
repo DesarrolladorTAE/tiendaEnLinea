@@ -1,5 +1,23 @@
 import React, { useEffect, useState } from "react";
-import { Box, Chip, Paper, Typography, Table, TableHead, TableBody, TableRow, TableCell, CircularProgress, Stack, Button, Divider, TablePagination, TextField, IconButton, MenuItem, } from "@mui/material";
+import {
+  Box,
+  Chip,
+  Paper,
+  Typography,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  CircularProgress,
+  Stack,
+  Button,
+  Divider,
+  TablePagination,
+  TextField,
+  IconButton,
+  MenuItem,
+} from "@mui/material";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -35,7 +53,6 @@ export default function HistorialPOS({ cambiarVista }) {
     setModalDetallesOpen(true);
   };
 
-
   // Función para manejar la lógica del botón filtrar
   const handleFiltrar = async () => {
     setLoading(true);
@@ -45,13 +62,14 @@ export default function HistorialPOS({ cambiarVista }) {
       fecha_fin: fechaFin,
     };
 
-    if (tipoPago !== "") {
-      params.tipo_pago = tipoPago;
+    // Solo agrega el filtro si está definido y no está vacío
+    if (tipoPago && tipoPago !== "") {
+      params.payment_method = tipoPago;
     }
 
     try {
       const { data } = await axiosClient.get("/ventas/mis-ventas", { params });
-      console.log("👉 Datos de ventas desde el backend:", data);
+      // console.log("👉 Datos de ventas desde el backend:", data);
       setVentas(data);
     } catch (error) {
       console.error("Error al filtrar ventas", error);
@@ -60,21 +78,26 @@ export default function HistorialPOS({ cambiarVista }) {
     }
   };
 
-
   const getTotalVentas = () => {
     return ventas.reduce((acum, v) => acum + Number(v.total_amount || 0), 0);
   };
 
   const textoTotalVentas =
     modoConsulta === "dia"
-      ? `💵 Total de ventas del día: $ ${getTotalVentas().toFixed(2)} pesos MXN.`
-      : `💵 Total de ventas del ${format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })} al ${format(parseISO(fechaFin), "d 'de' MMMM 'del' yyyy", { locale: es })}: $ ${getTotalVentas().toFixed(2)} pesos MXN.`;
+      ? `💵 Total de ventas del día: $ ${getTotalVentas().toFixed(
+          2
+        )} pesos MXN.`
+      : `💵 Total de ventas del ${format(
+          parseISO(fechaInicio),
+          "d 'de' MMMM 'del' yyyy",
+          { locale: es }
+        )} al ${format(parseISO(fechaFin), "d 'de' MMMM 'del' yyyy", {
+          locale: es,
+        })}: $ ${getTotalVentas().toFixed(2)} pesos MXN.`;
 
   useEffect(() => {
     handleFiltrar(); // para que cargue las ventas del día en el primer render
   }, []);
-
-
 
   const handleChangePage = (event, newPage) => setPagina(newPage);
   const handleChangeRowsPerPage = (event) => {
@@ -82,38 +105,82 @@ export default function HistorialPOS({ cambiarVista }) {
     setPagina(0);
   };
 
-
   return (
     <Box sx={{ p: 4 }}>
       {/* Botones de navegación */}
-      <Stack direction="row" spacing={2} justifyContent="center" mb={4}>
-        <Button
-          variant="contained"
-          startIcon={<ShoppingCartIcon />}
-          onClick={() => cambiarVista("venta")}
-          sx={{ fontWeight: "bold" }}
+      <Box display="flex" justifyContent="center" mb={4}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={2}
+          alignItems="center"
+          justifyContent="center"
+          width={{ xs: "100%", md: "auto" }}
         >
-          Ventas
-        </Button>
-        <Button
-          variant="contained"
-          color="warning"
-          startIcon={<ReceiptLongIcon />}
-          onClick={() => cambiarVista("facturas")}
-          sx={{ fontWeight: "bold" }}
-        >
-          Facturas
-        </Button>
-        <Button
-          variant="outlined"
-          color="success"
-          startIcon={<DashboardIcon />}
-          onClick={() => cambiarVista("menu")}
-          sx={{ fontWeight: "bold" }}
-        >
-          Regresar al Panel
-        </Button>
-      </Stack>
+          <Button
+            variant="contained"
+            color="success"
+            size="large"
+            startIcon={<ShoppingCartIcon />}
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
+              width: { xs: "100%", md: "auto" },
+            }}
+            onClick={() => cambiarVista("venta")}
+          >
+            Ventas
+          </Button>
+
+          <Button
+            variant="contained"
+            color="warning"
+            size="large"
+            startIcon={<ReceiptLongIcon />}
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
+              width: { xs: "100%", md: "auto" },
+            }}
+            onClick={() => cambiarVista("facturas")}
+          >
+            Facturas
+          </Button>
+
+          <Button
+            variant="outlined"
+            color="success"
+            size="large"
+            startIcon={<DashboardIcon />}
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              borderWidth: 2,
+              boxShadow: 2,
+              "&:hover": {
+                borderWidth: 2,
+              },
+              width: { xs: "100%", md: "auto" },
+            }}
+            onClick={() => cambiarVista("menu")}
+          >
+            Regresar al Panel
+          </Button>
+        </Stack>
+      </Box>
 
       <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
         {/* Filtros */}
@@ -195,7 +262,6 @@ export default function HistorialPOS({ cambiarVista }) {
               <MenuItem value="td">Tarjeta de débito</MenuItem>
             </TextField>
 
-
             <Button
               variant="contained"
               fullWidth
@@ -251,53 +317,121 @@ export default function HistorialPOS({ cambiarVista }) {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                    <TableCell><strong>Folio</strong></TableCell>
-                    <TableCell><strong>Fecha</strong></TableCell>
-                    <TableCell><strong>Total</strong></TableCell>
-                    <TableCell><strong>Tipo de pago</strong></TableCell>
-                    <TableCell><strong>Acciones</strong></TableCell>
+                    <TableCell
+                      align="center"
+                      sx={{ textAlign: "center", verticalAlign: "middle" }}
+                    >
+                      <strong>Folio</strong>
+                    </TableCell>
+                    <TableCell
+                      align="center"
+                      sx={{ textAlign: "center", verticalAlign: "middle" }}
+                    >
+                      <strong>Fecha</strong>
+                    </TableCell>
+                    <TableCell
+                      align="center"
+                      sx={{ textAlign: "center", verticalAlign: "middle" }}
+                    >
+                      <strong>Total</strong>
+                    </TableCell>
+                    <TableCell
+                      align="center"
+                      sx={{ textAlign: "center", verticalAlign: "middle" }}
+                    >
+                      <strong>Tipo de pago</strong>
+                    </TableCell>
+                    <TableCell
+                      align="center"
+                      sx={{ textAlign: "center", verticalAlign: "middle" }}
+                    >
+                      <strong>Acciones</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {ventas
-                    .slice(pagina * rowsPerPage, pagina * rowsPerPage + rowsPerPage)
+                    .slice(
+                      pagina * rowsPerPage,
+                      pagina * rowsPerPage + rowsPerPage
+                    )
                     .map((venta) => (
-
                       <TableRow key={venta.id} hover>
-                        <TableCell>{venta.id}</TableCell>
-                        <TableCell>
-                          {format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })}
+                        <TableCell
+                          align="center"
+                          sx={{ textAlign: "center", verticalAlign: "middle" }}
+                        >
+                          {venta.id}
                         </TableCell>
-                        <TableCell>${Number(venta.total_amount || 0).toFixed(2)}</TableCell>
-                        <TableCell>
+                        <TableCell
+                          align="center"
+                          sx={{ textAlign: "center", verticalAlign: "middle" }}
+                        >
+                          {format(
+                            parseISO(fechaInicio),
+                            "d 'de' MMMM 'del' yyyy",
+                            { locale: es }
+                          )}
+                        </TableCell>
+                        <TableCell
+                          align="center"
+                          sx={{ textAlign: "center", verticalAlign: "middle" }}
+                        >
+                          ${Number(venta.total_amount || 0).toFixed(2)}
+                        </TableCell>
+                        <TableCell
+                          align="center"
+                          sx={{ textAlign: "center", verticalAlign: "middle" }}
+                        >
                           {venta.payment_method === "efectivo" && (
-                            <Chip label="Efectivo" color="success" size="small" />
+                            <Chip
+                              label="Efectivo"
+                              color="success"
+                              size="small"
+                            />
                           )}
                           {venta.payment_method === "tc" && (
-                            <Chip label="Tarjeta de crédito" color="primary" size="small" />
+                            <Chip
+                              label="Tarjeta de crédito"
+                              color="error"
+                              size="small"
+                            />
                           )}
                           {venta.payment_method === "td" && (
-                            <Chip label="Tarjeta de débito" color="info" size="small" />
+                            <Chip
+                              label="Tarjeta de débito"
+                              color="info"
+                              size="small"
+                            />
                           )}
-                          {!["efectivo", "tc", "td"].includes(venta.payment_method) && (
+                          {!["efectivo", "tc", "td"].includes(
+                            venta.payment_method
+                          ) && (
                             <Chip label="—" variant="outlined" size="small" />
                           )}
                         </TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={1}>
-                            <IconButton
-                              color="primary"
-                              onClick={() => abrirModalTicket(venta.id)}
-                            >
-                              <PrintIcon />
-                            </IconButton>
-                            <IconButton
-                              color="secondary"
-                              onClick={() => abrirModalDetalles(venta.id)}
-                            >
-                              <VisibilityIcon />
-                            </IconButton>
-                          </Stack>
+                        <TableCell sx={{ p: 1 }}>
+                          <Box
+                            display="flex"
+                            justifyContent="center"
+                            alignItems="center"
+                            height="100%"
+                          >
+                            <Stack direction="row" spacing={1}>
+                              <IconButton
+                                color="primary"
+                                onClick={() => abrirModalTicket(venta.id)}
+                              >
+                                <PrintIcon />
+                              </IconButton>
+                              <IconButton
+                                color="secondary"
+                                onClick={() => abrirModalDetalles(venta.id)}
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                            </Stack>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -332,5 +466,4 @@ export default function HistorialPOS({ cambiarVista }) {
       />
     </Box>
   );
-
 }
