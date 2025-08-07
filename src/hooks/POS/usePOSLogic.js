@@ -138,12 +138,13 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       total_amount: paymentInfo.total_amount,
       paid_amount: paymentInfo.paid_amount,
       // ✅ Solo si es tarjeta
-      ...(paymentInfo.payment_method === "td" || paymentInfo.payment_method === "tc"
+      ...(["td", "tc", "transferencia"].includes(paymentInfo.payment_method)
         ? {
           referencia: paymentInfo.referencia?.toString().trim(),
           ultimos_4: paymentInfo.ultimos_4?.toString().trim(),
         }
         : {}),
+
     };
 
 

@@ -16,7 +16,6 @@ import DiscountIcon from "@mui/icons-material/Percent";
 import ModalCambioDescuento from "./ModalCambioDescuento";
 import { showError, showSuccess } from "../../utils/alerts"; // ajusta la ruta si es necesario
 
-
 export default function CartSidebar({
   cart,
   onRemove,
@@ -35,12 +34,12 @@ export default function CartSidebar({
   const cambio = Math.max(0, parseFloat(cashReceived || 0) - total);
 
   const handleConfirm = () => {
-    // ✅ Validación para métodos con tarjeta
+    // ✅ Validación para tarjeta o transferencia
     if (
-      (paymentMethod === "td" || paymentMethod === "tc") &&
+      ["td", "tc", "transferencia"].includes(paymentMethod) &&
       (!referencia.trim() || ultimos4.length !== 4)
     ) {
-      showError("Por favor, completa la referencia y los 4 dígitos de la tarjeta.");
+      showError("Por favor, completa la referencia y los últimos 4 dígitos.");
       return;
     }
 
@@ -69,12 +68,12 @@ export default function CartSidebar({
     };
 
     // ✅ Agregar referencia y últimos 4 dígitos si aplica
-    if (paymentMethod === "td" || paymentMethod === "tc") {
+    if (["td", "tc", "transferencia"].includes(paymentMethod)) {
       data.referencia = referencia.trim();
       data.ultimos_4 = ultimos4;
     }
 
-     console.log("🧾 Payload enviado al backend:", data);
+    console.log("🧾 Payload enviado al backend:", data);
 
     onCheckout(data);
 
@@ -270,6 +269,12 @@ export default function CartSidebar({
                     control={<Radio />}
                     label="Tarjeta Crédito"
                   />
+                  {/* 👇 NUEVA OPCIÓN TRANSFERENCIA */}
+                  <FormControlLabel
+                    value="transferencia"
+                    control={<Radio />}
+                    label="Transferencia"
+                  />
                 </RadioGroup>
 
                 {paymentMethod === "efectivo" && (
@@ -297,7 +302,7 @@ export default function CartSidebar({
                   </>
                 )}
 
-                {(paymentMethod === "td" || paymentMethod === "tc") && (
+                {["td", "tc", "transferencia",].includes(paymentMethod) && (
                   <>
                     <TextField
                       label="Número de Referencia"

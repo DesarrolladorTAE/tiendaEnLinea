@@ -16,14 +16,14 @@ import axiosClient from "../../config/axiosClient";
 import axios from "axios";
 import dayjs from "dayjs";
 import { useNavigate } from "react-router-dom";
-import { showError } from "../../utils/alerts";
+import { showError, showSuccess } from "../../utils/alerts"; // Asegúrate de importar showSuccess si quieres usarlo
 import CircularProgress from "@mui/material/CircularProgress";
 
 export default function ReporteTipoVentas() {
   const [fechaInicio, setFechaInicio] = useState(dayjs().format("YYYY-MM-DD"));
   const [fechaFin, setFechaFin] = useState(dayjs().format("YYYY-MM-DD"));
   const [sucursales, setSucursales] = useState([]);
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState("");
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState(""); // "" significa todas
   const [tipoPago, setTipoPago] = useState("todos");
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -64,8 +64,69 @@ export default function ReporteTipoVentas() {
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
     } catch (error) {
-      showError("Error al generar el reporte");
+      let mensaje = "Error al generar el reporte";
+      if (error.response?.data && error.response.data instanceof Blob) {
+        const text = await error.response.data.text();
+        try {
+          const json = JSON.parse(text);
+          mensaje = json.error || mensaje;
+        } catch (_) {
+          // Si no es JSON, mantenemos el mensaje por defecto
+        }
+      }
+      showError(mensaje);
       console.error("❌ Axios error:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generarExcel = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("AUTH_TOKEN");
+
+    try {
+      const response = await axios.get(
+        "https://mitiendaenlineamx.com.mx/api/reporte/ventas/excel",
+        {
+          params: {
+            inicio: fechaInicio,
+            fin: fechaFin,
+            pos: sucursalSeleccionada === "" ? null : sucursalSeleccionada,
+            tipo_pago: tipoPago,
+          },
+          responseType: "blob",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Descargar Excel
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `ReporteVentasPorPago_${fechaInicio}_al_${fechaFin}.xlsx`
+      );
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      let mensaje = "Error al generar el Excel";
+      if (error.response?.data && error.response.data instanceof Blob) {
+        const text = await error.response.data.text();
+        try {
+          const json = JSON.parse(text);
+          mensaje = json.error || mensaje;
+        } catch (_) {}
+      }
+      showError(mensaje);
+      console.error("❌ Error al exportar Excel:", error);
     } finally {
       setLoading(false);
     }
@@ -93,7 +154,7 @@ export default function ReporteTipoVentas() {
           mt: 3,
         }}
       >
-        {/* Vista del PDF */}
+        {/* PDF Viewer */}
         <Box
           sx={{
             flex: 1,
@@ -124,11 +185,7 @@ export default function ReporteTipoVentas() {
         {/* Filtros */}
         <Paper
           elevation={3}
-          sx={{
-            width: { xs: "100%", md: 320 },
-            p: 3,
-            borderRadius: 2,
-          }}
+          sx={{ width: { xs: "100%", md: 320 }, p: 3, borderRadius: 2 }}
         >
           <Typography variant="subtitle1" gutterBottom>
             Filtros
@@ -142,8 +199,20 @@ export default function ReporteTipoVentas() {
                 labelId="sucursal-label"
                 value={sucursalSeleccionada}
                 label="Sucursal"
-                onChange={(e) => setSucursalSeleccionada(e.target.value)}
+                onChange={(e) =>
+                  setSucursalSeleccionada(
+                    e.target.value === "" ? "" : Number(e.target.value)
+                  )
+                }
+                renderValue={(selected) => {
+                  if (selected === "") return "Todas las sucursales";
+                  const sucursal = sucursales.find(
+                    sucursales.find((s) => s.id === selected)
+                  );
+                  return sucursal ? sucursal.name : "";
+                }}
               >
+                <MenuItem value="">Todas las sucursales</MenuItem>
                 {sucursales.map((s) => (
                   <MenuItem key={s.id} value={s.id}>
                     {s.name}
@@ -199,6 +268,16 @@ export default function ReporteTipoVentas() {
               }
             >
               {loading ? "Generando..." : "Generar Reporte"}
+            </Button>
+
+            <Button
+              variant="outlined"
+              color="success"
+              onClick={generarExcel}
+              fullWidth
+              disabled={loading}
+            >
+              Exportar a Excel
             </Button>
           </Stack>
         </Paper>

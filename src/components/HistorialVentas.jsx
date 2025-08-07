@@ -277,6 +277,7 @@ export default function HistorialPOS({ cambiarVista }) {
             >
               <MenuItem value="">Todos</MenuItem>
               <MenuItem value="efectivo">Efectivo</MenuItem>
+              <MenuItem value="transferencia">Transferencia</MenuItem>
               <MenuItem value="tc">Tarjeta de crédito</MenuItem>
               <MenuItem value="td">Tarjeta de débito</MenuItem>
             </TextField>
@@ -423,7 +424,14 @@ export default function HistorialPOS({ cambiarVista }) {
                               size="small"
                             />
                           )}
-                          {!["efectivo", "tc", "td"].includes(
+                          {venta.payment_method === "transferencia" && (
+                            <Chip
+                              label="Transferencia"
+                              color="primary"
+                              size="small"
+                            />
+                          )}
+                          {!["efectivo", "tc", "td", "transferencia"].includes(
                             venta.payment_method
                           ) && (
                             <Chip label="—" variant="outlined" size="small" />
