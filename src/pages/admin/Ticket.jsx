@@ -310,7 +310,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           />
 
           <Box display="flex" gap={3} mt={2}>
-            {/* <FormControlLabel
+            <FormControlLabel
               control={
                 <Checkbox
                   name="qr_factura"
@@ -319,7 +319,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                 />
               }
               label="QR Factura"
-            /> */}
+            />
             <FormControlLabel
               control={
                 <Checkbox

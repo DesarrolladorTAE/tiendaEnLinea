@@ -1,34 +1,134 @@
-import React from "react";
-import {
-  Box,
-  Typography,
-  Paper,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Divider,
-  Chip,
-  Stack,
-  Button,
-} from "@mui/material";
-import SettingsIcon from "@mui/icons-material/Settings";
-import StarIcon from "@mui/icons-material/Star";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+// ComprasSuscripcionesView.jsx
+import React, { useEffect, useMemo, useState } from "react";
+import { Box, Grid, Stack, Button, Typography } from "@mui/material";
 import DashboardIcon from "@mui/icons-material/Dashboard";
-import { keyframes } from "@emotion/react";
+import axiosClient from "../config/axiosClientPOS"; // cliente con auth:sanctum
+import FiltersBar from "./FiltersBar";
+import SalesTable from "./SalesTable";
 
-const girar = keyframes`
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-`;
 
-const ComprasFacturadas = ({ cambiarVista }) => {
+// --- Utils ---
+const toYYYYMM = (date) => {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const formatMoney = (n) =>
+  Number(n || 0).toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+const formatDate = (d) =>
+  new Date(d).toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+// Mapeo simple de métodos de pago (ajusta si manejas más)
+const paymentLabel = (code) => {
+  const map = {
+    efectivo: "Efectivo",
+    tc: "Tarjeta crédito",
+    td: "Tarjeta débito",
+    transferencia: "Transferencia",
+  };
+  return map[code] || code || "—";
+};
+
+// Usa id como folio visible si tu API no expone uno propio
+const folioFromSale = (v) => String(v?.id ?? "").padStart(6, "0");
+
+export default function ComprasSuscripcionesView({
+  cambiarVista,
+  tituloMes: tituloMesProp, // opcional externo
+}) {
+  // --- Estado de filtros ---
+  const defaultMes = toYYYYMM(new Date());
+  const [mes, setMes] = useState(defaultMes);
+  const [folio, setFolio] = useState("");
+
+  // --- Estado de datos ---
+  const [ventasRaw, setVentasRaw] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // --- Carga inicial de ventas del POS autenticado ---
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoading(true);
+      try {
+        // Si luego filtras por mes en backend: { params: { mes } }
+        const { data } = await axiosClient.get("/ventas/pos/historial");
+        if (alive) setVentasRaw(Array.isArray(data) ? data : []);
+      } catch (err) {
+        if (alive) setVentasRaw([]);
+        // Puedes loguear el error si quieres: console.error(err);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // --- Filtrado por mes y folio en cliente ---
+  const ventasRows = useMemo(() => {
+    const [y, m] = mes.split("-").map(Number);
+    return (ventasRaw || [])
+      .filter((v) => {
+        const d = new Date(v.created_at);
+        const inMonth = d.getFullYear() === y && d.getMonth() + 1 === m;
+        const f = folioFromSale(v).toLowerCase();
+        const byFolio = folio ? f.includes(folio.toLowerCase()) : true;
+        return inMonth && byFolio;
+      })
+      .map((v) => ({
+        id: v.id,
+        folio: folioFromSale(v),
+        fechaISO: v.created_at,
+        fecha: formatDate(v.created_at),
+        total: `$${formatMoney(v.total_amount)}`,
+        tipoPago: paymentLabel(v.payment_method),
+      }));
+  }, [ventasRaw, mes, folio]);
+
+  // --- (Pendiente) Clientes del mes ---
+  const clientesRows = useMemo(() => {
+    // Cuando tengas el cliente en Sale (o una API de top clientes), lo rellenamos aquí.
+    return [];
+  }, []);
+
+  // --- Handlers UI ---
+  const onChangeMes = (e) => setMes(e.target.value);
+  const onChangeFolio = (e) => setFolio(e.target.value);
+  const onSearch = () => {}; // el filtrado por folio ya es reactivo
+
+  const onClickFacturar = (row) => {
+    // Aquí abres tu modal o navegas al flujo de timbrado
+    console.log("Facturar venta:", row);
+  };
+
+  // Helper (respeta acentos y Unicode)
+  const capitalizeFirst = (s) => s.replace(/^\p{L}/u, (m) => m.toUpperCase());
+
+  const tituloMes =
+    tituloMesProp ||
+    `Mes actual: ${capitalizeFirst(
+      new Intl.DateTimeFormat("es-MX", {
+        month: "long",
+        year: "numeric",
+      }).format(
+        new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)) - 1, 1)
+      )
+    )}`;
+
   return (
     <Box p={4}>
-      {/* Botón regresar al panel */}
-      <Box display="flex" justifyContent="center" mb={4}>
+      {/* Regresar */}
+      <Box display="flex" justifyContent="center" mb={3}>
         <Stack direction="row" spacing={3}>
           <Button
             variant="outlined"
@@ -37,106 +137,41 @@ const ComprasFacturadas = ({ cambiarVista }) => {
             startIcon={<DashboardIcon />}
             sx={{
               borderRadius: 3,
-              paddingX: 3,
-              paddingY: 1.5,
+              px: 3,
+              py: 1.5,
               fontWeight: "bold",
               textTransform: "none",
-              fontSize: "1rem",
-              borderWidth: 2,
-              boxShadow: 2,
-              "&:hover": {
-                borderWidth: 2,
-              },
             }}
-            onClick={() => cambiarVista("menu")}
+            onClick={() => cambiarVista?.("menu")}
           >
             Regresar al Panel
           </Button>
         </Stack>
       </Box>
 
-      {/* Contenido principal */}
-      <Paper elevation={3} sx={{ padding: 4, textAlign: "center" }}>
-        <Stack direction="column" alignItems="center" spacing={2}>
-          <SettingsIcon
-            sx={{
-              fontSize: 60,
-              animation: `${girar} 3s linear infinite`,
-              color: "gray",
-            }}
+      {/* Filtros */}
+      <FiltersBar
+        mes={mes}
+        folio={folio}
+        onChangeMes={onChangeMes}
+        onChangeFolio={onChangeFolio}
+        onSearch={onSearch}
+      />
+
+      {/* Encabezado */}
+      <Typography variant="h6" sx={{ mb: 1 }}>
+        {tituloMes}
+      </Typography>
+
+      {/* Contenido */}
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={9}>
+          <SalesTable
+            rows={loading ? [] : ventasRows}
+            onClickFacturar={onClickFacturar}
           />
-          <Typography variant="h5" fontWeight="bold" color="text.primary">
-            Función en desarrollo
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            La autofacturación a clientes estará disponible próximamente.
-          </Typography>
-
-          <Divider sx={{ width: "100%", my: 2 }} />
-
-          <Chip
-            label="Disponible en el Plan Profesional"
-            color="warning"
-            icon={<StarIcon />}
-            sx={{ fontSize: "1rem", paddingX: 2 }}
-          />
-
-          <Box mt={2} textAlign="left">
-            <Typography variant="h6" gutterBottom>
-              Detalles del Plan Profesional
-            </Typography>
-            <Typography>
-              <strong>Precio mensual:</strong> $449 MXN
-            </Typography>
-            <Typography sx={{ mt: 1, mb: 1 }}>
-              <em>Para negocios que venden más y quieren cobrar en línea</em>
-            </Typography>
-
-            <Typography variant="subtitle1" fontWeight="bold" mt={2}>
-              Beneficios incluidos:
-            </Typography>
-            <List dense>
-              {[
-                "Todo lo anterior",
-                "Hasta 5 puntos de venta",
-                "Productos ilimitados",
-                "Carrito con integración a pasarela de pago (Stripe / Conekta)",
-                "Reportes detallados",
-                "Soporte técnico por WhatsApp",
-                "Acceso desde múltiples dispositivos",
-              ].map((beneficio, i) => (
-                <ListItem key={i}>
-                  <ListItemIcon>
-                    <CheckCircleIcon color="success" />
-                  </ListItemIcon>
-                  <ListItemText primary={beneficio} />
-                </ListItem>
-              ))}
-            </List>
-
-            <Typography variant="subtitle1" fontWeight="bold" mt={2}>
-              Promociones:
-            </Typography>
-            <List dense>
-              {[
-                { paga: 5, recibe: 6 },
-                { paga: 10, recibe: 12 },
-              ].map((promo, i) => (
-                <ListItem key={i}>
-                  <ListItemIcon>
-                    <LocalOfferIcon color="info" />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={`Paga ${promo.paga} y recibe ${promo.recibe} meses`}
-                  />
-                </ListItem>
-              ))}
-            </List>
-          </Box>
-        </Stack>
-      </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
-};
-
-export default ComprasFacturadas;
+}

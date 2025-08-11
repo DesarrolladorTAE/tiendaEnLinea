@@ -17,11 +17,13 @@ import HistoryIcon from "@mui/icons-material/History";
 import ReplayIcon from "@mui/icons-material/Replay";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import LogoutIcon from "@mui/icons-material/Logout";
+import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 
 import POS from "./POS";
 import HistorialVentas from "./HistorialVentas";
 import ComprasFacturadas from "./ComprasFacturadas";
 import CancelaDevoluciones from "./CancelaDevoluciones";
+import ClientesPOS from "./ClientesPOS";
 
 const POSDashboard = ({
   posName = "Mi Punto de Venta",
@@ -63,6 +65,14 @@ const POSDashboard = ({
       icono: <ReceiptLongIcon sx={{ fontSize: 40 }} />,
     },
     {
+      id: "clientes",
+      titulo: "Clientes",
+      descripcion: "Gestiona los clientes de la tienda",
+      color: "#673ab7",
+      icono: <PeopleAltIcon sx={{ fontSize: 40 }} />,
+    },
+
+    {
       id: "proximamente",
       titulo: "Próximamente",
       descripcion: "Nuevas funciones en desarrollo",
@@ -100,6 +110,8 @@ const POSDashboard = ({
         return <CancelaDevoluciones cambiarVista={setVista} />;
       case "facturas":
         return <ComprasFacturadas cambiarVista={setVista} />;
+      case "clientes":
+        return <ClientesPOS cambiarVista={setVista} />;
       default:
         return (
           <Box mt={4} sx={{ flexGrow: 1, minHeight: "80vh" }}>
