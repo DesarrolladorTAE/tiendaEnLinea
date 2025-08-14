@@ -1,14 +1,33 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Paper, Table, TableHead, TableBody, TableRow, TableCell,
-  TableContainer, Button, Box, Stack, IconButton, Tooltip, Chip
+  Paper,
+  Table,
+  TableHead,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableContainer,
+  Button,
+  Box,
+  Stack,
+  IconButton,
+  Tooltip,
+  Chip,
+  Skeleton,
+  Switch,
+  FormControlLabel,
+  Divider,
 } from "@mui/material";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import TodayIcon from "@mui/icons-material/Today";
+import ViewWeekIcon from "@mui/icons-material/ViewWeek";
+import FacturarVentaDialog from "./ventas/FacturarVentaDialog";
 
 // --- Helpers robustos ---
-const capitalizeFirst = (s) => (s ? s.replace(/^\p{L}/u, (m) => m.toUpperCase()) : s);
+const capitalizeFirst = (s) =>
+  s ? s.replace(/^\p{L}/u, (m) => m.toUpperCase()) : s;
 const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
 const safeDateFrom = (val) => {
   if (!val) return null;
@@ -57,7 +76,44 @@ const groupByDay = (rows = []) => {
   return { map, sinFecha };
 };
 
-export default function SalesTable({ rows = [], onClickFacturar }) {
+// Mapea método de pago a chip
+const chipPago = (tipoPago) => {
+  const code = (tipoPago || "").toString().toLowerCase();
+  switch (code) {
+    case "efectivo":
+      return { label: "Efectivo", color: "success", variant: "outlined" };
+    case "tc":
+      return {
+        label: "Tarjeta crédito",
+        color: "primary",
+        variant: "outlined",
+      };
+    case "td":
+      return { label: "Tarjeta débito", color: "primary", variant: "outlined" };
+    case "transferencia":
+      return { label: "Transferencia", color: "info", variant: "outlined" };
+    default:
+      return { label: tipoPago || "—", color: "default", variant: "outlined" };
+  }
+};
+
+// Parsea un importe string tipo "$1,234.50" a número
+const parseMoney = (s) =>
+  Number(String(s || "").replace(/[^0-9.-]+/g, "")) || 0;
+
+// Formatea suma a dinero MX
+const fmtMoney = (n) =>
+  n.toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+
+// --- Componente ---
+export default function SalesTable({
+  rows = [],
+  loading = false, // <- NUEVO: opcional
+  onClickFacturar,
+}) {
   // Agrupar por día y ordenar días DESC
   const { days, grouped, sinFecha } = useMemo(() => {
     const { map, sinFecha } = groupByDay(rows);
@@ -70,44 +126,78 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
   }, [rows]);
 
   const [dayIndex, setDayIndex] = useState(0);
+  const [dense, setDense] = useState(false); // <- NUEVO: densidad compacta
+  const [viewAll, setViewAll] = useState(false); // <- NUEVO: ver todos los días en una sola vista
+  const [ventaActiva, setVentaActiva] = useState(null);
+  const [openFacturar, setOpenFacturar] = useState(false);
+
+
+  const onSubmitFactura = async ({ ventaId, cliente_id, cliente_nuevo }) => {
+    // Aquí haces tu request real:
+    // if (cliente_id) await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente_id });
+    // else await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente: cliente_nuevo });
+
+    console.log("Facturar:", { ventaId, cliente_id, cliente_nuevo });
+  };
+
+  // reset a 0 cuando cambien los días
   useEffect(() => {
-    setDayIndex((i) => (i > 0 ? 0 : i)); // reset a 0 cuando cambien los días
+    setDayIndex(0);
   }, [days.length]);
 
   const hasDays = days.length > 0;
   const dayKey = hasDays ? days[dayIndex] : null;
   const dayRows = hasDays ? grouped.get(dayKey) : [];
 
+  // Total del día (o de todo si viewAll)
+  const rowsShown = viewAll ? rows : dayRows;
+  const totalDia = useMemo(
+    () => rowsShown.reduce((acc, r) => acc + parseMoney(r.total), 0),
+    [rowsShown]
+  );
+
   return (
     <Paper
       elevation={4}
       sx={{
+        width: "100%",
         borderRadius: 3,
         overflow: "hidden",
         boxShadow: (t) =>
-          `0 8px 24px ${t.palette.mode === "dark" ? "rgba(0,0,0,.4)" : "rgba(0,0,0,.08)"}`,
+          `0 8px 24px ${
+            t.palette.mode === "dark" ? "rgba(0,0,0,.4)" : "rgba(0,0,0,.08)"
+          }`,
       }}
     >
-      {/* Toolbar: navegación por día */}
+      {/* Toolbar superior */}
       <Box
         sx={(t) => ({
           px: 2,
-          py: 1.5,
+          pt: 1.25,
+          pb: 1,
           borderBottom: `1px solid ${t.palette.divider}`,
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 1,
           flexWrap: "wrap",
+          background:
+            t.palette.mode === "dark"
+              ? "transparent"
+              : "linear-gradient(180deg,#fafbff, #fff)",
+          // sx={{ width: '100%' }}
         })}
       >
+        {/* Navegación por día */}
         <Stack direction="row" alignItems="center" spacing={1}>
           <Tooltip title="Día anterior">
             <span>
               <IconButton
                 size="small"
-                onClick={() => setDayIndex((i) => Math.min(i + 1, days.length - 1))}
-                disabled={!hasDays || dayIndex >= days.length - 1}
+                onClick={() =>
+                  setDayIndex((i) => Math.min(i + 1, days.length - 1))
+                }
+                disabled={!hasDays || dayIndex >= days.length - 1 || viewAll}
               >
                 <ChevronLeftIcon />
               </IconButton>
@@ -118,7 +208,7 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
               <IconButton
                 size="small"
                 onClick={() => setDayIndex((i) => Math.max(i - 1, 0))}
-                disabled={!hasDays || dayIndex <= 0}
+                disabled={!hasDays || dayIndex <= 0 || viewAll}
               >
                 <ChevronRightIcon />
               </IconButton>
@@ -127,16 +217,95 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
 
           <Chip
             variant="outlined"
-            label={hasDays ? fmtDay(dayKey) : "Sin registros"}
+            label={
+              loading
+                ? "Cargando…"
+                : viewAll
+                ? "Todos los registros"
+                : hasDays
+                ? fmtDay(dayKey)
+                : "Sin registros"
+            }
             sx={{ fontWeight: 700, maxWidth: "100%" }}
           />
+          {hasDays && !viewAll && (
+            <Chip
+              color="primary"
+              label={`Día ${dayIndex + 1} de ${days.length}`}
+              sx={{ fontWeight: 700 }}
+            />
+          )}
         </Stack>
 
-        {hasDays && (
+        {/* Acciones rápidas */}
+        <Stack direction="row" alignItems="center" spacing={1}>
+          <Button
+            size="small"
+            variant={viewAll ? "contained" : "outlined"}
+            startIcon={<ViewWeekIcon />}
+            onClick={() => setViewAll((v) => !v)}
+            sx={{ textTransform: "none", borderRadius: 2, fontWeight: 700 }}
+          >
+            {viewAll ? "Ver por día" : "Ver todos"}
+          </Button>
+
+          <Tooltip title="Ir al último día (hoy)">
+            <span>
+              <IconButton
+                size="small"
+                onClick={() => {
+                  setViewAll(false);
+                  setDayIndex(0);
+                }}
+                disabled={!hasDays}
+              >
+                <TodayIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
+
+          <FormControlLabel
+            control={
+              <Switch
+                checked={dense}
+                onChange={(e) => setDense(e.target.checked)}
+                size="small"
+              />
+            }
+            label="Compacta"
+            sx={{ ml: 1 }}
+          />
+        </Stack>
+      </Box>
+
+      {/* Sub-toolbar: total del día */}
+      <Box
+        sx={(t) => ({
+          px: 2,
+          py: 1,
+          borderBottom: `1px solid ${t.palette.divider}`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
+          flexWrap: "wrap",
+        })}
+      >
+        <Chip
+          label={`Total ${viewAll ? "listado" : "del día"}: $${fmtMoney(
+            totalDia
+          )}`}
+          color="success"
+          variant="outlined"
+          sx={{ fontWeight: 700 }}
+        />
+        {sinFecha.length > 0 && (
           <Chip
-            color="primary"
-            label={`Día ${dayIndex + 1} de ${days.length}`}
-            sx={{ fontWeight: 700 }}
+            size="small"
+            variant="outlined"
+            color="warning"
+            label={`Registros sin fecha: ${sinFecha.length}`}
+            sx={{ fontWeight: 600 }}
           />
         )}
       </Box>
@@ -145,9 +314,14 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
         sx={{
           overflowX: "auto",
           maxHeight: { xs: 420, md: 600 },
+          WebkitOverflowScrolling: "touch",
         }}
       >
-        <Table stickyHeader size="medium" aria-label="Tabla de ventas por día">
+        <Table
+          stickyHeader
+          size={dense ? "small" : "medium"}
+          aria-label="Tabla de ventas por día"
+        >
           <TableHead>
             <TableRow
               sx={{
@@ -160,7 +334,7 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
                   fontWeight: 700,
                   borderBottom: (t) => `1px solid ${t.palette.divider}`,
                   fontSize: { xs: "0.9rem", sm: "1rem" },
-                  py: { xs: 1, sm: 1.5 },
+                  py: dense ? 0.75 : { xs: 1, sm: 1.5 },
                 },
               }}
             >
@@ -175,83 +349,141 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
           </TableHead>
 
           <TableBody>
-            {hasDays ? (
-              dayRows.map((r, idx) => (
-                <TableRow
-                  key={r.id ?? `${dayKey}-${idx}`}
-                  hover
-                  sx={{
-                    transition: "background-color .2s ease, transform .1s ease",
-                    "&:nth-of-type(odd)": {
-                      bgcolor: (t) =>
-                        t.palette.mode === "dark"
-                          ? "rgba(255,255,255,0.02)"
-                          : "rgba(0,0,0,0.015)",
-                    },
-                    "&:hover": {
-                      bgcolor: (t) =>
-                        t.palette.mode === "dark"
-                          ? "rgba(255,255,255,0.05)"
-                          : "rgba(0,0,0,0.03)",
-                    },
-                  }}
-                >
-                  <TableCell
-                    sx={{
-                      fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-                      fontWeight: 600,
-                      letterSpacing: ".3px",
-                      fontSize: { xs: "0.95rem", sm: "1rem" },
-                      py: { xs: 1, sm: 1.25 },
-                    }}
-                  >
-                    {r.folio}
+            {loading ? (
+              // Skeletons de carga
+              Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={`sk-${i}`}>
+                  <TableCell>
+                    <Skeleton variant="text" width={80} />
                   </TableCell>
-
-                  <TableCell sx={{ whiteSpace: "nowrap", fontSize: { xs: "0.95rem", sm: "1rem" } }}>
-                    {r.fecha}
+                  <TableCell>
+                    <Skeleton variant="text" width={160} />
                   </TableCell>
-
-                  <TableCell
-                    align="right"
-                    sx={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, fontSize: { xs: "1rem", sm: "1.05rem" } }}
-                  >
-                    {r.total}
+                  <TableCell align="right">
+                    <Skeleton variant="text" width={80} />
                   </TableCell>
-
-                  <TableCell
-                    sx={{ display: { xs: "none", sm: "table-cell" }, textTransform: "capitalize", fontSize: { xs: "0.95rem", sm: "1rem" } }}
-                  >
-                    {r.tipoPago}
+                  <TableCell sx={{ display: { xs: "none", sm: "table-cell" } }}>
+                    <Skeleton variant="text" width={120} />
                   </TableCell>
-
                   <TableCell align="center">
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<ReceiptLongIcon />}
-                      onClick={() => onClickFacturar?.(r)}
-                      sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        fontWeight: 700,
-                        px: { xs: 1.5, sm: 2 },
-                        py: { xs: 0.5, sm: 0.75 },
-                        boxShadow: 0,
-                        "&:hover": { boxShadow: 2 },
-                      }}
-                    >
-                      Facturar
-                    </Button>
+                    <Skeleton
+                      variant="rounded"
+                      width={96}
+                      height={dense ? 28 : 36}
+                      sx={{ mx: "auto" }}
+                    />
                   </TableCell>
                 </TableRow>
               ))
+            ) : (viewAll ? rows : dayRows).length > 0 ? (
+              (viewAll ? rows : dayRows).map((r, idx) => {
+                const pago = chipPago(r.tipoPago);
+                return (
+                  <TableRow
+                    key={r.id ?? `${viewAll ? "all" : dayKey}-${idx}`}
+                    hover
+                    sx={{
+                      transition:
+                        "background-color .2s ease, transform .1s ease",
+                      "&:nth-of-type(odd)": {
+                        bgcolor: (t) =>
+                          t.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.02)"
+                            : "rgba(0,0,0,0.015)",
+                      },
+                      "&:hover": {
+                        bgcolor: (t) =>
+                          t.palette.mode === "dark"
+                            ? "rgba(255,255,255,0.05)"
+                            : "rgba(0,0,0,0.03)",
+                      },
+                    }}
+                  >
+                    <TableCell
+                      sx={{
+                        fontFamily:
+                          "ui-monospace, SFMono-Regular, Menlo, monospace",
+                        fontWeight: 600,
+                        letterSpacing: ".3px",
+                        fontSize: { xs: "0.95rem", sm: "1rem" },
+                        py: dense ? 0.75 : { xs: 1, sm: 1.25 },
+                      }}
+                    >
+                      {r.folio}
+                    </TableCell>
+
+                    <TableCell
+                      sx={{
+                        whiteSpace: "nowrap",
+                        fontSize: { xs: "0.95rem", sm: "1rem" },
+                        py: dense ? 0.75 : undefined,
+                      }}
+                    >
+                      {r.fecha}
+                    </TableCell>
+
+                    <TableCell
+                      align="right"
+                      sx={{
+                        fontVariantNumeric: "tabular-nums",
+                        fontWeight: 700,
+                        fontSize: { xs: "1rem", sm: "1.05rem" },
+                        py: dense ? 0.75 : undefined,
+                      }}
+                    >
+                      {r.total}
+                    </TableCell>
+
+                    <TableCell
+                      sx={{
+                        display: { xs: "none", sm: "table-cell" },
+                        py: dense ? 0.75 : undefined,
+                      }}
+                    >
+                      <Chip
+                        size={dense ? "small" : "medium"}
+                        label={pago.label}
+                        color={pago.color}
+                        variant={pago.variant}
+                        sx={{ textTransform: "capitalize", fontWeight: 600 }}
+                      />
+                    </TableCell>
+
+                    <TableCell
+                      align="center"
+                      sx={{ py: dense ? 0.5 : undefined }}
+                    >
+                      <Button
+                        variant="contained"
+                        size={dense ? "small" : "medium"}
+                        startIcon={<ReceiptLongIcon />}
+                        onClick={() => onClickFacturar?.(r)}
+                        sx={{
+                          textTransform: "none",
+                          borderRadius: 2,
+                          fontWeight: 700,
+                          px: { xs: 1.5, sm: 2 },
+                          py: { xs: 0.5, sm: 0.75 },
+                          boxShadow: 0,
+                          "&:hover": { boxShadow: 2 },
+                        }}
+                      >
+                        Facturar
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell
                   colSpan={5}
                   align="center"
-                  sx={{ py: { xs: 4, md: 6 }, color: "text.secondary", fontSize: { xs: "0.95rem", sm: "1rem" } }}
+                  sx={{
+                    py: { xs: 4, md: 6 },
+                    color: "text.secondary",
+                    fontSize: { xs: "0.95rem", sm: "1rem" },
+                  }}
                 >
                   Sin registros
                 </TableCell>
@@ -261,7 +493,7 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
         </Table>
       </TableContainer>
 
-      {/* Footer: navegación rápida + aviso de filas sin fecha */}
+      {/* Footer: navegación rápida */}
       <Box
         sx={(t) => ({
           px: 2,
@@ -278,29 +510,21 @@ export default function SalesTable({ rows = [], onClickFacturar }) {
           <IconButton
             size="small"
             onClick={() => setDayIndex((i) => Math.min(i + 1, days.length - 1))}
-            disabled={!hasDays || dayIndex >= days.length - 1}
+            disabled={!hasDays || dayIndex >= days.length - 1 || viewAll}
           >
             <ChevronLeftIcon />
           </IconButton>
           <IconButton
             size="small"
             onClick={() => setDayIndex((i) => Math.max(i - 1, 0))}
-            disabled={!hasDays || dayIndex <= 0}
+            disabled={!hasDays || dayIndex <= 0 || viewAll}
           >
             <ChevronRightIcon />
           </IconButton>
         </Stack>
-
-        {sinFecha.length > 0 && (
-          <Chip
-            size="small"
-            variant="outlined"
-            color="warning"
-            label={`Registros sin fecha: ${sinFecha.length}`}
-            sx={{ fontWeight: 600 }}
-          />
-        )}
       </Box>
+      
     </Paper>
+    
   );
 }

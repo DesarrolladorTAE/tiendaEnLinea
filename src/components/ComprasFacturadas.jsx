@@ -6,7 +6,6 @@ import axiosClient from "../config/axiosClientPOS"; // cliente con auth:sanctum
 import FiltersBar from "./FiltersBar";
 import SalesTable from "./SalesTable";
 
-
 // --- Utils ---
 const toYYYYMM = (date) => {
   const d = new Date(date);
@@ -149,23 +148,41 @@ export default function ComprasSuscripcionesView({
         </Stack>
       </Box>
 
-      {/* Filtros */}
-      <FiltersBar
-        mes={mes}
-        folio={folio}
-        onChangeMes={onChangeMes}
-        onChangeFolio={onChangeFolio}
-        onSearch={onSearch}
-      />
-
       {/* Encabezado */}
-      <Typography variant="h6" sx={{ mb: 1 }}>
+      <Typography
+        variant="h6"
+        sx={{
+          mb: 1.5,
+          fontWeight: 700,
+          color: "primary.main",
+          letterSpacing: 0.5,
+          display: "inline-block",
+          borderBottom: (theme) =>
+            `3px solid ${
+              theme.palette.mode === "dark"
+                ? theme.palette.primary.light
+                : theme.palette.primary.main
+            }`,
+          pb: 0.5,
+        }}
+      >
         {tituloMes}
       </Typography>
-
       {/* Contenido */}
       <Grid container spacing={2}>
-        <Grid item xs={12} md={9}>
+        {/* Filtros */}
+        <Grid item xs={12}>
+          <FiltersBar
+            mes={mes}
+            folio={folio}
+            onChangeMes={onChangeMes}
+            onChangeFolio={onChangeFolio}
+            onSearch={onSearch}
+          />
+        </Grid>
+
+        {/* Tabla */}
+        <Grid item xs={12}>
           <SalesTable
             rows={loading ? [] : ventasRows}
             onClickFacturar={onClickFacturar}

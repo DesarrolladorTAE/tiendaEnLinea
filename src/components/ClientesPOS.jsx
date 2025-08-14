@@ -106,7 +106,7 @@ export default function ClientesPOS({ cambiarVista }) {
 
   const cancelDelete = () => setDeletingId(null);
 
-  const headerTitle = useMemo(() => "Clientes de la tienda", []);
+  const headerTitle = useMemo(() => "Clientes", []);
 
   return (
     <Box p={{ xs: 2, sm: 3, md: 4 }}>
