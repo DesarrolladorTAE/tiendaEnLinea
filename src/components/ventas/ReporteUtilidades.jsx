@@ -20,7 +20,7 @@ export default function ReporteUtilidades() {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>
-        Reporte de Utilidades ⚙️
+        Reporte de Utilidades!!!
       </Typography>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
