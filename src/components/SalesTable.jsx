@@ -16,14 +16,12 @@ import {
   Skeleton,
   Switch,
   FormControlLabel,
-  Divider,
 } from "@mui/material";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import TodayIcon from "@mui/icons-material/Today";
 import ViewWeekIcon from "@mui/icons-material/ViewWeek";
-import FacturarVentaDialog from "./ventas/FacturarVentaDialog";
 
 // --- Helpers robustos ---
 const capitalizeFirst = (s) =>
@@ -112,7 +110,7 @@ const fmtMoney = (n) =>
 export default function SalesTable({
   rows = [],
   loading = false, // <- NUEVO: opcional
-  onClickFacturar,
+  onFacturar,
 }) {
   // Agrupar por día y ordenar días DESC
   const { days, grouped, sinFecha } = useMemo(() => {
@@ -128,17 +126,7 @@ export default function SalesTable({
   const [dayIndex, setDayIndex] = useState(0);
   const [dense, setDense] = useState(false); // <- NUEVO: densidad compacta
   const [viewAll, setViewAll] = useState(false); // <- NUEVO: ver todos los días en una sola vista
-  const [ventaActiva, setVentaActiva] = useState(null);
-  const [openFacturar, setOpenFacturar] = useState(false);
 
-
-  const onSubmitFactura = async ({ ventaId, cliente_id, cliente_nuevo }) => {
-    // Aquí haces tu request real:
-    // if (cliente_id) await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente_id });
-    // else await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente: cliente_nuevo });
-
-    console.log("Facturar:", { ventaId, cliente_id, cliente_nuevo });
-  };
 
   // reset a 0 cuando cambien los días
   useEffect(() => {
@@ -457,7 +445,7 @@ export default function SalesTable({
                         variant="contained"
                         size={dense ? "small" : "medium"}
                         startIcon={<ReceiptLongIcon />}
-                        onClick={() => onClickFacturar?.(r)}
+                        onClick={() => onFacturar?.(r)}
                         sx={{
                           textTransform: "none",
                           borderRadius: 2,

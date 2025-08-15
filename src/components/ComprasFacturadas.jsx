@@ -5,6 +5,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import axiosClient from "../config/axiosClientPOS"; // cliente con auth:sanctum
 import FiltersBar from "./FiltersBar";
 import SalesTable from "./SalesTable";
+import FacturarVentaDialog from "./ventas/FacturarVentaDialog";
 
 // --- Utils ---
 const toYYYYMM = (date) => {
@@ -51,6 +52,39 @@ export default function ComprasSuscripcionesView({
   // --- Estado de datos ---
   const [ventasRaw, setVentasRaw] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [openFacturar, setOpenFacturar] = useState(false);
+  const [ventaActiva, setVentaActiva] = useState(null);
+  const [clientes, setClientes] = useState([]);
+  const [clientesLoading, setClientesLoading] = useState(false);
+
+
+useEffect(() => {
+  let alive = true;
+  (async () => {
+    setClientesLoading(true);
+    try {
+      const { data } = await axiosClient.get("/clientes"); // <-- sin params
+      if (alive) setClientes(Array.isArray(data) ? data : []);
+    } catch {
+      if (alive) setClientes([]);
+    } finally {
+      if (alive) setClientesLoading(false);
+    }
+  })();
+  return () => { alive = false; };
+}, []);
+
+  const onFacturar = (row) => {
+    setVentaActiva(row);
+    setOpenFacturar(true);
+  };
+  // enviar factura (cliente existente o nuevo)
+  const onSubmitFactura = async ({ ventaId, cliente_id, cliente_nuevo }) => {
+    // ejemplo de integración:
+    // if (cliente_id) await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente_id });
+    // else await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente: cliente_nuevo });
+    console.log("Facturar:", { ventaId, cliente_id, cliente_nuevo });
+  };
 
   // --- Carga inicial de ventas del POS autenticado ---
   useEffect(() => {
@@ -95,20 +129,19 @@ export default function ComprasSuscripcionesView({
   }, [ventasRaw, mes, folio]);
 
   // --- (Pendiente) Clientes del mes ---
-  const clientesRows = useMemo(() => {
-    // Cuando tengas el cliente en Sale (o una API de top clientes), lo rellenamos aquí.
-    return [];
-  }, []);
+  // const clientesRows = useMemo(() => {
+
+  //   return [];
+  // }, []);
 
   // --- Handlers UI ---
   const onChangeMes = (e) => setMes(e.target.value);
   const onChangeFolio = (e) => setFolio(e.target.value);
   const onSearch = () => {}; // el filtrado por folio ya es reactivo
 
-  const onClickFacturar = (row) => {
-    // Aquí abres tu modal o navegas al flujo de timbrado
-    console.log("Facturar venta:", row);
-  };
+  // const onClickFacturar = (row) => {
+  //   console.log("Facturar venta:", row);
+  // };
 
   // Helper (respeta acentos y Unicode)
   const capitalizeFirst = (s) => s.replace(/^\p{L}/u, (m) => m.toUpperCase());
@@ -185,10 +218,31 @@ export default function ComprasSuscripcionesView({
         <Grid item xs={12}>
           <SalesTable
             rows={loading ? [] : ventasRows}
-            onClickFacturar={onClickFacturar}
+            onFacturar={onFacturar}
           />
         </Grid>
       </Grid>
+      {/* MODAL: colócalo al final, fuera de la tabla */}
+      <FacturarVentaDialog
+        open={openFacturar}
+        onClose={() => setOpenFacturar(false)}
+        venta={{
+          id: ventaActiva?.id,
+          folio: ventaActiva?.folio,
+          fecha: ventaActiva?.fecha,
+          total: ventaActiva?.total,
+          tipoPago: ventaActiva?.tipoPago,
+        }}
+        clientes={clientes}
+        loading={clientesLoading}
+        onSubmitFactura={({ cliente_id, cliente_nuevo }) =>
+          onSubmitFactura({
+            ventaId: ventaActiva?.id,
+            cliente_id,
+            cliente_nuevo,
+          })
+        }
+      />
     </Box>
   );
 }

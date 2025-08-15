@@ -4,7 +4,7 @@ import {
   Button,
   Typography,
   TextField,
-  Stack,
+  Stack, 
 } from '@mui/material';
 import dayjs from 'dayjs';
 
@@ -13,14 +13,14 @@ export default function ReporteUtilidades() {
   const [fin, setFin] = useState(dayjs().format('YYYY-MM-DD'));
 
   const generarReporte = () => {
-    const url = `/reporte-utilidades?inicio=${inicio}&fin=${fin}`;
+    const url = `/reporte-utilidades?inicio=${inicio}&fin=${fin}&pos=todas`;
     window.open(url, '_blank');
   };
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>
-        Reporte de Utilidades por Sucursal
+        Reporte de Utilidades ⚙️
       </Typography>
 
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mt={2}>
