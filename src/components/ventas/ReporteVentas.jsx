@@ -24,7 +24,7 @@ export default function ReporteVentas() {
   const [fechaInicio, setFechaInicio] = useState(dayjs().format("YYYY-MM-DD"));
   const [fechaFin, setFechaFin] = useState(dayjs().format("YYYY-MM-DD"));
   const [sucursales, setSucursales] = useState([]);
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState("");
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState("todas"); // ✅ por defecto, todas
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,10 +39,11 @@ export default function ReporteVentas() {
 
   const consultarVentas = async () => {
     setLoading(true);
-    setPdfUrl(null); // Limpia el iframe anterior
+    setPdfUrl(null);
 
-    if (!fechaInicio || !fechaFin || !sucursalSeleccionada) {
-      setLoading(false); // Importante también aquí
+    if (!fechaInicio || !fechaFin) {
+      setLoading(false);
+      showError("Selecciona una fecha de inicio y una fecha de fin.");
       return;
     }
 
@@ -55,7 +56,10 @@ export default function ReporteVentas() {
           params: {
             inicio: fechaInicio,
             fin: fechaFin,
-            pos: sucursalSeleccionada,
+            // ✅ si el usuario eligió "todas" o dejó vacío, enviamos 'todas'
+            pos: !sucursalSeleccionada || sucursalSeleccionada === "todas"
+              ? "todas"
+              : sucursalSeleccionada,
           },
           responseType: "blob",
           headers: {
@@ -76,33 +80,27 @@ export default function ReporteVentas() {
         try {
           const json = JSON.parse(text);
 
-          console.log("📦 JSON recibido del backend:", json);
-
           const productos = Array.isArray(json.productos)
             ? json.productos
-            : Object.values(json.productos);
+            : Object.values(json.productos || {});
 
           if (productos.length > 0) {
-            console.log("⚠️ Productos sin purchase_cost:", json.productos);
-
             await Swal.fire({
               icon: "error",
               title: "Productos sin costo de compra",
               html: `
-              <p>No se puede calcular el reporte. Faltan costos de compra en los siguientes productos:</p>
-              <ul style="text-align: left; max-height: 200px; overflow-y: auto;">
-                ${productos.map((p) => `<li>${p}</li>`).join("")}
-              </ul>
-            `,
+                <p>No se puede calcular el reporte. Faltan costos de compra en los siguientes productos:</p>
+                <ul style="text-align: left; max-height: 200px; overflow-y: auto;">
+                  ${productos.map((p) => `<li>${p}</li>`).join("")}
+                </ul>
+              `,
               showCancelButton: true,
               confirmButtonText: "Ir a Productos",
               cancelButtonText: "Cerrar",
               confirmButtonColor: "#3085d6",
               cancelButtonColor: "#aaa",
             }).then((result) => {
-              if (result.isConfirmed) {
-                navigate("/admin/products");
-              }
+              if (result.isConfirmed) navigate("/admin/products");
             });
           } else {
             showError(json.error || "Error al generar el reporte");
@@ -116,7 +114,7 @@ export default function ReporteVentas() {
         console.error("❌ Axios error:", error);
       }
     } finally {
-      setLoading(false); // ✅ SIEMPRE apagar el loading
+      setLoading(false);
     }
   };
 
@@ -171,14 +169,7 @@ export default function ReporteVentas() {
         </Box>
 
         {/* Filtros */}
-        <Paper
-          elevation={3}
-          sx={{
-            width: { xs: "100%", md: 320 },
-            p: 3,
-            borderRadius: 2,
-          }}
-        >
+        <Paper elevation={3} sx={{ width: { xs: "100%", md: 320 }, p: 3, borderRadius: 2 }}>
           <Typography variant="subtitle1" gutterBottom>
             Filtros
           </Typography>
@@ -193,6 +184,8 @@ export default function ReporteVentas() {
                 label="Sucursal"
                 onChange={(e) => setSucursalSeleccionada(e.target.value)}
               >
+                {/* ✅ Opción para todas */}
+                <MenuItem value="todas">Todas las sucursales</MenuItem>
                 {sucursales.map((s) => (
                   <MenuItem key={s.id} value={s.id}>
                     {s.name}
@@ -227,9 +220,7 @@ export default function ReporteVentas() {
               onClick={consultarVentas}
               fullWidth
               disabled={loading}
-              startIcon={
-                loading ? <CircularProgress size={20} color="inherit" /> : null
-              }
+              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
             >
               {loading ? "Generando..." : "Generar Reporte"}
             </Button>

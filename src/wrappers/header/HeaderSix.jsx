@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import clsx from "clsx";
 import { Link } from "react-router-dom";
-import IconGroup from "../../components/header/IconGroup";
-import MobileMenu from "../../components/header/MobileMenu";
-import OffcanvasMenu from "../../components/header/OffcanvasMenu";
+// import IconGroup from "../../components/header/IconGroup";
+// import MobileMenu from "../../components/header/MobileMenu";
+// import OffcanvasMenu from "../../components/header/OffcanvasMenu";
 
 const HeaderSix = ({ layout, headerPaddingClass, headerBgClass }) => {
   const [scroll, setScroll] = useState(0);
@@ -55,26 +55,25 @@ const HeaderSix = ({ layout, headerPaddingClass, headerBgClass }) => {
             {/* header logo */}
             <div className="logo text-center logo-hm5">
               <Link className="sticky-none" to={"/"}>
-                <img alt="" src="assets/img/logo/logo-2.png" />
+                <img alt="" src="assets/img/logo.png" />
               </Link>
               <Link className="sticky-block" to={"/"}>
-                <img alt="" src="assets/img/logo/logo.png" />
+                <img alt="" src="assets/img/logo.png" />
               </Link>
             </div>
           </div>
-          <div className="col-xl-5 col-lg-4 col-md-6 col-6">
-            {/* Icon group */}
+          {/* <div className="col-xl-5 col-lg-4 col-md-6 col-6">
             <IconGroup iconWhiteClass="header-right-wrap-white" />
-          </div>
+          </div> */}
         </div>
       </div>
       {/* offcanvas menu */}
-      <OffcanvasMenu
+      {/* <OffcanvasMenu
         activeState={offcanvasActive}
         getActiveState={getActiveState}
-      />
+      /> */}
       {/* mobile menu */}
-      <MobileMenu />
+      {/* <MobileMenu /> */}
     </header>
   );
 };

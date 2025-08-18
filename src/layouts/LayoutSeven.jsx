@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Fragment } from "react";
 import HeaderSix from "../wrappers/header/HeaderSix";
-import FooterOne from "../wrappers/footer/FooterOne";
+// import FooterOne from "../wrappers/footer/FooterOne";
 import ScrollToTop from "../components/scroll-to-top"
 
 const LayoutSeven = ({ children }) => {
@@ -10,7 +10,7 @@ const LayoutSeven = ({ children }) => {
     <Fragment>
       <HeaderSix layout="container-fluid" />
       {children}
-      <FooterOne spaceTopClass="pt-100" spaceBottomClass="pb-70" />
+      {/* <FooterOne spaceTopClass="pt-100" spaceBottomClass="pb-70" /> */}
       <ScrollToTop/>
     </Fragment>
   );

@@ -1,6 +1,6 @@
 import React, { Fragment } from "react";
 import SEO from "../../components/seo";
-import LayoutSeven from "../../layouts/LayoutSeven";
+
 import HeroSliderFourteen from "../../wrappers/hero-slider/HeroSliderFourteen";
 import SectionTitleWithText from "../../components/section-title/SectionTitleWithText";
 import TabProductEight from "../../wrappers/product/TabProductEight";
@@ -10,11 +10,8 @@ import ImageSliderOne from "../../wrappers/image-slider/ImageSliderOne";
 const HomeFashionSix = () => {
   return (
     <Fragment>
-      <SEO
-        titleTemplate="Fashion Home"
-        description="Fashion home of flone react minimalist eCommerce template."
-      />
-      <LayoutSeven>
+
+      {/* <LayoutSeven> */}
         {/* hero slider */}
         <HeroSliderFourteen />
         {/* section title */}
@@ -29,7 +26,7 @@ const HomeFashionSix = () => {
         <NewsletterTwo spaceBottomClass="pb-100" />
         {/* image slider */}
         <ImageSliderOne />
-      </LayoutSeven>
+      {/* </LayoutSeven> */}
     </Fragment>
   );
 };

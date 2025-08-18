@@ -5,6 +5,7 @@ const ProductList = lazy(() => import("../pages/admin/ProductList"));
 const ProductForm = lazy(() => import("../pages/admin/ProductForm"));
 const ProductDetails = lazy(() => import("../pages/admin/ProductDetails"));
 const ProductImages = lazy(() => import("../pages/admin/ProductImages"));
+const SitioWeb = lazy(() => import("../pages/admin/SitioWeb.jsx"));
 
 const Categorias = lazy(() => import("../pages/admin/ProductCategory"));
 const Etiquetas = lazy(() => import("../pages/admin/ProductTags"));
@@ -30,6 +31,7 @@ export const adminRouteConfig = [
   { path: "products/:id", element: <ProductDetails /> },
 
   { path: "categorias", element: <Categorias /> },
+  { path: "mi-sitio", element: <SitioWeb /> },
   { path: "etiquetas", element: <Etiquetas /> },
   { path: "inventario", element: <Inventario /> },
   { path: "pos", element: <POS /> },

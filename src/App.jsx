@@ -91,6 +91,7 @@ const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 const AdminPanel = lazy(() => import("./pages/superadmin/HomeSuperAdmin.jsx"));
 
 const POSWrapper = lazy(() => import("./wrappers/POSWrapper"));
+const PersonalizacionSitio = lazy(() => import("./pages/other/PersnalizacionSitio.jsx"));
 
 const App = () => {
   return (
@@ -191,7 +192,7 @@ const App = () => {
 
             <Route path="*" element={<NotFound />} />
 
-            <Route path="/tienda/:storeSlug" element={<Catalogo />} />
+            <Route path="/tienda/:storeSlug" element={<PersonalizacionSitio />} />
 
             {AdminRoutes}
             {SuperAdminRoutes}

@@ -71,7 +71,6 @@ const POSDashboard = ({
     //   color: "#673ab7",
     //   icono: <PeopleAltIcon sx={{ fontSize: 40 }} />,
     // },
-
     {
       id: "proximamente",
       titulo: "Próximamente",
