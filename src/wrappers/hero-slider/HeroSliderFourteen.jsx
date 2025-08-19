@@ -1,43 +1,31 @@
+// src/wrappers/hero-slider/HeroSliderFourteen.jsx
 import React from "react";
 
 export default function HeroSliderFourteen({
+  visible = true, // 👈 nuevo
   coverImage = "/assets/img/post/1.png",
   logoImage  = "/assets/img/logo/logo.png",
   storeName  = "MiTiendaEnLineaMX",
   phone      = "+52 55 1234 5678",
   email      = "contacto@mitiendaenlineamx.com.mx"
 }) {
+  if (!visible) return null; // 👈 oculta el hero si no hay datos reales
+
   return (
     <section className="fb-cover-wrap">
-      {/* Fondo */}
-      <div
-        className="fb-cover-bg"
-        style={{ backgroundImage: `url('${coverImage}')` }}
-        aria-hidden="true"
-      />
+      <div className="fb-cover-bg" style={{ backgroundImage: `url('${coverImage}')` }} aria-hidden="true" />
       <div className="fb-cover-overlay" aria-hidden="true" />
 
-      {/* Banda inferior con avatar + tarjeta de info */}
       <div className="fb-profile-row">
         <div className="fb-avatar-wrap">
           <img src={logoImage} alt={`Logo de ${storeName}`} className="fb-avatar" />
         </div>
 
-        {/* Tarjeta (recuadro) encima de la portada */}
         <div className="fb-info-card">
           <h1 className="fb-title">{storeName}</h1>
-
           <div className="fb-contact">
-            {phone && (
-              <a className="fb-chip" href={`tel:${phone}`} aria-label="Llamar por teléfono">
-                📞 {phone}
-              </a>
-            )}
-            {email && (
-              <a className="fb-chip" href={`mailto:${email}`} aria-label="Enviar correo">
-                ✉️ {email}
-              </a>
-            )}
+            {phone && <a className="fb-chip" href={`tel:${phone}`}>📞 {phone}</a>}
+            {email && <a className="fb-chip" href={`mailto:${email}`}>✉️ {email}</a>}
           </div>
         </div>
       </div>

@@ -1,22 +1,9 @@
+// src/pages/other/SelectorVistasTienda.jsx
 import React, { useEffect, useState } from "react";
 import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Typography,
-  Button,
-  Chip,
-  Box,
-  Stack,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
-  useMediaQuery,
-  useTheme,
+  Container, Grid, Card, CardContent, CardActions, Typography, Button,
+  Chip, Box, Stack, Tooltip, Dialog, DialogTitle, DialogContent, IconButton,
+  useMediaQuery, useTheme
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
@@ -27,48 +14,20 @@ import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOu
 import RocketLaunchOutlinedIcon from "@mui/icons-material/RocketLaunchOutlined";
 
 import axiosClient from "../../config/axiosClient";
-import { showError } from "../../utils/alerts";
+import { showError, showSuccess } from "../../utils/alerts";
 import planes from "../../utils/planes";
 import Renovar from "../../pages/other/Renovar";
 
-// Config de las cuatro vistas
+// Modales
+import ModalPlanNegocio from "./modals/ModalPlanNegocio";
+import ModalPlanProfesional from "./modals/ModalPlanProfesional";
+import ModalPlanAvanzado from "./modals/ModalPlanAvanzado";
+
 const VISTAS = [
-  {
-    id: 1,
-    minPlan: 1,
-    titulo: "👀 Plan Demo",
-    subtitulo: "Catálogo básico",
-    descripcion: "Vista simple para mostar y cargar tus primeros productos.",
-    icon: <VisibilityOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #2ecc71, #27ae60)",
-  },
-  {
-    id: 2,
-    minPlan: 2,
-    titulo: "🏪 Plan Negocio",
-    subtitulo: "Perfil de Tienda",
-    descripcion: "Presentacion de tu tienda, destacar colecciones y productos.",
-    icon: <StorefrontOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #6a11cb, #2575fc)",
-  },
-  {
-    id: 3,
-    minPlan: 3,
-    titulo: "⭐ Plan Profesional",
-    subtitulo: "Conoce y Explora",
-    descripcion: "Plan Negocio + Carrusel de Imagenes despues de productos.",
-    icon: <WorkspacePremiumOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #f7971e, #ffd200)",
-  },
-  {
-    id: 4,
-    minPlan: 4,
-    titulo: "🚀 Plan Avanzado",
-    subtitulo: "Premium y Escalable",
-    descripcion: "Landing Page 100% completa editable 24/7 los 365 dias.",
-    icon: <RocketLaunchOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #ff416c, #ff4b2b)",
-  },
+  { id: 1, minPlan: 1, titulo: "👀 Plan Demo",       subtitulo: "Catálogo básico",           descripcion: "Vista simple para mostar y cargar tus primeros productos.", icon: <VisibilityOutlinedIcon fontSize="large" />,       gradient: "linear-gradient(135deg, #2ecc71, #27ae60)" },
+  { id: 2, minPlan: 2, titulo: "🏪 Plan Negocio",    subtitulo: "Perfil de Tienda",          descripcion: "Presentación de tu tienda, destacar colecciones y productos.", icon: <StorefrontOutlinedIcon fontSize="large" />,     gradient: "linear-gradient(135deg, #6a11cb, #2575fc)" },
+  { id: 3, minPlan: 3, titulo: "⭐ Plan Profesional", subtitulo: "Conoce y Explora",          descripcion: "Plan Negocio + Carrusel de imágenes después de productos.",    icon: <WorkspacePremiumOutlinedIcon fontSize="large" />,  gradient: "linear-gradient(135deg, #f7971e, #ffd200)" },
+  { id: 4, minPlan: 4, titulo: "🚀 Plan Avanzado",   subtitulo: "Premium y Escalable",       descripcion: "Landing Page 100% completa editable 24/7 los 365 días.",       icon: <RocketLaunchOutlinedIcon fontSize="large" />,      gradient: "linear-gradient(135deg, #ff416c, #ff4b2b)" },
 ];
 
 export default function SelectorVistasTienda({ onSelect }) {
@@ -81,6 +40,19 @@ export default function SelectorVistasTienda({ onSelect }) {
   const [loading, setLoading] = useState(true);
   const [openRenovar, setOpenRenovar] = useState(false);
 
+  // Modales
+  const [open2, setOpen2] = useState(false);
+  const [open3, setOpen3] = useState(false);
+  const [open4, setOpen4] = useState(false);
+
+  // Prefill
+  const [defaults, setDefaults] = useState({});
+
+  // Saving flags
+  const [saving2, setSaving2] = useState(false);
+  const [saving3, setSaving3] = useState(false);
+  const [saving4, setSaving4] = useState(false);
+
   useEffect(() => {
     setLoading(true);
     axiosClient
@@ -90,9 +62,7 @@ export default function SelectorVistasTienda({ onSelect }) {
         setStore(s);
 
         const p = planes.find((pl) => pl.plan_id === s.plan_id) || {
-          plan_id: s.plan_id,
-          nombre: `Plan ${s.plan_id}`,
-          beneficios: [],
+          plan_id: s.plan_id, nombre: `Plan ${s.plan_id}`, beneficios: [],
         };
         setPlan(p);
 
@@ -109,18 +79,98 @@ export default function SelectorVistasTienda({ onSelect }) {
       .finally(() => setLoading(false));
   }, []);
 
-  const puedeUsarVista = (minPlan) => {
-    if (!store) return false;
-    if (isExpired) return false;
-    return (store.plan_id || 1) >= minPlan;
+  const esPlanActual = (vistaId) => store?.plan_id === vistaId;
+  const puedeConfigurar = (vistaId) => !isExpired && esPlanActual(vistaId);
+
+  // Prefill del sitio
+  const fetchDefaults = async () => {
+    if (!store?.id) return setDefaults({});
+    try {
+      const { data } = await axiosClient.get(`/admin/sitios/${store.id}`);
+      setDefaults(data?.data || {});
+    } catch {
+      setDefaults({});
+    }
   };
 
-  const handleSelect = (vistaId) => {
-    if (puedeUsarVista(vistaId)) {
-      if (onSelect) return onSelect(vistaId);
-      alert(`Vista ${vistaId} seleccionada`);
-    } else {
+  // Abrir modal según vista (solo si coincide con plan actual)
+  const handleSelect = async (vistaId) => {
+    if (isExpired) {
+      showError("Tu plan está vencido. Renueva para habilitar la configuración.");
       setOpenRenovar(true);
+      return;
+    }
+    if (!puedeConfigurar(vistaId)) {
+      showError("Solo puedes configurar la vista de tu plan actual.");
+      return;
+    }
+
+    await fetchDefaults();
+    onSelect?.(vistaId);
+
+    if (vistaId === 2) setOpen2(true);
+    if (vistaId === 3) setOpen3(true);
+    if (vistaId === 4) setOpen4(true);
+  };
+
+  // --- Submits ---
+  const submitPlan2 = async (fd) => {
+    try {
+      if (!puedeConfigurar(2)) {
+        showError("Solo puedes configurar la vista de tu plan actual.");
+        return;
+      }
+      setSaving2(true);
+      const url = defaults?.id
+        ? `/admin/sitios/${store.id}/plan-2/update`
+        : `/admin/sitios/${store.id}/plan-2/create`;
+      await axiosClient.post(url, fd); // no fuerces Content-Type
+      await fetchDefaults();
+      setOpen2(false);
+      showSuccess?.("Guardado correctamente (Plan Negocio)") || alert("Guardado (Plan Negocio)");
+    } catch {
+      showError("No se pudo guardar el Plan Negocio.");
+    } finally {
+      setSaving2(false);
+    }
+  };
+
+  const submitPlan3 = async (fd) => {
+    try {
+      if (!puedeConfigurar(3)) {
+        showError("Solo puedes configurar la vista de tu plan actual.");
+        return;
+      }
+      setSaving3(true);
+      const url = defaults?.id
+        ? `/admin/sitios/${store.id}/plan-3/update`
+        : `/admin/sitios/${store.id}/plan-3/create`;
+      await axiosClient.post(url, fd);
+      await fetchDefaults();
+      setOpen3(false);
+      showSuccess?.("Guardado correctamente (Plan Profesional)") || alert("Guardado (Plan Profesional)");
+    } catch {
+      showError("No se pudo guardar el Plan Profesional.");
+    } finally {
+      setSaving3(false);
+    }
+  };
+
+  const submitPlan4 = async (fd) => {
+    try {
+      if (!puedeConfigurar(4)) {
+        showError("Solo puedes configurar la vista de tu plan actual.");
+        return;
+      }
+      setSaving4(true);
+      await axiosClient.post(`/admin/sitios/${store.id}/plan-4/update`, fd);
+      await fetchDefaults();
+      setOpen4(false);
+      showSuccess?.("Guardado correctamente (Plan Avanzado)") || alert("Guardado (Plan Avanzado)");
+    } catch {
+      showError("No se pudo guardar el Plan Avanzado.");
+    } finally {
+      setSaving4(false);
     }
   };
 
@@ -131,133 +181,55 @@ export default function SelectorVistasTienda({ onSelect }) {
     <>
       <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 } }}>
         {/* Encabezado */}
-        <Box
-          mb={2.5}
-          display="flex"
-          flexWrap="wrap"
-          alignItems="center"
-          gap={1.5}
-          justifyContent="space-between"
-        >
-          <Typography variant="h5" fontWeight={800}>
-            🌐 Mi Sitio Web
-          </Typography>
-
+        <Box mb={2.5} display="flex" flexWrap="wrap" alignItems="center" gap={1.5} justifyContent="space-between">
+          <Typography variant="h5" fontWeight={800}>🌐 Mi Sitio Web</Typography>
           <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Chip
-              label={isExpired ? "Plan inactivo" : "Plan activo"}
-              color={isExpired ? "error" : "success"}
-              variant="outlined"
-              sx={{ fontWeight: 700 }}
-            />
-            <Chip
-              label={plan?.nombre || `Plan ${store.plan_id}`}
-              color="primary"
-              variant="outlined"
-              sx={{ fontWeight: 700 }}
-            />
+            <Chip label={isExpired ? "Plan inactivo" : "Plan activo"} color={isExpired ? "error" : "success"} variant="outlined" sx={{ fontWeight: 700 }}/>
+            <Chip label={plan?.nombre || `Plan ${store.plan_id}`} color="primary" variant="outlined" sx={{ fontWeight: 700 }}/>
           </Stack>
         </Box>
 
-        {/* Tarjetas centradas y responsivas */}
-        <Grid
-          container
-          spacing={{ xs: 2, md: 3 }}
-          justifyContent="center"
-          alignItems="stretch"
-        >
+        {/* Tarjetas */}
+        <Grid container spacing={{ xs: 2, md: 3 }} justifyContent="center" alignItems="stretch">
           {VISTAS.map((v) => {
-            const disponible = puedeUsarVista(v.minPlan);
+            const habilitado = puedeConfigurar(v.id);
+            const esActual = esPlanActual(v.id);
 
             return (
               <Grid item xs={12} sm={6} md={6} lg={5} key={v.id}>
                 <Card
-                  elevation={disponible ? 6 : 1}
+                  elevation={habilitado ? 8 : 1}
                   sx={{
-                    height: "100%",
-                    borderRadius: 3,
-                    overflow: "hidden",
-                    position: "relative",
+                    height: "100%", borderRadius: 3, overflow: "hidden", position: "relative",
                     bgcolor: theme.palette.mode === "dark" ? "grey.900" : "#fff",
                     transition: "transform .18s ease, box-shadow .18s ease",
-                    "&:hover": {
-                      transform: disponible ? "translateY(-3px)" : "none",
-                      boxShadow: disponible ? 12 : 2,
-                    },
-                    opacity: disponible ? 1 : 0.9,
-                    filter: disponible ? "none" : "grayscale(10%)",
-                    border: `2px solid ${
-                      disponible ? theme.palette.success.light : theme.palette.divider
-                    }`,
+                    "&:hover": { transform: habilitado ? "translateY(-3px)" : "none", boxShadow: habilitado ? 12 : 2 },
+                    opacity: habilitado ? 1 : 0.9,
+                    filter: habilitado ? "none" : "grayscale(10%)",
+                    border: `2px solid ${habilitado ? theme.palette.success.light : theme.palette.divider}`,
                   }}
                 >
-                  {/* Cinta superior con gradiente */}
-                  <Box
-                    sx={{
-                      height: 10,
-                      width: "100%",
-                      background: v.gradient,
-                    }}
-                  />
-
+                  <Box sx={{ height: 10, width: "100%", background: v.gradient }} />
                   <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
-                      mb={1.5}
-                      flexWrap="wrap"
-                    >
-                      <Box
-                        sx={{
-                          width: 56,
-                          height: 56,
-                          borderRadius: 2,
-                          display: "grid",
-                          placeItems: "center",
-                          color: "#fff",
-                          background: v.gradient,
-                          boxShadow: "0 6px 18px rgba(0,0,0,.2)",
-                        }}
-                      >
+                    <Stack direction="row" spacing={2} alignItems="center" mb={1.5} flexWrap="wrap">
+                      <Box sx={{ width: 56, height: 56, borderRadius: 2, display: "grid", placeItems: "center", color: "#fff", background: v.gradient, boxShadow: "0 6px 18px rgba(0,0,0,.2)" }}>
                         {v.icon}
                       </Box>
-
                       <Box>
-                        <Typography variant="h6" fontWeight={800} lineHeight={1.1}>
-                          {v.titulo}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {v.subtitulo}
-                        </Typography>
+                        <Typography variant="h6" fontWeight={800} lineHeight={1.1}>{v.titulo}</Typography>
+                        <Typography variant="body2" color="text.secondary">{v.subtitulo}</Typography>
                       </Box>
                     </Stack>
 
-                    <Typography
-                      variant="body1"
-                      color="text.primary"
-                      sx={{ opacity: 0.9 }}
-                    >
+                    <Typography variant="body1" color="text.primary" sx={{ opacity: 0.9 }}>
                       {v.descripcion}
                     </Typography>
 
                     <Box mt={2}>
-                      {disponible ? (
-                        <Chip
-                          icon={<CheckCircleIcon />}
-                          label="Disponible"
-                          color="success"
-                          variant="outlined"
-                          sx={{ fontWeight: 700 }}
-                        />
+                      {habilitado ? (
+                        <Chip icon={<CheckCircleIcon />} label="Plan actual" color="success" variant="outlined" sx={{ fontWeight: 700 }}/>
                       ) : (
-                        <Chip
-                          icon={<LockOutlinedIcon />}
-                          label={isExpired ? "Plan vencido" : "Bloqueado"}
-                          color="default"
-                          variant="outlined"
-                          sx={{ fontWeight: 700 }}
-                        />
+                        <Chip icon={<LockOutlinedIcon />} label={isExpired ? "Plan vencido" : "No disponible"} color="default" variant="outlined" sx={{ fontWeight: 700 }}/>
                       )}
                     </Box>
                   </CardContent>
@@ -268,52 +240,27 @@ export default function SelectorVistasTienda({ onSelect }) {
                       enterTouchDelay={0}
                       leaveTouchDelay={2500}
                       title={
-                        disponible
-                          ? "Seleccionar esta vista"
+                        habilitado
+                          ? "Editar/Configurar esta vista"
                           : isExpired
                           ? "Tu plan está vencido. Renueva para habilitar."
-                          : `Requiere al menos ${VISTAS[v.minPlan - 1]?.titulo.replace("👀 ","").replace("🏪 ","").replace("⭐ ","").replace("🚀 ","")}`
+                          : "Solo puedes configurar la vista de tu plan actual."
                       }
                     >
                       <span style={{ width: "100%" }}>
                         <Button
-                          fullWidth
-                          size="large"
-                          variant={disponible ? "contained" : "outlined"}
-                          color={disponible ? "primary" : "inherit"}
+                          fullWidth size="large"
+                          variant={habilitado ? "contained" : "outlined"}
+                          color={habilitado ? "primary" : "inherit"}
                           onClick={() => handleSelect(v.id)}
-                          disabled={!disponible}
-                          sx={{
-                            fontWeight: 800,
-                            py: 1.2,
-                            borderRadius: 2,
-                          }}
+                          disabled={!habilitado}
+                          sx={{ fontWeight: 800, py: 1.2, borderRadius: 2 }}
                         >
-                          {disponible ? "SELECCIONAR" : "ACTUALIZAR PLAN"}
+                          {habilitado ? "CONFIGURAR" : "BLOQUEADO"}
                         </Button>
                       </span>
                     </Tooltip>
                   </CardActions>
-
-                  {/* Esquinero visual si es la vista mínima de su plan */}
-                  {store.plan_id === v.minPlan && (
-                    <Chip
-                      label="Recomendado"
-                      color="secondary"
-                      size="small"
-                      sx={{
-                        position: "absolute",
-                        top: 14,
-                        right: 14,
-                        fontWeight: 700,
-                        background:
-                          theme.palette.mode === "dark"
-                            ? "rgba(255,255,255,.08)"
-                            : "rgba(0,0,0,.04)",
-                        backdropFilter: "blur(6px)",
-                      }}
-                    />
-                  )}
                 </Card>
               </Grid>
             );
@@ -321,21 +268,11 @@ export default function SelectorVistasTienda({ onSelect }) {
         </Grid>
       </Container>
 
-      {/* Modal de Renovación/Upgrade (fullscreen en móvil) */}
-      <Dialog
-        open={openRenovar}
-        onClose={() => setOpenRenovar(false)}
-        fullWidth
-        maxWidth="md"
-        fullScreen={isXs}
-      >
+      {/* Diálogo Renovar */}
+      <Dialog open={openRenovar} onClose={() => setOpenRenovar(false)} fullWidth maxWidth="md" fullScreen={isXs}>
         <DialogTitle sx={{ m: 0, p: 2 }}>
           Renovar / Actualizar plan
-          <IconButton
-            aria-label="close"
-            onClick={() => setOpenRenovar(false)}
-            sx={{ position: "absolute", right: 8, top: 8, color: (t) => t.palette.grey[500] }}
-          >
+          <IconButton aria-label="close" onClick={() => setOpenRenovar(false)} sx={{ position: "absolute", right: 8, top: 8, color: (t) => t.palette.grey[500] }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -343,6 +280,32 @@ export default function SelectorVistasTienda({ onSelect }) {
           <Renovar />
         </DialogContent>
       </Dialog>
+
+      {/* Modales */}
+      <ModalPlanNegocio
+        open={open2}
+        onClose={() => setOpen2(false)}
+        onSubmit={submitPlan2}
+        storeId={store?.id}
+        defaultValues={defaults}
+        saving={saving2}
+      />
+      <ModalPlanProfesional
+        open={open3}
+        onClose={() => setOpen3(false)}
+        onSubmit={submitPlan3}
+        storeId={store?.id}
+        defaultValues={defaults}
+        saving={saving3}
+      />
+      <ModalPlanAvanzado
+        open={open4}
+        onClose={() => setOpen4(false)}
+        onSubmit={submitPlan4}
+        storeId={store?.id}
+        defaultValues={defaults}
+        saving={saving4}
+      />
     </>
   );
 }

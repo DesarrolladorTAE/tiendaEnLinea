@@ -7,7 +7,7 @@ import TiendaNoDisponible from "./TiendaNoDisponible";
 // Vistas
 import Catalogo from "../shop/Catalogo";
 import VistaPlan2 from "../home/HomeFashionSix";
-import VistaPlan3 from "./planes/VistaPlan3";
+import VistaPlan3 from "../home/HomeFurniture";
 import VistaPlan4 from "./planes/VistaPlan4";
 
 export default function PersonalizacionSitio() {
