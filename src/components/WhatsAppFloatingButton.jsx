@@ -15,12 +15,24 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
   const total = items.reduce((sum, item) => sum + item.price, 0);
 
   const whatsappMessage = `Hola, me interesa comprar:\n\n${message}\n\nTotal: MX$${total.toFixed(2)}`;
-  const whatsappUrl = `https://api.whatsapp.com/send?phone=${storePhone}&text=${encodeURIComponent(whatsappMessage)}`;
+  // const whatsappUrl = `https://api.whatsapp.com/send?phone=${storePhone}&text=${encodeURIComponent(whatsappMessage)}`;
 
   const handleClick = () => {
     window.open(whatsappUrl, "_blank");
     dispatch(clearWhatsappCart());
   };
+  const normalizePhone = (phone) => {
+  // Quitar espacios, guiones, etc.
+  let clean = phone.toString().replace(/\D/g, "");
+  // Si ya empieza con 52 lo dejamos
+  if (clean.startsWith("52")) return clean;
+  // Si es un número de 10 dígitos (nacional), agregamos 52
+  if (clean.length === 10) return `52${clean}`;
+  return clean;
+};
+
+const whatsappUrl = `https://api.whatsapp.com/send?phone=${normalizePhone(storePhone)}&text=${encodeURIComponent(whatsappMessage)}`;
+
 
   return (
     <button
