@@ -109,8 +109,18 @@ function GlassSlide({ coverImage, logoImage, storeName }) {
                   opacity: 0.95
                 }}
               >
-                Experiencias pensadas para ti. Productos seleccionados con atención
-                al detalle. Inspiración para cada día.
+                Pensado para tu día a día. 
+              </p>
+                            <p
+                className="animated"
+                style={{
+                  margin: "8px 0 14px",
+                  fontSize: "clamp(14px, 2vw, 17px)",
+                  color: "#0b1220",
+                  opacity: 0.95
+                }}
+              >
+                Experiencia confiable de principio a fin.
               </p>
 
               {/* Badges neutrales y reutilizables */}

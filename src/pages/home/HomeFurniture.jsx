@@ -3,19 +3,12 @@ import React, { Fragment, useEffect, useState } from "react";
 /* LOGICA NUEVA */
 import { useParams } from "react-router-dom";
 import axios from "axios";
-/* FIN LOGICA NUEVA */
 
-import SEO from "../../components/seo";
-import LayoutOne from "../../layouts/LayoutOne";
 import HeroSliderTwo from "../../wrappers/hero-slider/HeroSliderTwo";
-import BannerTwo from "../../wrappers/banner/BannerTwo";
 import TabProductTwo from "../../wrappers/product/TabProductTwo";
-import CountDownOne from "../../wrappers/countdown/CountDownOne";
 import FeatureIconTwo from "../../wrappers/feature-icon/FeatureIconTwo";
 import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
-/* LOGICA NUEVA (opcional si ya existe) */
 import TiendaNoDisponible from "../other/TiendaNoDisponible";
-/* FIN LOGICA NUEVA */
 
 // --- LOGICA NUEVA: valores por defecto para el hero ---
 const DEFAULTS = {
@@ -81,14 +74,29 @@ const HomeFurniture = () => {
   const storeName = store?.name || DEFAULTS.storeName;
   /* --- FIN LOGICA NUEVA --- */
 
+  const imagesFromNumbered = [];
+  if (sitio) {
+    for (let i = 1; i <= 50; i++) {
+      const k = `imagen_${i}`;
+      if (sitio[k])
+        imagesFromNumbered.push({ src: sitio[k], alt: `${storeName} ${i}` });
+    }
+  }
+  const imagesFromArray = Array.isArray(sitio?.carrusel)
+    ? sitio.carrusel
+        .filter(Boolean)
+        .map((src, idx) =>
+          typeof src === "string"
+            ? { src, alt: `${storeName} ${idx + 1}` }
+            : src
+        )
+    : [];
+
+  const bannerImages = [...imagesFromNumbered, ...imagesFromArray];
+
   return (
     <Fragment>
-      {/* <SEO
-        titleTemplate="Furniture Home"
-        description="Furniture home of flone react minimalist eCommerce template."
-      />
-      <LayoutOne headerTop="visible"> */}
-      {/* hero slider (se muestra si hay config real; si prefieres siempre, quita la condición) */}
+
       {hasConfig && (
         <HeroSliderTwo
           coverImage={sitio?.img_portada}
@@ -107,23 +115,15 @@ const HomeFurniture = () => {
         description={descripcion}
       />
 
-      {/* Las siguientes vistas se conservan y solo aparecen si plan_id === 3 */}
-      {planId === 3 && (
-        <>
-          <BannerTwo spaceTopClass="pt-80" spaceBottomClass="pb-60" />
+      <FeatureIconTwo spaceTopClass="pt-100" spaceBottomClass="pb-60" />
 
-          <CountDownOne
-            spaceTopClass="pt-115"
-            spaceBottomClass="pb-115"
-            bgImg="/assets/img/bg/bg-1.jpg"
-            dateTime="November 13, 2023 12:12:00"
-          />
-
-          <FeatureIconTwo spaceTopClass="pt-100" spaceBottomClass="pb-60" />
-
-          <BlogFeatured spaceBottomClass="pb-55" />
-        </>
-      )}
+      <BlogFeatured
+        storeName={storeName}
+        images={bannerImages.map((x, i) => ({
+          src: x.src,
+          title: x.alt || `Imagen ${i + 1}`,
+        }))}
+      />
     </Fragment>
   );
 };

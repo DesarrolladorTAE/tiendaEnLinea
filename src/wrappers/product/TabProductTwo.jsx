@@ -15,7 +15,6 @@ const NEUTRAL_BADGES = [
   "Funcionalidad", "Esencia", "Armonía"
 ];
 
-// simple helper para tomar N aleatorios (sin sesgo fuerte)
 function pickRandomBadges(arr, n = 3) {
   const copy = [...arr];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -26,6 +25,7 @@ function pickRandomBadges(arr, n = 3) {
 }
 
 const TabProductTwo = ({
+  spaceTopClass = "pt-80",       // ⬅️ nuevo: más espacio desde el Hero
   spaceBottomClass,
   category,
   title = "Explora nuestras colecciones",
@@ -35,12 +35,10 @@ const TabProductTwo = ({
   const pills = pickRandomBadges(NEUTRAL_BADGES, badgesCount);
 
   return (
-    <div className={clsx("product-area", spaceBottomClass)}>
+    <div className={clsx("product-area", spaceTopClass, spaceBottomClass)}>
       <div className="container">
-        {/* Título con el mismo estilo existente */}
         <SectionTitle titleText={title} positionClass="text-center" />
 
-        {/* Descripción y badges neutrales */}
         <div className="text-center" style={{ maxWidth: 820, margin: "8px auto 0" }}>
           <p style={{ marginBottom: 12, opacity: 0.9 }}>{description}</p>
           <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
@@ -61,6 +59,8 @@ const TabProductTwo = ({
             ))}
           </div>
         </div>
+
+        
       </div>
     </div>
   );
@@ -68,10 +68,11 @@ const TabProductTwo = ({
 
 TabProductTwo.propTypes = {
   category: PropTypes.string,
+  spaceTopClass: PropTypes.string,     // ⬅️ nuevo
   spaceBottomClass: PropTypes.string,
-  title: PropTypes.string,          // nuevo
-  description: PropTypes.string,    // nuevo
-  badgesCount: PropTypes.number     // opcional (por defecto 3)
+  title: PropTypes.string,
+  description: PropTypes.string,
+  badgesCount: PropTypes.number
 };
 
 export default TabProductTwo;
