@@ -9,6 +9,7 @@ import TabProductTwo from "../../wrappers/product/TabProductTwo";
 import FeatureIconTwo from "../../wrappers/feature-icon/FeatureIconTwo";
 import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
 import TiendaNoDisponible from "../other/TiendaNoDisponible";
+import Catalogo from "../shop/Catalogo";
 
 // --- LOGICA NUEVA: valores por defecto para el hero ---
 const DEFAULTS = {
@@ -62,12 +63,19 @@ const HomeFurniture = () => {
   const descripcion =
     resp?.sitio?.descripcion ??
     "Descubre piezas pensadas para inspirarte cada día.";
+    
 
   // hay configuración real si alguno existe
   const hasConfig = Boolean(
     sitio &&
       (sitio.logo || sitio.img_portada || sitio.titulo_1 || sitio.descripcion)
   );
+    const socials = {
+   facebook: sitio?.facebook || "",
+    instagram: sitio?.instagram || "",
+   twitter: sitio?.twitter || "",
+   tiktok: sitio?.tiktok || "",
+ };
 
   const coverImage = sitio?.img_portada || DEFAULTS.coverImage;
   const logoImage = sitio?.logo || DEFAULTS.logoImage;
@@ -95,7 +103,7 @@ const HomeFurniture = () => {
   const bannerImages = [...imagesFromNumbered, ...imagesFromArray];
 
   return (
-    <Fragment>
+    <Fragment>                    
 
       {hasConfig && (
         <HeroSliderTwo
@@ -114,8 +122,8 @@ const HomeFurniture = () => {
         title={titulo1}
         description={descripcion}
       />
-
-      <FeatureIconTwo spaceTopClass="pt-100" spaceBottomClass="pb-60" />
+      {/* Siempre muestra el catálogo */}
+      <Catalogo key={storeSlug} />
 
       <BlogFeatured
         storeName={storeName}
@@ -124,6 +132,16 @@ const HomeFurniture = () => {
           title: x.alt || `Imagen ${i + 1}`,
         }))}
       />
+      
+      <FeatureIconTwo spaceTopClass="pt-100"
+   spaceBottomClass="pb-60"
+storeName={store?.name || DEFAULTS.storeName}
+   phone={store?.phone || DEFAULTS.phone}
+   email={store?.email || DEFAULTS.email}
+   socials={socials}
+   subtitle="Respuestas claras, soporte cercano y promociones antes que nadie." />
+
+
     </Fragment>
   );
 };

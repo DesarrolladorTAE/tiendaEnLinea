@@ -91,3 +91,191 @@
     }
   }
 }
+
+
+
+
+root{
+  /* Tema glass oscuro (alto contraste, no chillón) */
+  --neo-surface-1: rgba(20,23,31,0.92);
+  --neo-surface-2: rgba(20,23,31,0.82);
+  --neo-border: rgba(255,255,255,0.08);
+  --neo-text: #E8EDF6;   /* texto principal */
+  --neo-muted: #9AA4B5;  /* texto secundario */
+  --neo-new: #7cf3ff;    /* acentos */
+  --neo-off: #ff5ea6;
+  --neo-shadow: rgba(0,0,0,0.55);
+  --neo-accent: #7ed9ff; /* precio actual */
+}
+
+/* Card base */
+.neo-card{
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--neo-surface-1), var(--neo-surface-2));
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 12px 36px var(--neo-shadow),
+    inset 0 0 0 1px var(--neo-border);
+  transform-style: preserve-3d;
+  transition: transform 180ms ease, box-shadow 220ms ease, border-color 200ms ease;
+  will-change: transform;
+}
+
+.neo-card:hover{
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.65),
+    inset 0 0 0 1px rgba(255,255,255,0.12);
+}
+
+/* Glow gradient borde */
+.neo-glow{
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 18px;
+  pointer-events: none;
+  background: conic-gradient(
+    from 220deg,
+    #7cf3ff, #7b5bff, #ff5ea6, #ffb86b, #7cf3ff
+  );
+  filter: blur(12px) saturate(120%);
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+.neo-card:hover .neo-glow{ opacity: 0.45; }
+
+/* Media */
+.neo-media{
+  position: relative;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.neo-img{
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.02);
+  transition: opacity 280ms ease, transform 380ms ease, filter 220ms ease;
+  will-change: transform, opacity;
+}
+
+.neo-img.hover{ opacity: 0; }
+.neo-media:hover .neo-img.default{ opacity: 0; transform: scale(1.06); }
+.neo-media:hover .neo-img.hover{ opacity: 1; transform: scale(1.02); }
+
+/* Badges */
+.neo-badges{
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: grid;
+  gap: 8px;
+  z-index: 2;
+}
+.neo-badges span{
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .2px;
+  color: #0b1020; /* texto oscuro para legibilidad dentro del gradiente */
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  backdrop-filter: blur(4px);
+}
+.badge-off{ background: linear-gradient(90deg, #ff5ea6, #ffb86b); }
+.badge-new{ background: linear-gradient(90deg, #7cf3ff, #7b5bff); }
+
+/* Acciones flotantes */
+.neo-actions{
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  gap: 10px;
+  z-index: 2;
+  transform: translateY(8px);
+  opacity: 0;
+  transition: all 220ms ease;
+}
+.neo-media:hover .neo-actions{ transform: translateY(0); opacity: 1; }
+
+.btn-glow{
+  border: 0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  font-weight: 800;
+  font-size: 13px;
+  color: #0c0d11;
+  background: #ffffff;
+  box-shadow:
+    0 10px 28px rgba(124,243,255,0.28),
+    inset 0 0 0 1px rgba(0,0,0,0.06);
+  transition: transform 120ms ease, box-shadow 200ms ease, background 200ms ease;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-glow:hover{
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 40px rgba(124,243,255,0.36),
+    inset 0 0 0 1px rgba(0,0,0,0.08);
+}
+
+/* Contenido */
+.neo-content{
+  padding: 14px 14px 16px;
+  color: var(--neo-text);
+}
+
+.neo-title{
+  margin: 2px 0 6px;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: 0.2px;
+  color: var(--neo-text);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.35); /* sutil para lectura */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.neo-title span{ cursor: pointer; }
+.neo-title span:hover{ text-decoration: underline; text-decoration-thickness: 2px; }
+
+/* Rating visible en oscuro */
+.neo-rating{ min-height: 18px; margin-bottom: 6px; opacity: .95; }
+.neo-rating.placeholder{ opacity: .5; }
+.neo-card .product-rating i{ color: #f8d070; } /* si tu componente usa <i> */
+
+/* Precio */
+.neo-price{
+  display: flex; align-items: baseline; gap: 10px; margin-top: 6px;
+}
+.price-current{
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  color: var(--neo-accent);
+  text-shadow: 0 0 10px rgba(126,217,255,.30);
+}
+.price-old{
+  font-size: 14px;
+  color: var(--neo-muted);
+  text-decoration: line-through;
+}
+
+/* Responsive tweaks */
+@media (hover: none){
+  .neo-actions{ opacity: 1; transform: none; }
+}
+
+/* Espaciado con tu grid existente */
+.col-xl-4 .neo-card,
+.col-sm-6 .neo-card{ margin-bottom: 24px; }

@@ -78,14 +78,6 @@ const Catalogo = () => {
       <div className="shop-area pt-50 pb-100">
         <div className="container">
           <div className="row">
-            {/* <div className="col-lg-3 order-2 order-lg-1">
-              <ShopSidebar
-                products={products}
-                getSortParams={getSortParams}
-                sideSpaceClass="mr-30"
-              />
-            </div> */}
-
             <div className="col-lg-12">
               <ShopTopbar
                 getLayout={getLayout}
