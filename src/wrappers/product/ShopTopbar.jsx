@@ -6,16 +6,19 @@ const ShopTopbar = ({
   getLayout,
   getFilterSortParams,
   productCount,
-  sortedProductCount
+  sortedProductCount,
+  categories = [],
+  loadingCats = false
 }) => {
   return (
     <Fragment>
-      {/* shop top action */}
       <ShopTopAction
         getLayout={getLayout}
         getFilterSortParams={getFilterSortParams}
         productCount={productCount}
         sortedProductCount={sortedProductCount}
+        categories={categories}
+        loadingCats={loadingCats}
       />
     </Fragment>
   );
@@ -25,7 +28,9 @@ ShopTopbar.propTypes = {
   getFilterSortParams: PropTypes.func,
   getLayout: PropTypes.func,
   productCount: PropTypes.number,
-  sortedProductCount: PropTypes.number
+  sortedProductCount: PropTypes.number,
+  categories: PropTypes.array,
+  loadingCats: PropTypes.bool
 };
 
 export default ShopTopbar;

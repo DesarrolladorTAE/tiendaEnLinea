@@ -1,323 +1,252 @@
-import React, { Fragment, useState } from "react";
+import React, { useMemo, useState } from "react";
 import PropTypes from "prop-types";
-import { EffectFade, Thumbs } from "swiper";
 import { Modal } from "react-bootstrap";
-import { useDispatch, useSelector } from "react-redux";
-import Rating from "./sub-components/ProductRating";
 import Swiper, { SwiperSlide } from "../../components/swiper";
-import { getProductCartQuantity } from "../../helpers/product";
-import { addToCart } from "../../store/slices/cart-slice";
-import { addToWishlist } from "../../store/slices/wishlist-slice";
-import { addToCompare } from "../../store/slices/compare-slice";
+import { EffectFade, Thumbs, Keyboard, Lazy } from "swiper";
+import Rating from "./sub-components/ProductRating";
+
+const DEFAULT_IMG = "/assets/img/defaultproduct.png";
+
+function formatFechaMX(v) {
+  const d = new Date(v);
+  if (isNaN(d)) return "";
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(d);
+}
 
 function ProductModal({
   product,
+  images: imagesProp,
   currency,
   discountedPrice,
   finalProductPrice,
   finalDiscountedPrice,
   show,
   onHide,
-  wishlistItem,
-  compareItem,
 }) {
+  const symbol = currency?.currencySymbol ?? "MX$";
+  const hasDiscount =
+    discountedPrice !== null && discountedPrice !== undefined;
+
+  // normaliza imágenes
+  const norm = (v) => {
+    if (Array.isArray(v)) return v.filter(Boolean);
+    if (typeof v === "string" && v.trim() !== "") return [v.trim()];
+    return [];
+  };
+  const images = useMemo(() => {
+    const fromProp = norm(imagesProp);
+    return fromProp.length ? fromProp : norm(product?.image);
+  }, [imagesProp, product]);
+
+  const categoryNames = useMemo(() => {
+    const c = product?.category;
+    if (!Array.isArray(c)) return [];
+    return c.map((x) => (typeof x === "string" ? x : x?.name)).filter(Boolean);
+  }, [product]);
+
+  // thumbs
   const [thumbsSwiper, setThumbsSwiper] = useState(null);
-  const dispatch = useDispatch();
-  const { cartItems } = useSelector((state) => state.cart);
 
-  const [selectedProductColor, setSelectedProductColor] = useState(
-    product.variation ? product?.variation[0]?.color : ""
-  );
-  const [selectedProductSize, setSelectedProductSize] = useState(
-    product.variation ? product?.variation[0]?.size[0]?.name : ""
-  );
-  const [productStock, setProductStock] = useState(
-    product.variation ? product?.variation[0]?.size[0]?.stock : product?.stock
-  );
-
-  const [quantityCount, setQuantityCount] = useState(1);
-  const productCartQty = getProductCartQuantity(
-    cartItems,
-    product,
-    selectedProductColor,
-    selectedProductSize
-  );
-
-  const gallerySwiperParams = {
-    spaceBetween: 10,
-    loop: true,
+  // ⇩ OJO: nada de autoHeight; usamos altura fija por CSS
+  const galleryOpts = {
+    loop: images.length > 1,
     effect: "fade",
-    fadeEffect: {
-      crossFade: true,
-    },
-    thumbs: { swiper: thumbsSwiper },
-    modules: [EffectFade, Thumbs],
+    fadeEffect: { crossFade: true },
+    grabCursor: true,
+    keyboard: { enabled: true },
+    preloadImages: false,
+    lazy: { loadPrevNext: true, loadOnTransitionStart: true },
+    thumbs:
+      images.length > 1 && thumbsSwiper && !thumbsSwiper.destroyed
+        ? { swiper: thumbsSwiper }
+        : undefined,
+    modules: [EffectFade, Thumbs, Keyboard, Lazy],
   };
 
-  const thumbnailSwiperParams = {
+  const thumbsOpts = {
     onSwiper: setThumbsSwiper,
-    spaceBetween: 10,
-    slidesPerView: 4,
-    touchRatio: 0.2,
+    spaceBetween: 8,
+    slidesPerView: "auto",
     freeMode: true,
-    loop: true,
-    slideToClickedSlide: true,
-    navigation: true,
+    watchSlidesProgress: true,
   };
 
-  const onCloseModal = () => {
+  const onImgError = (e) => {
+    if (e.currentTarget.dataset.fallback !== "1") {
+      e.currentTarget.src = DEFAULT_IMG;
+      e.currentTarget.dataset.fallback = "1";
+    }
+  };
+
+  // imagen grande: ocupa 100% del alto del carrusel
+  const fitImg = {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+    display: "block",
+  };
+
+  const handleClose = () => {
     setThumbsSwiper(null);
     onHide();
   };
 
   return (
-    <Modal
-      show={show}
-      onHide={onCloseModal}
-      className="product-quickview-modal-wrapper"
-    >
-      <Modal.Header closeButton></Modal.Header>
+    <Modal show={show} onHide={handleClose} centered dialogClassName="product-modal-dialog">
+      <button type="button" onClick={handleClose} aria-label="Cerrar" className="product-modal-close">
+        ×
+      </button>
 
-      <div className="modal-body">
-        <div className="row">
-          <div className="col-md-5 col-sm-12 col-xs-12">
-            <div className="product-large-image-wrapper">
-              <Swiper options={gallerySwiperParams}>
-                {product.image &&
-                  product.image.map((img, i) => {
-                    return (
-                      <SwiperSlide key={i}>
-                        <div className="single-image">
-                          <img src={img} className="img-fluid" alt="Product" />
-                        </div>
-                      </SwiperSlide>
-                    );
-                  })}
+      <div className="modal-body product-modal-body">
+        <div className="row g-3">
+          {/* IZQUIERDA: Galería */}
+          <div className="col-md-6 col-12">
+            <div className="product-gallery-plain">
+              <Swiper options={galleryOpts}>
+                {(images.length ? images : [DEFAULT_IMG]).map((src, i) => (
+                  <SwiperSlide
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <img
+                      src={src}
+                      alt={`${product?.name || "Imagen"} ${i + 1}`}
+                      onError={onImgError}
+                      loading="lazy"
+                      className="img-fluid"
+                      style={fitImg}
+                    />
+                  </SwiperSlide>
+                ))}
               </Swiper>
-            </div>
-            <div className="product-small-image-wrapper mt-15">
-              <Swiper options={thumbnailSwiperParams}>
-                {product.image &&
-                  product.image.map((img, i) => {
-                    return (
-                      <SwiperSlide key={i}>
-                        <div className="single-image">
-                          <img src={img} className="img-fluid" alt="" />
-                        </div>
+
+              {images.length > 1 && (
+                <div className="product-thumbs-plain">
+                  <Swiper options={thumbsOpts}>
+                    {images.map((src, i) => (
+                      <SwiperSlide key={`t-${i}`} style={{ width: 64 }}>
+                        <img
+                          src={src}
+                          alt={`Miniatura ${i + 1}`}
+                          onError={onImgError}
+                          loading="lazy"
+                          className="img-fluid"
+                          style={{
+                            width: "100%",
+                            height: 64,
+                            objectFit: "cover",
+                            borderRadius: 6,
+                          }}
+                        />
                       </SwiperSlide>
-                    );
-                  })}
-              </Swiper>
+                    ))}
+                  </Swiper>
+                </div>
+              )}
             </div>
+
+            <hr className="d-md-none" style={{ margin: "10px 0 0" }} />
           </div>
-          <div className="col-md-7 col-sm-12 col-xs-12">
-            <div className="product-details-content quickview-content">
-              <h2>{product.name}</h2>
-              <div className="product-details-price">
-                {discountedPrice !== null ? (
-                  <Fragment>
-                    <span>
-                      {currency.currencySymbol + finalDiscountedPrice}
-                    </span>{" "}
-                    <span className="old">
-                      {currency.currencySymbol + finalProductPrice}
+
+          {/* DERECHA: Datos */}
+          <div className="col-md-6 col-12">
+            {product?.name && <h3 className="mb-2">{product.name}</h3>}
+
+            {categoryNames.length > 0 && (
+              <div className="mb-2">
+                <strong style={{ fontSize: 14 }}>Categoría:</strong>{" "}
+                <span style={{ fontWeight: 600 }}>{categoryNames.join(" / ")}</span>
+              </div>
+            )}
+
+            {product?.rating > 0 && (
+              <div className="mb-2">
+                <Rating ratingValue={product.rating} />
+              </div>
+            )}
+
+            {(finalProductPrice || finalDiscountedPrice) && (
+              <div className="mb-3">
+                {hasDiscount ? (
+                  <>
+                    <span style={{ fontWeight: 800, fontSize: 18 }}>
+                      {symbol}
+                      {finalDiscountedPrice}
                     </span>
-                  </Fragment>
+                    <span
+                      style={{
+                        marginLeft: 12,
+                        textDecoration: "line-through",
+                        opacity: 0.6,
+                      }}
+                    >
+                      {symbol}
+                      {finalProductPrice}
+                    </span>
+                  </>
                 ) : (
-                  <span>{currency.currencySymbol + finalProductPrice} </span>
+                  <span style={{ fontWeight: 800, fontSize: 18 }}>
+                    {symbol}
+                    {finalProductPrice}
+                  </span>
                 )}
               </div>
-              {product.rating && product.rating > 0 ? (
-                <div className="pro-details-rating-wrap">
-                  <div className="pro-details-rating">
-                    <Rating ratingValue={product.rating} />
-                  </div>
-                </div>
-              ) : (
-                ""
-              )}
-              <div className="pro-details-list">
-                <p>{product.shortDescription}</p>
-              </div>
+            )}
 
-              {product.variation ? (
-                <div className="pro-details-size-color">
-                  <div className="pro-details-color-wrap">
-                    <span>Color</span>
-                    <div className="pro-details-color-content">
-                      {product.variation.map((single, key) => {
-                        return (
-                          <label
-                            className={`pro-details-color-content--single ${single.color}`}
-                            key={key}
-                          >
-                            <input
-                              type="radio"
-                              value={single.color}
-                              name="product-color"
-                              checked={
-                                single.color === selectedProductColor
-                                  ? "checked"
-                                  : ""
-                              }
-                              onChange={() => {
-                                setSelectedProductColor(single.color);
-                                setSelectedProductSize(single.size[0].name);
-                                setProductStock(single.size[0].stock);
-                                setQuantityCount(1);
-                              }}
-                            />
-                            <span className="checkmark"></span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  <div className="pro-details-size">
-                    <span>Size</span>
-                    <div className="pro-details-size-content">
-                      {product.variation &&
-                        product.variation.map((single) => {
-                          return single.color === selectedProductColor
-                            ? single.size.map((singleSize, key) => {
-                                return (
-                                  <label
-                                    className={`pro-details-size-content--single`}
-                                    key={key}
-                                  >
-                                    <input
-                                      type="radio"
-                                      value={singleSize.name}
-                                      checked={
-                                        singleSize.name === selectedProductSize
-                                          ? "checked"
-                                          : ""
-                                      }
-                                      onChange={() => {
-                                        setSelectedProductSize(singleSize.name);
-                                        setProductStock(singleSize.stock);
-                                        setQuantityCount(1);
-                                      }}
-                                    />
-                                    <span className="size-name">
-                                      {singleSize.name}
-                                    </span>
-                                  </label>
-                                );
-                              })
-                            : "";
-                        })}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                ""
-              )}
-              {/* {product.affiliateLink ? (
-                <div className="pro-details-quality">
-                  <div className="pro-details-cart btn-hover">
-                    <a
-                      href={product.affiliateLink}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                    >
-                      Buy Now
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="pro-details-quality">
-                  <div className="cart-plus-minus">
-                    <button
-                      onClick={() =>
-                        setQuantityCount(
-                          quantityCount > 1 ? quantityCount - 1 : 1
-                        )
-                      }
-                      className="dec qtybutton"
-                    >
-                      -
-                    </button>
-                    <input
-                      className="cart-plus-minus-box"
-                      type="text"
-                      value={quantityCount}
-                      readOnly
-                    />
-                    <button
-                      onClick={() =>
-                        setQuantityCount(
-                          quantityCount < productStock - productCartQty
-                            ? quantityCount + 1
-                            : quantityCount
-                        )
-                      }
-                      className="inc qtybutton"
-                    >
-                      +
-                    </button>
-                  </div>
-                  <div className="pro-details-cart btn-hover">
-                    {productStock && productStock > 0 ? (
-                      <button
-                        onClick={() =>
-                          dispatch(
-                            addToCart({
-                              ...product,
-                              quantity: quantityCount,
-                              selectedProductColor: selectedProductColor
-                                ? selectedProductColor
-                                : product.selectedProductColor
-                                ? product.selectedProductColor
-                                : null,
-                              selectedProductSize: selectedProductSize
-                                ? selectedProductSize
-                                : product.selectedProductSize
-                                ? product.selectedProductSize
-                                : null,
-                            })
-                          )
-                        }
-                        disabled={productCartQty >= productStock}
-                      >
-                        {" "}
-                        Add To Cart{" "}
-                      </button>
-                    ) : (
-                      <button disabled>Out of Stock</button>
-                    )}
-                  </div>
-                  <div className="pro-details-wishlist">
-                    <button
-                      className={wishlistItem !== undefined ? "active" : ""}
-                      disabled={wishlistItem !== undefined}
-                      title={
-                        wishlistItem !== undefined
-                          ? "Added to wishlist"
-                          : "Add to wishlist"
-                      }
-                      onClick={() => dispatch(addToWishlist(product))}
-                    >
-                      <i className="pe-7s-like" />
-                    </button>
-                  </div>
-                  <div className="pro-details-compare">
-                    <button
-                      className={compareItem !== undefined ? "active" : ""}
-                      disabled={compareItem !== undefined}
-                      title={
-                        compareItem !== undefined
-                          ? "Added to compare"
-                          : "Add to compare"
-                      }
-                      onClick={() => dispatch(addToCompare(product))}
-                    >
-                      <i className="pe-7s-shuffle" />
-                    </button>
-                  </div>
-                </div>
-              )} */}
-            </div>
+            {product?.sku && (
+              <div>
+                <strong>SKU:</strong> <span>{product.sku}</span>
+              </div>
+            )}
+
+            {"stock" in (product || {}) && product.stock !== undefined && (
+              <div>
+                <strong>En existencia:</strong>{" "}
+                <span
+                  style={{
+                    color: product.stock > 0 ? "#0a8f20" : "#d11a2a",
+                    fontWeight: 700,
+                  }}
+                >
+                  {product.stock}
+                </span>
+              </div>
+            )}
+
+            {product?.shortDescription && (
+              <div className="mt-2">
+                <strong>Descripción:</strong>{" "}
+                <span>{product.shortDescription}</span>
+              </div>
+            )}
+
+            {product?.fullDescription && (
+              <div className="mt-2">
+                <strong>Más Detalles:</strong>{" "}
+                <span>{product.fullDescription}</span>
+              </div>
+            )}
+
+            {typeof product?.discount === "number" && product.discount > 0 && (
+              <div className="mt-2">
+                <strong>Descuento:</strong> <span>-{product.discount}%</span>
+              </div>
+            )}
+
+            {product?.offerEnd && (
+              <div className="mt-2">
+                <strong>La oferta termina el:</strong>{" "}
+                <span>{formatFechaMX(product.offerEnd)}</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -326,15 +255,25 @@ function ProductModal({
 }
 
 ProductModal.propTypes = {
-  currency: PropTypes.shape({}),
-  discountedprice: PropTypes.number,
-  finaldiscountedprice: PropTypes.number,
-  finalproductprice: PropTypes.number,
-  onHide: PropTypes.func,
-  product: PropTypes.shape({}),
-  show: PropTypes.bool,
-  wishlistItem: PropTypes.shape({}),
-  compareItem: PropTypes.shape({}),
+  images: PropTypes.arrayOf(PropTypes.string),
+  currency: PropTypes.shape({ currencySymbol: PropTypes.string }),
+  discountedPrice: PropTypes.number,
+  finalDiscountedPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  finalProductPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  onHide: PropTypes.func.isRequired,
+  product: PropTypes.shape({
+    name: PropTypes.string,
+    sku: PropTypes.string,
+    image: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.string), PropTypes.string]),
+    rating: PropTypes.number,
+    discount: PropTypes.number,
+    offerEnd: PropTypes.string,
+    stock: PropTypes.number,
+    shortDescription: PropTypes.string,
+    fullDescription: PropTypes.string,
+    category: PropTypes.array,
+  }).isRequired,
+  show: PropTypes.bool.isRequired,
 };
 
 export default ProductModal;

@@ -10,10 +10,18 @@ import ShopProducts from "../../wrappers/product/ShopProducts";
 import ShopSidebar from "../../wrappers/product/ShopSidebar";
 import { useStoreData } from "../../hooks/useStoreData";
 import WhatsAppFloatingButton from "../../components/WhatsAppFloatingButton";
-
+import axios from "axios";
+// 👇 monkey‑patch para quitar el warning en dev
+if (Paginator && "defaultProps" in Paginator) {
+  try {
+    Paginator.defaultProps = undefined;
+  } catch {}
+}
+const API_BASE = "https://mitiendaenlineamx.com.mx/api";
 const Catalogo = () => {
   const { storeSlug } = useParams();
-  const { isStoreValid, products, storePhone, storeName } = useStoreData(storeSlug);
+  const { isStoreValid, products, storePhone, storeName } =
+    useStoreData(storeSlug);
   const { pathname } = useLocation();
   const [layout, setLayout] = useState("grid three-column");
   const [filterSortType, setFilterSortType] = useState("");
@@ -23,11 +31,35 @@ const Catalogo = () => {
   const [currentData, setCurrentData] = useState([]);
   const [sortedProducts, setSortedProducts] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [loadingCats, setLoadingCats] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+
+    axios
+      .get(`${API_BASE}/public/stores/slug/${storeSlug}/categories`)
+      .then(({ data }) => {
+        if (!alive) return;
+        setCategories(data?.categories ?? []);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setCategories([]);
+      })
+      .finally(() => {
+        if (alive) setLoadingCats(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [storeSlug]);
 
   const sortType = "";
   const sortValue = "";
 
-  const pageLimit = 15;
+  const pageLimit = 12;
 
   const getLayout = (layout) => setLayout(layout);
 
@@ -55,7 +87,15 @@ const Catalogo = () => {
 
     setSortedProducts(sorted);
     setCurrentData(sorted.slice(offset, offset + pageLimit));
-  }, [offset, products, sortType, sortValue, filterSortType, filterSortValue, searchQuery]);
+  }, [
+    offset,
+    products,
+    sortType,
+    sortValue,
+    filterSortType,
+    filterSortValue,
+    searchQuery,
+  ]);
 
   if (isStoreValid === null) return <div>Cargando tienda...</div>;
 
@@ -84,6 +124,9 @@ const Catalogo = () => {
                 getFilterSortParams={getFilterSortParams}
                 productCount={products.length}
                 sortedProductCount={currentData.length}
+                // Si más adelante agregas selector de categoría:
+                categories={categories}
+                loadingCats={loadingCats}
               />
 
               <ShopProducts layout={layout} products={currentData} />

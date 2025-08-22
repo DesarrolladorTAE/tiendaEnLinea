@@ -81,7 +81,7 @@ const ProductGridListSingle = ({
     <Fragment>
       <article
         ref={cardRef}
-        className={clsx("neo-card", spaceBottomClass)}
+        className={clsx("neo-card is-compact", spaceBottomClass)}
         onMouseMove={onMouseMove}
         onMouseLeave={onMouseLeave}
       >
@@ -181,6 +181,7 @@ const ProductGridListSingle = ({
       <ProductModal
         show={modalShow}
         onHide={() => setModalShow(false)}
+        images={images} 
         product={product}
         currency={currency}
         discountedPrice={discounted}
@@ -203,6 +204,7 @@ ProductGridListSingle.propTypes = {
   wishlistItem: PropTypes.object,
   compareItem: PropTypes.object,
   spaceBottomClass: PropTypes.string,
+  
 };
 
 export default ProductGridListSingle;
