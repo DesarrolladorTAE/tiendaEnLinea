@@ -33,13 +33,10 @@ const HomeFurniture = () => {
     let alive = true;
     setLoading(true);
     axios
-      .get(
-        `https://mitiendaenlineamx.com.mx/api/public/tienda/${storeSlug}/sitio`
-      )
+      .get(`https://mitiendaenlineamx.com.mx/api/public/tienda/${storeSlug}/sitio`)
       .then(({ data }) => {
         if (!alive) return;
         setResp(data);
-        // plan_id desde la respuesta (ajusta si tu API lo expone en otra ruta/prop)
         const p = data?.store?.plan_id ?? null;
         setPlanId(p);
       })
@@ -59,62 +56,60 @@ const HomeFurniture = () => {
 
   const store = resp?.store || {};
   const sitio = resp?.sitio || null;
-  const titulo1 = resp?.sitio?.titulo_1 ?? "Explora nuestras colecciones";
+
+  const titulo1 =
+    sitio?.titulo_1 ?? "Explora nuestras colecciones";
   const descripcion =
-    resp?.sitio?.descripcion ??
-    "Descubre piezas pensadas para inspirarte cada día.";
-    
+    sitio?.descripcion ?? "Descubre piezas pensadas para inspirarte cada día.";
 
-  // hay configuración real si alguno existe
-  const hasConfig = Boolean(
-    sitio &&
-      (sitio.logo || sitio.img_portada || sitio.titulo_1 || sitio.descripcion)
-  );
-    const socials = {
-   facebook: sitio?.facebook || "",
+  // ✅ Mostrar hero/sections SOLO si hay logo Y portada
+  const hasHero = Boolean(sitio?.logo && sitio?.img_portada);
+
+  // Redes
+  const socials = {
+    facebook: sitio?.facebook || "",
     instagram: sitio?.instagram || "",
-   twitter: sitio?.twitter || "",
-   tiktok: sitio?.tiktok || "",
- };
+    twitter: sitio?.twitter || "",
+    tiktok: sitio?.tiktok || "",
+  };
 
-  const coverImage = sitio?.img_portada || DEFAULTS.coverImage;
-  const logoImage = sitio?.logo || DEFAULTS.logoImage;
   const storeName = store?.name || DEFAULTS.storeName;
-  /* --- FIN LOGICA NUEVA --- */
 
+  // Galería para BlogFeatured (cuando sí hay hero)
   const imagesFromNumbered = [];
   if (sitio) {
     for (let i = 1; i <= 50; i++) {
       const k = `imagen_${i}`;
-      if (sitio[k])
-        imagesFromNumbered.push({ src: sitio[k], alt: `${storeName} ${i}` });
+      if (sitio[k]) imagesFromNumbered.push({ src: sitio[k], alt: `${storeName} ${i}` });
     }
   }
   const imagesFromArray = Array.isArray(sitio?.carrusel)
     ? sitio.carrusel
         .filter(Boolean)
         .map((src, idx) =>
-          typeof src === "string"
-            ? { src, alt: `${storeName} ${idx + 1}` }
-            : src
+          typeof src === "string" ? { src, alt: `${storeName} ${idx + 1}` } : src
         )
     : [];
-
   const bannerImages = [...imagesFromNumbered, ...imagesFromArray];
 
+  // 🔒 Si NO hay hero, devolvemos SOLO el catálogo
+  if (!hasHero) {
+    return (
+      <Fragment>
+        <Catalogo key={storeSlug} />
+      </Fragment>
+    );
+  }
+
+  // 🌟 Con hero completo (logo + portada), render normal
   return (
-    <Fragment>                    
+    <Fragment>
+      <HeroSliderTwo
+        coverImage={sitio.img_portada}
+        logoImage={sitio.logo}
+        storeName={store.name}
+      />
 
-      {hasConfig && (
-        <HeroSliderTwo
-          coverImage={sitio?.img_portada}
-          logoImage={sitio?.logo}
-          storeName={store?.name}
-        />
-      )}
-      {!hasConfig && <HeroSliderTwo />}
-
-      {/* catálogo inmediatamente después del hero */}
       <TabProductTwo
         spaceBottomClass="pb-100"
         spaceTopClass="pt-80"
@@ -122,7 +117,7 @@ const HomeFurniture = () => {
         title={titulo1}
         description={descripcion}
       />
-      {/* Siempre muestra el catálogo */}
+
       <Catalogo key={storeSlug} />
 
       <BlogFeatured
@@ -132,16 +127,16 @@ const HomeFurniture = () => {
           title: x.alt || `Imagen ${i + 1}`,
         }))}
       />
-      
-      <FeatureIconTwo spaceTopClass="pt-100"
-   spaceBottomClass="pb-60"
-storeName={store?.name || DEFAULTS.storeName}
-   phone={store?.phone || DEFAULTS.phone}
-   email={store?.email || DEFAULTS.email}
-   socials={socials}
-   subtitle="Respuestas claras, soporte cercano y promociones antes que nadie." />
 
-
+      <FeatureIconTwo
+        spaceTopClass="pt-100"
+        spaceBottomClass="pb-60"
+        storeName={store?.name || DEFAULTS.storeName}
+        phone={store?.phone || DEFAULTS.phone}
+        email={store?.email || DEFAULTS.email}
+        socials={socials}
+        subtitle="Respuestas claras, soporte cercano y promociones antes que nadie."
+      />
     </Fragment>
   );
 };

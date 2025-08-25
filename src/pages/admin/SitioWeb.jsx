@@ -162,15 +162,18 @@ export default function SelectorVistasTienda({ onSelect }) {
         showError("Solo puedes configurar la vista de tu plan actual.");
         return;
       }
-      setSaving4(true);
-      await axiosClient.post(`/admin/sitios/${store.id}/plan-4/update`, fd);
+      setSaving3(true);
+      const url = defaults?.id
+        ? `/admin/sitios/${store.id}/plan-3/update`
+        : `/admin/sitios/${store.id}/plan-3/create`;
+      await axiosClient.post(url, fd);
       await fetchDefaults();
-      setOpen4(false);
-      showSuccess?.("Guardado correctamente (Plan Avanzado)") || alert("Guardado (Plan Avanzado)");
+      setOpen3(false);
+      showSuccess?.("Guardado correctamente (Plan Profesional)") || alert("Guardado (Plan Profesional)");
     } catch {
-      showError("No se pudo guardar el Plan Avanzado.");
+      showError("No se pudo guardar el Plan Profesional.");
     } finally {
-      setSaving4(false);
+      setSaving3(false);
     }
   };
 

@@ -1,21 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Grid, TextField, useMediaQuery, useTheme,
-  Typography, Box, Stack, Divider
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Grid,
+  TextField,
+  useMediaQuery,
+  useTheme,
+  Typography,
+  Box,
+  Stack,
+  Divider,
+  CircularProgress, // 👈 spinner sin @mui/lab
 } from "@mui/material";
 
 const IMG_SLOTS = 10;
 
-export default function ModalPlanAvanzado({
+export default function ModalPlanProfesional({
   open,
   onClose,
   onSubmit,
   storeId,
-  defaultValues = {} // { logo, img_portada, titulo_1, descripcion, mas_sobre_mi, imagen_1..10, facebook, instagram, twitter, tiktok,
-                     //   telefono, email_contacto, direccion, horario, whatsapp,
-                     //   color_primario, color_secundario, cta_text, cta_url, video_url,
-                     //   seo_title, seo_description, map_embed }
+  defaultValues = {}, // { logo, img_portada, titulo_1, descripcion, imagen_1..10, facebook, instagram, twitter, tiktok } (o { carrusel:{...} })
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -25,53 +33,69 @@ export default function ModalPlanAvanzado({
   const [coverFile, setCoverFile] = useState(null);
   const [imageFiles, setImageFiles] = useState(Array(IMG_SLOTS).fill(null));
 
-  // Texto base
+  // Flags de borrado
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const [removeCover, setRemoveCover] = useState(false);
+  const [removeGallery, setRemoveGallery] = useState(Array(IMG_SLOTS).fill(false));
+
+  // Campos de texto
   const [titulo1, setTitulo1] = useState(defaultValues.titulo_1 || "");
   const [descripcion, setDescripcion] = useState(defaultValues.descripcion || "");
-  const [masSobreMi, setMasSobreMi] = useState(defaultValues.mas_sobre_mi || "");
-
-  // Redes
   const [facebook, setFacebook] = useState(defaultValues.facebook || "");
   const [instagram, setInstagram] = useState(defaultValues.instagram || "");
   const [twitter, setTwitter] = useState(defaultValues.twitter || "");
   const [tiktok, setTiktok] = useState(defaultValues.tiktok || "");
 
-  // Contacto & negocio
-  const [telefono, setTelefono] = useState(defaultValues.telefono || "");
-  const [emailContacto, setEmailContacto] = useState(defaultValues.email_contacto || "");
-  const [direccion, setDireccion] = useState(defaultValues.direccion || "");
-  const [horario, setHorario] = useState(defaultValues.horario || "");
-  const [whatsapp, setWhatsapp] = useState(defaultValues.whatsapp || "");
+  // Loading del botón Guardar
+  const [saving, setSaving] = useState(false);
 
-  // Branding
-  const [colorPrimario, setColorPrimario] = useState(defaultValues.color_primario || "#1e88e5");
-  const [colorSecundario, setColorSecundario] = useState(defaultValues.color_secundario || "#ff6f00");
+  // 🔄 Sincroniza estados cuando abras el modal o cambien los defaults
+  useEffect(() => {
+    if (!open) return;
+    setTitulo1(defaultValues.titulo_1 || "");
+    setDescripcion(defaultValues.descripcion || "");
+    setFacebook(defaultValues.facebook || "");
+    setInstagram(defaultValues.instagram || "");
+    setTwitter(defaultValues.twitter || "");
+    setTiktok(defaultValues.tiktok || "");
 
-  // CTA & media
-  const [ctaText, setCtaText] = useState(defaultValues.cta_text || "Comprar ahora");
-  const [ctaUrl, setCtaUrl] = useState(defaultValues.cta_url || "");
-  const [videoUrl, setVideoUrl] = useState(defaultValues.video_url || "");
+    // limpia archivos y flags al abrir con nuevos defaults
+    setLogoFile(null);
+    setCoverFile(null);
+    setImageFiles(Array(IMG_SLOTS).fill(null));
+    setRemoveLogo(false);
+    setRemoveCover(false);
+    setRemoveGallery(Array(IMG_SLOTS).fill(false));
+    setSaving(false);
+  }, [open, defaultValues]);
 
-  // SEO & Mapa
-  const [seoTitle, setSeoTitle] = useState(defaultValues.seo_title || "");
-  const [seoDescription, setSeoDescription] = useState(defaultValues.seo_description || "");
-  const [mapEmbed, setMapEmbed] = useState(defaultValues.map_embed || "");
+  // Helpers para leer existentes (soporta plano o anidado en carrusel)
+  const getExisting = (key) =>
+    defaultValues?.[key] ?? defaultValues?.carrusel?.[key] ?? "";
 
-  // Previews
-  const logoPreview = useMemo(
-    () => (logoFile ? URL.createObjectURL(logoFile) : defaultValues.logo || ""),
-    [logoFile, defaultValues.logo]
-  );
-  const coverPreview = useMemo(
-    () => (coverFile ? URL.createObjectURL(coverFile) : defaultValues.img_portada || ""),
-    [coverFile, defaultValues.img_portada]
-  );
+  // Previews: archivo nuevo > existente > vacío; si hay flag de remove => vacío
+  const logoPreview = useMemo(() => {
+    if (removeLogo) return "";
+    return logoFile ? URL.createObjectURL(logoFile) : defaultValues.logo || "";
+  }, [logoFile, defaultValues.logo, removeLogo]);
+
+  const coverPreview = useMemo(() => {
+    if (removeCover) return "";
+    return coverFile
+      ? URL.createObjectURL(coverFile)
+      : defaultValues.img_portada || "";
+  }, [coverFile, defaultValues.img_portada, removeCover]);
+
   const galleryPreviews = useMemo(
     () =>
-      imageFiles.map((file, i) =>
-        file ? URL.createObjectURL(file) : defaultValues[`imagen_${i + 1}`] || ""
-      ),
-    [imageFiles, defaultValues]
+      Array.from({ length: IMG_SLOTS }).map((_, i) => {
+        if (removeGallery[i]) return "";
+        const file = imageFiles[i];
+        if (file) return URL.createObjectURL(file);
+        return getExisting(`imagen_${i + 1}`);
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [imageFiles, defaultValues, removeGallery]
   );
 
   // Limpieza de object URLs
@@ -90,74 +114,99 @@ export default function ModalPlanAvanzado({
     const next = [...imageFiles];
     next[idx] = file || null;
     setImageFiles(next);
+
+    // si subes nueva, desmarca borrado
+    if (file) {
+      const rm = [...removeGallery];
+      rm[idx] = false;
+      setRemoveGallery(rm);
+    }
   };
 
-  const clearLogo = () => setLogoFile(null);
-  const clearCover = () => setCoverFile(null);
-  const clearGalleryItem = (idx) => onImageChange(idx, null);
+  const clearLogo = () => {
+    setLogoFile(null);
+    setRemoveLogo(true);
+  };
 
-  const handleSave = () => {
+  const clearCover = () => {
+    setCoverFile(null);
+    setRemoveCover(true);
+  };
+
+  const clearGalleryItem = (idx) => {
+    const next = [...imageFiles];
+    next[idx] = null;
+    setImageFiles(next);
+
+    const rm = [...removeGallery];
+    rm[idx] = true;
+    setRemoveGallery(rm);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
     const fd = new FormData();
     if (storeId) fd.append("id_store", storeId);
 
-    // Base
+    // archivos nuevos
     if (logoFile) fd.append("logo", logoFile);
     if (coverFile) fd.append("img_portada", coverFile);
+
+    // flags de borrado
+    if (removeLogo) fd.append("remove_logo", "1");
+    if (removeCover) fd.append("remove_img_portada", "1");
+
+    // textos
     fd.append("titulo_1", titulo1);
     fd.append("descripcion", descripcion);
-    fd.append("mas_sobre_mi", masSobreMi);
-
-    imageFiles.forEach((file, i) => {
-      if (file) fd.append(`imagen_${i + 1}`, file);
-    });
-
-    // Redes
     fd.append("facebook", facebook);
     fd.append("instagram", instagram);
     fd.append("twitter", twitter);
     fd.append("tiktok", tiktok);
 
-    // Contacto & negocio
-    fd.append("telefono", telefono);
-    fd.append("email_contacto", emailContacto);
-    fd.append("direccion", direccion);
-    fd.append("horario", horario);
-    fd.append("whatsapp", whatsapp);
+    // galería
+    imageFiles.forEach((file, i) => {
+      const n = i + 1;
+      if (file) fd.append(`imagen_${n}`, file);
+      if (removeGallery[i]) fd.append(`remove_imagen_${n}`, "1");
+    });
 
-    // Branding
-    fd.append("color_primario", colorPrimario);
-    fd.append("color_secundario", colorSecundario);
-
-    // CTA & media
-    fd.append("cta_text", ctaText);
-    fd.append("cta_url", ctaUrl);
-    fd.append("video_url", videoUrl);
-
-    // SEO & mapa
-    fd.append("seo_title", seoTitle);
-    fd.append("seo_description", seoDescription);
-    fd.append("map_embed", mapEmbed);
-
-    onSubmit?.(fd);
+    try {
+      await onSubmit?.(fd);
+      onClose?.(); // descomenta si quieres cerrar al guardar
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" fullScreen={fullScreen}>
+    <Dialog
+      open={open}
+      onClose={saving ? undefined : onClose}
+      fullWidth
+      maxWidth="md"
+      fullScreen={fullScreen}
+    >
       <DialogTitle>🚀 Configurar — Plan Avanzado</DialogTitle>
 
       <DialogContent dividers>
         {/* PRESENTACIÓN */}
         <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>🪪 Presentación</Typography>
+          <Typography variant="h6" fontWeight={800}>
+            🪪 Presentación
+          </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Sube tu <b>logo</b> y la <b>imagen de portada</b>.
+            Sube tu <b>logo</b> y la <b>imagen de portada</b> (se mostrarán en
+            la cabecera).
           </Typography>
 
           <Grid container spacing={2}>
-            {/* LOGO */}
+            {/* LOGO (círculo fijo) */}
             <Grid item xs={12} md={5}>
               <Stack spacing={1.5}>
-                <Typography variant="subtitle1" fontWeight={700}>Logo</Typography>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Logo
+                </Typography>
                 <Box
                   sx={{
                     width: { xs: 140, sm: 160, md: 180 },
@@ -170,28 +219,59 @@ export default function ModalPlanAvanzado({
                     mx: { xs: "auto", md: 0 },
                     display: "grid",
                     placeItems: "center",
+                    position: "relative",
                   }}
                 >
                   {logoPreview ? (
                     <img
                       src={logoPreview}
                       alt="Vista previa del logo"
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        display: "block",
+                        pointerEvents: "none",
+                      }}
                     />
                   ) : (
-                    <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: "center" }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ p: 2, textAlign: "center" }}
+                    >
                       Sin logo
                     </Typography>
                   )}
                 </Box>
 
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                  <Button component="label" variant="outlined" fullWidth>
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    fullWidth
+                    disabled={saving}
+                    onClick={() => setRemoveLogo(false)}
+                  >
                     {logoPreview ? "Cambiar logo" : "Subir logo"}
-                    <input hidden type="file" accept="image/*" onChange={(e) => setLogoFile(e.target.files?.[0] || null)} />
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                    />
                   </Button>
-                  {logoPreview && (
-                    <Button variant="text" color="error" onClick={clearLogo} fullWidth>Quitar</Button>
+                  {(defaultValues.logo || logoFile) && (
+                    <Button
+                      variant="text"
+                      color="error"
+                      onClick={clearLogo}
+                      fullWidth
+                      disabled={saving}
+                    >
+                      Quitar
+                    </Button>
                   )}
                 </Stack>
 
@@ -201,31 +281,52 @@ export default function ModalPlanAvanzado({
               </Stack>
             </Grid>
 
-            {/* PORTADA */}
+            {/* PORTADA (alto fijo para evitar saltos) */}
             <Grid item xs={12} md={7}>
               <Stack spacing={1.5}>
-                <Typography variant="subtitle1" fontWeight={700}>Imagen de portada</Typography>
+                <Typography variant="subtitle1" fontWeight={700}>
+                  Imagen de portada
+                </Typography>
+
                 <Box
                   sx={{
                     position: "relative",
                     width: "100%",
+                    height: { xs: 180, sm: 220, md: 280 }, // 👈 alto fijo
                     borderRadius: 2,
                     overflow: "hidden",
                     border: "2px dashed",
                     borderColor: "divider",
                     bgcolor: "background.paper",
-                    aspectRatio: "16 / 9",
                   }}
                 >
                   {coverPreview ? (
                     <img
                       src={coverPreview}
                       alt="Vista previa portada"
-                      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                        display: "block",
+                        pointerEvents: "none",
+                      }}
                     />
                   ) : (
-                    <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: "center" }}>
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "grid",
+                        placeItems: "center",
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ p: 2, textAlign: "center" }}
+                      >
                         Sin imagen de portada
                       </Typography>
                     </Box>
@@ -233,12 +334,33 @@ export default function ModalPlanAvanzado({
                 </Box>
 
                 <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                  <Button component="label" variant="outlined" fullWidth>
+                  <Button
+                    component="label"
+                    variant="outlined"
+                    fullWidth
+                    disabled={saving}
+                    onClick={() => setRemoveCover(false)}
+                  >
                     {coverPreview ? "Cambiar portada" : "Subir portada"}
-                    <input hidden type="file" accept="image/*" onChange={(e) => setCoverFile(e.target.files?.[0] || null)} />
+                    <input
+                      hidden
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) =>
+                        setCoverFile(e.target.files?.[0] || null)
+                      }
+                    />
                   </Button>
-                  {coverPreview && (
-                    <Button variant="text" color="error" onClick={clearCover} fullWidth>Quitar</Button>
+                  {(defaultValues.img_portada || coverFile) && (
+                    <Button
+                      variant="text"
+                      color="error"
+                      onClick={clearCover}
+                      fullWidth
+                      disabled={saving}
+                    >
+                      Quitar
+                    </Button>
                   )}
                 </Stack>
 
@@ -252,82 +374,128 @@ export default function ModalPlanAvanzado({
 
         <Divider sx={{ my: 2 }} />
 
-        {/* CONÓCEME */}
         <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>🙋 Conóceme</Typography>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Título 1" fullWidth value={titulo1} onChange={(e) => setTitulo1(e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                label="Descripción"
-                fullWidth multiline minRows={3}
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-              />
-            </Grid>
-          </Grid>
+          <Typography variant="h6" fontWeight={800}>
+            🙋 Conóceme
+          </Typography>
+
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
+            <TextField
+              label="Título 1"
+              fullWidth
+              value={titulo1}
+              onChange={(e) => setTitulo1(e.target.value)}
+              disabled={saving}
+            />
+
+            <TextField
+              label="Descripción"
+              fullWidth
+              multiline
+              rows={10}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              disabled={saving}
+              inputProps={{ maxLength: 20000 }}
+              sx={{
+                "& .MuiInputBase-root": { alignItems: "flex-start" },
+                "& .MuiInputBase-inputMultiline": { overflow: "auto" },
+              }}
+            />
+            <Box display="flex" justifyContent="space-between" mt={0.5}>
+              <Typography variant="caption" color="text.secondary">
+                Máx. 20,000 caracteres
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {descripcion.length}/20000
+              </Typography>
+            </Box>
+          </Stack>
         </Box>
 
         <Divider sx={{ my: 2 }} />
 
-        {/* MÁS SOBRE MÍ */}
+        {/* GALERÍA (tamaño fijo para cada ítem) */}
         <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>🧩 Más sobre mí</Typography>
-          <TextField
-            placeholder="Historia, misión, valores, distintivos…"
-            fullWidth multiline minRows={4}
-            value={masSobreMi}
-            onChange={(e) => setMasSobreMi(e.target.value)}
-            sx={{ mt: 1 }}
-          />
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* GALERÍA */}
-        <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>🖼️ Galería (10 imágenes)</Typography>
+          <Typography variant="h6" fontWeight={800}>
+            🖼️ Galería (10 imágenes)
+          </Typography>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             {Array.from({ length: IMG_SLOTS }).map((_, i) => (
               <Grid item xs={12} sm={6} md={4} key={i}>
                 <Stack spacing={1}>
                   <Box
                     sx={{
-                      position: "relative",
                       width: "100%",
+                      height: { xs: 180, sm: 200, md: 220 }, // 👈 alto fijo
                       borderRadius: 2,
                       overflow: "hidden",
                       border: "2px dashed",
                       borderColor: "divider",
                       bgcolor: "background.paper",
-                      aspectRatio: "1 / 1",
                     }}
                   >
                     {galleryPreviews[i] ? (
                       <img
                         src={galleryPreviews[i]}
                         alt={`Vista previa imagen ${i + 1}`}
-                        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "center",
+                          display: "block",
+                          pointerEvents: "none",
+                        }}
                       />
                     ) : (
-                      <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-                        <Typography variant="body2" color="text.secondary">Sin imagen</Typography>
+                      <Box
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          display: "grid",
+                          placeItems: "center",
+                        }}
+                      >
+                        <Typography variant="body2" color="text.secondary">
+                          Sin imagen
+                        </Typography>
                       </Box>
                     )}
                   </Box>
 
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                    <Button component="label" variant="outlined" fullWidth>
-                      {galleryPreviews[i] ? `Cambiar imagen ${i + 1}` : `Subir imagen ${i + 1}`}
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      fullWidth
+                      disabled={saving}
+                      onClick={() => {
+                        const rm = [...removeGallery];
+                        rm[i] = false;
+                        setRemoveGallery(rm);
+                      }}
+                    >
+                      {galleryPreviews[i]
+                        ? `Cambiar imagen ${i + 1}`
+                        : `Subir imagen ${i + 1}`}
                       <input
-                        hidden type="file" accept="image/*"
-                        onChange={(e) => onImageChange(i, e.target.files?.[0] || null)}
+                        hidden
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          onImageChange(i, e.target.files?.[0] || null)
+                        }
                       />
                     </Button>
-                    {galleryPreviews[i] && (
-                      <Button variant="text" color="error" onClick={() => clearGalleryItem(i)} fullWidth>
+                    {(getExisting(`imagen_${i + 1}`) || imageFiles[i]) && (
+                      <Button
+                        variant="text"
+                        color="error"
+                        onClick={() => clearGalleryItem(i)}
+                        fullWidth
+                        disabled={saving}
+                      >
                         Quitar
                       </Button>
                     )}
@@ -341,73 +509,61 @@ export default function ModalPlanAvanzado({
         <Divider sx={{ my: 2 }} />
 
         {/* MIS REDES */}
-        <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>🌐 Mis redes</Typography>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} sm={6}><TextField label="Facebook" fullWidth value={facebook} onChange={(e)=>setFacebook(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6}><TextField label="Instagram" fullWidth value={instagram} onChange={(e)=>setInstagram(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6}><TextField label="Twitter (X)" fullWidth value={twitter} onChange={(e)=>setTwitter(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6}><TextField label="TikTok" fullWidth value={tiktok} onChange={(e)=>setTiktok(e.target.value)} /></Grid>
-          </Grid>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* CONTACTO & NEGOCIO */}
-        <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>📇 Contacto & negocio</Typography>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} sm={6}><TextField label="Teléfono" fullWidth value={telefono} onChange={(e)=>setTelefono(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6}><TextField label="Email de contacto" fullWidth value={emailContacto} onChange={(e)=>setEmailContacto(e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Dirección" fullWidth value={direccion} onChange={(e)=>setDireccion(e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Horario" fullWidth value={horario} onChange={(e)=>setHorario(e.target.value)} placeholder="Lun–Vie 9:00–18:00, Sáb 10:00–14:00" /></Grid>
-            <Grid item xs={12} sm={6}><TextField label="WhatsApp" fullWidth value={whatsapp} onChange={(e)=>setWhatsapp(e.target.value)} placeholder="+52..." /></Grid>
-          </Grid>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* BRANDING */}
-        <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>🎨 Branding</Typography>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Color primario" type="color" fullWidth value={colorPrimario} onChange={(e)=>setColorPrimario(e.target.value)} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField label="Color secundario" type="color" fullWidth value={colorSecundario} onChange={(e)=>setColorSecundario(e.target.value)} />
-            </Grid>
-          </Grid>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* CTA & MEDIA */}
-        <Box mb={2}>
-          <Typography variant="h6" fontWeight={800}>🔗 CTA & Media</Typography>
-          <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} sm={6}><TextField label="Texto del CTA" fullWidth value={ctaText} onChange={(e)=>setCtaText(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6}><TextField label="URL del CTA" fullWidth value={ctaUrl} onChange={(e)=>setCtaUrl(e.target.value)} placeholder="https://..." /></Grid>
-            <Grid item xs={12}><TextField label="URL de video (YouTube/Vimeo)" fullWidth value={videoUrl} onChange={(e)=>setVideoUrl(e.target.value)} /></Grid>
-          </Grid>
-        </Box>
-
-        <Divider sx={{ my: 2 }} />
-
-        {/* SEO & MAPA */}
         <Box mb={1}>
-          <Typography variant="h6" fontWeight={800}>🔍 SEO & Mapa</Typography>
+          <Typography variant="h6" fontWeight={800}>
+            🌐 Mis redes
+          </Typography>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            <Grid item xs={12} sm={6}><TextField label="SEO Title" fullWidth value={seoTitle} onChange={(e)=>setSeoTitle(e.target.value)} /></Grid>
-            <Grid item xs={12} sm={6}><TextField label="SEO Description" fullWidth value={seoDescription} onChange={(e)=>setSeoDescription(e.target.value)} /></Grid>
-            <Grid item xs={12}><TextField label="Mapa (embed URL)" fullWidth value={mapEmbed} onChange={(e)=>setMapEmbed(e.target.value)} placeholder="https://www.google.com/maps/embed?..." /></Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Facebook"
+                fullWidth
+                value={facebook}
+                onChange={(e) => setFacebook(e.target.value)}
+                disabled={saving}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Instagram"
+                fullWidth
+                value={instagram}
+                onChange={(e) => setInstagram(e.target.value)}
+                disabled={saving}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Twitter (X)"
+                fullWidth
+                value={twitter}
+                onChange={(e) => setTwitter(e.target.value)}
+                disabled={saving}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="TikTok"
+                fullWidth
+                value={tiktok}
+                onChange={(e) => setTiktok(e.target.value)}
+                disabled={saving}
+              />
+            </Grid>
           </Grid>
         </Box>
       </DialogContent>
 
       <DialogActions sx={{ gap: 1 }}>
-        <Button onClick={onClose}>Cancelar</Button>
-        <Button onClick={handleSave} variant="contained">Guardar</Button>
+        <Button onClick={onClose} disabled={saving}>Cancelar</Button>
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={saving}
+          startIcon={saving ? <CircularProgress size={18} /> : null}
+        >
+          {saving ? "Guardando..." : "Guardar"}
+        </Button>
       </DialogActions>
     </Dialog>
   );

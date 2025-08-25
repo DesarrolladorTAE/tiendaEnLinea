@@ -8,7 +8,7 @@ import TiendaNoDisponible from "./TiendaNoDisponible";
 import Catalogo from "../shop/Catalogo";
 import VistaPlan2 from "../home/HomeFashionSix";
 import VistaPlan3 from "../home/HomeFurniture";
-import VistaPlan4 from "./planes/VistaPlan4";
+import VistaPlan4 from "../home/HomeFurniture";
 
 export default function PersonalizacionSitio() {
   const { storeSlug } = useParams();
@@ -30,5 +30,6 @@ export default function PersonalizacionSitio() {
   if (data.plan_id === 1) return <Catalogo />; // demo (sin necesidad de id)
   if (data.plan_id === 2) return <VistaPlan2 storeId={data.id_store} storeSlug={storeSlug} />;
   if (data.plan_id === 3) return <VistaPlan3 storeId={data.id_store} storeSlug={storeSlug} />;
+  if (data.plan_id === 4) return <VistaPlan4 storeId={data.id_store} storeSlug={storeSlug} />;
   return <VistaPlan4 storeId={data.id_store} storeSlug={storeSlug} />;
 }

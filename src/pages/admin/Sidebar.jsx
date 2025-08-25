@@ -42,7 +42,7 @@ const Sidebar = () => {
         </ul>
       </div>
 
-      {/* <div className="text-center mt-auto">
+      <div className="text-center mt-auto">
         {storeSlug && (
           <a
             href={`https://mitiendaenlineamx.com.mx/tienda/${storeSlug}`}
@@ -56,12 +56,12 @@ const Sidebar = () => {
         <button onClick={handleLogout} className="btn btn-outline-light btn-sm w-100">
           🚪 Cerrar Sesión
         </button>
-      </div> */}
+      </div>
 
       
 {/* Entorno de Desarolllo, solo desarrollo, antes de subir a produccion comentar lo debajo y activar lo de arriba */}
 
-      <div className="text-center mt-auto">
+      {/* <div className="text-center mt-auto">
         {storeSlug && (
           <a
             href={`${window.location.origin}/tienda/${storeSlug}`}
@@ -78,7 +78,7 @@ const Sidebar = () => {
         >
           🚪 Cerrar Sesión
         </button>
-      </div>
+      </div> */}
     </div>
   );
 };

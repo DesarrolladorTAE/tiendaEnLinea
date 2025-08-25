@@ -12,18 +12,12 @@ function ensureHttp(url) {
   return `https://${u}`;
 }
 function onlyDigits(s = "") { return String(s).replace(/\D+/g, ""); }
-function hasVal(v) {
-  return typeof v === "string" && v.trim().length > 0;
-}
+function hasVal(v) { return typeof v === "string" && v.trim().length > 0; }
 
 function waLink(phone, text = "") {
   let n = onlyDigits(phone);
   if (!n) return "";
-
-  if (!n.startsWith("52")) {
-    n = "52" + n;
-  }
-
+  if (!n.startsWith("52")) n = "52" + n;
   const enc = encodeURIComponent(text);
   return `https://wa.me/${n}${enc ? `?text=${enc}` : ""}`;
 }
@@ -50,8 +44,8 @@ export default function ConnectMega({
   const mailHref  = email ? `mailto:${email}` : "";
   const waHref    = phone ? waLink(phone, `Hola ${storeName || ""}, me gustaría recibir información.`) : "";
 
-  // Sanitizar y normalizar: solo si traen valor, convierto a URL
- const fb  = hasVal(socials.facebook)  ? ensureHttp(socials.facebook)  : "";
+  // Sanitizar y normalizar
+  const fb  = hasVal(socials.facebook)  ? ensureHttp(socials.facebook)  : "";
   const ig  = hasVal(socials.instagram) ? ensureHttp(socials.instagram) : "";
   const xx  = hasVal(socials.twitter)   ? ensureHttp(socials.twitter)   : "";
   const tkt = hasVal(socials.tiktok)    ? ensureHttp(socials.tiktok)    : "";
@@ -60,10 +54,11 @@ export default function ConnectMega({
   return (
     <section className={`connect-mega ${spaceTopClass} ${spaceBottomClass}`}>
       <div className="cm-wrap">
+        {/* fondo: puedes mantener el gradient o dejarlo oscuro plano */}
         <div className="cm-bg" />
         <div className="container">
           <div className={`cm-grid ${hasSocials ? "has-socials" : "no-socials"}`}>
-            {/* IZQUIERDA: overlay translúcido + texto con contraste */}
+            {/* IZQUIERDA */}
             <div className="cm-left">
               <span className="cm-kicker">Conecta con nosotros</span>
               <h3 className="cm-title">
@@ -79,7 +74,7 @@ export default function ConnectMega({
                   </a>
                 )}
                 {waHref && (
-                  <a className="cm-btn ghost" href={waHref} target="_blank" rel="noopener noreferrer">
+                  <a className="cm-btn outline" href={waHref} target="_blank" rel="noopener noreferrer">
                     <IconWA size={20}/> <span>WhatsApp</span>
                   </a>
                 )}
@@ -97,99 +92,120 @@ export default function ConnectMega({
               </ul>
             </div>
 
-            {/* DERECHA: tarjeta social */}
-{/* DERECHA: tarjeta social (solo si hay al menos una red) */}
-  {hasSocials && (
-    <div className="cm-right">
-      <div className="cm-card">
-        <h4 className="cm-card-title">Síguenos</h4>
-        <p className="cm-card-desc">Novedades, promociones y atención por mensaje.</p>
-        <div className="cm-socials">
-          {fb  && <a href={fb}  target="_blank" rel="noopener noreferrer" className="cm-social"><IconFB /><span>Facebook</span></a>}
-          {ig  && <a href={ig}  target="_blank" rel="noopener noreferrer" className="cm-social"><IconIG /><span>Instagram</span></a>}
-          {xx  && <a href={xx}  target="_blank" rel="noopener noreferrer" className="cm-social"><IconX  /><span>Twitter (X)</span></a>}
-          {tkt && <a href={tkt} target="_blank" rel="noopener noreferrer" className="cm-social"><IconTT /><span>TikTok</span></a>}
-        </div>
-      </div>
-    </div>
-  )}
+            {/* DERECHA (solo si hay redes) */}
+            {hasSocials && (
+              <div className="cm-right">
+                <div className="cm-card">
+                  <h4 className="cm-card-title">Síguenos</h4>
+                  <p className="cm-card-desc">Novedades, promociones y atención por mensaje.</p>
+                  <div className="cm-socials">
+                    {fb  && <a href={fb}  target="_blank" rel="noopener noreferrer" className="cm-social"><IconFB /><span>Facebook</span></a>}
+                    {ig  && <a href={ig}  target="_blank" rel="noopener noreferrer" className="cm-social"><IconIG /><span>Instagram</span></a>}
+                    {xx  && <a href={xx}  target="_blank" rel="noopener noreferrer" className="cm-social"><IconX  /><span>Twitter (X)</span></a>}
+                    {tkt && <a href={tkt} target="_blank" rel="noopener noreferrer" className="cm-social"><IconTT /><span>TikTok</span></a>}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Styles */}
       <style>{`
-        .connect-mega { position: relative; }
+        /* ===== Paleta (igual que filtros) ===== */
+        .connect-mega {
+          --txt: rgba(255,255,255,0.92);
+          --muted: rgba(255,255,255,0.62);
+          --stroke: rgba(255,255,255,0.10);
+          --accent: #7C4DFF;
+          --accent-soft: rgba(124,77,255,0.12);
+          --cyan: #76E0FF;
+          --cyan-soft: rgba(118,224,255,0.10);
+          --pink: #FF5EA6;
+          --pink-soft: rgba(255,94,166,0.12);
+          --bg-card: linear-gradient(180deg, rgba(10,12,16,0.92) 0%, rgba(12,14,20,0.92) 100%);
+          --void-shadow: 0 30px 80px rgba(0,0,0,0.45);
+        }
+
         .cm-wrap { position: relative; overflow: hidden; border-radius: 22px; }
         .cm-bg {
           position: absolute; inset: 0;
           background: linear-gradient(135deg, #6EC1E4 0%, #A777E3 50%, #56E39F 100%);
-          opacity: 0.95;
+          opacity: 0.28; /* más tenue para que se lea bien el dark */
         }
         .container { position: relative; z-index: 1; }
+
         .cm-grid {
-          display: grid; gap: 48px;
+          display: grid; gap: 32px;
           grid-template-columns: 1.1fr 0.9fr;
-          padding: 84px 40px;
-          color: #0f172a;
+          padding: 42px 28px;
+          color: var(--txt);
+          background: var(--bg-card);
+          border: 1px solid var(--stroke);
+          border-radius: 20px;
+          box-shadow: var(--void-shadow), inset 0 0 0 1px rgba(255,255,255,0.03);
+          backdrop-filter: blur(8px);
         }
+        .cm-grid.has-socials { grid-template-columns: 1.1fr 0.9fr; }
+        .cm-grid.no-socials  { grid-template-columns: 1fr; }
         @media (max-width: 992px){
-          .cm-grid { grid-template-columns: 1fr; padding: 64px 24px; }
+          .cm-grid { grid-template-columns: 1fr; padding: 28px 20px; }
           .cm-right { order: -1; }
         }
 
-        /* LEFT overlay */
+        /* LEFT card (glassy oscuro) */
         .cm-left {
-          background: rgba(255,255,255,.58);
+          background: rgba(255,255,255,0.04);
           backdrop-filter: blur(6px);
-          padding: 26px 26px 28px;
+          padding: 22px;
           border-radius: 18px;
-          box-shadow: 0 6px 20px rgba(0,0,0,.08);
+          border: 1px solid var(--stroke);
+          box-shadow: 0 10px 35px rgba(0,0,0,.2), inset 0 0 0 1px rgba(255,255,255,0.02);
         }
 
-        .cm-kicker { display:inline-block; letter-spacing:.14em; font-size:13px; text-transform:uppercase; opacity:.85; margin-bottom:10px }
-        .cm-title { font-size: clamp(34px, 4.4vw, 52px); line-height:1.12; margin: 0 0 12px; color:#0f172a; text-shadow: 0 1px 3px rgba(0,0,0,.25); }
-        .cm-subtitle { margin:0 0 24px; font-size:18px; color:#1e293b; text-shadow: 0 1px 2px rgba(0,0,0,.18); }
+        .cm-kicker { display:inline-block; letter-spacing:.14em; font-size:12px; text-transform:uppercase; color: var(--cyan); background: var(--cyan-soft); border:1px solid var(--stroke); padding:6px 10px; border-radius: 10px; margin-bottom:12px; font-weight:800 }
+        .cm-title { font-size: clamp(28px, 4.2vw, 42px); line-height:1.12; margin: 0 0 8px; color: var(--txt); text-shadow: 0 1px 3px rgba(0,0,0,.25); }
+        .cm-subtitle { margin:0 0 20px; font-size:16px; color: var(--muted); }
 
-        .cm-ctas { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:22px }
+        .cm-ctas { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:18px }
         .cm-btn {
           display:inline-flex; align-items:center; gap:10px;
-          padding: 14px 22px; border-radius: 14px; font-weight:700;
-          border:1px solid rgba(0,0,0,.12); text-decoration:none;
-          transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease;
+          padding: 12px 18px; border-radius: 14px; font-weight:800;
+          border:1px solid var(--stroke); text-decoration:none;
+          transition: transform .15s ease, background .15s ease, border-color .15s ease, box-shadow .15s ease, color .15s ease;
+          color: var(--txt);
+          background: rgba(255,255,255,0.04);
         }
-        .cm-btn.primary { background: #fff; color:#0f172a; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
-        .cm-btn.ghost { background: rgba(255,255,255,.9); color:#0f172a; font-weight:600; }
-        .cm-btn:hover { transform: translateY(-2px); background:#fff; border-color:#999; box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+        .cm-btn.primary { background:#fff; color:#0B0E12; box-shadow: 0 12px 26px rgba(118,224,255,0.30); border-color: transparent; }
+        .cm-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 18px 44px rgba(118,224,255,0.38); }
+        .cm-btn.outline { border-color: var(--cyan); color: var(--cyan); background: transparent; }
+        .cm-btn.outline:hover { background: var(--cyan-soft); }
+        .cm-btn.ghost:hover { border-color: var(--accent); background: var(--accent-soft); }
 
-        .cm-trust { display:flex; gap:24px; padding:0; margin:6px 0 0; list-style:none; opacity:.95; flex-wrap:wrap; font-size:14px; color:#0f172a; }
-        .cm-trust li::before { content:"✓ "; color:#0f172a; font-weight:700 }
+        .cm-trust { display:flex; gap:18px; padding:0; margin:6px 0 0; list-style:none; color: var(--muted); flex-wrap:wrap; font-size:13px; }
+        .cm-trust li::before { content:"✓ "; color: var(--txt); font-weight:900 }
 
+        /* RIGHT card */
         .cm-card {
-          background: rgba(255,255,255,.78); backdrop-filter: blur(12px);
-          border-radius: 20px; padding: 28px;
-          box-shadow: 0 10px 35px rgba(0,0,0,.15);
+          background: rgba(255,255,255,.05); backdrop-filter: blur(10px);
+          border-radius: 18px; padding: 22px;
+          border: 1px solid var(--stroke);
+          box-shadow: 0 10px 35px rgba(0,0,0,.18), inset 0 0 0 1px rgba(255,255,255,0.02);
         }
-        .cm-card-title { margin:0 0 8px; font-size:20px; color:#0f172a }
-        .cm-card-desc { margin:0 0 18px; opacity:.9; font-size:15px; color:#1e293b }
-        .cm-socials { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:14px }
+        .cm-card-title { margin:0 0 6px; font-size:18px; color: var(--txt); font-weight:900 }
+        .cm-card-desc { margin:0 0 16px; font-size:14px; color: var(--muted) }
+
+        .cm-socials { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px }
         @media (max-width: 480px){ .cm-socials { grid-template-columns: 1fr } }
         .cm-social {
-          display:flex; align-items:center; gap:12px;
-          padding:14px 16px; border-radius:14px; text-decoration:none;
-          color:#0f172a; font-weight:600; font-size:15px;
-          border:1px solid rgba(0,0,0,.1); background: rgba(255,255,255,.92);
-          transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+          display:flex; align-items:center; gap:10px;
+          padding:12px 14px; border-radius:12px; text-decoration:none;
+          color: var(--txt); font-weight:800; font-size:14px;
+          border:1px solid var(--stroke); background: rgba(255,255,255,.04);
+          transition: transform .15s ease, background .15s ease, box-shadow .15s ease, border-color .15s ease;
         }
-        .cm-social:hover { transform: translateY(-2px); background:#fff; box-shadow: 0 6px 16px rgba(0,0,0,.12); }
-        .cm-empty { opacity:.7 }
-        .cm-grid.has-socials {
-  grid-template-columns: 1.1fr 0.9fr;
-}
-
-.cm-grid.no-socials {
-  grid-template-columns: 1fr;
-}
+        .cm-social:hover { transform: translateY(-2px); background: var(--accent-soft); border-color: var(--accent); box-shadow: 0 10px 24px rgba(124,77,255,0.35); }
 
       `}</style>
     </section>

@@ -7,6 +7,7 @@ import SEO from "../../components/seo";
 import HeroSliderFourteen from "../../wrappers/hero-slider/HeroSliderFourteen";
 import SectionTitleWithText from "../../components/section-title/SectionTitleWithText";
 import Catalogo from "../shop/Catalogo";
+import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
 import TiendaNoDisponible from "../other/TiendaNoDisponible";
 
 const DEFAULTS = {
@@ -77,15 +78,9 @@ export default function HomeFashionSix() {
       {/* Siempre muestra el catálogo */}
       <Catalogo key={storeSlug} />
 
-      {/* Módulo de texto solo si hay config */}
-      {hasConfig && (
-        <SectionTitleWithText
-          spaceTopClass="pt-95"
-          spaceBottomClass="pb-90"
-          title={titulo1}
-          text={descripcion}
-        />
-      )}
+
+      <BlogFeatured
+              />
     </Fragment>
   );
 }

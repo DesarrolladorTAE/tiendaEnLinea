@@ -1,36 +1,40 @@
 import React, { useMemo, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import Slider from "react-slick";
-import { Box, Modal, IconButton, Button, Typography } from "@mui/material";
+import { Box, Modal, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
 const BlogFeatured = ({ images = [], storeName = "" }) => {
   const [openImage, setOpenImage] = useState(null);
   const scrollYRef = useRef(0);
 
+  const hasImages = images && images.length > 0;
+
+  // 🔹 Si no hay imágenes → mostrar mensaje fijo
   const title = useMemo(() => {
+    if (!hasImages) {
+      return "Conoce más sobre los productos de TAE";
+    }
     const s = (storeName || "").trim();
     return s ? `Conoce más sobre ${s}` : "Conoce más";
-  }, [storeName]);
-
-  const hasImages = images && images.length > 0;
+  }, [storeName, hasImages]);
 
   const settings = {
     dots: false,
     arrows: false,
     infinite: true,
     autoplay: true,
-    autoplaySpeed: 0,   // sin pausa
-    speed: 5000,        // velocidad del desplazamiento
-    cssEase: "linear",  // movimiento constante
+    autoplaySpeed: 0,
+    speed: 5000,
+    cssEase: "linear",
     slidesToShow: 4,
     slidesToScroll: 1,
     pauseOnHover: false,
     responsive: [
       { breakpoint: 1200, settings: { slidesToShow: 4 } },
-      { breakpoint: 992,  settings: { slidesToShow: 3 } },
-      { breakpoint: 768,  settings: { slidesToShow: 2 } },
-      { breakpoint: 576,  settings: { slidesToShow: 1 } },
+      { breakpoint: 992, settings: { slidesToShow: 3 } },
+      { breakpoint: 768, settings: { slidesToShow: 2 } },
+      { breakpoint: 576, settings: { slidesToShow: 1 } },
     ],
   };
 
@@ -49,7 +53,6 @@ const BlogFeatured = ({ images = [], storeName = "" }) => {
 
   const openModal = (item) => {
     scrollYRef.current = window.scrollY || window.pageYOffset || 0;
-    // Congelar body sin provocar salto
     const body = document.body;
     body.style.position = "fixed";
     body.style.top = `-${scrollYRef.current}px`;
@@ -99,7 +102,6 @@ const BlogFeatured = ({ images = [], storeName = "" }) => {
                     loading="lazy"
                   />
                 </div>
-                {/* Quitado el nombre por imagen */}
               </button>
             </Box>
           ))}
@@ -109,7 +111,6 @@ const BlogFeatured = ({ images = [], storeName = "" }) => {
         <Modal
           open={Boolean(openImage)}
           onClose={closeModal}
-          // Usamos nuestro propio scroll lock para evitar saltos:
           disableScrollLock
           sx={{
             display: "flex",
@@ -130,7 +131,6 @@ const BlogFeatured = ({ images = [], storeName = "" }) => {
               boxShadow: 24,
             }}
           >
-            {/* X para cerrar (fija y visible) */}
             <IconButton
               onClick={closeModal}
               aria-label="Cerrar"
@@ -160,25 +160,19 @@ const BlogFeatured = ({ images = [], storeName = "" }) => {
                 boxShadow: "0 20px 60px rgba(0,0,0,.35)",
               }}
             />
-            {/* Quitado el título dentro del modal */}
           </Box>
         </Modal>
-
-        
       </div>
     </Box>
   );
 };
 
 const styles = `
-/* Header compartido (igual que BannerTwo) */
 .b2-header{
   display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px;
 }
 .b2-title{ margin:0; font-weight:800; letter-spacing:.2px; }
 .b2-legend{ font-size:.9rem; opacity:.7 }
-
-/* Tarjeta y botón (igual que BannerTwo) */
 .b2-card-btn{
   width:100%; border:none; background:transparent; padding:0; cursor:pointer; text-align:initial;
 }

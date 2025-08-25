@@ -60,6 +60,20 @@ const ProductGridListSingle = ({
     };
     dispatch(addToWhatsappCart(p));
   };
+  // dentro del componente:
+  const handleWhatsappFromModal = () => {
+    const priceToUse = product.discount
+      ? (discounted ?? product.price)
+      : product.price;
+
+    dispatch(addToWhatsappCart({
+      id: product.id,
+      name: product.name,
+      price: priceToUse
+    }));
+    // opcional: cierra el modal aquí si quieres
+    setModalShow(false);
+  };
 
   // Tilt 3D suave
   const onMouseMove = (e) => {
@@ -133,7 +147,7 @@ const ProductGridListSingle = ({
               className="btn-glow"
               onClick={(e) => (e.stopPropagation(), handleAddToWhatsapp())}
             >
-              <i className="pe-7s-chat" /> WhatsApp
+              <i className="pe-7s-cart" /> Añadir al Carrito
             </button>
           </div>
         </div>
@@ -181,12 +195,13 @@ const ProductGridListSingle = ({
       <ProductModal
         show={modalShow}
         onHide={() => setModalShow(false)}
-        images={images} 
+        images={images}
         product={product}
         currency={currency}
         discountedPrice={discounted}
         finalProductPrice={final}
         finalDiscountedPrice={finalDiscount}
+        onWhatsapp={handleWhatsappFromModal}  
         wishlistItem={wishlistItem}
         compareItem={compareItem}
       />
@@ -204,7 +219,7 @@ ProductGridListSingle.propTypes = {
   wishlistItem: PropTypes.object,
   compareItem: PropTypes.object,
   spaceBottomClass: PropTypes.string,
-  
+
 };
 
 export default ProductGridListSingle;
