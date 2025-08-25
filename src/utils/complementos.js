@@ -21,9 +21,9 @@ const complementos = [
   },
   {
     complemento_id: 4,
-    nombre: "🧾 Implementación autofacturación CFDI",
-    precio: 1500,
-    tipo: "único"
+    nombre: "🧾 Implementación Autofacturación CFDI",
+    precio: 149,
+    tipo: "mensual"
   },
   {
     complemento_id: 5,

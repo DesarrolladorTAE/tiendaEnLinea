@@ -35,6 +35,32 @@ const regimenesFiscales = [
   { codigo: "626", nombre: "626 - Régimen Simplificado de Confianza" },
 ];
 
+// NUEVO: catálogo de usos de CFDI
+const usosCfdi = [
+  { codigo: "G01", nombre: "G01 - Adquisición de mercancías" },
+  { codigo: "G02", nombre: "G02 - Devoluciones, descuentos o bonificaciones" },
+  { codigo: "G03", nombre: "G03 - Gastos en general" },
+  { codigo: "I01", nombre: "I01 - Construcciones" },
+  { codigo: "I02", nombre: "I02 - Mobiliario y equipo de oficina por inversiones" },
+  { codigo: "I03", nombre: "I03 - Equipo de transporte" },
+  { codigo: "I04", nombre: "I04 - Equipo de cómputo y accesorios" },
+  { codigo: "I05", nombre: "I05 - Dados, troqueles, moldes, matrices y herramental" },
+  { codigo: "I06", nombre: "I06 - Comunicaciones telefónicas" },
+  { codigo: "I07", nombre: "I07 - Comunicaciones satelitales" },
+  { codigo: "I08", nombre: "I08 - Otra maquinaria y equipo" },
+  { codigo: "D01", nombre: "D01 - Honorarios médicos, dentales y hospitalarios" },
+  { codigo: "D02", nombre: "D02 - Gastos médicos por incapacidad o discapacidad" },
+  { codigo: "D03", nombre: "D03 - Gastos funerales" },
+  { codigo: "D04", nombre: "D04 - Donativos" },
+  { codigo: "D05", nombre: "D05 - Intereses reales por créditos hipotecarios" },
+  { codigo: "D06", nombre: "D06 - Aportaciones voluntarias al SAR" },
+  { codigo: "D07", nombre: "D07 - Primas por seguros de gastos médicos" },
+  { codigo: "D08", nombre: "D08 - Gastos de transportación escolar obligatoria" },
+  { codigo: "D09", nombre: "D09 - Depósitos para el ahorro, primas, etc." },
+  { codigo: "D10", nombre: "D10 - Pagos por servicios educativos (colegiaturas)" },
+  { codigo: "P01", nombre: "P01 - Por definir" },
+];
+
 const emptyCliente = {
   nombre_alias: "",
   rfc: "",
@@ -59,8 +85,8 @@ export default function FacturarVentaDialog({
   onClose,
   venta,                 // { id, folio, fecha, total, tipoPago }
   clientes = [],         // opciones iniciales
-  onSubmitFactura,       // async ({ ventaId, cliente_id?, cliente_nuevo? })
-  loading = false,       // loading externo (p.ej. clientes)
+  onSubmitFactura,       // async ({ ventaId, cliente_id?, cliente_nuevo?, usoCfdi })
+  loading = false,       // loading externo (p.ej. clientes o timbrado)
   posLocationId,         // opcional: para ?pos_location_id=XX
 }) {
   const [submitting, setSubmitting] = React.useState(false);
@@ -75,6 +101,9 @@ export default function FacturarVentaDialog({
   const [form, setForm] = React.useState(emptyCliente);
   const [errors, setErrors] = React.useState({});
 
+  // NUEVO: Uso de CFDI
+  const [usoCfdiSel, setUsoCfdiSel] = React.useState("G03");
+
   const isLocked = !!clienteSel?.id; // bloquear inputs si hay cliente seleccionado
 
   // Reset al abrir
@@ -86,6 +115,7 @@ export default function FacturarVentaDialog({
     setForm(emptyCliente);
     setErrors({});
     setSubmitting(false);
+    setUsoCfdiSel("G03"); // default cada vez que abre
   }, [open, clientes]);
 
   // Rellenar / limpiar form según selección
@@ -150,14 +180,22 @@ export default function FacturarVentaDialog({
     try {
       setSubmitting(true);
       if (isLocked) {
-        await onSubmitFactura?.({ ventaId: venta?.id, cliente_id: clienteSel.id });
+        await onSubmitFactura?.({
+          ventaId: venta?.id,
+          cliente_id: clienteSel.id,
+          usoCfdi: usoCfdiSel,
+        });
       } else {
         if (!validate()) { setSubmitting(false); return; }
         const payloadCliente = {
           ...form,
           rfc: form.rfc?.toUpperCase().replace(/\s+/g, "") || null,
         };
-        await onSubmitFactura?.({ ventaId: venta?.id, cliente_nuevo: payloadCliente });
+        await onSubmitFactura?.({
+          ventaId: venta?.id,
+          cliente_nuevo: payloadCliente,
+          usoCfdi: usoCfdiSel,
+        });
       }
       onClose?.();
     } finally {
@@ -345,7 +383,6 @@ export default function FacturarVentaDialog({
                   helperText={form.regimen_codigo ? `Seleccionado: ${form.regimen_codigo}` : "Selecciona el régimen"}
                   SelectProps={{ displayEmpty: true }}
                 >
-                  {/* <MenuItem value=""><em>Seleccione un régimen</em></MenuItem> */}
                   {regimenesFiscales.map((r) => (
                     <MenuItem key={r.codigo} value={r.codigo}>{r.nombre}</MenuItem>
                   ))}
@@ -390,6 +427,24 @@ export default function FacturarVentaDialog({
                     ),
                   }}
                 />
+              </Grid>
+
+              {/* NUEVO: USO CFDI */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  select
+                  label="Uso de CFDI"
+                  value={usoCfdiSel}
+                  onChange={(e) => setUsoCfdiSel(e.target.value)}
+                  fullWidth
+                  helperText="Selecciona el uso fiscal del comprobante"
+                >
+                  {usosCfdi.map((u) => (
+                    <MenuItem key={u.codigo} value={u.codigo}>
+                      {u.nombre}
+                    </MenuItem>
+                  ))}
+                </TextField>
               </Grid>
             </Grid>
 

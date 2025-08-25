@@ -52,55 +52,53 @@ export default function ComprasSuscripcionesView({
   // --- Estado de datos ---
   const [ventasRaw, setVentasRaw] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // --- Estado para facturación ---
   const [openFacturar, setOpenFacturar] = useState(false);
   const [ventaActiva, setVentaActiva] = useState(null);
+  const [facturando, setFacturando] = useState(false);
+
+  // --- Clientes (para el modal) ---
   const [clientes, setClientes] = useState([]);
   const [clientesLoading, setClientesLoading] = useState(false);
 
-
-useEffect(() => {
-  let alive = true;
-  (async () => {
-    setClientesLoading(true);
-    try {
-      const { data } = await axiosClient.get("/clientes"); // <-- sin params
-      if (alive) setClientes(Array.isArray(data) ? data : []);
-    } catch {
-      if (alive) setClientes([]);
-    } finally {
-      if (alive) setClientesLoading(false);
-    }
-  })();
-  return () => { alive = false; };
-}, []);
-
-  const onFacturar = (row) => {
-    setVentaActiva(row);
-    setOpenFacturar(true);
-  };
-  // enviar factura (cliente existente o nuevo)
-  const onSubmitFactura = async ({ ventaId, cliente_id, cliente_nuevo }) => {
-    // ejemplo de integración:
-    // if (cliente_id) await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente_id });
-    // else await axiosClient.post(`/ventas/${ventaId}/facturar`, { cliente: cliente_nuevo });
-    console.log("Facturar:", { ventaId, cliente_id, cliente_nuevo });
-  };
-
-  // --- Carga inicial de ventas del POS autenticado ---
+  // Cargar clientes base
   useEffect(() => {
     let alive = true;
     (async () => {
-      setLoading(true);
+      setClientesLoading(true);
       try {
-        // Si luego filtras por mes en backend: { params: { mes } }
-        const { data } = await axiosClient.get("/ventas/pos/historial");
-        if (alive) setVentasRaw(Array.isArray(data) ? data : []);
-      } catch (err) {
-        if (alive) setVentasRaw([]);
-        // Puedes loguear el error si quieres: console.error(err);
+        const { data } = await axiosClient.get("/clientes"); // <-- sin params
+        if (alive) setClientes(Array.isArray(data) ? data : []);
+      } catch {
+        if (alive) setClientes([]);
       } finally {
-        if (alive) setLoading(false);
+        if (alive) setClientesLoading(false);
       }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // --- Carga inicial de ventas del POS autenticado ---
+  const fetchVentas = async () => {
+    setLoading(true);
+    try {
+      // Si luego filtras por mes en backend: { params: { mes } }
+      const { data } = await axiosClient.get("/ventas/pos/historial");
+      setVentasRaw(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setVentasRaw([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      await fetchVentas();
     })();
     return () => {
       alive = false;
@@ -128,20 +126,122 @@ useEffect(() => {
       }));
   }, [ventasRaw, mes, folio]);
 
-  // --- (Pendiente) Clientes del mes ---
-  // const clientesRows = useMemo(() => {
-
-  //   return [];
-  // }, []);
-
   // --- Handlers UI ---
   const onChangeMes = (e) => setMes(e.target.value);
   const onChangeFolio = (e) => setFolio(e.target.value);
   const onSearch = () => {}; // el filtrado por folio ya es reactivo
 
-  // const onClickFacturar = (row) => {
-  //   console.log("Facturar venta:", row);
-  // };
+  const onFacturar = (row) => {
+    setVentaActiva(row);
+    setOpenFacturar(true);
+  };
+
+  // Helpers
+  const showAlert = (titulo, cuerpo) => {
+    // Cambia por Snackbar / SweetAlert si lo deseas
+    window.alert(`${titulo}${cuerpo ? `\n\n${cuerpo}` : ""}`);
+  };
+
+  const reloadVentas = async () => {
+    await fetchVentas();
+  };
+
+  /**
+   * Crea cliente (si aplica) y timbra la venta seleccionada.
+   * Espera: { ventaId, cliente_id?, cliente_nuevo?, usoCfdi? }
+   */
+  const onSubmitFactura = async ({ ventaId, cliente_id, cliente_nuevo, usoCfdi }) => {
+    if (!ventaId) {
+      showAlert("Error", "No se recibió el ID de la venta.");
+      return;
+    }
+    try {
+      setFacturando(true);
+
+      // 1) Resolver cliente_id: crear si viene cliente_nuevo
+      let clienteId = cliente_id ?? null;
+      if (!clienteId && cliente_nuevo) {
+        try {
+          const { data: created } = await axiosClient.post("/clientes", cliente_nuevo);
+          // Asume que tu API regresa { id } o { data: { id } }
+          clienteId = created?.id ?? created?.data?.id;
+          if (!clienteId) {
+            showAlert("Error al crear cliente", "La API no devolvió un ID de cliente.");
+            return;
+          }
+        } catch (err) {
+          const msg = err?.response?.data?.message || "No fue posible crear el cliente.";
+          showAlert("Error al crear cliente", msg);
+          return;
+        }
+      }
+
+      if (!clienteId) {
+        showAlert("Datos incompletos", "Selecciona un cliente o captura uno nuevo.");
+        return;
+      }
+
+      // 2) Timbrar la venta con el cliente y uso de CFDI seleccionado
+      const payload = {
+        cliente_id: clienteId,
+        sales: [ventaId],
+        usoCfdi: usoCfdi || "G03", // default
+        // Puedes extender con metodoPago/formaPago/serie/folio/tipoComprobante si lo requieres:
+        // metodoPago: "PUE",
+        // formaPago: "01",
+        // serie: "1",
+        // folio: "1",
+        // tipoComprobante: "I",
+      };
+
+      const { data: resp, status } = await axiosClient.post("/admin/facturar/ventas", payload);
+      console.log("[FACTURAR] status:", status, resp);
+      // 3) Interpretar respuesta (200 OK, 207 multi-estatus o error)
+      if (status === 200 || status === 207) {
+        const ventas = Array.isArray(resp?.ventas) ? resp.ventas : [];
+        const actual = ventas.find((v) => String(v.sale_id) === String(ventaId));
+
+        if (!actual) {
+          showAlert("Timbrado", resp?.mensaje || "Operación realizada.");
+        } else {
+          if (actual.ok) {
+            const enlaces = [
+              actual.pdf_url ? `PDF: ${actual.pdf_url}` : null,
+              actual.xml_url ? `XML: ${actual.xml_url}` : null,
+            ]
+              .filter(Boolean)
+              .join("\n");
+            const extras = (actual.alertas || []).join("\n- ");
+            showAlert(
+              "Venta timbrada ✅",
+              `Folio interno: ${ventaId}\nFactura ID: ${actual.factura_id || "—"}${
+                enlaces ? `\n\n${enlaces}` : ""
+              }${extras ? `\n\nAlertas:\n- ${extras}` : ""}`
+            );
+          } else if (actual.status === "saltada") {
+            showAlert("Venta saltada", (actual.alertas || []).join("\n- ") || "Ya estaba facturada.");
+          } else {
+            const errTxt =
+              typeof actual.error === "string"
+                ? actual.error
+                : JSON.stringify(actual.error || {}, null, 2);
+            showAlert("Error al timbrar", errTxt);
+          }
+        }
+
+        // 4) Refrescar tabla
+        await reloadVentas();
+        return;
+      }
+
+      showAlert("Respuesta inesperada", JSON.stringify(resp || {}, null, 2));
+    } catch (err) {
+      const msg = err?.response?.data?.message || err?.message || "Error desconocido al timbrar.";
+      showAlert("Fallo en timbrado", msg);
+    } finally {
+      setFacturando(false);
+    }
+  };
 
   // Helper (respeta acentos y Unicode)
   const capitalizeFirst = (s) => s.replace(/^\p{L}/u, (m) => m.toUpperCase());
@@ -181,30 +281,29 @@ useEffect(() => {
         </Stack>
       </Box>
 
-      {/* Encabezado */}
-      <Typography
-        variant="h6"
-        sx={{
-          mb: 1.5,
-          fontWeight: 700,
-          color: "primary.main",
-          letterSpacing: 0.5,
-          display: "inline-block",
-          borderBottom: (theme) =>
-            `3px solid ${
-              theme.palette.mode === "dark"
-                ? theme.palette.primary.light
-                : theme.palette.primary.main
-            }`,
-          pb: 0.5,
-        }}
-      >
-        {tituloMes}
-      </Typography>
       {/* Contenido */}
-      <Grid container spacing={2}>
-        {/* Filtros */}
-        <Grid item xs={12}>
+      <Grid container spacing={2} sx={{ width: "100%", m: 0 }}>
+        {/* Tabla */}
+        <Grid item xs={2}>
+          <Typography
+            variant="h6"
+            sx={{
+              mb: 1.5,
+              fontWeight: 700,
+              color: "primary.main",
+              letterSpacing: 0.5,
+              display: "inline-block",
+              borderBottom: (theme) =>
+                `3px solid ${
+                  theme.palette.mode === "dark"
+                    ? theme.palette.primary.light
+                    : theme.palette.primary.main
+                }`,
+              pb: 0.5,
+            }}
+          >
+            {tituloMes}
+          </Typography>
           <FiltersBar
             mes={mes}
             folio={folio}
@@ -212,16 +311,10 @@ useEffect(() => {
             onChangeFolio={onChangeFolio}
             onSearch={onSearch}
           />
-        </Grid>
-
-        {/* Tabla */}
-        <Grid item xs={12}>
-          <SalesTable
-            rows={loading ? [] : ventasRows}
-            onFacturar={onFacturar}
-          />
+          <SalesTable rows={loading ? [] : ventasRows} onFacturar={onFacturar} />
         </Grid>
       </Grid>
+
       {/* MODAL: colócalo al final, fuera de la tabla */}
       <FacturarVentaDialog
         open={openFacturar}
@@ -234,12 +327,13 @@ useEffect(() => {
           tipoPago: ventaActiva?.tipoPago,
         }}
         clientes={clientes}
-        loading={clientesLoading}
-        onSubmitFactura={({ cliente_id, cliente_nuevo }) =>
+        loading={clientesLoading || facturando}
+        onSubmitFactura={({ cliente_id, cliente_nuevo, usoCfdi }) =>
           onSubmitFactura({
             ventaId: ventaActiva?.id,
             cliente_id,
             cliente_nuevo,
+            usoCfdi, // 👈 se envía al endpoint /facturar/cliente
           })
         }
       />

@@ -85,7 +85,7 @@ const Category = () => {
   const handleDeleteConfirm = async () => {
     setLoading(true);
     try {
-      await axiosClient.delete(`admin/categories/${form.editingId}`);
+     await axiosClient.delete(`admin/categories/${deleteDialog.id}`);
       setCategories((prev) => prev.filter((cat) => cat.id !== deleteDialog.id));
       showSnackbar("Categoría eliminada correctamente");
       setDeleteDialog({ open: false, id: null });
