@@ -8,8 +8,15 @@ const LoginForm = ({
   togglePassword,
   loading,
 }) => {
+  const handleSubmit = (e) => {
+    e.preventDefault();     // 🚫 evita refresh
+    e.stopPropagation();    // 🚫 evita bubbling raro
+    if (loading) return;    // 🚫 evita doble submit
+    onSubmit(e);            // 🔗 delega al handler del padre
+  };
+
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={handleSubmit} noValidate autoComplete="off">
       <input
         type="text"
         className="form-control mb-3"
@@ -26,11 +33,13 @@ const LoginForm = ({
           className="form-control"
           placeholder="Contraseña"
           value={loginData.password}
-          onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+          onChange={(e) =>
+            setLoginData({ ...loginData, password: e.target.value })
+          }
           required
         />
         <button
-          type="button"
+          type="button" // 👈 importante: no submit
           onClick={togglePassword}
           aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
           title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}

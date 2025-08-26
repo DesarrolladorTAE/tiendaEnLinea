@@ -14,52 +14,13 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import axiosClientPOS from "../../config/axiosClientPOS";
 
-const regimenesFiscales = [
-  { codigo: "601", nombre: "601 - General de Ley Personas Morales" },
-  { codigo: "603", nombre: "603 - Personas Morales con Fines no Lucrativos" },
-  { codigo: "605", nombre: "605 - Sueldos y Salarios e Ingresos Asimilados a Salarios" },
-  { codigo: "606", nombre: "606 - Arrendamiento" },
-  { codigo: "608", nombre: "608 - Demás ingresos" },
-  { codigo: "610", nombre: "610 - Residentes en el Extranjero sin Establecimiento Permanente en México" },
-  { codigo: "611", nombre: "611 - Ingresos por Dividendos (socios y accionistas)" },
-  { codigo: "612", nombre: "612 - Personas Físicas con Actividades Empresariales y Profesionales" },
-  { codigo: "614", nombre: "614 - Ingresos por intereses" },
-  { codigo: "615", nombre: "615 - Régimen de los ingresos por obtención de premios" },
-  { codigo: "616", nombre: "616 - Sin obligaciones fiscales" },
-  { codigo: "620", nombre: "620 - Sociedades Cooperativas de Producción que optan por diferir sus ingresos" },
-  { codigo: "621", nombre: "621 - Incorporación Fiscal" },
-  { codigo: "622", nombre: "622 - Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras" },
-  { codigo: "623", nombre: "623 - Opcional para Grupos de Sociedades" },
-  { codigo: "624", nombre: "624 - Coordinados" },
-  { codigo: "625", nombre: "625 - Actividades Empresariales con ingresos en Plataformas Tecnológicas" },
-  { codigo: "626", nombre: "626 - Régimen Simplificado de Confianza" },
-];
-
-// NUEVO: catálogo de usos de CFDI
-const usosCfdi = [
-  { codigo: "G01", nombre: "G01 - Adquisición de mercancías" },
-  { codigo: "G02", nombre: "G02 - Devoluciones, descuentos o bonificaciones" },
-  { codigo: "G03", nombre: "G03 - Gastos en general" },
-  { codigo: "I01", nombre: "I01 - Construcciones" },
-  { codigo: "I02", nombre: "I02 - Mobiliario y equipo de oficina por inversiones" },
-  { codigo: "I03", nombre: "I03 - Equipo de transporte" },
-  { codigo: "I04", nombre: "I04 - Equipo de cómputo y accesorios" },
-  { codigo: "I05", nombre: "I05 - Dados, troqueles, moldes, matrices y herramental" },
-  { codigo: "I06", nombre: "I06 - Comunicaciones telefónicas" },
-  { codigo: "I07", nombre: "I07 - Comunicaciones satelitales" },
-  { codigo: "I08", nombre: "I08 - Otra maquinaria y equipo" },
-  { codigo: "D01", nombre: "D01 - Honorarios médicos, dentales y hospitalarios" },
-  { codigo: "D02", nombre: "D02 - Gastos médicos por incapacidad o discapacidad" },
-  { codigo: "D03", nombre: "D03 - Gastos funerales" },
-  { codigo: "D04", nombre: "D04 - Donativos" },
-  { codigo: "D05", nombre: "D05 - Intereses reales por créditos hipotecarios" },
-  { codigo: "D06", nombre: "D06 - Aportaciones voluntarias al SAR" },
-  { codigo: "D07", nombre: "D07 - Primas por seguros de gastos médicos" },
-  { codigo: "D08", nombre: "D08 - Gastos de transportación escolar obligatoria" },
-  { codigo: "D09", nombre: "D09 - Depósitos para el ahorro, primas, etc." },
-  { codigo: "D10", nombre: "D10 - Pagos por servicios educativos (colegiaturas)" },
-  { codigo: "P01", nombre: "P01 - Por definir" },
-];
+// 👇 Util centralizado de catálogos y reglas
+import {
+  REGIMENES_FISCALES,
+  USOS_CFDI,
+  filtrarUsosPorRegimen,
+  esPersonaMoral
+} from "../../utils/cfdiCatalogos";
 
 const emptyCliente = {
   nombre_alias: "",
@@ -101,7 +62,7 @@ export default function FacturarVentaDialog({
   const [form, setForm] = React.useState(emptyCliente);
   const [errors, setErrors] = React.useState({});
 
-  // NUEVO: Uso de CFDI
+  // Uso de CFDI seleccionado
   const [usoCfdiSel, setUsoCfdiSel] = React.useState("G03");
 
   const isLocked = !!clienteSel?.id; // bloquear inputs si hay cliente seleccionado
@@ -137,7 +98,7 @@ export default function FacturarVentaDialog({
     }
   }, [clienteSel]);
 
-  // Búsqueda remota
+  // Búsqueda remota de clientes
   React.useEffect(() => {
     const controller = new AbortController();
     const run = async () => {
@@ -176,6 +137,25 @@ export default function FacturarVentaDialog({
     return Object.keys(next).length === 0;
   };
 
+  // Lista de USOS válidos según régimen (si no hay régimen, mostramos todo para que el usuario lo seleccione después)
+  const usosDisponibles = React.useMemo(() => {
+    const reg = (form.regimen_codigo || "").trim();
+    if (!reg) return USOS_CFDI;
+    return filtrarUsosPorRegimen(reg);
+  }, [form.regimen_codigo]);
+
+  // Si el uso elegido deja de ser válido al cambiar el régimen, lo reajustamos a uno válido (G03 si existe)
+  React.useEffect(() => {
+    if (!usoCfdiSel) return;
+    const reg = (form.regimen_codigo || "").trim();
+    if (!reg) return; // sin régimen no validamos aún
+    const sigueSiendoValido = usosDisponibles.some(u => u.codigo === usoCfdiSel);
+    if (!sigueSiendoValido) {
+      const fallback = usosDisponibles.find(u => u.codigo === "G03")?.codigo || usosDisponibles[0]?.codigo;
+      if (fallback) setUsoCfdiSel(fallback);
+    }
+  }, [form.regimen_codigo, usoCfdiSel, usosDisponibles]);
+
   const submit = async () => {
     try {
       setSubmitting(true);
@@ -202,6 +182,8 @@ export default function FacturarVentaDialog({
       setSubmitting(false);
     }
   };
+
+  const esPM = esPersonaMoral(form.regimen_codigo);
 
   return (
     <Dialog
@@ -383,7 +365,7 @@ export default function FacturarVentaDialog({
                   helperText={form.regimen_codigo ? `Seleccionado: ${form.regimen_codigo}` : "Selecciona el régimen"}
                   SelectProps={{ displayEmpty: true }}
                 >
-                  {regimenesFiscales.map((r) => (
+                  {REGIMENES_FISCALES.map((r) => (
                     <MenuItem key={r.codigo} value={r.codigo}>{r.nombre}</MenuItem>
                   ))}
                 </TextField>
@@ -411,6 +393,7 @@ export default function FacturarVentaDialog({
                 />
               </Grid>
 
+              {/* Email fiscal */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   label="Email (fiscal)"
@@ -429,7 +412,7 @@ export default function FacturarVentaDialog({
                 />
               </Grid>
 
-              {/* NUEVO: USO CFDI */}
+              {/* Uso de CFDI (filtrado por régimen) */}
               <Grid item xs={12} sm={6}>
                 <TextField
                   select
@@ -437,9 +420,16 @@ export default function FacturarVentaDialog({
                   value={usoCfdiSel}
                   onChange={(e) => setUsoCfdiSel(e.target.value)}
                   fullWidth
-                  helperText="Selecciona el uso fiscal del comprobante"
+                  helperText={
+                    form.regimen_codigo
+                      ? (esPM
+                        ? "Persona MORAL: ocultamos D01–D10 y opciones no permitidas."
+                        : "Persona FÍSICA: verás deducciones personales cuando apliquen."
+                        )
+                      : "Selecciona primero el régimen para ver usos válidos."
+                  }
                 >
-                  {usosCfdi.map((u) => (
+                  {(usosDisponibles.length ? usosDisponibles : USOS_CFDI).map((u) => (
                     <MenuItem key={u.codigo} value={u.codigo}>
                       {u.nombre}
                     </MenuItem>

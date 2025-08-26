@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/pages/other/LoginRegister.jsx
+import React, { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SEO from "../../components/seo";
 import axiosClient from "../../config/axiosClient";
@@ -7,8 +8,8 @@ import VerificationModal from "../../components/login/VerificationModal";
 import LoginForm from "../../components/login/LoginForm";
 import RegisterForm from "../../components/login/RegisterForm";
 import { Modal, Box, Typography, TextField, Button } from "@mui/material";
-
 import PasswordResetModal from "../../components/login/PasswordResetModal";
+import { showError, showSuccess } from "../../utils/alerts";
 
 const LoginRegister = () => {
   const navigate = useNavigate();
@@ -35,6 +36,9 @@ const LoginRegister = () => {
   const [storeLogin, setStoreLogin] = useState({ login: "", password: "" });
   const [showResetModal, setShowResetModal] = useState(false);
 
+  // ⏲️ Long-press del logo
+  const pressTimerRef = useRef(null);
+
   // ⏱ Cooldown para reenvío de código
   const startCooldown = () => {
     let seconds = 60;
@@ -50,25 +54,38 @@ const LoginRegister = () => {
     }, 1000);
   };
 
-  // 🟢 Manejo de Login para tienda o superadmin
+  // 🟢 Login tienda
   const handleLogin = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (loading) return;
     setLoading(true);
+
     try {
-      const res = await axiosClient.post("/login-store", {
-        login: loginData.login,
-        password: loginData.password,
-      });
+      const res = await axiosClient.post(
+        "/login-store",
+        {
+          login: loginData.login,
+          password: loginData.password,
+        },
+        {
+          __skipAuthRedirect: true,                  // 👈 bandera interna
+         // 👈 respaldo por header
+          // validateStatus: (s) => s >= 200 && s < 500, // opcional
+        }
+      );
 
       localStorage.setItem("AUTH_TOKEN", res.data.token);
       localStorage.setItem("STORE_SLUG", res.data.store.slug);
+
+      // await showSuccess("¡Inicio de sesión exitoso! ✅");
       navigate("/admin");
     } catch (err) {
-      alert(
+      const msg =
         err.response?.data?.message ||
-          err.response?.data?.error ||
-          "Credenciales inválidas"
-      );
+        err.response?.data?.error ||
+        "Credenciales inválidas";
+      await showError(msg);
     } finally {
       setLoading(false);
     }
@@ -77,23 +94,42 @@ const LoginRegister = () => {
   // 🟠 Registro de nueva tienda
   const handleRegister = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    if (loading || registerBlocked) return;
+
     setLoading(true);
     setErrors({});
     setRegisterBlocked(true);
     setTimeout(() => setRegisterBlocked(false), 15000);
 
     try {
-      await axiosClient.post("/registro/enviar-codigo", {
+      const payload = {
         name: registerData.nombre,
         email: registerData.email,
         phone_number: registerData.telefono,
         password: registerData.password,
+      };
+
+      await axiosClient.post("/registro/enviar-codigo", payload, {
+        __skipAuthRedirect: true,
+      
       });
       setShowModal(true);
       startCooldown();
+      await showSuccess("Te enviamos un código de verificación al correo y/o WhatsApp 📩");
     } catch (err) {
       if (err.response?.status === 422) {
-        setErrors(err.response.data.errors);
+        setErrors(err.response.data.errors || {});
+        const flatMsg =
+          Object.values(err.response.data.errors || {}).flat().join("\n") ||
+          "Verifica los campos del formulario.";
+        await showError(flatMsg);
+      } else {
+        const msg =
+          err.response?.data?.message ||
+          err.response?.data?.error ||
+          "No fue posible enviar el código de verificación.";
+        await showError(msg);
       }
     } finally {
       setLoading(false);
@@ -101,29 +137,51 @@ const LoginRegister = () => {
   };
 
   const onSubmitResendCode = async () => {
+    if (resendDisabled) return;
     try {
-      await axiosClient.post("/registro/enviar-codigo", {
+      const payload = {
         name: registerData.nombre,
         email: registerData.email,
         phone_number: registerData.telefono,
         password: registerData.password,
+      };
+      await axiosClient.post("/registro/enviar-codigo", payload, {
+        __skipAuthRedirect: true,
+        
       });
       startCooldown();
-    } catch (err) {}
+      await showSuccess("Código reenviado ✅");
+    } catch (err) {
+      const msg =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        "No fue posible reenviar el código.";
+      await showError(msg);
+    }
   };
 
   const handleVerificationCodeSubmit = async () => {
+    if (loading) return;
     setLoading(true);
     try {
-      const res = await axiosClient.post("/registro/verificar", {
-        email: registerData.email,
-        code: verificationCode,
-      });
+      const res = await axiosClient.post(
+        "/registro/verificar",
+        {
+          email: registerData.email,
+          code: verificationCode,
+        },
+        {
+          __skipAuthRedirect: true,
+          headers: { "x-skip-auth-redirect": "1" },
+        }
+      );
       localStorage.setItem("AUTH_TOKEN", res.data.token);
       setShowModal(false);
+      await showSuccess("¡Cuenta verificada y creada! 🎉");
       navigate("/admin");
     } catch (err) {
-      alert(err.response?.data?.message || "Código inválido o expirado");
+      const msg = err.response?.data?.message || "Código inválido o expirado";
+      await showError(msg);
     } finally {
       setLoading(false);
     }
@@ -143,20 +201,26 @@ const LoginRegister = () => {
                 className="img-fluid"
                 style={{ maxWidth: "280px", cursor: "pointer" }}
                 onMouseDown={() => {
-                  pressTimer = setTimeout(
+                  pressTimerRef.current = setTimeout(
                     () => setShowStoreLoginModal(true),
                     1500
                   );
                 }}
-                onMouseUp={() => clearTimeout(pressTimer)}
-                onMouseLeave={() => clearTimeout(pressTimer)}
+                onMouseUp={() => {
+                  if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+                }}
+                onMouseLeave={() => {
+                  if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+                }}
                 onTouchStart={() => {
-                  pressTimer = setTimeout(
+                  pressTimerRef.current = setTimeout(
                     () => setShowStoreLoginModal(true),
                     1500
                   );
                 }}
-                onTouchEnd={() => clearTimeout(pressTimer)}
+                onTouchEnd={() => {
+                  if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+                }}
               />
             </div>
 
@@ -173,28 +237,22 @@ const LoginRegister = () => {
                 />
                 <hr />
                 <div className="text-center mt-2">
-                  <a
-                    href="#"
-                    className="text-danger"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setShowResetModal(true);
-                    }}
+                  <button
+                    type="button"
+                    className="btn btn-link text-danger p-0"
+                    onClick={() => setShowResetModal(true)}
                   >
                     ¿Olvidaste tu contraseña?
-                  </a>
+                  </button>
                 </div>
                 <div className="text-center mt-3">
-                  <a
-                    href="#"
-                    className="text-primary fs-6"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setModo("register");
-                    }}
+                  <button
+                    type="button"
+                    className="btn btn-link text-primary fs-6 p-0"
+                    onClick={() => setModo("register")}
                   >
                     Crea una cuenta
-                  </a>
+                  </button>
                 </div>
               </>
             ) : (
@@ -211,24 +269,21 @@ const LoginRegister = () => {
                   registerBlocked={registerBlocked}
                 />
                 <hr />
-
                 <div className="text-center mt-3">
-                  <a
-                    href="#"
-                    className="text-primary fs-6"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      setModo("login");
-                    }}
+                  <button
+                    type="button"
+                    className="btn btn-link text-primary fs-6 p-0"
+                    onClick={() => setModo("login")}
                   >
                     ¿Ya tienes una cuenta?
-                  </a>
+                  </button>
                 </div>
               </>
             )}
           </div>
         </div>
       </div>
+
       <PasswordResetModal
         open={showResetModal}
         onClose={() => setShowResetModal(false)}
@@ -236,7 +291,14 @@ const LoginRegister = () => {
 
       <Modal
         open={showStoreLoginModal}
-        onClose={() => setShowStoreLoginModal(false)}
+        keepMounted
+        disableAutoFocus
+        disableEnforceFocus
+        disableRestoreFocus
+        onClose={(e, reason) => {
+          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+          setShowStoreLoginModal(false);
+        }}
       >
         <Box
           sx={{
@@ -255,6 +317,8 @@ const LoginRegister = () => {
           <form
             onSubmit={async (e) => {
               e.preventDefault();
+              e.stopPropagation();
+              if (loading) return;
               setLoading(true);
               try {
                 const res = await axiosSuperadmin.post("/admin/login", {
@@ -263,9 +327,10 @@ const LoginRegister = () => {
                 });
                 sessionStorage.setItem("SUPERADMIN_TOKEN", res.data.token);
                 setShowStoreLoginModal(false);
+                await showSuccess("Bienvenido, SuperAdmin 👑");
                 navigate("/panel/dashboard");
               } catch (err) {
-                alert("Credenciales de superadmin inválidas");
+                await showError("Credenciales de superadmin inválidas");
               } finally {
                 setLoading(false);
               }

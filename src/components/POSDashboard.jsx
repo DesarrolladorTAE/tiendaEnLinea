@@ -57,20 +57,20 @@ const POSDashboard = ({
       color: "#c12b1dff",
       icono: <ReplayIcon sx={{ fontSize: 40 }} />,
     },
-    {
-      id: "facturas",
-      titulo: "Facturas",
-      descripcion: "Revisa las Ventas facturadas",
-      color: "#FF9800",
-      icono: <ReceiptLongIcon sx={{ fontSize: 40 }} />,
-    },
-    {
-      id: "clientes",
-      titulo: "Clientes",
-      descripcion: "Gestiona los clientes de la tienda",
-      color: "#673ab7",
-      icono: <PeopleAltIcon sx={{ fontSize: 40 }} />,
-    },
+    // {
+    //   id: "facturas",
+    //   titulo: "Facturas",
+    //   descripcion: "Revisa las Ventas facturadas",
+    //   color: "#FF9800",
+    //   icono: <ReceiptLongIcon sx={{ fontSize: 40 }} />,
+    // },
+    // {
+    //   id: "clientes",
+    //   titulo: "Clientes",
+    //   descripcion: "Gestiona los clientes de la tienda",
+    //   color: "#673ab7",
+    //   icono: <PeopleAltIcon sx={{ fontSize: 40 }} />,
+    // },
     {
       id: "proximamente",
       titulo: "Próximamente",
@@ -107,10 +107,10 @@ const POSDashboard = ({
         return <HistorialVentas cambiarVista={setVista} />;
       case "cancelaciones":
         return <CancelaDevoluciones cambiarVista={setVista} />;
-      case "facturas":
-        return <ComprasFacturadas cambiarVista={setVista} />;
-      case "clientes":
-        return <ClientesPOS cambiarVista={setVista} />;
+      // case "facturas":
+      //   return <ComprasFacturadas cambiarVista={setVista} />;
+      // case "clientes":
+      //   return <ClientesPOS cambiarVista={setVista} />;
       default:
         return (
           <Box mt={4} sx={{ flexGrow: 1, minHeight: "80vh" }}>

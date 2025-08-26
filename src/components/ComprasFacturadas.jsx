@@ -6,6 +6,7 @@ import axiosClient from "../config/axiosClientPOS"; // cliente con auth:sanctum
 import FiltersBar from "./FiltersBar";
 import SalesTable from "./SalesTable";
 import FacturarVentaDialog from "./ventas/FacturarVentaDialog";
+import { showSuccess, showError } from "../utils/alerts";
 
 // --- Utils ---
 const toYYYYMM = (date) => {
@@ -136,10 +137,9 @@ export default function ComprasSuscripcionesView({
     setOpenFacturar(true);
   };
 
-  // Helpers
-  const showAlert = (titulo, cuerpo) => {
-    // Cambia por Snackbar / SweetAlert si lo deseas
-    window.alert(`${titulo}${cuerpo ? `\n\n${cuerpo}` : ""}`);
+  const showAlert = (titulo, cuerpo, ok = true) => {
+    const text = [titulo, cuerpo].filter(Boolean).join("\n\n");
+    return ok ? showSuccess(text) : showError(text);
   };
 
   const reloadVentas = async () => {
@@ -152,7 +152,7 @@ export default function ComprasSuscripcionesView({
    */
   const onSubmitFactura = async ({ ventaId, cliente_id, cliente_nuevo, usoCfdi }) => {
     if (!ventaId) {
-      showAlert("Error", "No se recibió el ID de la venta.");
+      showAlert("Error", "No se recibió el ID de la venta.", false);
       return;
     }
     try {
@@ -163,21 +163,20 @@ export default function ComprasSuscripcionesView({
       if (!clienteId && cliente_nuevo) {
         try {
           const { data: created } = await axiosClient.post("/clientes", cliente_nuevo);
-          // Asume que tu API regresa { id } o { data: { id } }
           clienteId = created?.id ?? created?.data?.id;
           if (!clienteId) {
-            showAlert("Error al crear cliente", "La API no devolvió un ID de cliente.");
+            showAlert("Error al crear cliente", "La API no devolvió un ID de cliente.", false);
             return;
           }
         } catch (err) {
           const msg = err?.response?.data?.message || "No fue posible crear el cliente.";
-          showAlert("Error al crear cliente", msg);
+          showAlert("Error al crear cliente", msg, false);
           return;
         }
       }
 
       if (!clienteId) {
-        showAlert("Datos incompletos", "Selecciona un cliente o captura uno nuevo.");
+        showAlert("Datos incompletos", "Selecciona un cliente o captura uno nuevo.", false);
         return;
       }
 
@@ -186,16 +185,12 @@ export default function ComprasSuscripcionesView({
         cliente_id: clienteId,
         sales: [ventaId],
         usoCfdi: usoCfdi || "G03", // default
-        // Puedes extender con metodoPago/formaPago/serie/folio/tipoComprobante si lo requieres:
-        // metodoPago: "PUE",
-        // formaPago: "01",
-        // serie: "1",
-        // folio: "1",
-        // tipoComprobante: "I",
+        fail_fast: true,           // para que el backend regrese 422 inmediato
       };
 
       const { data: resp, status } = await axiosClient.post("/admin/facturar/ventas", payload);
       console.log("[FACTURAR] status:", status, resp);
+
       // 3) Interpretar respuesta (200 OK, 207 multi-estatus o error)
       if (status === 200 || status === 207) {
         const ventas = Array.isArray(resp?.ventas) ? resp.ventas : [];
@@ -216,16 +211,17 @@ export default function ComprasSuscripcionesView({
               "Venta timbrada ✅",
               `Folio interno: ${ventaId}\nFactura ID: ${actual.factura_id || "—"}${
                 enlaces ? `\n\n${enlaces}` : ""
-              }${extras ? `\n\nAlertas:\n- ${extras}` : ""}`
+              }${extras ? `\n\nAlertas:\n- ${extras}` : ""}`,
+              true
             );
           } else if (actual.status === "saltada") {
-            showAlert("Venta saltada", (actual.alertas || []).join("\n- ") || "Ya estaba facturada.");
+            showAlert("Venta saltada", (actual.alertas || []).join("\n- ") || "Ya estaba facturada.", false);
           } else {
             const errTxt =
               typeof actual.error === "string"
                 ? actual.error
                 : JSON.stringify(actual.error || {}, null, 2);
-            showAlert("Error al timbrar", errTxt);
+            showAlert("Error al timbrar", errTxt, false);
           }
         }
 
@@ -234,13 +230,85 @@ export default function ComprasSuscripcionesView({
         return;
       }
 
-      showAlert("Respuesta inesperada", JSON.stringify(resp || {}, null, 2));
-    } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || "Error desconocido al timbrar.";
-      showAlert("Fallo en timbrado", msg);
-    } finally {
-      setFacturando(false);
+      showAlert("Respuesta inesperada", JSON.stringify(resp || {}, null, 2), false);
+} catch (err) {
+  const d = err?.response?.data;
+  if (d) {
+    // Normalizador y set contra duplicados
+    const norm = (s) => String(s || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+    const seen = new Set();
+
+    const pushUnique = (label, raw) => {
+      const val = typeof raw === "string" ? raw : JSON.stringify(raw, null, 2);
+      const key = norm(val);
+      if (!val || seen.has(key)) return null;
+      seen.add(key);
+      return `${label}:\n${val}`;
+    };
+
+    const bloques = [];
+
+    // message
+    const b1 = pushUnique("Mensaje", d.message);
+    if (b1) bloques.push(b1);
+
+    // error (si es igual a message, se ignorará)
+    if (d.error) {
+      const errTxt = typeof d.error === "string" ? d.error : JSON.stringify(d.error, null, 2);
+      const b2 = pushUnique("Error", errTxt);
+      if (b2) bloques.push(b2);
     }
+
+    // field / hint (normalmente distintos)
+    if (d.field) bloques.push(`Campo:\n${d.field}`);
+    if (d.hint)  bloques.push(`Sugerencia:\n${d.hint}`);
+
+    // tae_errors (cada línea deduplicada vs. message/error)
+    if (Array.isArray(d.tae_errors) && d.tae_errors.length) {
+      const list = d.tae_errors
+        .map((e) => String(e || ""))
+        .filter((e) => {
+          const key = norm(e);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      if (list.length) {
+        bloques.push(`TAE:\n- ${list.join("\n- ")}`);
+      }
+    }
+
+    // tae_body (no siempre llega)
+    if (d.tae_body) {
+      const raw = typeof d.tae_body === "string" ? d.tae_body : JSON.stringify(d.tae_body, null, 2);
+      const b3 = pushUnique("Respuesta TAE", raw);
+      if (b3) bloques.push(b3);
+    }
+
+    // Render bonito (ver B)
+    const html = bloques
+      .map((p) =>
+        p
+          .split("\n")
+          .map((line) => line.replace(/</g, "&lt;").replace(/>/g, "&gt;")) // escapar
+          .join("<br>")
+      )
+      .join('<hr style="border:none;height:1px;background:#eee;margin:12px 0;" />');
+
+    // usa showError con html (ver B)
+    showError(undefined, { html });
+
+  } else {
+    const msg = err?.message || "Error desconocido al timbrar.";
+    showError(msg);
+  }
+} finally {
+  setFacturando(false);
+}
+
   };
 
   // Helper (respeta acentos y Unicode)
@@ -284,7 +352,7 @@ export default function ComprasSuscripcionesView({
       {/* Contenido */}
       <Grid container spacing={2} sx={{ width: "100%", m: 0 }}>
         {/* Tabla */}
-        <Grid item xs={2}>
+        <Grid item xs={12}>
           <Typography
             variant="h6"
             sx={{
@@ -304,6 +372,7 @@ export default function ComprasSuscripcionesView({
           >
             {tituloMes}
           </Typography>
+
           <FiltersBar
             mes={mes}
             folio={folio}
@@ -311,6 +380,7 @@ export default function ComprasSuscripcionesView({
             onChangeFolio={onChangeFolio}
             onSearch={onSearch}
           />
+
           <SalesTable rows={loading ? [] : ventasRows} onFacturar={onFacturar} />
         </Grid>
       </Grid>
@@ -333,7 +403,7 @@ export default function ComprasSuscripcionesView({
             ventaId: ventaActiva?.id,
             cliente_id,
             cliente_nuevo,
-            usoCfdi, // 👈 se envía al endpoint /facturar/cliente
+            usoCfdi, // se envía al endpoint /admin/facturar/ventas
           })
         }
       />
