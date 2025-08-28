@@ -20,6 +20,7 @@ const Reporte = lazy (() => import ("../pages/admin/Reporte.jsx"));
 const ReporteVentas = lazy(() => import("../components/ventas/ReporteVentas.jsx"));
 const POSHeader  = lazy(() => import("../wrappers/POSWrapper.jsx"));
 const ReporteTipoVenta = lazy(() => import("../components/ventas/ReporteTipoVenta.jsx"));
+const ReporteInventario = lazy(() => import("../pages/admin/ReporteInventario.jsx"));
 
 
 export const adminRouteConfig = [
@@ -43,6 +44,7 @@ export const adminRouteConfig = [
   { path: "reportes", element: <Reporte /> },
   { path: "reportes/ventas", element: <ReporteVentas /> },
   { path: "prueba/pos", element: <POSHeader /> },
-  {path: "reportes/tipo-venta", element: <ReporteTipoVenta /> },
+  { path: "reportes/tipo-venta", element: <ReporteTipoVenta /> },
+  { path: "reportes/inventario", element: <ReporteInventario /> },
 
 ];
