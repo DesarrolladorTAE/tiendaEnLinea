@@ -7,8 +7,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import axios from "../../../config/axiosSuperadmin";
-import dayjs from "dayjs";
-import ModalDatosFiscales from "../../../components/superadmin/modales/ModalDatosFiscales"; // <-- tu componente existente
+import ModalDatosFiscales from "../../../components/superadmin/modales/ModalDatosFiscales";
+import { showSuccess, showError } from "../../../utils/alerts";
 
 const usosCFDI = [
   { clave: "G01", descripcion: "Adquisición de mercancías" },
@@ -20,15 +20,108 @@ const CAMPOS_REQUERIDOS = ["rfc", "razon_social", "domicilio_fac", "codigo_regim
 
 export default function TimbrarPorTiendaModal({ open, onClose, seleccion, rowsAll = [], onOk, onError }) {
   const [loading, setLoading] = useState(false);
-  const [usoCfdi, setUsoCfdi] = useState("G03"); // default sugerido
-  const [tiendas, setTiendas] = useState([]); // [{store_id, nombre, fiscales, ok, faltantes}]
-  const [editandoTienda, setEditandoTienda] = useState(null); // {id, nombre}
+  const [usoCfdi, setUsoCfdi] = useState("G03");
+  const [tiendas, setTiendas] = useState([]); // [{store_id, nombre, fiscales, ok, faltantes, count}]
+  const [editandoTienda, setEditandoTienda] = useState(null);
+
+  // ------------ Helpers de errores (SweetAlert HTML) ------------
+  const li = (s) => `<li>${s}</li>`;
+  const kv = (k, v) => `<div><b>${k}:</b> ${v}</div>`;
+
+  const buildErroresDesdeErrors = (errors = []) => {
+    if (!Array.isArray(errors) || !errors.length) return "";
+    const bloques = errors.map((e) => {
+      const top = `<div><b>${e.code || ""}</b> — ${e.detail || "Error"}</div>${e.where ? kv("Sección", e.where) : ""}`;
+      const ctx = e.context || {};
+      const extras = [];
+
+      // PAC errors
+      if (Array.isArray(ctx.pac_errors) && ctx.pac_errors.length) {
+        extras.push(`<div style="margin-top:4px"><i>Detalles del PAC:</i><ul>${ctx.pac_errors.map(li).join("")}</ul></div>`);
+      }
+      // Faltantes
+      if (Array.isArray(ctx.faltantes) && ctx.faltantes.length) {
+        extras.push(`<div style="margin-top:4px"><i>Campos faltantes:</i><ul>${ctx.faltantes.map(li).join("")}</ul></div>`);
+      }
+      // Ineligibles (fecha/ventana)
+      if (Array.isArray(ctx.ineligibles) && ctx.ineligibles.length) {
+        const inel = ctx.ineligibles.map(it => {
+          const rows = [
+            it.id != null ? kv("Sub", it.id) : "",
+            it.fin_mes ? kv("Fin de mes", it.fin_mes) : "",
+            it.limite ? kv("Límite 72h", it.limite) : "",
+          ].join("");
+          return `<li>${rows}</li>`;
+        }).join("");
+        extras.push(`<div style="margin-top:4px"><i>Fuera de ventana:</i><ul>${inel}</ul></div>`);
+      }
+      // Otros contextos simples útiles
+      ["uso_cfdi","regimen","store_id"].forEach(k => {
+        if (ctx[k]) extras.push(kv(k, ctx[k]));
+      });
+
+      return `<li style="margin-bottom:6px">${top}${extras.length ? `<div>${extras.join("")}</div>` : ""}</li>`;
+    }).join("");
+
+    return `<ul style="margin:0;padding-left:18px">${bloques}</ul>`;
+  };
+
+  const buildErroresDesdeResultados = (resultados = []) => {
+    if (!Array.isArray(resultados) || !resultados.length) return "";
+    const fallas = resultados.filter(r => r && r.ok === false);
+    if (!fallas.length) return "";
+    const liItems = fallas.map(f => {
+      const header = `<div><b>Tienda ${f.store_id ?? "-"}</b> — ${f.message || "Error al timbrar"}</div>`;
+      const errores = Array.isArray(f.errores) ? f.errores : (f.errores ? [String(f.errores)] : []);
+      const body = errores.length ? `<ul style="margin-top:4px">${errores.map(li).join("")}</ul>` : "";
+      return `<li style="margin-bottom:6px">${header}${body}</li>`;
+    }).join("");
+    return `<div style="margin-top:4px"><ul style="margin:0;padding-left:18px">${liItems}</ul></div>`;
+  };
+
+  const buildBackendErrorHtml = (data = {}) => {
+    const parts = [];
+    // message global
+    if (data.message) parts.push(`<div style="margin-bottom:6px">${data.message}</div>`);
+    // errors[]
+    const errs = buildErroresDesdeErrors(data.errors);
+    if (errs) parts.push(errs);
+    // resultados (por tienda)
+    const res = buildErroresDesdeResultados(data.resultados);
+    if (res) parts.push(res);
+    // trace
+    if (data.trace_id) {
+      parts.push(`<hr/><div style="font-size:12px;color:#666">Trace ID: <code>${data.trace_id}</code></div>`);
+    }
+    return parts.join("");
+  };
+
+  const buildParcialHtml = (data = {}) => {
+    const resultados = Array.isArray(data?.resultados) ? data.resultados : [];
+    const ok = resultados.filter(r => r.ok === true);
+    const ko = resultados.filter(r => r.ok === false);
+
+    const okLi = ok.map(r => `<li>Tienda ${r.store_id ?? "-"} — Folio <b>${r.folio ?? "-"}</b></li>`).join("");
+    const koHtml = buildErroresDesdeResultados(resultados);
+
+    const parts = [
+      `<div><b>Se timbraron:</b> ${ok.length}</div>`,
+      ok.length ? `<ul style="margin-top:4px">${okLi}</ul>` : "",
+      `<hr/>`,
+      `<div><b>Fallaron:</b> ${ko.length}</div>`,
+      koHtml || ""
+    ];
+
+    if (data.trace_id) {
+      parts.push(`<hr/><div style="font-size:12px;color:#666">Trace ID: <code>${data.trace_id}</code></div>`);
+    }
+    return parts.join("");
+  };
 
   // --- construir lista de tiendas a partir de la selección ---
   const tiendasSeleccion = useMemo(() => {
     const setSel = new Set(seleccion);
     const elegidas = rowsAll.filter(r => setSel.has(r.id));
-    // agrupamos por store_id
     const map = new Map();
     elegidas.forEach(it => {
       const sid = it.store_id;
@@ -39,13 +132,15 @@ export default function TimbrarPorTiendaModal({ open, onClose, seleccion, rowsAl
     return Array.from(map.values());
   }, [seleccion, rowsAll]);
 
-  // total estimado (opcional)
+  // total estimado
   const total = useMemo(() => {
     const setSel = new Set(seleccion);
-    return rowsAll.filter(r => setSel.has(r.id)).reduce((acc, it) => acc + Number(it.monto || 0), 0);
+    return rowsAll
+      .filter(r => setSel.has(r.id))
+      .reduce((acc, it) => acc + Number(it.monto || 0), 0);
   }, [seleccion, rowsAll]);
 
-  // cargar datos fiscales de cada tienda al abrir
+  // cargar datos fiscales
   useEffect(() => {
     const cargar = async () => {
       if (!open) return;
@@ -68,7 +163,7 @@ export default function TimbrarPorTiendaModal({ open, onClose, seleccion, rowsAl
             nombre: t.nombre,
             fiscales: {},
             ok: false,
-            faltantes: CAMPOS_REQUERIDOS.slice(), // todos faltan
+            faltantes: CAMPOS_REQUERIDOS.slice(),
             count: t.count,
           });
         }
@@ -81,7 +176,7 @@ export default function TimbrarPorTiendaModal({ open, onClose, seleccion, rowsAl
 
   const todasOK = useMemo(() => tiendas.length > 0 && tiendas.every(t => t.ok), [tiendas]);
 
-  // cuando se cierra el sub-modal de edición, refrescamos esa tienda
+  // refrescar tienda al cerrar modal de edición
   const refrescarTienda = async (store_id) => {
     try {
       const { data } = await axios.get(`/admin/tiendas/${store_id}/fiscales`);
@@ -90,33 +185,60 @@ export default function TimbrarPorTiendaModal({ open, onClose, seleccion, rowsAl
         const faltantes = CAMPOS_REQUERIDOS.filter(c => !data?.[c] || String(data[c]).trim() === "");
         return { ...t, fiscales: data, ok: faltantes.length === 0, faltantes };
       }));
-    } catch (e) {
-      // si falla, mantenemos el estado anterior
+    } catch {
+      /* noop */
     }
   };
 
+  // Enviar
   const enviar = async () => {
-    if (!todasOK) return;
+    if (!todasOK) {
+      await showError("Completa los datos fiscales faltantes para habilitar el timbrado.");
+      return;
+    }
     setLoading(true);
     try {
-      // el backend acepta defaults si no mandas uso_cfdi/formaPago/metodoPago,
-      // pero como quieres controlar usoCfdi, lo enviamos explícitamente:
       const payload = {
         subscription_ids: seleccion,
-        uso_cfdi: usoCfdi,      // <- aquí va el seleccionado
-        // formaPago y metodoPago puedes no enviarlos (usa defaults) o ponerlos si quieres:
+        uso_cfdi: usoCfdi,
         // formaPago: "03",
         // metodoPago: "PUE",
       };
-      const res = await axios.post("admin/timbrar-por-tienda", payload);
-      if (res?.data?.ok) {
-        onOk("Timbrado por tienda completado");
-        onClose();
+
+      const res = await axios.post("/admin/timbrar-por-tienda", payload);
+      const { status, data } = res || {};
+
+      // Éxito total
+      if (status === 200 && data?.ok && !data?.partial) {
+        await showSuccess("Timbrado por tienda completado");
+        onOk?.("Timbrado por tienda completado");
+        onClose?.();
+        return;
+      }
+
+      // Éxito parcial (mostrar detalle en error modal)
+      if ((status === 207 || data?.partial === true) && data?.ok) {
+        const html = buildParcialHtml(data);
+        await showError("Timbrado parcial", { html });
+        return;
+      }
+
+      // 2xx no esperado -> muestra detalle si viene
+      const html = buildBackendErrorHtml(data);
+      if (html) {
+        await showError(data?.title || data?.message || "Error al timbrar por tienda", { html });
       } else {
-        onError(res?.data?.message || "Error al timbrar por tienda");
+        await showError(data?.message || "Error al timbrar por tienda");
       }
     } catch (e) {
-      onError("Error al timbrar por tienda");
+      const data = e?.response?.data || {};
+      const html = buildBackendErrorHtml(data);
+      if (html) {
+        await showError(data?.title || data?.message || "No se pudo timbrar por tienda", { html });
+      } else {
+        await showError(data?.message || e?.message || "No se pudo timbrar por tienda");
+      }
+      onError?.(data?.message || e?.message || "No se pudo timbrar por tienda");
     } finally {
       setLoading(false);
     }
@@ -195,14 +317,13 @@ export default function TimbrarPorTiendaModal({ open, onClose, seleccion, rowsAl
         </DialogActions>
       </Dialog>
 
-      {/* Sub-modal para editar/guardar SIN salir del flujo */}
       {editandoTienda && (
         <ModalDatosFiscales
           open={Boolean(editandoTienda)}
           onClose={async () => {
             const sid = editandoTienda.id;
             setEditandoTienda(null);
-            if (sid) await refrescarTienda(sid); // <- revalida al cerrar
+            if (sid) await refrescarTienda(sid);
           }}
           tienda={{ id: editandoTienda.id, nombre: editandoTienda.nombre }}
         />

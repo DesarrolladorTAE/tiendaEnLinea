@@ -6,7 +6,8 @@ import {
 import LocalMallOutlinedIcon from "@mui/icons-material/LocalMallOutlined";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
 import dayjs from "dayjs";
-import DocumentoModal from "./DocumentoModal";
+import ModalPDF from "./ModalPDF";
+import ModalXML from "./ModalXML";
 
 const TypeChip = ({ tipo }) => {
   const isPlan = tipo === "plan";
@@ -47,24 +48,18 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
   const [page, setPage] = useState(0);
   const rowsPerPage = 10;
 
-  // Modal visor
-  const [docOpen, setDocOpen] = useState(false);
-  const [docType, setDocType] = useState(null); // "pdf" | "xml"
-  const [docUrl, setDocUrl] = useState("");
-  const [docTitle, setDocTitle] = useState("");
+  // Modales
+  const [openPDF, setOpenPDF] = useState(false);
+  const [openXML, setOpenXML] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState("");
+  const [xmlUrl, setXmlUrl] = useState("");
+  const [tituloPDF, setTituloPDF] = useState("");
+  const [tituloXML, setTituloXML] = useState("");
 
   const fmt = useMemo(
     () => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }),
     []
   );
-
-  const openDoc = (type, url, item) => {
-    setDocType(type);
-    setDocUrl(url);
-    setDocTitle(`${type.toUpperCase()} • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`);
-    setDocOpen(true);
-  };
-  const closeDoc = () => setDocOpen(false);
 
   const pageRows = useMemo(
     () => rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage),
@@ -96,6 +91,21 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
   const getPDFUrl = (item) => item.pdf_url || item.pg_pdf_url || "";
   const getXMLUrl = (item) => item.xml_url || item.pg_xml_url || "";
 
+  const handleOpenPDF = (item) => {
+    const url = getPDFUrl(item);
+    if (!url) return;
+    setPdfUrl(url);
+    setTituloPDF(`PDF • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`);
+    setOpenPDF(true);
+  };
+  const handleOpenXML = (item) => {
+    const url = getXMLUrl(item);
+    if (!url) return;
+    setXmlUrl(url);
+    setTituloXML(`XML • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`);
+    setOpenXML(true);
+  };
+
   return (
     <>
       <TableContainer
@@ -105,10 +115,7 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
           borderRadius: 2,
           boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
           overflow: "hidden",
-          "& table": {
-            borderCollapse: "separate",
-            borderSpacing: 0,
-          },
+          "& table": { borderCollapse: "separate", borderSpacing: 0 },
           "& thead th": {
             position: "sticky",
             top: 0,
@@ -117,12 +124,8 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
             fontWeight: 700,
             letterSpacing: 0.2,
           },
-          "& tbody tr:hover": {
-            backgroundColor: "grey.50",
-          },
-          "& tbody tr:nth-of-type(odd)": {
-            backgroundColor: "grey.25",
-          },
+          "& tbody tr:hover": { backgroundColor: "grey.50" },
+          "& tbody tr:nth-of-type(odd)": { backgroundColor: "grey.25" },
         }}
       >
         <Table size="small">
@@ -147,8 +150,8 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
 
           <TableBody>
             {pageRows.map((item, idx) => {
-              const pdfUrl = getPDFUrl(item);
-              const xmlUrl = getXMLUrl(item);
+              const pdf = getPDFUrl(item);
+              const xml = getXMLUrl(item);
 
               return (
                 <TableRow key={item.id} hover>
@@ -162,19 +165,15 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
                       <span style={{ fontSize: 12, color: "#7a7a7a" }}>#{item.id}</span>
                     </Stack>
                   </TableCell>
-                  <TableCell>
-                    <TypeChip tipo={item.tipo} />
-                  </TableCell>
+                  <TableCell><TypeChip tipo={item.tipo} /></TableCell>
                   <TableCell>{dayjs(item.fecha).format("DD [de] MMMM YYYY")}</TableCell>
                   <TableCell align="right">{fmt.format(Number(item.monto) || 0)}</TableCell>
-                  <TableCell>
-                    <StatusChip facturado={item.facturado} facturado_pg={item.facturado_pg} />
-                  </TableCell>
+                  <TableCell><StatusChip facturado={item.facturado} facturado_pg={item.facturado_pg} /></TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
-                      {pdfUrl ? (
+                      {pdf ? (
                         <Tooltip title="Ver PDF">
-                          <Link component="button" onClick={() => openDoc("pdf", pdfUrl, item)}>
+                          <Link component="button" onClick={() => handleOpenPDF(item)}>
                             PDF
                           </Link>
                         </Tooltip>
@@ -182,9 +181,9 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
                         <span style={{ color: "#bbb" }}>—</span>
                       )}
                       <span style={{ color: "#bbb" }}>|</span>
-                      {xmlUrl ? (
+                      {xml ? (
                         <Tooltip title="Ver XML">
-                          <Link component="button" onClick={() => openDoc("xml", xmlUrl, item)}>
+                          <Link component="button" onClick={() => handleOpenXML(item)}>
                             XML
                           </Link>
                         </Tooltip>
@@ -214,12 +213,20 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
         />
       </TableContainer>
 
-      <DocumentoModal
-        open={docOpen}
-        onClose={closeDoc}
-        type={docType}
-        url={docUrl}
-        title={docTitle}
+      {/* Modales */}
+      <ModalPDF
+        open={openPDF}
+        onClose={() => setOpenPDF(false)}
+        pdfUrl={pdfUrl}
+        titulo={tituloPDF}
+        fileName={tituloPDF.replaceAll(" ", "_") + ".pdf"}
+      />
+      <ModalXML
+        open={openXML}
+        onClose={() => setOpenXML(false)}
+        downloadUrl={xmlUrl}
+        titulo={tituloXML}
+        fileName={tituloXML.replaceAll(" ", "_") + ".xml"}
       />
     </>
   );
