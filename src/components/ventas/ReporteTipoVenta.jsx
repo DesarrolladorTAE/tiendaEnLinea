@@ -193,33 +193,34 @@ export default function ReporteTipoVentas() {
           <Divider sx={{ mb: 2 }} />
 
           <Stack spacing={2}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="sucursal-label">Sucursal</InputLabel>
-              <Select
-                labelId="sucursal-label"
-                value={sucursalSeleccionada}
-                label="Sucursal"
-                onChange={(e) =>
-                  setSucursalSeleccionada(
-                    e.target.value === "" ? "" : Number(e.target.value)
-                  )
-                }
-                renderValue={(selected) => {
-                  if (selected === "") return "Todas las sucursales";
-                  const sucursal = sucursales.find(
-                    sucursales.find((s) => s.id === selected)
-                  );
-                  return sucursal ? sucursal.name : "";
-                }}
-              >
-                <MenuItem value="">Todas las sucursales</MenuItem>
-                {sucursales.map((s) => (
-                  <MenuItem key={s.id} value={s.id}>
-                    {s.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+<FormControl fullWidth size="small" variant="outlined">
+  <InputLabel id="sucursal-label" shrink>Sucursal</InputLabel> {/* 👈 shrink */}
+  <Select
+    labelId="sucursal-label"
+    label="Sucursal"
+    value={sucursalSeleccionada}       // "" = todas
+    displayEmpty
+    onChange={(e) =>
+      setSucursalSeleccionada(e.target.value === "" ? "" : Number(e.target.value))
+    }
+    renderValue={(selected) => {
+      if (selected === "" || selected == null) return "Todas las sucursales";
+      const suc = (sucursales || []).find((x) => x.id === selected);
+      return suc ? (suc.name ?? suc.nombre ?? `Sucursal #${selected}`) : `Sucursal #${selected}`;
+    }}
+  >
+    <MenuItem value="">
+      <em>Todas las sucursales</em>
+    </MenuItem>
+    {(sucursales || []).map((s) => (
+      <MenuItem key={s.id} value={s.id}>
+        {s.name ?? s.nombre}
+      </MenuItem>
+    ))}
+  </Select>
+</FormControl>
+
+
 
             <FormControl fullWidth size="small">
               <InputLabel id="tipo-pago-label">Tipo de Pago</InputLabel>

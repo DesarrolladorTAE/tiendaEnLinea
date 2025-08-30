@@ -1,26 +1,26 @@
+// TiendaContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axiosClient from "../config/axiosClient";
 
-const TiendaContext = createContext();
+// ✅ valor por defecto para que useContext NUNCA sea undefined
+const TiendaContext = createContext({ tienda: null, loading: false });
 
 export const TiendaProvider = ({ children }) => {
   const [tienda, setTienda] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const cargarTienda = async () => {
+    (async () => {
       try {
         const { data } = await axiosClient.get("/perfil/mi-tienda");
         setTienda(data);
       } catch (error) {
         console.error("❌ No se pudo cargar la tienda:", error);
-        setTienda(null);
+        setTienda(null);            // 401 / error -> sin tienda
       } finally {
         setLoading(false);
       }
-    };
-
-    cargarTienda();
+    })();
   }, []);
 
   return (
@@ -30,4 +30,8 @@ export const TiendaProvider = ({ children }) => {
   );
 };
 
-export const useTienda = () => useContext(TiendaContext);
+// ✅ aunque falte el Provider, devuelve un objeto seguro
+export const useTienda = () => {
+  const ctx = useContext(TiendaContext);
+  return ctx ?? { tienda: null, loading: false };
+};

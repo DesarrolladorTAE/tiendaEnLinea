@@ -8,6 +8,10 @@ import SalesTable from "./SalesTable";
 import FacturarVentaDialog from "./ventas/FacturarVentaDialog";
 import { showSuccess, showError } from "../utils/alerts";
 
+// 👇 imports para el gate
+import GateTaeconta from "./auth/GateTaeconta";
+import useReglaTaeconta from "../hooks/useReglaTaeconta";
+
 // --- Utils ---
 const toYYYYMM = (date) => {
   const d = new Date(date);
@@ -45,6 +49,9 @@ export default function ComprasSuscripcionesView({
   cambiarVista,
   tituloMes: tituloMesProp, // opcional externo
 }) {
+  // --- Gate state (plan/complemento) ---
+  const { allowed } = useReglaTaeconta();
+
   // --- Estado de filtros ---
   const defaultMes = toYYYYMM(new Date());
   const [mes, setMes] = useState(defaultMes);
@@ -133,6 +140,14 @@ export default function ComprasSuscripcionesView({
   const onSearch = () => {}; // el filtrado por folio ya es reactivo
 
   const onFacturar = (row) => {
+    // 🔒 extra guard por si alguien forzara el botón
+    if (!allowed) {
+      showError(
+        "Acceso restringido",
+        { html: "Esta acción requiere el plan/complemento de Taeconta activos." }
+      );
+      return;
+    }
     setVentaActiva(row);
     setOpenFacturar(true);
   };
@@ -231,84 +246,85 @@ export default function ComprasSuscripcionesView({
       }
 
       showAlert("Respuesta inesperada", JSON.stringify(resp || {}, null, 2), false);
-} catch (err) {
-  const d = err?.response?.data;
-  if (d) {
-    // Normalizador y set contra duplicados
-    const norm = (s) => String(s || "")
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .trim();
-    const seen = new Set();
+    } catch (err) {
+      const d = err?.response?.data;
+      if (d) {
+        // Normalizador y set contra duplicados
+        const norm = (s) =>
+          String(s || "")
+            .toLowerCase()
+            .replace(/\s+/g, " ")
+            .trim();
+        const seen = new Set();
 
-    const pushUnique = (label, raw) => {
-      const val = typeof raw === "string" ? raw : JSON.stringify(raw, null, 2);
-      const key = norm(val);
-      if (!val || seen.has(key)) return null;
-      seen.add(key);
-      return `${label}:\n${val}`;
-    };
-
-    const bloques = [];
-
-    // message
-    const b1 = pushUnique("Mensaje", d.message);
-    if (b1) bloques.push(b1);
-
-    // error (si es igual a message, se ignorará)
-    if (d.error) {
-      const errTxt = typeof d.error === "string" ? d.error : JSON.stringify(d.error, null, 2);
-      const b2 = pushUnique("Error", errTxt);
-      if (b2) bloques.push(b2);
-    }
-
-    // field / hint (normalmente distintos)
-    if (d.field) bloques.push(`Campo:\n${d.field}`);
-    if (d.hint)  bloques.push(`Sugerencia:\n${d.hint}`);
-
-    // tae_errors (cada línea deduplicada vs. message/error)
-    if (Array.isArray(d.tae_errors) && d.tae_errors.length) {
-      const list = d.tae_errors
-        .map((e) => String(e || ""))
-        .filter((e) => {
-          const key = norm(e);
-          if (seen.has(key)) return false;
+        const pushUnique = (label, raw) => {
+          const val = typeof raw === "string" ? raw : JSON.stringify(raw, null, 2);
+          const key = norm(val);
+          if (!val || seen.has(key)) return null;
           seen.add(key);
-          return true;
-        });
-      if (list.length) {
-        bloques.push(`TAE:\n- ${list.join("\n- ")}`);
+          return `${label}:\n${val}`;
+        };
+
+        const bloques = [];
+
+        // message
+        const b1 = pushUnique("Mensaje", d.message);
+        if (b1) bloques.push(b1);
+
+        // error (si es igual a message, se ignorará)
+        if (d.error) {
+          const errTxt =
+            typeof d.error === "string" ? d.error : JSON.stringify(d.error, null, 2);
+          const b2 = pushUnique("Error", errTxt);
+          if (b2) bloques.push(b2);
+        }
+
+        // field / hint (normalmente distintos)
+        if (d.field) bloques.push(`Campo:\n${d.field}`);
+        if (d.hint) bloques.push(`Sugerencia:\n${d.hint}`);
+
+        // tae_errors (cada línea deduplicada vs. message/error)
+        if (Array.isArray(d.tae_errors) && d.tae_errors.length) {
+          const list = d.tae_errors
+            .map((e) => String(e || ""))
+            .filter((e) => {
+              const key = norm(e);
+              if (seen.has(key)) return false;
+              seen.add(key);
+              return true;
+            });
+          if (list.length) {
+            bloques.push(`TAE:\n- ${list.join("\n- ")}`);
+          }
+        }
+
+        // tae_body (no siempre llega)
+        if (d.tae_body) {
+          const raw =
+            typeof d.tae_body === "string" ? d.tae_body : JSON.stringify(d.tae_body, null, 2);
+          const b3 = pushUnique("Respuesta TAE", raw);
+          if (b3) bloques.push(b3);
+        }
+
+        // Render bonito (ver B)
+        const html = bloques
+          .map((p) =>
+            p
+              .split("\n")
+              .map((line) => line.replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+              .join("<br>")
+          )
+          .join('<hr style="border:none;height:1px;background:#eee;margin:12px 0;" />');
+
+        // usa showError con html (ver B)
+        showError(undefined, { html });
+      } else {
+        const msg = err?.message || "Error desconocido al timbrar.";
+        showError(msg);
       }
+    } finally {
+      setFacturando(false);
     }
-
-    // tae_body (no siempre llega)
-    if (d.tae_body) {
-      const raw = typeof d.tae_body === "string" ? d.tae_body : JSON.stringify(d.tae_body, null, 2);
-      const b3 = pushUnique("Respuesta TAE", raw);
-      if (b3) bloques.push(b3);
-    }
-
-    // Render bonito (ver B)
-    const html = bloques
-      .map((p) =>
-        p
-          .split("\n")
-          .map((line) => line.replace(/</g, "&lt;").replace(/>/g, "&gt;")) // escapar
-          .join("<br>")
-      )
-      .join('<hr style="border:none;height:1px;background:#eee;margin:12px 0;" />');
-
-    // usa showError con html (ver B)
-    showError(undefined, { html });
-
-  } else {
-    const msg = err?.message || "Error desconocido al timbrar.";
-    showError(msg);
-  }
-} finally {
-  setFacturando(false);
-}
-
   };
 
   // Helper (respeta acentos y Unicode)
@@ -326,87 +342,91 @@ export default function ComprasSuscripcionesView({
     )}`;
 
   return (
-    <Box p={4}>
-      {/* Regresar */}
-      <Box display="flex" justifyContent="center" mb={3}>
-        <Stack direction="row" spacing={3}>
-          <Button
-            variant="outlined"
-            color="success"
-            size="large"
-            startIcon={<DashboardIcon />}
-            sx={{
-              borderRadius: 3,
-              px: 3,
-              py: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-            }}
-            onClick={() => cambiarVista?.("menu")}
-          >
-            Regresar al Panel
-          </Button>
-        </Stack>
-      </Box>
+    // 🔒 Envoltura con GateTaeconta: si NO allowed, muestra el MENSAJE del gate
+  
+      <Box p={4}>
+        {/* Regresar */}
+        <Box display="flex" justifyContent="center" mb={3}>
+          <Stack direction="row" spacing={3}>
+            <Button
+              variant="outlined"
+              color="success"
+              size="large"
+              startIcon={<DashboardIcon />}
+              sx={{
+                borderRadius: 3,
+                px: 3,
+                py: 1.5,
+                fontWeight: "bold",
+                textTransform: "none",
+              }}
+              onClick={() => cambiarVista?.("menu")}
+            >
+              Regresar al Panel
+            </Button>
+          </Stack>
+        </Box>
+  <GateTaeconta> 
+        {/* Contenido */}
+        <Grid container spacing={2} sx={{ width: "100%", m: 0 }}>
+          {/* Tabla */}
+          <Grid item xs={12}>
+            <Typography
+              variant="h6"
+              sx={{
+                mb: 1.5,
+                fontWeight: 700,
+                color: "primary.main",
+                letterSpacing: 0.5,
+                display: "inline-block",
+                borderBottom: (theme) =>
+                  `3px solid ${
+                    theme.palette.mode === "dark"
+                      ? theme.palette.primary.light
+                      : theme.palette.primary.main
+                  }`,
+                pb: 0.5,
+              }}
+            >
+              {tituloMes}
+            </Typography>
 
-      {/* Contenido */}
-      <Grid container spacing={2} sx={{ width: "100%", m: 0 }}>
-        {/* Tabla */}
-        <Grid item xs={12}>
-          <Typography
-            variant="h6"
-            sx={{
-              mb: 1.5,
-              fontWeight: 700,
-              color: "primary.main",
-              letterSpacing: 0.5,
-              display: "inline-block",
-              borderBottom: (theme) =>
-                `3px solid ${
-                  theme.palette.mode === "dark"
-                    ? theme.palette.primary.light
-                    : theme.palette.primary.main
-                }`,
-              pb: 0.5,
-            }}
-          >
-            {tituloMes}
-          </Typography>
+            <FiltersBar
+              mes={mes}
+              folio={folio}
+              onChangeMes={onChangeMes}
+              onChangeFolio={onChangeFolio}
+              onSearch={onSearch}
+            />
 
-          <FiltersBar
-            mes={mes}
-            folio={folio}
-            onChangeMes={onChangeMes}
-            onChangeFolio={onChangeFolio}
-            onSearch={onSearch}
-          />
-
-          <SalesTable rows={loading ? [] : ventasRows} onFacturar={onFacturar} />
+            <SalesTable rows={loading ? [] : ventasRows} onFacturar={onFacturar} />
+          </Grid>
         </Grid>
-      </Grid>
+        </GateTaeconta>
 
-      {/* MODAL: colócalo al final, fuera de la tabla */}
-      <FacturarVentaDialog
-        open={openFacturar}
-        onClose={() => setOpenFacturar(false)}
-        venta={{
-          id: ventaActiva?.id,
-          folio: ventaActiva?.folio,
-          fecha: ventaActiva?.fecha,
-          total: ventaActiva?.total,
-          tipoPago: ventaActiva?.tipoPago,
-        }}
-        clientes={clientes}
-        loading={clientesLoading || facturando}
-        onSubmitFactura={({ cliente_id, cliente_nuevo, usoCfdi }) =>
-          onSubmitFactura({
-            ventaId: ventaActiva?.id,
-            cliente_id,
-            cliente_nuevo,
-            usoCfdi, // se envía al endpoint /admin/facturar/ventas
-          })
-        }
-      />
-    </Box>
+        {/* MODAL: colócalo al final, fuera de la tabla */}
+        <FacturarVentaDialog
+          open={openFacturar}
+          onClose={() => setOpenFacturar(false)}
+          venta={{
+            id: ventaActiva?.id,
+            folio: ventaActiva?.folio,
+            fecha: ventaActiva?.fecha,
+            total: ventaActiva?.total,
+            tipoPago: ventaActiva?.tipoPago,
+          }}
+          clientes={clientes}
+          loading={clientesLoading || facturando}
+          onSubmitFactura={({ cliente_id, cliente_nuevo, usoCfdi }) =>
+            onSubmitFactura({
+              ventaId: ventaActiva?.id,
+              cliente_id,
+              cliente_nuevo,
+              usoCfdi, // se envía al endpoint /admin/facturar/ventas
+            })
+          }
+        />
+      </Box>
+    
   );
 }

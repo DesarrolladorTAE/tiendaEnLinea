@@ -19,6 +19,10 @@ import { showSuccess, showError } from "../../utils/alerts";
 import ticketHelpContent from "../../utils/ticketHelpContent";
 import ModalPDFPreview from "../../components/tickets/ModalPDFPreview";
 
+// 👇 imports para el gate
+import GateTaeconta from "../../components/auth/GateTaeconta";
+import useReglaTaeconta from "../../hooks/useReglaTaeconta";
+
 const TicketEditForm = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     direccion: "",
@@ -39,6 +43,9 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
   const [isDirty, setIsDirty] = useState(false); // Detecta cambios en el formulario
   const [isSubmitting, setIsSubmitting] = useState(false); // Indica envío en progreso
 
+  // 👇 estado del gate
+  const { allowed, loading: gateLoading } = useReglaTaeconta();
+
   useEffect(() => {
     axiosClient
       .get("/ticket-view")
@@ -49,7 +56,8 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           direccion: ticket.direccion || "",
           mensaje_1: ticket.mensaje_1 || "",
           mensaje_2: ticket.mensaje_2 || "",
-          qr_factura: !!ticket.qr_factura,
+          // Si no está permitido, no habilitarlo aunque venga activo en server
+          qr_factura: allowed ? !!ticket.qr_factura : false,
           qr_sitio: !!ticket.qr_sitio,
           mostrar_iva:
             ticket.mostrar_iva !== undefined ? !!ticket.mostrar_iva : true,
@@ -64,7 +72,15 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         );
       })
       .finally(() => setLoading(false));
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowed]); // si cambia el permiso, re-sincroniza
+
+  // Si pierde permiso en caliente, apaga el switch
+  useEffect(() => {
+    if (!allowed && formData.qr_factura) {
+      setFormData((prev) => ({ ...prev, qr_factura: false }));
+    }
+  }, [allowed, formData.qr_factura]);
 
   const handleChange = (e) => {
     const { name, type, value, checked, files } = e.target;
@@ -114,10 +130,16 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
     setIsSubmitting(true);
 
+    // 👇 Sanitiza: si no tiene permiso, no permitir activar qr_factura
+    const safeData = {
+      ...formData,
+      qr_factura: allowed ? formData.qr_factura : false,
+    };
+
     const form = new FormData();
     form.append("_method", "PUT");
 
-    Object.entries(formData).forEach(([key, value]) => {
+    Object.entries(safeData).forEach(([key, value]) => {
       if (key === "logo_preview") return;
 
       if (key === "logo") {
@@ -128,7 +150,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         form.append(key, value ?? "");
       }
     });
-    form.append("eliminar_logo", formData.eliminar_logo ? "1" : "0");
+    form.append("eliminar_logo", safeData.eliminar_logo ? "1" : "0");
 
     try {
       await axiosClient.post("/ticket", form, {
@@ -142,7 +164,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         direccion: ticket.direccion || "",
         mensaje_1: ticket.mensaje_1 || "",
         mensaje_2: ticket.mensaje_2 || "",
-        qr_factura: !!ticket.qr_factura,
+        qr_factura: allowed ? !!ticket.qr_factura : false,
         qr_sitio: !!ticket.qr_sitio,
         logo: null,
         logo_preview: ticket.logo
@@ -310,16 +332,31 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           />
 
           <Box display="flex" gap={3} mt={2}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  name="qr_factura"
-                  checked={formData.qr_factura}
-                  onChange={handleChange}
-                />
+            {/* ✅ QR Factura protegido por GateTaeconta */}
+            <GateTaeconta
+              fallback={
+                <Tooltip title="Requiere plan y complemento de Taeconta activos">
+                  <span>
+                    <FormControlLabel
+                      control={<Checkbox checked={false} disabled />}
+                      label="QR Factura (facturación SAT)"
+                    />
+                  </span>
+                </Tooltip>
               }
-              label="QR Factura"
-            />
+            >
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="qr_factura"
+                    checked={formData.qr_factura}
+                    onChange={handleChange}
+                  />
+                }
+                label="QR Factura (facturación SAT)"
+              />
+            </GateTaeconta>
+
             <FormControlLabel
               control={
                 <Checkbox
