@@ -1,9 +1,9 @@
-// src/components/admin/ProductTable.jsx
 import React from "react";
 import { Link } from "react-router-dom";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
+import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop"; // 👈 nuevo icono
 
 const ProductTable = ({
   products,
@@ -11,6 +11,7 @@ const ProductTable = ({
   productsPerPage,
   onDelete,
   onOpenImages,
+  onOpenLabels, // 👈 nuevo callback para abrir modal de etiquetas
 }) => {
   const startIndex = (currentPage - 1) * productsPerPage;
 
@@ -46,6 +47,7 @@ const ProductTable = ({
                 </td>
                 <td className="text-center">
                   <div className="d-flex justify-content-center gap-2">
+                    {/* Editar */}
                     <Link
                       to={`edit/${product.id}`}
                       className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
@@ -55,6 +57,17 @@ const ProductTable = ({
                       <EditIcon fontSize="small" />
                     </Link>
 
+                    {/* NUEVO: Imprimir etiquetas */}
+                    <button
+                      className="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center"
+                      onClick={() => onOpenLabels(product)}
+                      title="Imprimir etiquetas"
+                      style={{ width: "32px", height: "32px" }}
+                    >
+                      <LocalPrintshopIcon fontSize="small" />
+                    </button>
+
+                    {/* Imágenes */}
                     <button
                       className="btn btn-sm btn-outline-warning"
                       onClick={() => onOpenImages(product)}
@@ -63,6 +76,7 @@ const ProductTable = ({
                       <ImageIcon fontSize="small" />
                     </button>
 
+                    {/* Eliminar */}
                     <button
                       onClick={() => onDelete(product.id)}
                       className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center"

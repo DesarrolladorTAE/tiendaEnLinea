@@ -7,6 +7,7 @@ import ProductTable from "../../components/products-list/ProductTable";
 import ProductPagination from "../../components/products-list/ProductPagination";
 import useComplementosActivos from "../../hooks/useComplementosActivos";
 import Taebanner from "../../components/admin/promociones/Taebanner";
+import LabelModal from "./modals/LabelModal"; // 👈 importar el modal
 
 const ProductImages = lazy(() => import("./ProductImages"));
 
@@ -19,6 +20,8 @@ const ProductList = () => {
   const [cargandoCSV, setCargandoCSV] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef();
+  const [openLabels, setOpenLabels] = useState(false);
+  const [labelProduct, setLabelProduct] = useState(null);
 
   const { puedeCrear, cargando, totalProductos, limitePermitido } =
     useLimiteProductos();
@@ -29,7 +32,12 @@ const ProductList = () => {
   useEffect(() => {
     fetchProductos();
   }, []);
-
+  const handleOpenLabels = (product) => {
+    // 👈 abre modal de etiquetas
+    setLabelProduct(product);
+    setOpenLabels(true);
+  };
+  const handleCloseLabels = () => setOpenLabels(false);
   useEffect(() => {
     const term = searchTerm.toLowerCase();
     const resultado = products.filter((p) =>
@@ -175,6 +183,13 @@ const ProductList = () => {
           productsPerPage={productsPerPage}
           onDelete={handleDelete}
           onOpenImages={setSelectedProduct}
+          onOpenLabels={handleOpenLabels} // 👈 pasar función para abrir modal
+        />
+
+        <LabelModal
+          open={openLabels}
+          onClose={handleCloseLabels}
+          product={labelProduct}
         />
 
         <ProductPagination
