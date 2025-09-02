@@ -24,27 +24,56 @@ export default function ReporteVentas() {
   const [fechaInicio, setFechaInicio] = useState(dayjs().format("YYYY-MM-DD"));
   const [fechaFin, setFechaFin] = useState(dayjs().format("YYYY-MM-DD"));
   const [sucursales, setSucursales] = useState([]);
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState("todas"); // ✅ por defecto, todas
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState("todas"); // "" o "todas" = todas
+  const [categorias, setCategorias] = useState([]);
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas"); // "" o "todas" = todas
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
+  // Cargar sucursales (POS)
   useEffect(() => {
     axiosClient
       .get("/admin/pos")
-      .then(({ data }) => setSucursales(data))
+      .then(({ data }) => setSucursales(data || []))
       .catch((err) => console.error("❌ Error al cargar sucursales", err));
   }, []);
 
-  const consultarVentas = async () => {
-    setLoading(true);
-    setPdfUrl(null);
+  // Cargar categorías
+  useEffect(() => {
+    axiosClient
+      .get("/admin/categories")
+      .then(({ data }) => setCategorias(data || []))
+      .catch((err) => console.error("❌ Error al cargar categorías", err));
+  }, []);
 
+  // Limpieza del ObjectURL del PDF para evitar fugas de memoria
+  useEffect(() => {
+    return () => {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    };
+  }, [pdfUrl]);
+
+  const validarFechas = () => {
     if (!fechaInicio || !fechaFin) {
-      setLoading(false);
       showError("Selecciona una fecha de inicio y una fecha de fin.");
-      return;
+      return false;
+    }
+    if (dayjs(fechaInicio).isAfter(dayjs(fechaFin))) {
+      showError("La fecha de inicio no puede ser mayor que la fecha de fin.");
+      return false;
+    }
+    return true;
+    };
+
+  const consultarVentas = async () => {
+    if (!validarFechas()) return;
+
+    setLoading(true);
+    if (pdfUrl) {
+      URL.revokeObjectURL(pdfUrl);
+      setPdfUrl(null);
     }
 
     const token = localStorage.getItem("AUTH_TOKEN");
@@ -56,10 +85,16 @@ export default function ReporteVentas() {
           params: {
             inicio: fechaInicio,
             fin: fechaFin,
-            // ✅ si el usuario eligió "todas" o dejó vacío, enviamos 'todas'
-            pos: !sucursalSeleccionada || sucursalSeleccionada === "todas"
-              ? "todas"
-              : sucursalSeleccionada,
+            // si el usuario eligió "todas", enviamos 'todas'
+            pos:
+              !sucursalSeleccionada || sucursalSeleccionada === "todas"
+                ? "todas"
+                : sucursalSeleccionada,
+            // nuevo filtro de categoría (funciona igual que POS)
+            categoria:
+              !categoriaSeleccionada || categoriaSeleccionada === "todas"
+                ? "todas"
+                : categoriaSeleccionada,
           },
           responseType: "blob",
           headers: {
@@ -169,13 +204,17 @@ export default function ReporteVentas() {
         </Box>
 
         {/* Filtros */}
-        <Paper elevation={3} sx={{ width: { xs: "100%", md: 320 }, p: 3, borderRadius: 2 }}>
+        <Paper
+          elevation={3}
+          sx={{ width: { xs: "100%", md: 320 }, p: 3, borderRadius: 2 }}
+        >
           <Typography variant="subtitle1" gutterBottom>
             Filtros
           </Typography>
           <Divider sx={{ mb: 2 }} />
 
           <Stack spacing={2}>
+            {/* Sucursal */}
             <FormControl fullWidth size="small">
               <InputLabel id="sucursal-label">Sucursal</InputLabel>
               <Select
@@ -184,7 +223,6 @@ export default function ReporteVentas() {
                 label="Sucursal"
                 onChange={(e) => setSucursalSeleccionada(e.target.value)}
               >
-                {/* ✅ Opción para todas */}
                 <MenuItem value="todas">Todas las sucursales</MenuItem>
                 {sucursales.map((s) => (
                   <MenuItem key={s.id} value={s.id}>
@@ -194,6 +232,25 @@ export default function ReporteVentas() {
               </Select>
             </FormControl>
 
+            {/* Categoría */}
+            <FormControl fullWidth size="small">
+              <InputLabel id="categoria-label">Categoría</InputLabel>
+              <Select
+                labelId="categoria-label"
+                value={categoriaSeleccionada}
+                label="Categoría"
+                onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+              >
+                <MenuItem value="todas">Todas las categorías</MenuItem>
+                {categorias.map((c) => (
+                  <MenuItem key={c.id} value={c.id}>
+                    {c.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Fechas */}
             <TextField
               type="date"
               label="Fecha Inicio"
@@ -214,13 +271,16 @@ export default function ReporteVentas() {
               fullWidth
             />
 
+            {/* Botón generar */}
             <Button
               variant="contained"
               color="primary"
               onClick={consultarVentas}
               fullWidth
               disabled={loading}
-              startIcon={loading ? <CircularProgress size={20} color="inherit" /> : null}
+              startIcon={
+                loading ? <CircularProgress size={20} color="inherit" /> : null
+              }
             >
               {loading ? "Generando..." : "Generar Reporte"}
             </Button>
