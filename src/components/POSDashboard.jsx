@@ -18,12 +18,14 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
+import  NoteIcon from "@mui/icons-material/Note";
 
 import POS from "./POS";
 import HistorialVentas from "./HistorialVentas";
 import ComprasFacturadas from "./ComprasFacturadas";
 import CancelaDevoluciones from "./CancelaDevoluciones";
 import ClientesPOS from "./ClientesPOS";
+import NotasInternas from "./NotasInternas";
 
 const POSDashboard = ({
   posName = "Mi Punto de Venta",
@@ -49,6 +51,13 @@ const POSDashboard = ({
       descripcion: "Consulta todas las ventas realizadas",
       color: "#2196F3",
       icono: <HistoryIcon sx={{ fontSize: 40 }} />,
+    },
+    {
+      id: "notas",
+      titulo: "Notas Internas",
+      descripcion: "Gestiona notas y recordatorios",
+      color: "#bf0fadff",
+      icono: <NoteIcon sx={{ fontSize: 40 }} />,
     },
     {
       id: "cancelaciones",
@@ -105,6 +114,8 @@ const POSDashboard = ({
         );
       case "historial":
         return <HistorialVentas cambiarVista={setVista} />;
+      case "notas":
+        return <NotasInternas cambiarVista={setVista} />;
       case "cancelaciones":
         return <CancelaDevoluciones cambiarVista={setVista} />;
       case "facturas":
