@@ -11,8 +11,8 @@ import { showError, showSuccess } from "../../utils/alerts";
 
 export default function ProductCard({
   product,
-  selectedVariation,
-  selectedSize,
+  selectedVariation = {},  // 👈 default seguro
+  selectedSize = {},
   setSelectedVariation,
   setSelectedSize,
   cart,
@@ -24,15 +24,15 @@ export default function ProductCard({
   getProductImage,
   isVariantProduct,
 }) {
-  const baseId = product.id;
-  const selectedVar = selectedVariation[baseId];
-  const selectedSz = selectedSize[baseId];
+  const baseId = product?.id;
+  const selectedVar = selectedVariation?.[baseId] ?? null;
+  const selectedSz  = selectedSize?.[baseId] ?? null;
   const compositeId =
     selectedVar && selectedSz
       ? `${baseId}-${selectedVar.id}-${selectedSz}`
       : baseId;
 
-  const canAdd = !isVariantProduct(product) || (selectedVar && selectedSz);
+const canAdd = !isVariantProduct(product) || (!!selectedVar && !!selectedSz);
   const stock = getAvailableStock({
     ...product,
     variation: selectedVar,
@@ -100,17 +100,17 @@ export default function ProductCard({
         sx={{ pointerEvents: "none" }}
       >
         <Box>
-          {product.discount > 0 ? (
+          {(Number(product?.discount) > 0) ? (
             <>
               <Typography
                 variant="body2"
                 color="text.secondary"
                 sx={{ textDecoration: "line-through" }}
               >
-                ${product.price.toFixed(2)}
+                ${(Number(product?.price) || 0).toFixed(2)}
               </Typography>
               <Typography variant="h6" color="error" fontWeight="bold">
-                ${(product.price * (1 - product.discount / 100)).toFixed(2)}
+                ${((Number(product?.price)||0) * (1 - (Number(product?.discount)||0) / 100)).toFixed(2)}
               </Typography>
               <Box
                 sx={{
@@ -129,7 +129,7 @@ export default function ProductCard({
             </>
           ) : (
             <Typography variant="h6" color="primary">
-              ${product.price.toFixed(2)}
+              ${(Number(product?.price)||0).toFixed(2)}
             </Typography>
           )}
         </Box>
@@ -162,7 +162,7 @@ export default function ProductCard({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {product.variation.map((v) => (
+            {(Array.isArray(product?.variation) ? product.variation : []).map((v) => (
               <MenuItem key={v.id} value={v.id}>
                 {v.color}
               </MenuItem>
@@ -187,8 +187,8 @@ export default function ProductCard({
             disabled={!selectedVar}
             onClick={(e) => e.stopPropagation()}
           >
-            {selectedVar?.size?.length ? (
-              selectedVar.size.map((s) => (
+            {Array.isArray(selectedVar?.size) && selectedVar.size.length ? (
+  selectedVar.size.map((s) => (
                 <MenuItem key={s.name} value={s.name}>
                   {s.name} ({s.stock})
                 </MenuItem>

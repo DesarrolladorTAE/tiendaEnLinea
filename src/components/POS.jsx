@@ -1,3 +1,4 @@
+// src/components/POS.jsx
 import React, { useState, useEffect, useRef } from "react";
 import axiosClient from "../config/axiosClientPOS";
 import {
@@ -16,8 +17,8 @@ import { useLocation } from "react-router-dom";
 import HistoryIcon from "@mui/icons-material/History";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import DashboardIcon from "@mui/icons-material/Dashboard";
+import ReplayIcon from "@mui/icons-material/Replay";
 import { showError, showSuccess } from "../utils/alerts";
-import ReplayIcon from "@mui/icons-material/Replay"; // Ajusta la ruta si es necesario
 
 export default function POS({ posName, cambiarVista }) {
   const [ticketData, setTicketData] = useState(null);
@@ -29,7 +30,6 @@ export default function POS({ posName, cambiarVista }) {
   const [cart, setCart] = useState([]);
   const [modalDescuentoActivo, setModalDescuentoActivo] = useState(false);
   const location = useLocation();
-  // const posDesdeAdmin = location.state?.pos || null;
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
@@ -44,7 +44,8 @@ export default function POS({ posName, cambiarVista }) {
     handleAdd,
     handleRemove,
     handleDecrease,
-    handleCheckout,
+    handleCheckout,     // del hook
+    refetchProducts,    // 👈 para refrescar manual si lo necesitas
     getAvailableStock,
     getQuantityInCart,
     getProductImage,
@@ -53,21 +54,21 @@ export default function POS({ posName, cambiarVista }) {
     setTicketData,
     setShowTicket,
     cart,
-    setCart, // 👈 NECESARIO
+    setCart,
   });
 
-  //  Descargar el PDF como blob cuando abrimos el modal
+  // Descargar el PDF como blob cuando abrimos el modal
   useEffect(() => {
     if (showTicket && ticketData) {
       (async () => {
         try {
           const resp = await axiosClient.get(
             `/sales/${ticketData.id}/ticket.pdf`,
-            {
-              responseType: "arraybuffer",
-            }
+            { responseType: "arraybuffer" }
           );
           const blob = new Blob([resp.data], { type: "application/pdf" });
+          // Revoca previo blob para evitar fugas de memoria
+          if (ticketBlobUrl) URL.revokeObjectURL(ticketBlobUrl);
           setTicketBlobUrl(URL.createObjectURL(blob));
         } catch (e) {
           console.error("Error cargando ticket:", e);
@@ -76,8 +77,10 @@ export default function POS({ posName, cambiarVista }) {
         }
       })();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTicket, ticketData]);
 
+  // Mantener el enfoque del escáner (input oculto)
   useEffect(() => {
     let focusTimeout;
 
@@ -88,7 +91,7 @@ export default function POS({ posName, cambiarVista }) {
         !modalDescuentoActivo &&
         inputRef.current &&
         document.activeElement !== inputRef.current &&
-        document.activeElement.tagName === "BODY"
+        document.activeElement?.tagName === "BODY"
       ) {
         inputRef.current.focus({ preventScroll: true });
       }
@@ -96,28 +99,66 @@ export default function POS({ posName, cambiarVista }) {
     };
 
     tryFocus();
-
     return () => clearTimeout(focusTimeout);
-  }, [scannerEnabled, showTicket, modalDescuentoActivo]); // ✅ agrega la nueva dependencia
+  }, [scannerEnabled, showTicket, modalDescuentoActivo]);
 
   // Imprimir abriendo el blob URL
   const handlePrint = () => {
     if (ticketBlobUrl) window.open(ticketBlobUrl, "_blank");
   };
+
+  // Resetear página al cambiar búsqueda
   useEffect(() => {
     setCurrentPage(1);
   }, [search]);
+
   // Enviar WhatsApp llamando a tu endpoint send-whatsapp
   const handleSendTicket = async (phone) => {
     try {
-      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, {
-        phone,
-      });
+      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, { phone });
       showSuccess("✅ Ticket enviado por WhatsApp");
     } catch (e) {
       console.error("Error enviando WhatsApp:", e);
-      showSuccess("❌ No se pudo enviar el ticket por WhatsApp.");
+      showError("❌ No se pudo enviar el ticket por WhatsApp.");
     }
+  };
+
+  // Cerrar ticket: limpiar estado del ticket y re-enfocar escáner
+  const handleCloseTicket = () => {
+    setShowTicket(false);
+    setTicketData(null);
+    if (ticketBlobUrl) {
+      URL.revokeObjectURL(ticketBlobUrl);
+      setTicketBlobUrl("");
+    }
+    requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    });
+  };
+
+  // Wrapper para checkout: refresca, limpia carrito/campos y deja listo el escáner
+  const onCheckout = async (checkoutPayloadFromCart) => {
+    const sale = await handleCheckout(checkoutPayloadFromCart);
+    if (!sale) return;
+
+    // Limpiezas de UI post-venta
+    setSearch("");
+    setSelectedVariation({});
+    setSelectedSize({});
+    setCurrentPage(1);
+    setBarcode("");
+
+    // Forzar un refetch adicional por si el backend actualiza stock con ligero retraso
+    await refetchProducts();
+
+    // El ticket se abre desde el hook; si quisieras abrirlo aquí:
+    // setTicketData(sale);
+    // setShowTicket(true);
+
+    // Re-enfocar escáner
+    requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    });
   };
 
   const loading = !Array.isArray(products);
@@ -141,15 +182,14 @@ export default function POS({ posName, cambiarVista }) {
       })
     : [];
 
-  // Lógica de paginación
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  // Paginación
+  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage) || 1;
   const paginatedProducts = filteredProducts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Reinicia página cuando cambia el buscador
-
+  // Escáner de código de barras
   const handleScan = (e) => {
     if (e.key === "Enter") {
       const code = barcode.trim();
@@ -190,11 +230,12 @@ export default function POS({ posName, cambiarVista }) {
           >
             Historial
           </Button>
+
           <Button
             variant="contained"
             color="error"
             size="large"
-            startIcon={<ReplayIcon/>}
+            startIcon={<ReplayIcon />}
             sx={{
               borderRadius: 3,
               paddingX: 3,
@@ -242,9 +283,7 @@ export default function POS({ posName, cambiarVista }) {
               fontSize: "1rem",
               borderWidth: 2,
               boxShadow: 2,
-              "&:hover": {
-                borderWidth: 2,
-              },
+              "&:hover": { borderWidth: 2 },
             }}
             onClick={() => cambiarVista("menu")}
           >
@@ -262,14 +301,16 @@ export default function POS({ posName, cambiarVista }) {
         onFocus={() => setScannerEnabled(false)}
         onBlur={() => setScannerEnabled(true)}
       />
+
+      {/* Input oculto para escáner */}
       <input
         ref={inputRef}
         type="text"
         value={barcode}
         onKeyDown={handleScan}
-        onChange={() => {}} // prevenir warning
+        onChange={() => {}} // evitar warning
         style={{
-          position: "fixed", // evitar que afecte layout y scroll
+          position: "fixed",
           top: "-1000px",
           left: "-1000px",
           opacity: 0,
@@ -289,6 +330,7 @@ export default function POS({ posName, cambiarVista }) {
           <Typography variant="h6" gutterBottom>
             Productos
           </Typography>
+
           <Box
             display="grid"
             gap={2}
@@ -313,6 +355,8 @@ export default function POS({ posName, cambiarVista }) {
               />
             ))}
           </Box>
+
+          {/* Paginación */}
           <Box
             mt={2}
             display="flex"
@@ -329,7 +373,7 @@ export default function POS({ posName, cambiarVista }) {
             </Button>
 
             <Typography fontWeight="bold">
-              Página {currentPage} de {totalPages || 1}
+              Página {currentPage} de {totalPages}
             </Typography>
 
             <Button
@@ -347,7 +391,7 @@ export default function POS({ posName, cambiarVista }) {
           cart={cart}
           setCart={setCart}
           onRemove={handleRemove}
-          onCheckout={handleCheckout}
+          onCheckout={onCheckout}                // 👈 wrapper que limpia y refresca
           setScannerEnabled={setScannerEnabled}
           setModalDescuentoActivo={setModalDescuentoActivo}
         />
@@ -355,7 +399,7 @@ export default function POS({ posName, cambiarVista }) {
         {/* Modal de ticket */}
         <TicketDialog
           open={showTicket}
-          onClose={() => setShowTicket(false)}
+          onClose={handleCloseTicket}            // 👈 limpia ticket y re-enfoca
           sale={ticketData}
           ticketUrl={ticketBlobUrl}
           onPrint={handlePrint}

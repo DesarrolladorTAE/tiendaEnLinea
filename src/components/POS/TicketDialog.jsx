@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -9,20 +9,48 @@ import {
   Typography,
   CircularProgress,
 } from "@mui/material";
-import { showSuccess, showError } from "../../utils/alerts"; // ajusta si es necesario
+import { showSuccess, showError } from "../../utils/alerts";
 
-export default function TicketDialog({ open, onClose, sale, ticketUrl, onPrint, onSend }) {
+export default function TicketDialog({
+  open,
+  onClose,
+  sale,
+  ticketUrl,
+  onPrint,
+  onSend,
+}) {
   const [phone, setPhone] = useState("");
   const [loadingSend, setLoadingSend] = useState(false);
   const [loadingPrint, setLoadingPrint] = useState(false);
 
-  const handleSend = async () => {
-    if (!phone.match(/^\+?[0-9]{10,}$/)) return;
+  // Limpia campos cada vez que se abre o cambia la venta
+  useEffect(() => {
+    if (open) {
+      setPhone("");
+      setLoadingSend(false);
+      setLoadingPrint(false);
+    }
+  }, [open, sale?.id]);
 
+  // Limpia también al cerrar definitivamente (por si el padre mantiene montado el dialog)
+  const handleClose = () => {
+    setPhone("");
+    setLoadingSend(false);
+    setLoadingPrint(false);
+    onClose?.();
+  };
+
+  const digitsOnly = (v) => v.replace(/\D/g, "");
+  const isValidPhone = /^\d{10}$/.test(phone); // ajusta si usas otro formato
+
+  const handleSend = async () => {
+    if (!isValidPhone) return;
     setLoadingSend(true);
     try {
-      await onSend(phone); // debe ser una función async que devuelva una Promise
+      await onSend(digitsOnly(phone));
       showSuccess("📨 Ticket enviado por WhatsApp");
+      // Si quieres cerrar después de enviar, descomenta:
+      // handleClose();
     } catch (err) {
       console.error(err);
       showError("❌ Error al enviar por WhatsApp");
@@ -34,7 +62,7 @@ export default function TicketDialog({ open, onClose, sale, ticketUrl, onPrint, 
   const handlePrint = async () => {
     setLoadingPrint(true);
     try {
-      await onPrint(); // también se asume que devuelve una Promise
+      await onPrint();
     } catch (err) {
       console.error(err);
       showError("❌ Error al imprimir ticket");
@@ -44,8 +72,9 @@ export default function TicketDialog({ open, onClose, sale, ticketUrl, onPrint, 
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
       <DialogTitle>Ticket #{sale?.id}</DialogTitle>
+
       <DialogContent dividers>
         <iframe
           src={ticketUrl}
@@ -59,23 +88,21 @@ export default function TicketDialog({ open, onClose, sale, ticketUrl, onPrint, 
           fullWidth
           margin="dense"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="ej. 5512345678"
-          inputProps={{
-            maxLength: 10,
-            inputMode: "numeric",
-            pattern: "[0-9]{10}",
-          }}
+          onChange={(e) => setPhone(digitsOnly(e.target.value))}
+          placeholder="5512345678"
+          inputProps={{ maxLength: 10, inputMode: "numeric", pattern: "\\d{10}" }}
+          helperText="Ingresa 10 dígitos (MX)."
         />
       </DialogContent>
+
       <DialogActions>
         <Button onClick={handlePrint} disabled={loadingPrint}>
           {loadingPrint ? <CircularProgress size={20} /> : "🖨️ Imprimir"}
         </Button>
-        <Button onClick={handleSend} disabled={!phone.match(/^\+?[0-9]{10,}$/) || loadingSend}>
+        <Button onClick={handleSend} disabled={!isValidPhone || loadingSend}>
           {loadingSend ? <CircularProgress size={20} /> : "✉️ Enviar"}
         </Button>
-        <Button onClick={onClose}>Cerrar</Button>
+        <Button onClick={handleClose}>Cerrar</Button>
       </DialogActions>
     </Dialog>
   );
