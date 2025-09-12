@@ -4,6 +4,7 @@ const superadminNavItems = [
   { path: "ventas", label: "💰 Ventas" },
   { path: "suscripciones", label: "👥 Suscripciones" },
   { path: "notificaciones", label: "📤 Notificaciones" },
+  { path: "banners", label: "🖼️ Banners" },
 
 
   //   { path: "usuarios", label: "👥 Usuarios" },
