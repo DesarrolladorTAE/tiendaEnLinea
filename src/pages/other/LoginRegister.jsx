@@ -1,7 +1,8 @@
 // src/pages/other/LoginRegister.jsx
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SEO from "../../components/seo";
+import axios from "axios"; // 👈 axios puro SOLO para banners
 import axiosClient from "../../config/axiosClient";
 import axiosSuperadmin from "../../config/axiosSuperadmin";
 import VerificationModal from "../../components/login/VerificationModal";
@@ -10,6 +11,9 @@ import RegisterForm from "../../components/login/RegisterForm";
 import { Modal, Box, Typography, TextField, Button } from "@mui/material";
 import PasswordResetModal from "../../components/login/PasswordResetModal";
 import { showError, showSuccess } from "../../utils/alerts";
+import "./LoginRegister.motion.css"; // 👈 CSS separado
+
+const API_URL = "https://mitiendaenlineamx.com.mx/api"; // 👈 igual que en tu HeroBox
 
 const LoginRegister = () => {
   const navigate = useNavigate();
@@ -39,7 +43,85 @@ const LoginRegister = () => {
   // ⏲️ Long-press del logo
   const pressTimerRef = useRef(null);
 
-  // ⏱ Cooldown para reenvío de código
+  // ========= NUEVO: Banners (axios puro) =========
+  const [slidesLogin, setSlidesLogin] = useState([]);
+  const [slidesRegister, setSlidesRegister] = useState([]);
+  const [activeLogin, setActiveLogin] = useState(0);
+  const [activeRegister, setActiveRegister] = useState(0);
+  const tLoginRef = useRef(null);
+  const tRegisterRef = useRef(null);
+  const INTERVAL_MS = 5000;
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchBanners = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/admin/publicidad`);
+        const arr = Array.isArray(res.data) ? res.data : res.data?.data || [];
+
+        const isActive = (b) => (b?.is_active ?? b?.activo ?? true) === true;
+        const getUrl = (b) =>
+          b?.url || b?.imagen || b?.image_url || b?.path || b?.src || b?.img;
+        const textTags = (b) =>
+          `${b?.tipo || ""} ${b?.etiqueta || ""} ${b?.tag || ""} ${b?.badge || ""} ${b?.posicion || ""} ${b?.ubicacion || ""}`
+            .toLowerCase()
+            .trim();
+        const listTags = (b) =>
+          [...(b?.etiquetas || []), ...(b?.tags || [])]
+            .map((x) => String(x || "").toLowerCase());
+
+        const matchTag = (b, target) =>
+          textTags(b).includes(target) ||
+          listTags(b).some((x) => x.includes(target));
+
+        const toSlide = (b) => ({
+          url: getUrl(b),
+          titulo: b?.titulo || b?.title || "",
+          descripcion: b?.descripcion || b?.description || "",
+        });
+
+        const login = arr.filter((b) => isActive(b) && matchTag(b, "login"))
+                         .map(toSlide).filter((s) => s.url);
+        const register = arr.filter((b) => isActive(b) && matchTag(b, "register"))
+                            .map(toSlide).filter((s) => s.url);
+
+        if (mounted) {
+          setSlidesLogin(login);
+          setSlidesRegister(register);
+          setActiveLogin(0);
+          setActiveRegister(0);
+        }
+      } catch (e) {
+        console.error("Error cargando banners (axios):", e);
+      }
+    };
+    fetchBanners();
+    return () => { mounted = false; };
+  }, []);
+
+  // Autoplay login
+  useEffect(() => {
+    clearInterval(tLoginRef.current);
+    if (modo === "login" && slidesLogin.length > 1) {
+      tLoginRef.current = setInterval(() => {
+        setActiveLogin((p) => (p + 1) % slidesLogin.length);
+      }, INTERVAL_MS);
+    }
+    return () => clearInterval(tLoginRef.current);
+  }, [modo, slidesLogin]);
+
+  // Autoplay register
+  useEffect(() => {
+    clearInterval(tRegisterRef.current);
+    if (modo === "register" && slidesRegister.length > 1) {
+      tRegisterRef.current = setInterval(() => {
+        setActiveRegister((p) => (p + 1) % slidesRegister.length);
+      }, INTERVAL_MS);
+    }
+    return () => clearInterval(tRegisterRef.current);
+  }, [modo, slidesRegister]);
+
+  // ========= Helpers =========
   const startCooldown = () => {
     let seconds = 60;
     setCooldown(seconds);
@@ -54,31 +136,20 @@ const LoginRegister = () => {
     }, 1000);
   };
 
-  // 🟢 Login tienda
+  // ========= Login =========
   const handleLogin = async (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (loading) return;
     setLoading(true);
-
     try {
       const res = await axiosClient.post(
         "/login-store",
-        {
-          login: loginData.login,
-          password: loginData.password,
-        },
-        {
-          __skipAuthRedirect: true,                  // 👈 bandera interna
-         // 👈 respaldo por header
-          // validateStatus: (s) => s >= 200 && s < 500, // opcional
-        }
+        { login: loginData.login, password: loginData.password },
+        { __skipAuthRedirect: true }
       );
-
       localStorage.setItem("AUTH_TOKEN", res.data.token);
       localStorage.setItem("STORE_SLUG", res.data.store.slug);
-
-      // await showSuccess("¡Inicio de sesión exitoso! ✅");
       navigate("/admin");
     } catch (err) {
       const msg =
@@ -91,7 +162,7 @@ const LoginRegister = () => {
     }
   };
 
-  // 🟠 Registro de nueva tienda
+  // ========= Registro =========
   const handleRegister = async (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -112,7 +183,6 @@ const LoginRegister = () => {
 
       await axiosClient.post("/registro/enviar-codigo", payload, {
         __skipAuthRedirect: true,
-      
       });
       setShowModal(true);
       startCooldown();
@@ -147,7 +217,6 @@ const LoginRegister = () => {
       };
       await axiosClient.post("/registro/enviar-codigo", payload, {
         __skipAuthRedirect: true,
-        
       });
       startCooldown();
       await showSuccess("Código reenviado ✅");
@@ -166,14 +235,8 @@ const LoginRegister = () => {
     try {
       const res = await axiosClient.post(
         "/registro/verificar",
-        {
-          email: registerData.email,
-          code: verificationCode,
-        },
-        {
-          __skipAuthRedirect: true,
-          headers: { "x-skip-auth-redirect": "1" },
-        }
+        { email: registerData.email, code: verificationCode },
+        { __skipAuthRedirect: true, headers: { "x-skip-auth-redirect": "1" } }
       );
       localStorage.setItem("AUTH_TOKEN", res.data.token);
       setShowModal(false);
@@ -187,19 +250,77 @@ const LoginRegister = () => {
     }
   };
 
-  return (
-    <>
-      <SEO titleTemplate="Login" description="Inicio de sesión y registro" />
+  // ========= Slides visibles según modo =========
+  const slides = modo === "login" ? slidesLogin : slidesRegister;
+  const active = modo === "login" ? activeLogin : activeRegister;
+  const setActive = modo === "login" ? setActiveLogin : setActiveRegister;
+  const current = slides[active];
 
-      <div className="container py-3" style={{ minHeight: "100vh" }}>
-        <div className="row justify-content-center">
-          <div className="col-md-6 col-lg-5">
-            <div className="text-center mb-4">
+  // ========= Orden de grilla (imagen derecha en login, izquierda en register) =========
+  const isLogin = modo === "login";
+  // En desktop: .grid -> 2 columnas. En mobile colapsa a 1 y respeta el orden DOM.
+
+return (
+  <>
+    <SEO titleTemplate="Login" description="Inicio de sesión y registro" />
+
+    <section
+      className={`auth-neo ${isLogin ? "is-login" : "is-register"}`}
+      style={{ minHeight: "100vh" }}
+    >
+      {/* Figuras decorativas */}
+      <div className="fx fx-blob b1" aria-hidden />
+      <div className="fx fx-blob b2" aria-hidden />
+      <div className="fx fx-ring r1" aria-hidden />
+
+      {/* ===== Panel grande con dos columnas ===== */}
+      <div className="container">
+        <div
+          className={`auth-panel ${
+            isLogin ? "img-left grid-login" : "img-right grid-register"
+          }`}
+        >
+          {/* Columna MEDIA (banner) */}
+          <aside className="col-media">
+            {current?.url ? (
+              <div key={`${modo}-${active}`} className="auth-banner">
+                <div className="frame">
+                  <img src={current.url} alt={current.titulo || "banner"} />
+                </div>
+
+                { (current.titulo || current.descripcion) && (
+                  <div className="banner-copy">
+                    {current.titulo && <h3>{current.titulo}</h3>}
+                    {current.descripcion && <p>{current.descripcion}</p>}
+                  </div>
+                )}
+
+                {slides.length > 1 && (
+                  <div className="auth-banner-dots">
+                    {slides.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setActive(i)}
+                        className={`dot ${i === active ? "active" : ""}`}
+                        aria-label={`Ir al banner ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="auth-banner skeleton" />
+            )}
+          </aside>
+
+          {/* Columna FORM */}
+          <main className="col-form">
+            <div className="text-center mb-3">
               <img
                 src="/assets/logoc.png"
                 alt="Logo de la tienda"
-                className="img-fluid"
-                style={{ maxWidth: "280px", cursor: "pointer" }}
+                className="img-fluid auth-logo"
+                style={{ maxWidth: "260px", cursor: "pointer" }}
                 onMouseDown={() => {
                   pressTimerRef.current = setTimeout(
                     () => setShowStoreLoginModal(true),
@@ -224,9 +345,11 @@ const LoginRegister = () => {
               />
             </div>
 
-            {modo === "login" ? (
+            {isLogin ? (
               <>
-                <h2 className="text-center mb-2">Iniciar sesión</h2>
+                <h1 className="auth-heading">Acceso</h1>
+                <p className="auth-sub">Bienvenido de nuevo</p>
+
                 <LoginForm
                   loginData={loginData}
                   setLoginData={setLoginData}
@@ -235,7 +358,8 @@ const LoginRegister = () => {
                   togglePassword={() => setShowPassword(!showPassword)}
                   loading={loading}
                 />
-                <hr />
+
+                <hr className="auth-hr" />
                 <div className="text-center mt-2">
                   <button
                     type="button"
@@ -257,7 +381,9 @@ const LoginRegister = () => {
               </>
             ) : (
               <>
-                <h2 className="text-center mb-2">Crear una cuenta</h2>
+                <h1 className="auth-heading">Crear cuenta</h1>
+                <p className="auth-sub">Regístrate en minutos</p>
+
                 <RegisterForm
                   registerData={registerData}
                   setRegisterData={setRegisterData}
@@ -268,7 +394,8 @@ const LoginRegister = () => {
                   loading={loading}
                   registerBlocked={registerBlocked}
                 />
-                <hr />
+
+                <hr className="auth-hr" />
                 <div className="text-center mt-3">
                   <button
                     type="button"
@@ -280,107 +407,104 @@ const LoginRegister = () => {
                 </div>
               </>
             )}
-          </div>
+          </main>
         </div>
       </div>
+    </section>
 
-      <PasswordResetModal
-        open={showResetModal}
-        onClose={() => setShowResetModal(false)}
-      />
+    {/* ===== Modales ===== */}
+    <PasswordResetModal
+      open={showResetModal}
+      onClose={() => setShowResetModal(false)}
+    />
 
-      <Modal
-        open={showStoreLoginModal}
-        keepMounted
-        disableAutoFocus
-        disableEnforceFocus
-        disableRestoreFocus
-        onClose={(e, reason) => {
-          if (reason === "backdropClick" || reason === "escapeKeyDown") return;
-          setShowStoreLoginModal(false);
+    <Modal
+      open={showStoreLoginModal}
+      keepMounted
+      disableAutoFocus
+      disableEnforceFocus
+      disableRestoreFocus
+      onClose={(e, reason) => {
+        if (reason === "backdropClick" || reason === "escapeKeyDown") return;
+        setShowStoreLoginModal(false);
+      }}
+    >
+      <Box
+        sx={{
+          width: 400,
+          p: 4,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          boxShadow: 24,
+          mx: "auto",
+          my: "20vh",
         }}
       >
-        <Box
-          sx={{
-            width: 400,
-            p: 4,
-            bgcolor: "background.paper",
-            borderRadius: 2,
-            boxShadow: 24,
-            mx: "auto",
-            my: "20vh",
+        <Typography variant="h6" gutterBottom>
+          Acceso exclusivo para SuperAdmin
+        </Typography>
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (loading) return;
+            setLoading(true);
+            try {
+              const res = await axiosSuperadmin.post("/admin/login", {
+                email: storeLogin.login,
+                password: storeLogin.password,
+              });
+              sessionStorage.setItem("SUPERADMIN_TOKEN", res.data.token);
+              setShowStoreLoginModal(false);
+              await showSuccess("Bienvenido, SuperAdmin 👑");
+              navigate("/panel/dashboard");
+            } catch (err) {
+              await showError("Credenciales de superadmin inválidas");
+            } finally {
+              setLoading(false);
+            }
           }}
         >
-          <Typography variant="h6" gutterBottom>
-            Acceso exclusivo para SuperAdmin
-          </Typography>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (loading) return;
-              setLoading(true);
-              try {
-                const res = await axiosSuperadmin.post("/admin/login", {
-                  email: storeLogin.login,
-                  password: storeLogin.password,
-                });
-                sessionStorage.setItem("SUPERADMIN_TOKEN", res.data.token);
-                setShowStoreLoginModal(false);
-                await showSuccess("Bienvenido, SuperAdmin 👑");
-                navigate("/panel/dashboard");
-              } catch (err) {
-                await showError("Credenciales de superadmin inválidas");
-              } finally {
-                setLoading(false);
-              }
-            }}
-          >
-            <TextField
-              label="Correo o teléfono"
-              fullWidth
-              margin="dense"
-              value={storeLogin.login}
-              onChange={(e) =>
-                setStoreLogin({ ...storeLogin, login: e.target.value })
-              }
-            />
-            <TextField
-              label="Contraseña"
-              type="password"
-              fullWidth
-              margin="dense"
-              value={storeLogin.password}
-              onChange={(e) =>
-                setStoreLogin({ ...storeLogin, password: e.target.value })
-              }
-            />
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 2 }}
-              disabled={loading}
-            >
-              Ingresar
-            </Button>
-          </form>
-        </Box>
-      </Modal>
+          <TextField
+            label="Correo o teléfono"
+            fullWidth
+            margin="dense"
+            value={storeLogin.login}
+            onChange={(e) =>
+              setStoreLogin({ ...storeLogin, login: e.target.value })
+            }
+          />
+          <TextField
+            label="Contraseña"
+            type="password"
+            fullWidth
+            margin="dense"
+            value={storeLogin.password}
+            onChange={(e) =>
+              setStoreLogin({ ...storeLogin, password: e.target.value })
+            }
+          />
+          <Button type="submit" fullWidth variant="contained" sx={{ mt: 2 }} disabled={loading}>
+            Ingresar
+          </Button>
+        </form>
+      </Box>
+    </Modal>
 
-      <VerificationModal
-        show={showModal}
-        onClose={() => setShowModal(false)}
-        onVerify={handleVerificationCodeSubmit}
-        onSubmitResendCode={onSubmitResendCode}
-        code={verificationCode}
-        setCode={setVerificationCode}
-        loading={loading}
-        resendDisabled={resendDisabled}
-        cooldown={cooldown}
-      />
-    </>
-  );
+    <VerificationModal
+      show={showModal}
+      onClose={() => setShowModal(false)}
+      onVerify={handleVerificationCodeSubmit}
+      onSubmitResendCode={onSubmitResendCode}
+      code={verificationCode}
+      setCode={setVerificationCode}
+      loading={loading}
+      resendDisabled={resendDisabled}
+      cooldown={cooldown}
+    />
+  </>
+);
+
 };
 
 export default LoginRegister;

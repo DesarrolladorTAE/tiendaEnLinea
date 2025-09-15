@@ -1,5 +1,5 @@
 // src/pages/admin/PublicidadAdmin.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ import {
   Box,
   Divider,
   InputAdornment,
+  LinearProgress,
 } from "@mui/material";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import EditIcon from "@mui/icons-material/Edit";
@@ -39,6 +40,12 @@ export default function PublicidadAdmin() {
 
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState(null);
+
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const uploadProgressRef = useRef(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [form, setForm] = useState({
     titulo: "",
@@ -69,8 +76,7 @@ export default function PublicidadAdmin() {
     fetchPublicidad();
   }, []);
 
-  const openCreate = () => {
-    setEditing(null);
+  const resetForm = () => {
     setForm({
       titulo: "",
       descripcion: "",
@@ -78,6 +84,15 @@ export default function PublicidadAdmin() {
       url: "",
       is_active: true,
     });
+    setFile(null);
+    setPreviewUrl("");
+    setUploadProgress(0);
+    uploadProgressRef.current = 0;
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    resetForm();
     setOpenForm(true);
   };
 
@@ -90,41 +105,153 @@ export default function PublicidadAdmin() {
       url: row.url || "",
       is_active: row.is_active,
     });
+    setFile(null);
+    setPreviewUrl("");
+    setUploadProgress(0);
     setOpenForm(true);
   };
 
   const closeForm = () => {
     setOpenForm(false);
     setEditing(null);
+    resetForm();
   };
 
-  const handleSave = async () => {
-    if (!form.url.trim()) return showError("La URL de la imagen es obligatoria.");
-    if (!TIPOS.includes(form.tipo)) return showError("Selecciona un tipo válido.");
+  const handleFileChange = (e) => {
+    const f = e.target.files?.[0] || null;
+    setFile(f);
+    if (f && f.type?.startsWith("image/")) {
+      const localUrl = URL.createObjectURL(f);
+      setPreviewUrl(localUrl);
+    } else {
+      setPreviewUrl("");
+    }
+  };
+
+  const isImageUrl = (u) => /\.(png|jpg|jpeg|gif|webp)$/i.test(u || "");
+
+  /** FRONTEND RULE:
+   * Asegura que solo exista 1 activo de tipo "Login".
+   * Desactiva todos los demás "Login" activos excepto el id indicado.
+   */
+  const deactivateOtherLoginBanners = async (exceptId) => {
+    const toDisable = items.filter(
+      (it) => it.tipo === "Login" && it.is_active && it.id !== exceptId
+    );
+    if (toDisable.length === 0) return;
 
     try {
-      if (editing) {
-        await axiosClient.put(`/admin/publicidad/${editing.id}`, form);
-        showSuccess("Banner actualizado.");
+      // Desactivar en backend y en estado local
+      await Promise.all(
+        toDisable.map((it) =>
+          axiosClient.put(`/admin/publicidad/${it.id}`, { ...it, is_active: false })
+        )
+      );
+      setItems((prev) =>
+        prev.map((it) =>
+          it.tipo === "Login" && it.id !== exceptId ? { ...it, is_active: false } : it
+        )
+      );
+    } catch {
+      // Si falla, igual seguimos — la regla es solo en frontend, pero intentamos dejarlo coherente.
+    }
+  };
+
+  // Guardar (crea/actualiza) con soporte de archivo + regla de Login único activo
+  const handleSave = async () => {
+    try {
+      setUploading(true);
+
+      let savedItem = null;
+
+      if (file) {
+        const fd = new FormData();
+        if (form.titulo) fd.append("titulo", form.titulo);
+        if (form.descripcion) fd.append("descripcion", form.descripcion);
+        if (form.tipo) fd.append("tipo", form.tipo);
+        fd.append("is_active", form.is_active ? "1" : "0");
+        fd.append("file", file);
+
+        const axiosCfg = {
+          headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (ev) => {
+            if (!ev.total) return;
+            const p = Math.round((ev.loaded * 100) / ev.total);
+            uploadProgressRef.current = p;
+            setUploadProgress(p);
+          },
+        };
+
+        if (editing) {
+          const { data } = await axiosClient.put(
+            `/admin/publicidad/${editing.id}`,
+            fd,
+            axiosCfg
+          );
+          savedItem = data?.data ?? null;
+          showSuccess("Banner actualizado.");
+        } else {
+          const { data } = await axiosClient.post(`/admin/publicidad`, fd, axiosCfg);
+          savedItem = data?.data ?? null;
+          showSuccess("Banner creado.");
+        }
       } else {
-        await axiosClient.post(`/admin/publicidad`, form);
-        showSuccess("Banner creado.");
+        // Sin archivo: JSON normal (necesita URL si no hay file)
+        if (!form.url.trim()) {
+          setUploading(false);
+          return showError("Sube un archivo o ingresa una URL.");
+        }
+        if (!TIPOS.includes(form.tipo)) {
+          setUploading(false);
+          return showError("Selecciona un tipo válido.");
+        }
+
+        if (editing) {
+          const { data } = await axiosClient.put(`/admin/publicidad/${editing.id}`, form);
+          savedItem = data?.data ?? null;
+          showSuccess("Banner actualizado.");
+        } else {
+          const { data } = await axiosClient.post(`/admin/publicidad`, form);
+          savedItem = data?.data ?? null;
+          showSuccess("Banner creado.");
+        }
       }
+
+      // Regla frontend: si el guardado es Login activo, desactiva los demás
+      const idToKeep =
+        savedItem?.id ?? (editing ? editing.id : null);
+
+      if ((savedItem?.tipo || form.tipo) === "Login" && (savedItem?.is_active ?? form.is_active)) {
+        await deactivateOtherLoginBanners(idToKeep);
+      }
+
       closeForm();
       fetchPublicidad();
     } catch (e) {
       showError(e?.response?.data?.message || "Ocurrió un error al guardar.");
+    } finally {
+      setUploading(false);
     }
   };
 
+  // Toggle activo/inactivo con regla frontend para Login
   const handleToggleActive = async (row) => {
     try {
+      const goingActive = !row.is_active;
+
+      // Si vamos a activar y es Login, desactiva los demás primero
+      if (row.tipo === "Login" && goingActive) {
+        await deactivateOtherLoginBanners(row.id);
+      }
+
+      // Actualiza este banner
       await axiosClient.put(`/admin/publicidad/${row.id}`, {
         ...row,
-        is_active: !row.is_active,
+        is_active: goingActive,
       });
+
       setItems((prev) =>
-        prev.map((it) => (it.id === row.id ? { ...it, is_active: !it.is_active } : it))
+        prev.map((it) => (it.id === row.id ? { ...it, is_active: goingActive } : it))
       );
     } catch {
       showError("No se pudo cambiar el estado.");
@@ -145,10 +272,10 @@ export default function PublicidadAdmin() {
     <Box className="p-4 md:p-6">
       <Card className="shadow-lg rounded-2xl border border-neutral-800/20 bg-[#0b0f1a]">
         <CardHeader
-          titleTypographyProps={{ sx: { fontWeight: 700 } }}
+          titleTypographyProps={{ sx: { fontWeight: 700, color: "#fff" } }}
           title="Gestión de Banners (Publicidad)"
           subheader="Administra los banners para la portada (Principal) y el inicio de sesión (Login)."
-          subheaderTypographyProps={{ sx: { color: "rgba(255,255,255,0.6)" } }}
+          subheaderTypographyProps={{ sx: { color: "rgba(255,255,255,0.85)" } }}
           sx={{
             color: "white",
             background:
@@ -187,7 +314,7 @@ export default function PublicidadAdmin() {
               icon={<FilterAltIcon />}
               label="Filtro por tipo:"
               variant="outlined"
-              sx={{ color: "rgba(255,255,255,0.8)", borderColor: "rgba(255,255,255,0.2)" }}
+              sx={{ color: "#fff", borderColor: "rgba(255,255,255,0.2)" }}
             />
             {["Todos", ...TIPOS].map((t) => (
               <Chip
@@ -196,7 +323,7 @@ export default function PublicidadAdmin() {
                 onClick={() => setFiltroTipo(t)}
                 variant={filtroTipo === t ? "filled" : "outlined"}
                 sx={{
-                  color: filtroTipo === t ? "#0b0f1a" : "rgba(255,255,255,0.8)",
+                  color: filtroTipo === t ? "#0b0f1a" : "#fff",
                   bgcolor: filtroTipo === t ? "#67e8f9" : "transparent",
                   borderColor: "rgba(255,255,255,0.2)",
                   "&:hover": { bgcolor: filtroTipo === t ? "#5eead4" : "rgba(255,255,255,0.06)" },
@@ -224,13 +351,13 @@ export default function PublicidadAdmin() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-6 text-center text-gray-400">
+                    <td colSpan={7} className="px-3 py-6 text-center text-white/70">
                       Cargando…
                     </td>
                   </tr>
                 ) : filtrados.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-3 py-6 text-center text-gray-400">
+                    <td colSpan={7} className="px-3 py-6 text-center text-white/70">
                       No hay banners registrados.
                     </td>
                   </tr>
@@ -255,32 +382,31 @@ export default function PublicidadAdmin() {
                           }}
                         >
                           {row.url ? (
-                            row.url.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? (
+                            isImageUrl(row.url) ? (
                               <img
                                 src={row.url}
                                 alt={row.titulo || "banner"}
                                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
                               />
                             ) : (
-                              <ImageIcon sx={{ opacity: 0.7 }} />
+                              <ImageIcon sx={{ opacity: 0.7, color: "#fff" }} />
                             )
                           ) : (
-                            <ImageIcon sx={{ opacity: 0.7 }} />
+                            <ImageIcon sx={{ opacity: 0.7, color: "#fff" }} />
                           )}
                         </Box>
                       </td>
-                      <td className="px-3 py-3">
-                        <Typography sx={{ color: "white", fontWeight: 600 }}>
+
+                      <td className="px-3 py-3 align-top">
+                        <Typography sx={{ color: "#fff", fontWeight: 600 }}>
                           {row.titulo || "—"}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: "rgba(255,255,255,0.6)" }}>
-                          #{row.id}
-                        </Typography>
                       </td>
-                      <td className="px-3 py-3 max-w-[360px]">
+
+                      <td className="px-3 py-3 max-w-[420px] align-top">
                         <Typography
                           sx={{
-                            color: "rgba(255,255,255,0.8)",
+                            color: "#fff",
                             display: "-webkit-box",
                             WebkitLineClamp: 2,
                             WebkitBoxOrient: "vertical",
@@ -290,7 +416,8 @@ export default function PublicidadAdmin() {
                           {row.descripcion || "—"}
                         </Typography>
                       </td>
-                      <td className="px-3 py-3">
+
+                      <td className="px-3 py-3 align-top">
                         <Chip
                           label={row.tipo}
                           size="small"
@@ -301,28 +428,31 @@ export default function PublicidadAdmin() {
                           }}
                         />
                       </td>
-                      <td className="px-3 py-3">
+
+                      <td className="px-3 py-3 align-top">
                         <Box
                           sx={{
                             display: "flex",
                             alignItems: "center",
                             gap: 1,
-                            maxWidth: 360,
+                            maxWidth: 420,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                           }}
                         >
-                          <LinkIcon fontSize="small" sx={{ color: "rgba(255,255,255,0.6)" }} />
+                          <LinkIcon fontSize="small" sx={{ color: "#fff" }} />
                           <a
                             href={row.url}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-cyan-300 hover:text-cyan-200 truncate"
+                            className="truncate"
+                            style={{ color: "#fff" }}
                           >
                             {row.url}
                           </a>
                         </Box>
                       </td>
+
                       <td className="px-3 py-3">
                         <Switch
                           checked={row.is_active}
@@ -330,6 +460,7 @@ export default function PublicidadAdmin() {
                           color="success"
                         />
                       </td>
+
                       <td className="px-3 py-3">
                         <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end" }}>
                           <Tooltip title="Editar">
@@ -359,7 +490,7 @@ export default function PublicidadAdmin() {
 
       {/* Dialog Crear/Editar */}
       <Dialog open={openForm} onClose={closeForm} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 700 }}>
+        <DialogTitle sx={{ fontWeight: 700, color: "#000000ff" }}>
           {editing ? "Editar banner" : "Nuevo banner"}
         </DialogTitle>
         <DialogContent dividers>
@@ -391,6 +522,24 @@ export default function PublicidadAdmin() {
                 </MenuItem>
               ))}
             </TextField>
+
+            {/* Subir archivo */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+              <Button variant="outlined" component="label" disabled={uploading}>
+                {file ? "Cambiar archivo" : "Subir archivo"}
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*,video/mp4,video/webm"
+                  onChange={handleFileChange}
+                />
+              </Button>
+              <Typography variant="body2" sx={{ opacity: 0.9, color: "#fff" }}>
+                {file ? file.name : "Opcional: puedes subir un archivo o pegar una URL"}
+              </Typography>
+            </Box>
+
+            {/* URL pegada (opcional) */}
             <TextField
               label="URL de la imagen / recurso"
               value={form.url}
@@ -405,18 +554,28 @@ export default function PublicidadAdmin() {
                 ),
               }}
             />
+
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Switch
                 checked={form.is_active}
                 onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
                 color="success"
               />
-              <Typography>Activo</Typography>
+              <Typography sx={{ color: "#fff" }}>Activo</Typography>
             </Box>
+
+            {uploading && (
+              <Box sx={{ width: "100%" }}>
+                <LinearProgress variant="determinate" value={uploadProgress} />
+                <Typography variant="caption" sx={{ opacity: 0.9, color: "#fff" }}>
+                  Subiendo… {uploadProgress}%
+                </Typography>
+              </Box>
+            )}
 
             {/* Preview */}
             <Box>
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: "#fff" }}>
                 Previsualización
               </Typography>
               <Box
@@ -426,24 +585,32 @@ export default function PublicidadAdmin() {
                   height: 160,
                   borderRadius: 2,
                   overflow: "hidden",
-                  border: "1px solid rgba(0,0,0,0.12)",
+                  border: "1px solid rgba(255,255,255,0.2)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  bgcolor: "rgba(0,0,0,0.02)",
+                  bgcolor: "rgba(255,255,255,0.04)",
                 }}
               >
-                {form.url && form.url.match(/\.(png|jpg|jpeg|gif|webp)$/i) ? (
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt="preview-local"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : isImageUrl(form.url) ? (
                   <img
                     src={form.url}
-                    alt="preview"
+                    alt="preview-url"
                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
                 ) : (
-                  <Box sx={{ textAlign: "center", opacity: 0.6 }}>
-                    <ImageIcon />
-                    <Typography variant="body2">
-                      Agrega una URL de imagen para ver la vista previa
+                  <Box sx={{ textAlign: "center", opacity: 0.9 }}>
+                    <ImageIcon sx={{ color: "#fff" }} />
+                    <Typography variant="body2" sx={{ color: "#fff" }}>
+                      {file
+                        ? "El archivo cargado no es una imagen (no se puede previsualizar aquí)."
+                        : "Sube una imagen o pega una URL de imagen para ver la vista previa"}
                     </Typography>
                   </Box>
                 )}
@@ -452,9 +619,11 @@ export default function PublicidadAdmin() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={closeForm}>Cancelar</Button>
-          <Button onClick={handleSave} variant="contained">
-            Guardar
+          <Button onClick={closeForm} disabled={uploading}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} variant="contained" disabled={uploading}>
+            {editing ? "Actualizar" : "Guardar"}
           </Button>
         </DialogActions>
       </Dialog>

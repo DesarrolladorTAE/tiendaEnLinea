@@ -1,0 +1,249 @@
+:root{
+  --ink:#0f172a;
+  --muted:#475569;
+  --line:rgba(2,6,23,.08);
+
+  /* Paleta del logo */
+  --amber:#f59e0b;
+  --orange:#f97316;
+  --gold:#fbbf24;
+  --red:#ef4444;
+
+  --ring: rgba(249,115,22,.22);
+}
+
+/* ========= Wrapper general (centra todo el panel) ========= */
+.auth-neo{
+  position:relative;
+  width:100%;
+  min-height:100vh;
+  background:#fff;
+  overflow:hidden;
+
+  /* centrado absoluto del panel */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  /* respirar en pantallas chicas */
+  padding: clamp(16px, 3vw, 32px) 12px;
+}
+
+/* Fondo sutil (opcional; puedes quitar si no lo quieres) */
+.auth-neo.is-login{
+  background:
+    radial-gradient(70% 50% at 12% 8%, rgba(251,191,36,.16), transparent 60%),
+    radial-gradient(55% 45% at 90% 12%, rgba(249,115,22,.12), transparent 60%),
+    #ffffff;
+}
+.auth-neo.is-register{
+  background:
+    radial-gradient(60% 46% at 88% 8%, rgba(251,191,36,.12), transparent 60%),
+    #ffffff;
+}
+
+/* El .container de Bootstrap sólo centra horizontalmente el panel */
+.auth-neo .container{
+  width:100%;
+  display:flex;
+  justify-content:center;
+}
+
+/* Logo */
+.auth-logo{ transition: transform .25s ease; }
+.auth-logo:hover{ transform: translateY(-2px) scale(1.01); }
+
+/* Titulares y hr */
+.auth-title{ position:relative; display:inline-block; padding-top:8px; }
+.auth-title::before{
+  content:""; position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:70px; height:4px; border-radius:999px;
+  background: linear-gradient(90deg, var(--orange), var(--gold));
+}
+.auth-hr{
+  border:0; height:1px;
+  background: linear-gradient(90deg, transparent, rgba(2,6,23,.1), transparent);
+}
+
+/* ========= Figuras decorativas opcionales ========= */
+.fx{ position:absolute; pointer-events:none; z-index:0; opacity:.85; }
+.fx-blob{
+  width:42vmin; height:42vmin; filter: blur(16px);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(251,191,36,.35), transparent 60%),
+    radial-gradient(circle at 70% 70%, rgba(249,115,22,.30), transparent 55%),
+    radial-gradient(circle at 55% 40%, rgba(239,68,68,.15), transparent 60%);
+  border-radius: 30% 70% 60% 40% / 40% 35% 65% 60%;
+  mix-blend-mode:multiply;
+  animation: blobMove 22s ease-in-out infinite, blobMorph 18s ease-in-out infinite;
+}
+.b1{ top:-8vmin; left:-6vmin; }
+.b2{ bottom:-10vmin; right:-8vmin; transform: scale(.9); animation-delay: -6s, -4s; }
+.fx-ring{
+  width:46vmin; height:46vmin; border-radius:50%; top:6%; right:6%;
+  background:
+    radial-gradient(circle 18vmin at center, rgba(255,255,255,.7) 0 2px, transparent 3px),
+    conic-gradient(from 0deg, rgba(245,158,11,.6), rgba(249,115,22,.6), rgba(251,191,36,.6), rgba(245,158,11,.6));
+  -webkit-mask: radial-gradient(closest-side, transparent 78%, #000 80%);
+  mask: radial-gradient(closest-side, transparent 78%, #000 80%);
+  opacity:.3; animation: spinSlow 26s linear infinite;
+}
+
+/* ========= Panel y grilla de 2 columnas ========= */
+.auth-panel{
+  /* centrado y tamaño del panel */
+  width: min(1200px, 98vw);
+  min-height: clamp(520px, 78vh, 780px);
+
+  margin: 0 auto;                 /* centrado horizontal extra */
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:16px;
+  box-shadow: 0 24px 60px rgba(2,6,23,.08);
+  padding: clamp(16px, 2.2vw, 24px);
+  position:relative;
+  z-index:1;
+
+  display:grid;
+  grid-template-columns: 1.05fr 1fr;   /* media | form (o al revés) */
+  gap: clamp(18px, 3vw, 36px);
+  align-items: stretch;                 /* 🔥 hace que ambas columnas midan igual */
+}
+
+/* Orden: LOGIN → imagen IZQ / formulario DER */
+.grid-login.img-left .col-media{ order:1; }
+.grid-login.img-left .col-form { order:2; }
+
+/* Orden: REGISTER → imagen DER / formulario IZQ */
+.grid-register.img-right .col-media{ order:2; }
+.grid-register.img-right .col-form { order:1; }
+
+/* ========= Columna de imagen (banner) ========= */
+.col-media{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  /* que la columna tenga una altura mínima cómoda */
+  min-height: 420px;
+}
+
+.auth-banner{
+  width:100%;
+  height:100%;              /* 🔥 ocupa toda la columna */
+  position:relative;
+  display:flex;
+  flex-direction:column;
+}
+
+.auth-banner.skeleton{
+  min-height: 280px;
+  background: #f6f7fb;
+  border-radius:14px;
+  border:1px solid var(--line);
+}
+
+/* Marco ocupa toda la columna y la imagen llena el marco */
+.frame{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:10px;
+  overflow:hidden;
+  box-shadow: 0 22px 60px rgba(2,6,23,.08);
+
+  flex: 1 1 auto;          /* 🔥 crece para llenar la altura disponible */
+  display:block;           /* evita colapsos raros */
+  height: 100%;            /* 🔥 altura total de la columna */
+}
+
+.frame img{
+  width:100%;
+  height:100%;             /* 🔥 llena altura del marco */
+  display:block;
+  border-radius:12px;
+  object-fit: cover;       /* 🔥 respeta recorte sin deformar */
+  animation: kenburns 5200ms ease-out both;
+}
+
+/* Texto opcional del banner */
+.banner-copy{
+  margin-top: 10px;
+}
+.banner-copy h3{
+  margin:0 0 4px;
+  font-weight:800;
+  font-size: clamp(18px, 3.2vw, 22px);
+  color:var(--ink);
+}
+.banner-copy p{
+  margin:0;
+  color:var(--muted);
+  font-size: clamp(13px, 1.6vw, 16px);
+}
+
+/* Dots del banner */
+.auth-banner-dots{
+  position:absolute;
+  left:0; right:0; bottom:8px;
+  display:flex; gap:8px; justify-content:center;
+  pointer-events:auto;
+}
+.auth-banner-dots .dot{
+  width:9px; height:9px; border-radius:999px; border:none;
+  background:#e2e8f0; cursor:pointer;
+  transition: transform .15s ease, background .2s ease, box-shadow .2s ease;
+}
+.auth-banner-dots .dot:hover{ transform: scale(1.08); }
+.auth-banner-dots .dot.active{ background:#111827; box-shadow:0 0 0 5px var(--ring); }
+
+/* ========= Columna del formulario ========= */
+.col-form{
+  padding: clamp(4px, .8vw, 8px) clamp(2px, .4vw, 4px);
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+}
+.auth-heading{
+  margin:0; text-align:center;
+  font-size: clamp(26px, 4.6vw, 40px);
+  font-weight: 900; letter-spacing: .2px;
+}
+.auth-sub{
+  margin: 2px 0 14px;
+  text-align:center; color: var(--muted); font-size: 14px;
+}
+
+/* ========= Animaciones base ========= */
+@keyframes kenburns{ from{transform:scale(1.02)} to{transform:scale(1.06)} }
+@keyframes spinSlow{ from{ transform: rotate(0deg);} to{ transform: rotate(360deg);} }
+@keyframes blobMove{ 0%,100%{ transform: translate(0,0) } 25%{ transform: translate(6vmin,-2vmin) } 50%{ transform: translate(2vmin,4vmin) } 75%{ transform: translate(-4vmin,0) } }
+@keyframes blobMorph{ 0%,100%{ border-radius:30% 70% 60% 40% / 40% 35% 65% 60%;} 50%{border-radius:70% 30% 45% 55% / 55% 60% 40% 45%;} }
+
+/* Respeto reduce motion */
+@media (prefers-reduced-motion: reduce){
+  .fx-blob,.fx-ring,.frame img{ animation:none !important; }
+}
+
+/* ========= Responsive ========= */
+@media (max-width: 992px){
+  .auth-panel{
+    grid-template-columns: 1fr;  /* una sola columna */
+    gap: 16px;
+    min-height: auto;            /* altura natural en móvil */
+  }
+
+  /* Orden en móvil:
+     Login → form arriba, imagen abajo
+     Register → imagen arriba, form abajo */
+  .grid-login .col-form{ order:1; }
+  .grid-login .col-media{ order:2; }
+
+  .grid-register .col-media{ order:1; }
+  .grid-register .col-form{ order:2; }
+
+  /* la imagen ya no fuerza 100% de altura en móvil */
+  .col-media{ min-height: unset; }
+  .auth-banner{ height:auto; }
+  .frame{ height:auto; }
+  .frame img{ height:auto; }
+}
