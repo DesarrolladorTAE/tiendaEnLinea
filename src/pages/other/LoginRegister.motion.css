@@ -145,18 +145,33 @@
 }
 
 /* Marco ocupa toda la columna y la imagen llena el marco */
-.frame{
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:10px;
-  overflow:hidden;
-  box-shadow: 0 22px 60px rgba(2,6,23,.08);
-
-  flex: 1 1 auto;          /* 🔥 crece para llenar la altura disponible */
-  display:block;           /* evita colapsos raros */
-  height: 100%;            /* 🔥 altura total de la columna */
+/* IMÁGENES: respetan su tamaño por defecto (no llenan la altura de la columna) */
+.frame img{
+  width: 100%;
+  height: auto;           /* ✅ ya no forzamos 100% de alto */
+  display: block;
+  border-radius: 12px;
+  object-fit: initial;    /* (opcional) quita el recorte; puedes omitir esta línea */
+  /* animation: kenburns 5200ms ease-out both; */ /* (opcional) comenta si no quieres zoom */
 }
+
+/* VIDEOS: grandes y completos para todos */
+.frame .auth-video{
+  width: 100%;
+  height: 100%;           /* ✅ llena la columna */
+  object-fit: contain;    /* ✅ se ve completo sin recortes */
+  background: #000;
+  display: block;
+  border-radius: 12px;
+}
+
+/* En móvil, que el video no sea gigante */
+@media (max-width: 992px){
+  .frame .auth-video{
+    height: auto;         /* ✅ tamaño natural en pantallas chicas */
+  }
+}
+
 
 .frame img{
   width:100%;
@@ -248,4 +263,57 @@
   .auth-banner{ height:auto; }
   .frame{ height:auto; }
   .frame img{ height:auto; }
+}
+/* ====== Forzar visibilidad y estilos legibles en la columna de formulario ====== */
+.col-form form { display: flex; flex-direction: column; gap: 12px; }
+
+/* Bootstrap */
+.col-form .form-control,
+.col-form input[type="text"],
+.col-form input[type="email"],
+.col-form input[type="tel"],
+.col-form input[type="password"]{
+  display:block !important;
+  opacity:1 !important;
+  visibility:visible !important;
+
+  background:#fff !important;
+  color:#0f172a !important;
+  border:1px solid #d0d5dd !important;
+  border-radius:10px !important;
+
+  height:44px !important;
+  padding:10px 12px !important;
+  box-shadow:none !important;
+}
+.col-form .form-control::placeholder{ color:#64748b !important; opacity:1 !important; }
+
+/* Material UI (por si tu LoginForm cambia a MUI después) */
+.col-form .MuiFormControl-root,
+.col-form .MuiInputBase-root,
+.col-form .MuiInputBase-input{
+  display:block !important;
+  opacity:1 !important;
+  visibility:visible !important;
+  color:#0f172a !important;
+  background:#fff !important;
+}
+.col-form .MuiOutlinedInput-notchedOutline{ border-color:#d0d5dd !important; }
+.col-form .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline{ border-color:#2065d1 !important; }
+.col-form .MuiInputLabel-root{ color:#5f6b7a !important; }
+.col-form .MuiInputLabel-root.Mui-focused{ color:#2065d1 !important; }
+
+/* Si alguna animación/‘reveal’ los deja ocultos */
+.col-form .fade-in,
+.col-form .reveal,
+.col-form .form-row{
+  opacity:1 !important;
+  transform:none !important;
+  visibility:visible !important;
+}
+
+/* Autofill (Chrome) para evitar texto blanco/amarillo ilegible) */
+.col-form input:-webkit-autofill{
+  -webkit-text-fill-color:#0f172a !important;
+  transition: background-color 9999s ease-in-out 0s !important;
 }

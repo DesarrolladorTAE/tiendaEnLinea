@@ -33,6 +33,11 @@ import { showError, showSuccess } from "../../utils/alerts";
 
 const TIPOS = ["Principal", "Login"];
 
+// Helpers de media
+const isImageUrl = (u) => /\.(png|jpe?g|gif|webp|avif)$/i.test(u || "");
+const isVideoUrl = (u) => /\.(mp4|webm|ogg)$/i.test(u || "");
+const isMediaUrl = (u) => isImageUrl(u) || isVideoUrl(u);
+
 export default function PublicidadAdmin() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -120,7 +125,8 @@ export default function PublicidadAdmin() {
   const handleFileChange = (e) => {
     const f = e.target.files?.[0] || null;
     setFile(f);
-    if (f && f.type?.startsWith("image/")) {
+    // Para imágenes y videos, podemos generar URL local
+    if (f && (f.type?.startsWith("image/") || f.type?.startsWith("video/"))) {
       const localUrl = URL.createObjectURL(f);
       setPreviewUrl(localUrl);
     } else {
@@ -128,41 +134,10 @@ export default function PublicidadAdmin() {
     }
   };
 
-  const isImageUrl = (u) => /\.(png|jpg|jpeg|gif|webp)$/i.test(u || "");
-
-  /** FRONTEND RULE:
-   * Asegura que solo exista 1 activo de tipo "Login".
-   * Desactiva todos los demás "Login" activos excepto el id indicado.
-   */
-  const deactivateOtherLoginBanners = async (exceptId) => {
-    const toDisable = items.filter(
-      (it) => it.tipo === "Login" && it.is_active && it.id !== exceptId
-    );
-    if (toDisable.length === 0) return;
-
-    try {
-      // Desactivar en backend y en estado local
-      await Promise.all(
-        toDisable.map((it) =>
-          axiosClient.put(`/admin/publicidad/${it.id}`, { ...it, is_active: false })
-        )
-      );
-      setItems((prev) =>
-        prev.map((it) =>
-          it.tipo === "Login" && it.id !== exceptId ? { ...it, is_active: false } : it
-        )
-      );
-    } catch {
-      // Si falla, igual seguimos — la regla es solo en frontend, pero intentamos dejarlo coherente.
-    }
-  };
-
-  // Guardar (crea/actualiza) con soporte de archivo + regla de Login único activo
+  // Guardar (crea/actualiza) con soporte de archivo
   const handleSave = async () => {
     try {
       setUploading(true);
-
-      let savedItem = null;
 
       if (file) {
         const fd = new FormData();
@@ -183,16 +158,10 @@ export default function PublicidadAdmin() {
         };
 
         if (editing) {
-          const { data } = await axiosClient.put(
-            `/admin/publicidad/${editing.id}`,
-            fd,
-            axiosCfg
-          );
-          savedItem = data?.data ?? null;
+          await axiosClient.put(`/admin/publicidad/${editing.id}`, fd, axiosCfg);
           showSuccess("Banner actualizado.");
         } else {
-          const { data } = await axiosClient.post(`/admin/publicidad`, fd, axiosCfg);
-          savedItem = data?.data ?? null;
+          await axiosClient.post(`/admin/publicidad`, fd, axiosCfg);
           showSuccess("Banner creado.");
         }
       } else {
@@ -207,22 +176,12 @@ export default function PublicidadAdmin() {
         }
 
         if (editing) {
-          const { data } = await axiosClient.put(`/admin/publicidad/${editing.id}`, form);
-          savedItem = data?.data ?? null;
+          await axiosClient.put(`/admin/publicidad/${editing.id}`, form);
           showSuccess("Banner actualizado.");
         } else {
-          const { data } = await axiosClient.post(`/admin/publicidad`, form);
-          savedItem = data?.data ?? null;
+          await axiosClient.post(`/admin/publicidad`, form);
           showSuccess("Banner creado.");
         }
-      }
-
-      // Regla frontend: si el guardado es Login activo, desactiva los demás
-      const idToKeep =
-        savedItem?.id ?? (editing ? editing.id : null);
-
-      if ((savedItem?.tipo || form.tipo) === "Login" && (savedItem?.is_active ?? form.is_active)) {
-        await deactivateOtherLoginBanners(idToKeep);
       }
 
       closeForm();
@@ -234,17 +193,10 @@ export default function PublicidadAdmin() {
     }
   };
 
-  // Toggle activo/inactivo con regla frontend para Login
+  // Toggle activo/inactivo
   const handleToggleActive = async (row) => {
     try {
       const goingActive = !row.is_active;
-
-      // Si vamos a activar y es Login, desactiva los demás primero
-      if (row.tipo === "Login" && goingActive) {
-        await deactivateOtherLoginBanners(row.id);
-      }
-
-      // Actualiza este banner
       await axiosClient.put(`/admin/publicidad/${row.id}`, {
         ...row,
         is_active: goingActive,
@@ -367,11 +319,12 @@ export default function PublicidadAdmin() {
                       key={row.id}
                       className="bg-[#0f1629] hover:bg-[#111a33] transition-all duration-200 rounded-xl"
                     >
+                      {/* Mini media (imagen o video) */}
                       <td className="px-3 py-3">
                         <Box
                           sx={{
-                            width: 88,
-                            height: 56,
+                            width: 120,
+                            height: 68,
                             borderRadius: 2,
                             overflow: "hidden",
                             border: "1px solid rgba(255,255,255,0.08)",
@@ -387,6 +340,14 @@ export default function PublicidadAdmin() {
                                 src={row.url}
                                 alt={row.titulo || "banner"}
                                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                              />
+                            ) : isVideoUrl(row.url) ? (
+                              <video
+                                src={row.url}
+                                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                muted
+                                loop
+                                playsInline
                               />
                             ) : (
                               <ImageIcon sx={{ opacity: 0.7, color: "#fff" }} />
@@ -530,22 +491,22 @@ export default function PublicidadAdmin() {
                 <input
                   type="file"
                   hidden
-                  accept="image/*,video/mp4,video/webm"
+                  accept="image/*,video/mp4,video/webm,video/ogg"
                   onChange={handleFileChange}
                 />
               </Button>
-              <Typography variant="body2" sx={{ opacity: 0.9, color: "#fff" }}>
+              <Typography variant="body2" sx={{ opacity: 0.9 }}>
                 {file ? file.name : "Opcional: puedes subir un archivo o pegar una URL"}
               </Typography>
             </Box>
 
             {/* URL pegada (opcional) */}
             <TextField
-              label="URL de la imagen / recurso"
+              label="URL de la imagen / video"
               value={form.url}
               onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))}
               fullWidth
-              placeholder="https://tusitio.com/archivos/banner.webp"
+              placeholder="https://tusitio.com/archivos/banner.mp4"
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -561,56 +522,77 @@ export default function PublicidadAdmin() {
                 onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.checked }))}
                 color="success"
               />
-              <Typography sx={{ color: "#fff" }}>Activo</Typography>
+              <Typography>Activo</Typography>
             </Box>
 
             {uploading && (
               <Box sx={{ width: "100%" }}>
                 <LinearProgress variant="determinate" value={uploadProgress} />
-                <Typography variant="caption" sx={{ opacity: 0.9, color: "#fff" }}>
+                <Typography variant="caption" sx={{ opacity: 0.9 }}>
                   Subiendo… {uploadProgress}%
                 </Typography>
               </Box>
             )}
 
-            {/* Preview */}
+            {/* Previsualización universal (imagen o video) */}
             <Box>
-              <Typography variant="caption" sx={{ color: "#fff" }}>
-                Previsualización
-              </Typography>
+              <Typography variant="caption">Previsualización</Typography>
               <Box
                 sx={{
                   mt: 1,
                   width: "100%",
-                  height: 160,
+                  height: 220,
                   borderRadius: 2,
                   overflow: "hidden",
-                  border: "1px solid rgba(255,255,255,0.2)",
+                  border: "1px solid rgba(0,0,0,0.12)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  bgcolor: "rgba(255,255,255,0.04)",
+                  bgcolor: "rgba(0,0,0,0.02)",
                 }}
               >
-                {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="preview-local"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                ) : isImageUrl(form.url) ? (
-                  <img
-                    src={form.url}
-                    alt="preview-url"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                {file ? (
+                  file.type.startsWith("image/") ? (
+                    <img
+                      src={previewUrl || URL.createObjectURL(file)}
+                      alt="preview-local-img"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : file.type.startsWith("video/") ? (
+                    <video
+                      src={previewUrl || URL.createObjectURL(file)}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    <Box sx={{ textAlign: "center", opacity: 0.9 }}>
+                      <ImageIcon />
+                      <Typography variant="body2">
+                        Archivo no soportado para vista previa.
+                      </Typography>
+                    </Box>
+                  )
+                ) : form.url && isMediaUrl(form.url) ? (
+                  isImageUrl(form.url) ? (
+                    <img
+                      src={form.url}
+                      alt="preview-url-img"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  ) : (
+                    <video
+                      src={form.url}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      controls
+                      playsInline
+                    />
+                  )
                 ) : (
                   <Box sx={{ textAlign: "center", opacity: 0.9 }}>
-                    <ImageIcon sx={{ color: "#fff" }} />
-                    <Typography variant="body2" sx={{ color: "#fff" }}>
-                      {file
-                        ? "El archivo cargado no es una imagen (no se puede previsualizar aquí)."
-                        : "Sube una imagen o pega una URL de imagen para ver la vista previa"}
+                    <ImageIcon />
+                    <Typography variant="body2">
+                      Sube una imagen/video o pega una URL de imagen/video para ver la vista previa.
                     </Typography>
                   </Box>
                 )}

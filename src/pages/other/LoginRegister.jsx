@@ -15,6 +15,23 @@ import "./LoginRegister.motion.css"; // 👈 CSS separado
 
 const API_URL = "https://mitiendaenlineamx.com.mx/api";
 
+// Helpers para media
+const getExt = (u = "") => {
+  try {
+    const clean = u.split("?")[0].split("#")[0];
+    return clean.substring(clean.lastIndexOf(".") + 1).toLowerCase();
+  } catch {
+    return "";
+  }
+};
+const isImageUrl = (u) =>
+  ["png", "jpg", "jpeg", "gif", "webp", "avif"].includes(getExt(u));
+const isVideoUrl = (u) => ["mp4", "webm", "ogg"].includes(getExt(u));
+
+// Duraciones (solo videos a 15s; imágenes normales a 5s)
+const IMAGE_MS = 5000;
+const VIDEO_MS = 15000;
+
 const LoginRegister = () => {
   const navigate = useNavigate();
   const [modo, setModo] = useState("login");
@@ -47,9 +64,10 @@ const LoginRegister = () => {
   const [slidesLogin, setSlidesLogin] = useState([]);
   const [activeLogin, setActiveLogin] = useState(0);
   const [activeRegister, setActiveRegister] = useState(0);
+
+  // Timers por modo (timeouts dependientes del tipo de slide)
   const tLoginRef = useRef(null);
   const tRegisterRef = useRef(null);
-  const INTERVAL_MS = 5000;
 
   useEffect(() => {
     let mounted = true;
@@ -60,8 +78,7 @@ const LoginRegister = () => {
     const isActive = (b) => (b?.is_active ?? b?.activo ?? true) === true;
 
     const textTags = (b) =>
-      `${b?.tipo || ""} ${b?.etiqueta || ""} ${b?.tag || ""} ${b?.badge || ""} ${b?.posicion || ""} ${b?.ubicacion || ""}`
-        .toLowerCase();
+      `${b?.tipo || ""} ${b?.etiqueta || ""} ${b?.tag || ""} ${b?.badge || ""} ${b?.posicion || ""} ${b?.ubicacion || ""}`.toLowerCase();
 
     const listTags = (b) =>
       [...(b?.etiquetas || []), ...(b?.tags || [])].map((x) =>
@@ -80,7 +97,7 @@ const LoginRegister = () => {
 
         const candidates = arr.filter((b) => isActive(b) && urlOf(b));
 
-        // Preferimos banners etiquetados como login; si no, tomamos Principal; si no, cualquiera activo con imagen
+        // Preferimos banners etiquetados para login; si no, "Principal"; si no, cualquiera activo
         const loginOnly = candidates.filter((b) =>
           hasAny(b, ["login", "signin", "acceso"])
         );
@@ -117,29 +134,40 @@ const LoginRegister = () => {
     };
   }, []);
 
-  // Autoplay en LOGIN (usa slidesLogin)
-  useEffect(() => {
-    clearInterval(tLoginRef.current);
-    if (modo === "login" && slidesLogin.length > 1) {
-      tLoginRef.current = setInterval(
-        () => setActiveLogin((p) => (p + 1) % slidesLogin.length),
-        INTERVAL_MS
-      );
-    }
-    return () => clearInterval(tLoginRef.current);
-  }, [modo, slidesLogin]);
+  // Helpers de programación por modo
+  const scheduleLogin = (idx) => {
+    clearTimeout(tLoginRef.current);
+    if (modo !== "login" || slidesLogin.length < 2) return;
+    const slide = slidesLogin[idx];
+    const dur = slide && isVideoUrl(slide.url) ? VIDEO_MS : IMAGE_MS;
+    tLoginRef.current = setTimeout(() => {
+      setActiveLogin((p) => (p + 1) % slidesLogin.length);
+    }, dur);
+  };
 
-  // Autoplay en REGISTER (también usa slidesLogin)
+  const scheduleRegister = (idx) => {
+    clearTimeout(tRegisterRef.current);
+    if (modo !== "register" || slidesLogin.length < 2) return;
+    const slide = slidesLogin[idx];
+    const dur = slide && isVideoUrl(slide.url) ? VIDEO_MS : IMAGE_MS;
+    tRegisterRef.current = setTimeout(() => {
+      setActiveRegister((p) => (p + 1) % slidesLogin.length);
+    }, dur);
+  };
+
+  // Programar avance cuando cambia modo o índice (LOGIN)
   useEffect(() => {
-    clearInterval(tRegisterRef.current);
-    if (modo === "register" && slidesLogin.length > 1) {
-      tRegisterRef.current = setInterval(
-        () => setActiveRegister((p) => (p + 1) % slidesLogin.length),
-        INTERVAL_MS
-      );
-    }
-    return () => clearInterval(tRegisterRef.current);
-  }, [modo, slidesLogin]);
+    if (modo === "login") scheduleLogin(activeLogin);
+    return () => clearTimeout(tLoginRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo, activeLogin, slidesLogin]);
+
+  // Programar avance cuando cambia modo o índice (REGISTER)
+  useEffect(() => {
+    if (modo === "register") scheduleRegister(activeRegister);
+    return () => clearTimeout(tRegisterRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo, activeRegister, slidesLogin]);
 
   /* ========= Helpers ========= */
   const startCooldown = () => {
@@ -279,6 +307,8 @@ const LoginRegister = () => {
   const setActiveIdx = isLogin ? setActiveLogin : setActiveRegister;
   const current = slides[active];
   const hasMedia = Boolean(current?.url);
+  const isVid = hasMedia && isVideoUrl(current.url);
+  const isImg = hasMedia && isImageUrl(current.url);
 
   const panelClass =
     `auth-panel ${isLogin ? "grid-login img-left" : "grid-register img-right"} ` +
@@ -306,22 +336,53 @@ const LoginRegister = () => {
               <aside className="col-media">
                 <div key={`${modo}-${active}`} className="auth-banner">
                   <div className="frame">
-                    <img src={current.url} alt={current.titulo || "banner"} />
-                  </div>
+                    {isImg && (
+                      <img
+                        src={current.url}
+                        alt={current.titulo || "banner"}
+                        className="auth-img"
+                        style={{ width: "100%", height: "auto", display: "block", borderRadius: 12 }}
+                      />
+                    )}
 
-                  {(current.titulo || current.descripcion) && (
-                    <div className="banner-copy">
-                      {current.titulo && <h3>{current.titulo}</h3>}
-                      {current.descripcion && <p>{current.descripcion}</p>}
-                    </div>
-                  )}
+                    {isVid && (
+                      <video
+                        key={current.url}
+                        className="auth-video"
+                        src={current.url}
+                        autoPlay
+                        muted
+                        playsInline
+                        loop={false}
+                        controls={false}
+                        // Para que se vea “normal” sin agrandar más de lo que permita el frame:
+                        style={{
+                          width: "100%",
+                          height: "auto",
+                          display: "block",
+                          borderRadius: 12,
+                          background: "#000",
+                          objectFit: "contain",
+                        }}
+                      />
+                    )}
+                  </div>
 
                   {slides.length > 1 && (
                     <div className="auth-banner-dots">
                       {slides.map((_, i) => (
                         <button
                           key={i}
-                          onClick={() => setActiveIdx(i)}
+                          onClick={() => {
+                            // Al cambiar manualmente, reseteamos el timeout del modo actual
+                            if (isLogin) {
+                              clearTimeout(tLoginRef.current);
+                              setActiveIdx(i);
+                            } else {
+                              clearTimeout(tRegisterRef.current);
+                              setActiveIdx(i);
+                            }
+                          }}
                           className={`dot ${i === active ? "active" : ""}`}
                           aria-label={`Ir al banner ${i + 1}`}
                         />
