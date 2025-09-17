@@ -41,6 +41,8 @@
     radial-gradient(60% 46% at 88% 8%, rgba(251,191,36,.12), transparent 60%),
     #ffffff;
 }
+.auth-panel.no-media{ grid-template-columns: 1fr; }
+ 
 
 /* El .container de Bootstrap sólo centra horizontalmente el panel */
 .auth-neo .container{
