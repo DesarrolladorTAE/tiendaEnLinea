@@ -24,7 +24,8 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PrintIcon from "@mui/icons-material/Print";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import ReplayIcon from "@mui/icons-material/Replay";
-import axiosClient from "../config/axiosClientPOS";
+import axiosClientPOS from "../config/axiosClientPOS"; // para ventas
+import axiosClient from "../config/axiosClient";       // para categorías
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import ModalTicketVenta from "./ModalTicketVenta";
@@ -39,18 +40,28 @@ const LABELS_PAGO = {
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
 const money = (n) =>
-  (Number(n || 0)).toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 });
+  (Number(n || 0)).toLocaleString("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 2,
+  });
 
 export default function HistorialPOS({ cambiarVista }) {
   const [modoConsulta, setModoConsulta] = useState("dia");
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [fechaInicio, setFechaInicio] = useState(hoyISO());
   const [fechaFin, setFechaFin] = useState(hoyISO());
   const [tipoPago, setTipoPago] = useState(""); // "" = todos
-  const [categoria, setCategoria] = useState(""); // "" = todas
+
+  // === NUEVO: categorías desde backend (/admin/categories) ===
+  const [catList, setCatList] = useState([]); // [{id, name}]
+  const [categoriaId, setCategoriaId] = useState(""); // "" = todas
+
   const [pagina, setPagina] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+
   const [modalTicketOpen, setModalTicketOpen] = useState(false);
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
   const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
@@ -66,54 +77,90 @@ export default function HistorialPOS({ cambiarVista }) {
   };
 
   // Traer ventas (por día o rango) + filtro de pago en backend si existe
-  const handleFiltrar = async () => {
-    setLoading(true);
-    const params = {
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-    };
-    if (tipoPago) params.payment_method = tipoPago;
+// Traer ventas
+const handleFiltrar = async () => {
+  setLoading(true);
+  const params = { fecha_inicio: fechaInicio, fecha_fin: fechaFin };
+  if (tipoPago) params.payment_method = tipoPago;
 
-    try {
-      const { data } = await axiosClient.get("/ventas/mis-ventas", { params });
-      setVentas(Array.isArray(data) ? data : []);
-      setPagina(0);
-    } catch (error) {
-      console.error("Error al filtrar ventas", error);
-      setVentas([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const { data } = await axiosClientPOS.get("/ventas/mis-ventas", { params });
+    setVentas(Array.isArray(data) ? data : []);
+    setPagina(0);
+  } catch (error) {
+    console.error("Error al filtrar ventas", error);
+    setVentas([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     handleFiltrar(); // primer render
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Categorías detectadas de los items vendidos (cliente)
-  const categorias = useMemo(() => {
+// Traer categorías (solo aquí usas axiosClient normal)
+useEffect(() => {
+  axiosClient
+    .get("/admin/categories")
+    .then(({ data }) => {
+      const arr = Array.isArray(data) ? data : data?.data || [];
+      const norm = arr.map((c) => ({
+        id: c.id,
+        name: c.name ?? c.nombre ?? String(c.id),
+      }));
+      setCatList(norm);
+    })
+    .catch((err) => {
+      console.error("❌ Error al cargar categorías", err);
+      setCatList([]);
+    });
+}, []);
+
+  // Fallback: categorías detectadas desde los items de ventas (si el backend no devolvió)
+  const categoriasDetectadas = useMemo(() => {
     const set = new Set();
     for (const v of ventas) {
       (v.items || []).forEach((it) => {
-        const cat = it?.category_name?.trim();
+        const cat = (it?.category_name || "").trim();
         if (cat) set.add(cat);
       });
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
   }, [ventas]);
 
+  // Buscar el nombre de la categoría seleccionada por ID (para empatar por nombre cuando falte el ID en items)
+  const categoriaSeleccionadaNombre = useMemo(() => {
+    if (!categoriaId) return "";
+    const found = catList.find((c) => String(c.id) === String(categoriaId));
+    return (found?.name || "").trim();
+  }, [categoriaId, catList]);
+
   // Ventas filtradas por categoría (cliente)
   const ventasFiltradas = useMemo(() => {
-    if (!categoria) return ventas;
-    // mantener la venta si al menos 1 item pertenece a la categoría elegida
-    return ventas.filter((v) =>
-      (v.items || []).some((it) => (it?.category_name || "").trim() === categoria)
-    );
-  }, [ventas, categoria]);
+    if (!categoriaId) return ventas;
+
+    return ventas.filter((v) => {
+      const items = v.items || [];
+      return items.some((it) => {
+        const itCatId = it?.category_id;
+        const itCatName = (it?.category_name || "").trim();
+
+        const matchById =
+          itCatId != null && String(itCatId) === String(categoriaId);
+        const matchByName =
+          !!categoriaSeleccionadaNombre &&
+          itCatName === categoriaSeleccionadaNombre;
+
+        return matchById || matchByName;
+      });
+    });
+  }, [ventas, categoriaId, categoriaSeleccionadaNombre]);
 
   const totalVentasFiltradas = useMemo(
-    () => ventasFiltradas.reduce((ac, v) => ac + Number(v.total_amount || 0), 0),
+    () =>
+      ventasFiltradas.reduce((ac, v) => ac + Number(v.total_amount || 0), 0),
     [ventasFiltradas]
   );
 
@@ -122,7 +169,7 @@ export default function HistorialPOS({ cambiarVista }) {
       ? `💵 Total de ventas del día: ${money(totalVentasFiltradas)}.`
       : `💵 Total de ventas del ${format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })} al ${format(parseISO(fechaFin), "d 'de' MMMM 'del' yyyy", { locale: es })}: ${money(totalVentasFiltradas)}.`;
 
-  // Estadística: por tipo de pago y por categoría
+  // Estadística: por tipo de pago
   const statsPago = useMemo(() => {
     const map = new Map(); // payment_method -> { ventas, total }
     ventasFiltradas.forEach((v) => {
@@ -138,31 +185,43 @@ export default function HistorialPOS({ cambiarVista }) {
       total: val.total,
       promedio: val.ventas ? val.total / val.ventas : 0,
     }));
-    // total general
     const totVentas = rows.reduce((a, r) => a + r.ventas, 0);
     const totImporte = rows.reduce((a, r) => a + r.total, 0);
-    return { rows, totales: { ventas: totVentas, total: totImporte, promedio: totVentas ? totImporte / totVentas : 0 } };
+    return {
+      rows,
+      totales: {
+        ventas: totVentas,
+        total: totImporte,
+        promedio: totVentas ? totImporte / totVentas : 0,
+      },
+    };
   }, [ventasFiltradas]);
 
+  // Estadística: por categoría (agrupa por nombre disponible)
   const statsCategoria = useMemo(() => {
-    const map = new Map(); // categoria -> { ventas, total }
+    const map = new Map(); // categoriaName -> { ventas, total }
     ventasFiltradas.forEach((v) => {
-      // imputar el total de la venta proporcional a las categorías presentes
-      const cats = new Set((v.items || []).map((it) => (it?.category_name || "").trim()).filter(Boolean));
+      const cats = new Set(
+        (v.items || [])
+          .map((it) => (it?.category_name || "").trim())
+          .filter(Boolean)
+      );
       const n = cats.size || 1;
       const prorrata = Number(v.total_amount || 0) / n;
+
       if (cats.size) {
         cats.forEach((c) => {
           const cur = map.get(c) || { ventas: 0, total: 0 };
-          cur.ventas += 1; // cuenta de ventas donde aparece la categoría
-          cur.total += prorrata; // prorratea el total si hay múltiples categorías en la misma venta
+          cur.ventas += 1;
+          cur.total += prorrata;
           map.set(c, cur);
         });
       } else {
-        const cur = map.get("Sin categoría") || { ventas: 0, total: 0 };
+        const key = "Sin categoría";
+        const cur = map.get(key) || { ventas: 0, total: 0 };
         cur.ventas += 1;
         cur.total += Number(v.total_amount || 0);
-        map.set("Sin categoría", cur);
+        map.set(key, cur);
       }
     });
 
@@ -177,7 +236,14 @@ export default function HistorialPOS({ cambiarVista }) {
 
     const totVentas = rows.reduce((a, r) => a + r.ventas, 0);
     const totImporte = rows.reduce((a, r) => a + r.total, 0);
-    return { rows, totales: { ventas: totVentas, total: totImporte, promedio: totVentas ? totImporte / totVentas : 0 } };
+    return {
+      rows,
+      totales: {
+        ventas: totVentas,
+        total: totImporte,
+        promedio: totVentas ? totImporte / totVentas : 0,
+      },
+    };
   }, [ventasFiltradas]);
 
   const handleChangePage = (_, newPage) => setPagina(newPage);
@@ -185,6 +251,19 @@ export default function HistorialPOS({ cambiarVista }) {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPagina(0);
   };
+
+  // Fuente de opciones para el <select> de Categoría:
+  // 1) Preferimos las del backend (catList)
+  // 2) Si vienen vacías, usamos las detectadas en ventas (fallback)
+  const opcionesCategoria = useMemo(() => {
+    if (catList.length > 0) {
+      return catList.map((c) => ({ value: String(c.id), label: c.name }));
+    }
+    // fallback por nombre
+    return categoriasDetectadas.map((n) => ({ value: n, label: n }));
+  }, [catList, categoriasDetectadas]);
+
+  const usaIdsDeBackend = catList.length > 0;
 
   return (
     <Box sx={{ p: 4 }}>
@@ -202,7 +281,16 @@ export default function HistorialPOS({ cambiarVista }) {
             color="success"
             size="large"
             startIcon={<ShoppingCartIcon />}
-            sx={{ borderRadius: 3, px: 3, py: 1.5, fontWeight: "bold", textTransform: "none", fontSize: "1rem", boxShadow: 3, width: { xs: "100%", md: "auto" } }}
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
+              width: { xs: "100%", md: "auto" },
+            }}
             onClick={() => cambiarVista("venta")}
           >
             Ventas
@@ -213,7 +301,15 @@ export default function HistorialPOS({ cambiarVista }) {
             color="error"
             size="large"
             startIcon={<ReplayIcon />}
-            sx={{ borderRadius: 3, px: 3, py: 1.5, fontWeight: "bold", textTransform: "none", fontSize: "1rem", boxShadow: 3 }}
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
+            }}
             onClick={() => cambiarVista("cancelaciones")}
           >
             Cancelaciones / Devoluciones
@@ -224,7 +320,16 @@ export default function HistorialPOS({ cambiarVista }) {
             color="warning"
             size="large"
             startIcon={<ReceiptLongIcon />}
-            sx={{ borderRadius: 3, px: 3, py: 1.5, fontWeight: "bold", textTransform: "none", fontSize: "1rem", boxShadow: 3, width: { xs: "100%", md: "auto" } }}
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              boxShadow: 3,
+              width: { xs: "100%", md: "auto" },
+            }}
             onClick={() => cambiarVista("facturas")}
           >
             Facturas
@@ -235,7 +340,18 @@ export default function HistorialPOS({ cambiarVista }) {
             color="success"
             size="large"
             startIcon={<DashboardIcon />}
-            sx={{ borderRadius: 3, px: 3, py: 1.5, fontWeight: "bold", textTransform: "none", fontSize: "1rem", borderWidth: 2, boxShadow: 2, "&:hover": { borderWidth: 2 }, width: { xs: "100%", md: "auto" } }}
+            sx={{
+              borderRadius: 3,
+              px: 3,
+              py: 1.5,
+              fontWeight: "bold",
+              textTransform: "none",
+              fontSize: "1rem",
+              borderWidth: 2,
+              boxShadow: 2,
+              "&:hover": { borderWidth: 2 },
+              width: { xs: "100%", md: "auto" },
+            }}
             onClick={() => cambiarVista("menu")}
           >
             Regresar al Panel
@@ -246,8 +362,15 @@ export default function HistorialPOS({ cambiarVista }) {
       <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
         {/* Filtros */}
         <Paper elevation={3} sx={{ width: { xs: "100%", md: 320 }, p: 3, borderRadius: 2 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-            <Typography variant="subtitle1" fontWeight="bold">Filtros</Typography>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{ mb: 1 }}
+          >
+            <Typography variant="subtitle1" fontWeight="bold">
+              Filtros
+            </Typography>
             <IconButton size="small" onClick={handleFiltrar} title="Refrescar">
               <ReplayIcon />
             </IconButton>
@@ -326,18 +449,25 @@ export default function HistorialPOS({ cambiarVista }) {
               <MenuItem value="td">Tarjeta de débito</MenuItem>
             </TextField>
 
+            {/* === NUEVO: Categoría con datos del backend (IDs) y fallback por nombre === */}
             <TextField
               select
               label="Categoría"
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
+              value={categoriaId}
+              onChange={(e) => setCategoriaId(e.target.value)}
               size="small"
               fullWidth
-              helperText="Filtra por categoría de producto vendida"
+              helperText={
+                usaIdsDeBackend
+                  ? "Filtra por categoría (desde el backend)"
+                  : "Filtra por categoría detectada desde ventas"
+              }
             >
               <MenuItem value="">Todas</MenuItem>
-              {categorias.map((c) => (
-                <MenuItem key={c} value={c}>{c}</MenuItem>
+              {opcionesCategoria.map((c) => (
+                <MenuItem key={c.value} value={c.value}>
+                  {c.label}
+                </MenuItem>
               ))}
             </TextField>
 
@@ -354,7 +484,7 @@ export default function HistorialPOS({ cambiarVista }) {
                 setFechaInicio(h);
                 setFechaFin(h);
                 setTipoPago("");
-                setCategoria("");
+                setCategoriaId("");
                 handleFiltrar();
               }}
             >
@@ -366,7 +496,14 @@ export default function HistorialPOS({ cambiarVista }) {
         {/* Contenido principal */}
         <Stack spacing={3} sx={{ flex: 1 }}>
           {/* Total */}
-          <Paper sx={{ p: 2, borderRadius: 2, border: "1px solid #a5d6a7", backgroundColor: "#e8f5e9" }}>
+          <Paper
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: "1px solid #a5d6a7",
+              backgroundColor: "#e8f5e9",
+            }}
+          >
             <Typography align="center" fontWeight="bold" color="green">
               {textoTotalVentas}
             </Typography>
@@ -379,49 +516,96 @@ export default function HistorialPOS({ cambiarVista }) {
             </Typography>
 
             {loading ? (
-              <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
+              <Box display="flex" justifyContent="center" mt={4}>
+                <CircularProgress />
+              </Box>
             ) : (
               <>
                 <Box sx={{ maxHeight: 420, overflowY: "auto" }}>
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                        <TableCell align="center"><strong>Folio</strong></TableCell>
-                        <TableCell align="center"><strong>Fecha</strong></TableCell>
-                        <TableCell align="center"><strong>Total</strong></TableCell>
-                        <TableCell align="center"><strong>Tipo de pago</strong></TableCell>
-                        <TableCell align="center"><strong>Acciones</strong></TableCell>
+                        <TableCell align="center">
+                          <strong>Folio</strong>
+                        </TableCell>
+                        <TableCell align="center">
+                          <strong>Fecha</strong>
+                        </TableCell>
+                        <TableCell align="center">
+                          <strong>Total</strong>
+                        </TableCell>
+                        <TableCell align="center">
+                          <strong>Tipo de pago</strong>
+                        </TableCell>
+                        <TableCell align="center">
+                          <strong>Acciones</strong>
+                        </TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {ventasFiltradas
-                        .slice(pagina * rowsPerPage, pagina * rowsPerPage + rowsPerPage)
+                        .slice(
+                          pagina * rowsPerPage,
+                          pagina * rowsPerPage + rowsPerPage
+                        )
                         .map((venta) => (
                           <TableRow key={venta.id} hover>
                             <TableCell align="center">{venta.id}</TableCell>
                             <TableCell align="center">
-                              {/* Si tu backend devuelve fecha por venta, úsala aquí en lugar de fechaInicio */}
                               {venta.created_at
-                                ? format(parseISO(venta.created_at.slice(0, 10)), "d 'de' MMMM 'del' yyyy", { locale: es })
-                                : format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })}
+                                ? format(
+                                    parseISO(venta.created_at.slice(0, 10)),
+                                    "d 'de' MMMM 'del' yyyy",
+                                    { locale: es }
+                                  )
+                                : format(
+                                    parseISO(fechaInicio),
+                                    "d 'de' MMMM 'del' yyyy",
+                                    { locale: es }
+                                  )}
                             </TableCell>
-                            <TableCell align="center">{money(venta.total_amount)}</TableCell>
+                            <TableCell align="center">
+                              {money(venta.total_amount)}
+                            </TableCell>
                             <TableCell align="center">
                               {LABELS_PAGO[venta.payment_method] ? (
-                                <Chip label={LABELS_PAGO[venta.payment_method]} color={
-                                  venta.payment_method === "efectivo" ? "success" :
-                                  venta.payment_method === "transferencia" ? "primary" :
-                                  venta.payment_method === "tc" ? "error" :
-                                  venta.payment_method === "td" ? "info" : "default"
-                                } size="small" />
-                              ) : <Chip label="—" variant="outlined" size="small" />}
+                                <Chip
+                                  label={LABELS_PAGO[venta.payment_method]}
+                                  color={
+                                    venta.payment_method === "efectivo"
+                                      ? "success"
+                                      : venta.payment_method === "transferencia"
+                                      ? "primary"
+                                      : venta.payment_method === "tc"
+                                      ? "error"
+                                      : venta.payment_method === "td"
+                                      ? "info"
+                                      : "default"
+                                  }
+                                  size="small"
+                                />
+                              ) : (
+                                <Chip label="—" variant="outlined" size="small" />
+                              )}
                             </TableCell>
                             <TableCell align="center">
-                              <Stack direction="row" spacing={1} justifyContent="center">
-                                <IconButton color="primary" onClick={() => abrirModalTicket(venta.id)} title="Imprimir / Ticket">
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                justifyContent="center"
+                              >
+                                <IconButton
+                                  color="primary"
+                                  onClick={() => abrirModalTicket(venta.id)}
+                                  title="Imprimir / Ticket"
+                                >
                                   <PrintIcon />
                                 </IconButton>
-                                <IconButton color="secondary" onClick={() => abrirModalDetalles(venta.id)} title="Detalles">
+                                <IconButton
+                                  color="secondary"
+                                  onClick={() => abrirModalDetalles(venta.id)}
+                                  title="Detalles"
+                                >
                                   <VisibilityIcon />
                                 </IconButton>
                               </Stack>
@@ -446,7 +630,7 @@ export default function HistorialPOS({ cambiarVista }) {
             )}
           </Paper>
 
-          {/* Tabla de Estadística */}
+          {/* Tabla de Estadística por Tipo de Pago */}
           <Paper sx={{ p: 3, borderRadius: 2 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Estadística por Tipo de Pago
@@ -455,10 +639,18 @@ export default function HistorialPOS({ cambiarVista }) {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>Tipo de pago</strong></TableCell>
-                    <TableCell align="right"><strong># Ventas</strong></TableCell>
-                    <TableCell align="right"><strong>Ticket promedio</strong></TableCell>
-                    <TableCell align="right"><strong>Importe total</strong></TableCell>
+                    <TableCell>
+                      <strong>Tipo de pago</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong># Ventas</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>Ticket promedio</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>Importe total</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -471,16 +663,25 @@ export default function HistorialPOS({ cambiarVista }) {
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell><strong>Total</strong></TableCell>
-                    <TableCell align="right"><strong>{statsPago.totales.ventas}</strong></TableCell>
-                    <TableCell align="right"><strong>{money(statsPago.totales.promedio)}</strong></TableCell>
-                    <TableCell align="right"><strong>{money(statsPago.totales.total)}</strong></TableCell>
+                    <TableCell>
+                      <strong>Total</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{statsPago.totales.ventas}</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{money(statsPago.totales.promedio)}</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{money(statsPago.totales.total)}</strong>
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </Box>
           </Paper>
 
+          {/* Tabla de Estadística por Categoría */}
           <Paper sx={{ p: 3, borderRadius: 2 }}>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               Estadística por Categoría
@@ -489,10 +690,18 @@ export default function HistorialPOS({ cambiarVista }) {
               <Table size="small" stickyHeader>
                 <TableHead>
                   <TableRow>
-                    <TableCell><strong>Categoría</strong></TableCell>
-                    <TableCell align="right"><strong># Ventas</strong></TableCell>
-                    <TableCell align="right"><strong>Ticket promedio*</strong></TableCell>
-                    <TableCell align="right"><strong>Importe total*</strong></TableCell>
+                    <TableCell>
+                      <strong>Categoría</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong># Ventas</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>Ticket promedio*</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>Importe total*</strong>
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -505,10 +714,18 @@ export default function HistorialPOS({ cambiarVista }) {
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell><strong>Total</strong></TableCell>
-                    <TableCell align="right"><strong>{statsCategoria.totales.ventas}</strong></TableCell>
-                    <TableCell align="right"><strong>{money(statsCategoria.totales.promedio)}</strong></TableCell>
-                    <TableCell align="right"><strong>{money(statsCategoria.totales.total)}</strong></TableCell>
+                    <TableCell>
+                      <strong>Total</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{statsCategoria.totales.ventas}</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{money(statsCategoria.totales.promedio)}</strong>
+                    </TableCell>
+                    <TableCell align="right">
+                      <strong>{money(statsCategoria.totales.total)}</strong>
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
