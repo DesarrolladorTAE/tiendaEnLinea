@@ -1,23 +1,10 @@
 // ModalDevolucionExtendido.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
-  TextField,
-  Box,
-  Grid,
-  Tabs,
-  Tab,
-  Alert,
-  Checkbox,
-  FormControlLabel,
-  Paper,
-  InputAdornment,
-  IconButton,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Typography, TextField, Box, Grid, Tabs, Tab,
+  Alert, Checkbox, FormControlLabel, Paper, InputAdornment,
+  IconButton
 } from "@mui/material";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import SearchIcon from "@mui/icons-material/Search";
@@ -31,16 +18,15 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
   const [selectedIds, setSelectedIds] = useState([]);
   const [sustitutos, setSustitutos] = useState({});
   const [motivo, setMotivo] = useState("");
-  const [tab, setTab] = useState("parcial");
+  const [tab, setTab] = useState("parcial"); // "total" | "parcial" | "cambio"
   const [loading, setLoading] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const [productoSeleccionadoId, setProductoSeleccionadoId] = useState(null);
 
+  // Reset al abrir
   useEffect(() => {
-    if (open) {
-      resetCampos();
-      cargarProductos();
-    }
+    if (!open) return;
+    resetCampos();
+    cargarDatos();
   }, [open]);
 
   const resetCampos = () => {
@@ -49,18 +35,22 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
     setMotivo("");
     setTab("parcial");
     setBusqueda("");
-    setProductoSeleccionadoId(null);
   };
 
-  const cargarProductos = async () => {
+  const cargarDatos = async () => {
     try {
-      const venta = await axiosClient.get(`/ventas/${ventaId}/items`);
-      setProductosVenta(venta.data.filter((p) => p.estado === "vendido"));
+      // Ítems de la venta (solo los "vendido")
+      const ventaResp = await axiosClient.get(`/ventas/${ventaId}/items`);
+      const items = Array.isArray(ventaResp.data) ? ventaResp.data : [];
+      setProductosVenta(items.filter((p) => (p.estado || "vendido") === "vendido"));
 
-      const inventario = await axiosClient.get("/productos/buscar?tipo=venta");
-      setProductosDisponibles(inventario.data);
-    } catch (error) {
-      showError("Error al cargar productos.");
+      // Inventario para búsqueda (tipo=venta fuerza stock>0 en el backend)
+      const invResp = await axiosClient.get(`/productos/buscar`, { params: { tipo: "venta" } });
+      const lista = invResp.data?.productos ?? []; // el backend responde { ok, productos }
+      setProductosDisponibles(Array.isArray(lista) ? lista : []);
+    } catch (e) {
+      console.error(e);
+      showError("Error al cargar datos de la venta o inventario.");
     }
   };
 
@@ -70,12 +60,20 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
     );
   };
 
+  const filtrados = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    if (!q) return productosDisponibles.slice(0, 50);
+    return productosDisponibles.filter((p) =>
+      (p.name || "").toLowerCase().includes(q) ||
+      (p.sku || "").toLowerCase().includes(q)
+    );
+  }, [busqueda, productosDisponibles]);
+
   const handleSubmit = async () => {
     if (tab !== "total" && selectedIds.length === 0) {
       showError("Selecciona al menos un producto.");
       return;
     }
-
     if (!motivo.trim()) {
       showError("El motivo es obligatorio.");
       return;
@@ -83,50 +81,70 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
 
     setLoading(true);
     try {
-      let tipo = tab === "cambio" ? "cambio_producto" : "reembolso";
-      const items =
+      // Determinar endpoint según la operación
+      const url =
         tab === "total"
-          ? productosVenta.map((p) => ({
-              sale_item_id: p.id,
-              cantidad: p.quantity,
+          ? `/devoluciones/${ventaId}/reembolso-total`
+          : tab === "cambio"
+          ? `/devoluciones/${ventaId}/cambio-parcial`
+          : `/devoluciones/${ventaId}/reembolso-parcial`;
+
+      // Construir items
+      let items = [];
+      if (tab === "total") {
+        items = productosVenta.map((p) => ({
+          sale_item_id: p.id,
+          cantidad: p.quantity,
+          accion: "reembolso",
+        }));
+      } else if (tab === "parcial") {
+        items = selectedIds
+          .map((id) => {
+            const base = productosVenta.find((p) => p.id === id);
+            if (!base) return null;
+            return {
+              sale_item_id: id,
+              cantidad: base.quantity,
               accion: "reembolso",
-            }))
-          : selectedIds.map((id) => {
-              const item = {
-                sale_item_id: id,
-                cantidad: productosVenta.find((p) => p.id === id).quantity,
-                accion: tipo,
-              };
-              if (tipo === "cambio_producto") {
-                const s = sustitutos[id];
-                if (!s || !s.producto_nuevo_id) throw new Error("Faltan productos sustitutos");
-                item.producto_nuevo_id = s.producto_nuevo_id;
-                item.cantidad_nueva = 1;
-              }
-              return item;
-            });
+            };
+          })
+          .filter(Boolean);
+      } else if (tab === "cambio") {
+        items = selectedIds
+          .map((id) => {
+            const base = productosVenta.find((p) => p.id === id);
+            if (!base) return null;
+            const s = sustitutos[id];
+            if (!s?.producto_nuevo_id) {
+              throw new Error("Falta seleccionar el producto sustituto.");
+            }
+            return {
+              sale_item_id: id,
+              cantidad: base.quantity,
+              accion: "cambio_producto",
+              producto_nuevo_id: s.producto_nuevo_id,
+              cantidad_nueva: 1, // ajusta si tu lógica requiere otra cantidad
+            };
+          })
+          .filter(Boolean);
+      }
 
-      await axiosClient.post(`/devoluciones/${ventaId}/registrar`, {
-        tipo,
-        motivo,
-        items,
-      });
+      await axiosClient.post(url, { motivo, items });
 
-      showSuccess("Devolución registrada correctamente.");
-      onSuccess?.();
+      showSuccess("Operación registrada correctamente.");
+      onSuccess?.(); // refresca la vista padre (re-cargar ventas)
       onClose();
-    } catch (error) {
-      console.error(error);
-      showError("Error al registrar la devolución.");
+    } catch (e) {
+      console.error(e);
+      const msg =
+        e?.response?.data?.details ||
+        e?.response?.data?.message ||
+        "Error al registrar la operación.";
+      showError(msg);
     } finally {
       setLoading(false);
     }
   };
-
-  const productosFiltrados = productosDisponibles.filter((prod) =>
-    prod.name.toLowerCase().includes(busqueda.toLowerCase()) ||
-    prod.codigo?.toLowerCase().includes(busqueda.toLowerCase())
-  );
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
@@ -142,11 +160,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
       <DialogContent dividers>
         <Tabs
           value={tab}
-          onChange={(e, val) => {
-            setTab(val);
-            setSelectedIds([]);
-            setSustitutos({});
-          }}
+          onChange={(e, val) => { setTab(val); setSelectedIds([]); setSustitutos({}); }}
           centered
           textColor="primary"
           indicatorColor="primary"
@@ -162,6 +176,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
             <Typography variant="subtitle1" sx={{ mb: 1 }}>
               Selecciona los productos:
             </Typography>
+
             <Grid container spacing={2}>
               {productosVenta.map((p) => (
                 <Grid item xs={12} sm={6} md={4} key={p.id}>
@@ -172,9 +187,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
-                      border: selectedIds.includes(p.id)
-                        ? "2px solid #1976d2"
-                        : "1px solid #ccc",
+                      border: selectedIds.includes(p.id) ? "2px solid #1976d2" : "1px solid #ccc",
                       borderRadius: 2,
                       cursor: "pointer",
                       transition: "0.2s",
@@ -191,7 +204,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
                       }
                       label={
                         <Box textAlign="center">
-                          <Typography fontWeight="bold">{p.nombre}</Typography>
+                          <Typography fontWeight="bold">{p.nombre || p.name}</Typography>
                           <Typography variant="body2">Cantidad: x{p.quantity}</Typography>
                         </Box>
                       }
@@ -201,15 +214,15 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
                     {tab === "cambio" && selectedIds.includes(p.id) && (
                       <>
                         <TextField
-                          label="Buscar producto"
+                          label="Buscar producto (nombre o SKU)"
                           value={busqueda}
                           onChange={(e) => setBusqueda(e.target.value)}
                           fullWidth
                           InputProps={{
                             endAdornment: (
                               <InputAdornment position="end">
-                                <IconButton onClick={() => setBusqueda("")}> 
-                                  {busqueda ? <CloseIcon /> : <SearchIcon />} 
+                                <IconButton onClick={() => setBusqueda("")}>
+                                  {busqueda ? <CloseIcon /> : <SearchIcon />}
                                 </IconButton>
                               </InputAdornment>
                             ),
@@ -219,7 +232,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
 
                         <Box
                           sx={{
-                            maxHeight: 200,
+                            maxHeight: 220,
                             overflowY: "auto",
                             border: "1px solid #ccc",
                             borderRadius: 1,
@@ -227,35 +240,32 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
                             mt: 1,
                           }}
                         >
-                          {productosFiltrados.map((prod) => (
-                            <Box
-                              key={prod.id}
-                              sx={{
-                                px: 2,
-                                py: 1,
-                                cursor: "pointer",
-                                backgroundColor:
-                                  sustitutos[p.id]?.producto_nuevo_id === prod.id
-                                    ? "#e3f2fd"
-                                    : "white",
-                                borderBottom: "1px solid #eee",
-                                "&:hover": { backgroundColor: "#f5f5f5" },
-                              }}
-                              onClick={() =>
-                                setSustitutos((prev) => ({
-                                  ...prev,
-                                  [p.id]: {
-                                    ...prev[p.id],
-                                    producto_nuevo_id: prod.id,
-                                  },
-                                }))
-                              }
-                            >
-                              <Typography variant="body2">
-                                {prod.name} - Stock: {prod.stock} - ${prod.price}
-                              </Typography>
-                            </Box>
-                          ))}
+                          {filtrados.map((prod) => {
+                            const active = sustitutos[p.id]?.producto_nuevo_id === prod.id;
+                            return (
+                              <Box
+                                key={prod.id}
+                                sx={{
+                                  px: 2,
+                                  py: 1,
+                                  cursor: "pointer",
+                                  backgroundColor: active ? "#e3f2fd" : "white",
+                                  borderBottom: "1px solid #eee",
+                                  "&:hover": { backgroundColor: "#f5f5f5" },
+                                }}
+                                onClick={() =>
+                                  setSustitutos((prev) => ({
+                                    ...prev,
+                                    [p.id]: { ...prev[p.id], producto_nuevo_id: prod.id },
+                                  }))
+                                }
+                              >
+                                <Typography variant="body2">
+                                  {prod.name} · SKU: {prod.sku || "—"} · Stock: {prod.stock} · ${Number(prod.price || 0).toFixed(2)}
+                                </Typography>
+                              </Box>
+                            );
+                          })}
                         </Box>
                       </>
                     )}
@@ -278,9 +288,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
       </DialogContent>
 
       <DialogActions sx={{ justifyContent: "space-between", px: 3, py: 2 }}>
-        <Button onClick={onClose} color="primary">
-          CERRAR
-        </Button>
+        <Button onClick={onClose} color="primary">CERRAR</Button>
         <Button
           variant="contained"
           color={tab === "cambio" ? "info" : "error"}
@@ -291,6 +299,8 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
             ? "Procesando..."
             : tab === "cambio"
             ? "CAMBIAR PRODUCTOS"
+            : tab === "total"
+            ? "REEMBOLSO TOTAL"
             : "DEVOLVER PRODUCTOS"}
         </Button>
       </DialogActions>
