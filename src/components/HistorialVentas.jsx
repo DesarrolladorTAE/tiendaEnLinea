@@ -18,8 +18,8 @@ import CancelIcon from "@mui/icons-material/Cancel";
 import ReplayIcon2 from "@mui/icons-material/Replay";
 import HistoryIcon from "@mui/icons-material/History";
 
-import axiosClientPOS from "../config/axiosClientPOS"; // ventas
-import axiosClient from "../config/axiosClient";       // categorías
+import axiosClientPOS from "../config/axiosClientPOS";
+import axiosClient from "../config/axiosClient";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -48,15 +48,55 @@ const hoyISO = () => new Date().toISOString().slice(0, 10);
 const money = (n) =>
   (Number(n || 0)).toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 });
 
-const ES_CANCELADA = (s) => ["cancelled", "devuelta", "partially_cancelled"].includes(s);
+// ❗️ANTES: excluías también partially_cancelled. Para netear mejor, solo
+// excluimos DEVUELTA/CANCELLED totales de las "ventas vigentes base".
+const ES_ANULADA_TOTAL = (s) => ["cancelled", "devuelta"].includes(String(s || "").toLowerCase());
+
+// Mantengo para botones/estilos de la tabla
+const ES_CANCELADA = (s) => ["cancelled", "devuelta", "partially_cancelled"].includes(String(s || "").toLowerCase());
+
+// Normaliza pagos
+const pagosDeVenta = (v) => {
+  if (Array.isArray(v?.payment_methods) && v.payment_methods.length) return v.payment_methods;
+  if (v?.payment_method) return [{ method: v.payment_method, total: Number(v.total_amount || 0) }];
+  return [];
+};
+
+const etiquetaPagoVenta = (v) => {
+  if (v?.payment_label) return v.payment_label;
+  const parts = pagosDeVenta(v).map(p => `${LABELS_PAGO[p.method] || p.method} ${money(p.total)}`);
+  return parts.length ? parts.join(" + ") : "—";
+};
 
 // ---- Subcomponentes UI ------------------------------------------------------
-const KpiCard = ({ title, value, hint, color }) => (
-  <Card sx={{ borderRadius: 3, height: "100%", borderColor: color ? `${color}.main` : undefined }}>
+const SummaryCard = ({ title, amount, count, avg, color = "default", hint }) => (
+  <Card
+    sx={{
+      borderRadius: 3,
+      height: "100%",
+      border: "1px solid",
+      borderColor:
+        color === "success" ? "success.light"
+        : color === "error" ? "error.light"
+        : color === "info" ? "info.light"
+        : "divider",
+      background:
+        color === "success" ? "rgba(46, 125, 50, .04)"
+        : color === "error" ? "rgba(211, 47, 47, .04)"
+        : color === "info" ? "rgba(25, 118, 210, .04)"
+        : "inherit",
+    }}
+  >
     <CardContent>
       <Typography variant="overline" color="text.secondary">{title}</Typography>
-      <Typography variant="h5" fontWeight="bold" color={color || "inherit"}>{value}</Typography>
-      {hint && <Typography variant="caption" color="text.secondary">{hint}</Typography>}
+      <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
+        {money(amount)}
+      </Typography>
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <Chip size="small" color={color} variant="outlined" label={`# ${count}`} />
+        <Chip size="small" color={color} variant="outlined" label={`Prom: ${money(avg)}`} />
+        {hint && <Typography variant="caption" color="text.secondary" sx={{ ml: .5 }}>{hint}</Typography>}
+      </Stack>
     </CardContent>
   </Card>
 );
@@ -131,9 +171,27 @@ const SalesTable = ({
                   </TableCell>
                   <TableCell align="center">{money(venta.total_amount)}</TableCell>
                   <TableCell align="center">
-                    {LABELS_PAGO[venta.payment_method]
-                      ? <Chip label={LABELS_PAGO[venta.payment_method]} size="small" />
-                      : <Chip label="—" variant="outlined" size="small" />}
+                    {pagosDeVenta(venta).length ? (
+                      <Tooltip
+                        arrow
+                        title={
+                          <Box sx={{ p: 0.5 }}>
+                            {pagosDeVenta(venta).map((p) => (
+                              <Stack key={p.method} direction="row" spacing={1} alignItems="center">
+                                {ICONS_PAGO[p.method] || null}
+                                <Typography variant="caption">
+                                  {(LABELS_PAGO[p.method] || p.method)}: {money(p.total)}
+                                </Typography>
+                              </Stack>
+                            ))}
+                          </Box>
+                        }
+                      >
+                        <Chip size="small" label={etiquetaPagoVenta(venta)} variant="outlined" sx={{ maxWidth: 240 }} />
+                      </Tooltip>
+                    ) : (
+                      <Chip label="—" variant="outlined" size="small" />
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={0.5} justifyContent="center" flexWrap="wrap">
@@ -248,7 +306,7 @@ const SalesCardsGrid = ({ rows, abrirTicket, abrirDetalles }) => (
                 <Typography variant="subtitle2" color="text.secondary">Folio</Typography>
                 <Typography variant="h6" fontWeight="bold">#{v.id}</Typography>
               </Stack>
-              <Chip size="small" label={LABELS_PAGO[v.payment_method] || "—"} />
+              <Chip size="small" label={etiquetaPagoVenta(v)} />
             </Stack>
 
             <Typography variant="body2" color="text.secondary">
@@ -287,11 +345,98 @@ const SalesCardsGrid = ({ rows, abrirTicket, abrirDetalles }) => (
   </Grid>
 );
 
+// ===== Tablas Devoluciones / Cancelaciones (con Ticket/Detalles) =============
+const SimpleList = ({
+  rows,
+  loading,
+  color = "default",                 // "info" para devoluciones, "error" para cancelaciones
+  onTicket,
+  onDetails,
+  paymentFromSale = true
+}) => {
+  if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
+  if (!rows.length) return <Typography variant="body2" color="text.secondary">Sin registros en el rango seleccionado.</Typography>;
+
+  const rowBg = color === "error" ? "#ffebee"
+              : color === "info" ? "#e3f2fd"
+              : "inherit";
+
+  return (
+    <Box sx={{ maxHeight: 440, overflowY: "auto" }}>
+      <Table size="small" stickyHeader>
+        <TableHead>
+          <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+            <TableCell align="center"><strong>#</strong></TableCell>
+            <TableCell align="center"><strong>Venta</strong></TableCell>
+            <TableCell align="center"><strong>Fecha</strong></TableCell>
+            <TableCell align="center"><strong>Tipo</strong></TableCell>
+            <TableCell align="center"><strong>Motivo</strong></TableCell>
+            <TableCell align="center"><strong>Total afectado</strong></TableCell>
+            <TableCell align="center"><strong>Acciones</strong></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {rows.map((r) => {
+            const fecha = r.fecha || r.created_at;
+            const venta = r.sale || {};
+            const totalAfectado = Number(r?.importe_afectado ?? venta?.total_amount ?? 0);
+            const pagoLabel = paymentFromSale ? etiquetaPagoVenta(venta) : "—";
+            return (
+              <TableRow key={`row-${r.id}`} sx={{ backgroundColor: rowBg }}>
+                <TableCell align="center">#{r.id}</TableCell>
+                <TableCell align="center">{venta?.id ? `#${venta.id}` : "—"}</TableCell>
+                <TableCell align="center">
+                  {fecha ? format(parseISO(String(fecha).slice(0,10)), "d 'de' MMMM 'del' yyyy", { locale: es }) : "—"}
+                </TableCell>
+                <TableCell align="center">
+                  <Chip
+                    size="small"
+                    color={color}
+                    variant="outlined"
+                    label={(r.tipo || "").toUpperCase() || (color === "error" ? "CANCELADA" : "DEVUELTA")}
+                  />
+                </TableCell>
+                <TableCell align="center">
+                  <Typography variant="body2" noWrap title={r.motivo || ""}>{r.motivo || "—"}</Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <Tooltip title={`Total del ticket: ${venta?.total_amount != null ? money(venta.total_amount) : "—"} · Pago: ${pagoLabel}`}>
+                    <span>{money(totalAfectado)}</span>
+                  </Tooltip>
+                </TableCell>
+                <TableCell align="center">
+                  {venta?.id ? (
+                    <Stack direction="row" spacing={1} justifyContent="center">
+                      <Tooltip title="Imprimir / Ticket">
+                        <IconButton color="primary" onClick={() => onTicket?.(venta.id)}>
+                          <PrintIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Detalles">
+                        <IconButton color="secondary" onClick={() => onDetails?.(venta.id)}>
+                          <VisibilityIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  ) : "—"}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </Box>
+  );
+};
+
 // ---- Componente principal ----------------------------------------------------
 export default function HistorialPOS({ cambiarVista }) {
   // Estado base
   const [modoConsulta, setModoConsulta] = useState("dia");
   const [ventas, setVentas] = useState([]);
+  const [devoluciones, setDevoluciones] = useState([]);
+  const [cancelaciones, setCancelaciones] = useState([]);
+
   const [loading, setLoading] = useState(true);
   const [fechaInicio, setFechaInicio] = useState(hoyISO());
   const [fechaFin, setFechaFin] = useState(hoyISO());
@@ -309,32 +454,28 @@ export default function HistorialPOS({ cambiarVista }) {
   const [modalCancelarOpen, setModalCancelarOpen] = useState(false);
   const [modalDevolverOpen, setModalDevolverOpen] = useState(false);
 
-  // Para historial de cancelaciones desde el mismo dataset
-  const canceladasLista = useMemo(
-    () => ventas.filter(v => ES_CANCELADA(v.status)),
-    [ventas]
-  );
-
-  // Traer ventas (solo cuando aplicas o hay éxito en modal)
+  // Traer datos
   const handleFiltrar = async () => {
     setLoading(true);
     const params = { fecha_inicio: fechaInicio, fecha_fin: fechaFin };
     if (tipoPago) params.payment_method = tipoPago;
     try {
       const { data } = await axiosClientPOS.get("/ventas/mis-ventas", { params });
-      setVentas(Array.isArray(data) ? data : []);
+      setVentas(Array.isArray(data?.ventas) ? data.ventas : Array.isArray(data) ? data : []);
+      setDevoluciones(Array.isArray(data?.devoluciones) ? data.devoluciones : []);
+      setCancelaciones(Array.isArray(data?.cancelaciones) ? data.cancelaciones : []);
       setPagina(0);
     } catch (error) {
       console.error("Error al filtrar ventas", error);
-      setVentas([]);
+      setVentas([]); setDevoluciones([]); setCancelaciones([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { handleFiltrar(); }, []); // primer render
+  useEffect(() => { handleFiltrar(); }, []);
 
-  // Traer categorías (opcional; no usamos select de categoría aquí, pero se deja por si lo reactivas)
+  // Traer categorías (opcional)
   useEffect(() => {
     axiosClient.get("/admin/categories")
       .then(({ data }) => {
@@ -344,7 +485,7 @@ export default function HistorialPOS({ cambiarVista }) {
       .catch(() => setCatList([]));
   }, []);
 
-  // Filtrado base por categoría (si vuelves a activar el select)
+  // Filtrado por categoría sobre ventas
   const categoriaSeleccionadaNombre = useMemo(() => {
     if (!categoriaId) return "";
     const found = catList.find((c) => String(c.id) === String(categoriaId));
@@ -365,77 +506,107 @@ export default function HistorialPOS({ cambiarVista }) {
     );
   }, [ventas, categoriaId, categoriaSeleccionadaNombre]);
 
-  // Separación VIGENTES vs CANCELADAS (para todo lo demás)
-  const ventasVigentes = useMemo(
-    () => ventasFiltradas.filter(v => !ES_CANCELADA(v.status)),
-    [ventasFiltradas]
-  );
-  const ventasCanceladas = useMemo(
-    () => ventasFiltradas.filter(v => ES_CANCELADA(v.status)),
+  // === NUEVO: ventas "vigentes base" (solo excluye canceladas/DEVUELTA totales)
+  const ventasVigentesBase = useMemo(
+    () => ventasFiltradas.filter(v => !ES_ANULADA_TOTAL(v.status)),
     [ventasFiltradas]
   );
 
-  // KPIs (solo VIGENTES)
-  const totalVigentes = useMemo(
-    () => ventasVigentes.reduce((ac, v) => ac + Number(v.total_amount || 0), 0),
-    [ventasVigentes]
+  // ====== DERIVAR CANCELACIONES desde ventas si el backend no trae registros ======
+  const cancelacionesDerivadas = useMemo(() => (
+    ventas
+      .filter(v => v.status === "cancelled" || v.status === "partially_cancelled")
+      .map(v => ({
+        id: v.id,
+        sale_id: v.id,
+        store_id: v.store_id,
+        tipo: v.status === "partially_cancelled" ? "parcial" : "total",
+        motivo: v.cancel_reason || v.motivo || "",
+        fecha: v.updated_at || v.created_at,
+        created_at: v.updated_at || v.created_at,
+        sale: v,
+        importe_afectado: v.status === "partially_cancelled"
+          ? Number(v.items?.filter(it => it.estado === 'cancelado').reduce((a, b) => a + Number(b.total_price || 0), 0) || 0)
+          : Number(v.total_amount || 0),
+      }))
+  ), [ventas]);
+
+  const cancelacionesRows = useMemo(
+    () => (cancelaciones && cancelaciones.length ? cancelaciones : cancelacionesDerivadas),
+    [cancelaciones, cancelacionesDerivadas]
   );
-  const ticketsVigentes = ventasVigentes.length;
+
+  // Helpers de importes y tipo parcial
+  const getImporteAfectado = (r) => Number(r?.importe_afectado ?? r?.sale?.total_amount ?? 0);
+  const esParcial = (r) => String(r?.tipo || "").toLowerCase().includes("parc");
+
+  // ====== KPIs ======
+  // Ventas brutas = suma de las ventas NO canceladas/devueltas (incluye parciales)
+  const totalVentasBrutas = useMemo(
+    () => ventasVigentesBase.reduce((ac, v) => ac + Number(v.total_amount || 0), 0),
+    [ventasVigentesBase]
+  );
+
+  // Totales parciales a restar
+  const totalParcCancel = useMemo(
+    () => cancelacionesRows.filter(esParcial).reduce((ac, r) => ac + getImporteAfectado(r), 0),
+    [cancelacionesRows]
+  );
+  const totalParcDev = useMemo(
+    () => devoluciones.filter(esParcial).reduce((ac, r) => ac + getImporteAfectado(r), 0),
+    [devoluciones]
+  );
+
+  // ✅ Ventas NETAS para la tarjeta
+  const totalVigentes = Math.max(0, totalVentasBrutas - totalParcCancel - totalParcDev);
+  const ticketsVigentes = ventasVigentesBase.length;
   const ticketPromVigente = ticketsVigentes ? totalVigentes / ticketsVigentes : 0;
 
-  // KPIs (CANCELADAS)
-  const totalCanceladas = useMemo(
-    () => ventasCanceladas.reduce((ac, v) => ac + Number(v.total_amount || 0), 0),
-    [ventasCanceladas]
+  // Cancelaciones / Devoluciones (ya neteadas por importe_afectado)
+  const totalCancelaciones = useMemo(
+    () => cancelacionesRows.reduce((ac, r) => ac + getImporteAfectado(r), 0),
+    [cancelacionesRows]
   );
-  const ticketsCanceladas = ventasCanceladas.length;
-  const ticketPromCancelada = ticketsCanceladas ? totalCanceladas / ticketsCanceladas : 0;
+  const ticketsCanceladas = cancelacionesRows.length;
+  const ticketPromCancelada = ticketsCanceladas ? totalCancelaciones / ticketsCanceladas : 0;
+
+  const totalDevoluciones = useMemo(
+    () => devoluciones.reduce((ac, r) => ac + getImporteAfectado(r), 0),
+    [devoluciones]
+  );
+  const ticketsDevoluciones = devoluciones.length;
+  const ticketPromDevolucion = ticketsDevoluciones ? totalDevoluciones / ticketsDevoluciones : 0;
 
   const textoRango =
     modoConsulta === "dia"
       ? format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })
       : `${format(parseISO(fechaInicio), "d 'de' MMMM 'del' yyyy", { locale: es })} – ${format(parseISO(fechaFin), "d 'de' MMMM 'del' yyyy", { locale: es })}`;
 
-  // Estadística pagos (VIGENTES)
+  // Estadísticas (ventas vigentes) — siguen mostrando bruto por simplicidad
   const statsPago = useMemo(() => {
     const map = new Map();
-    ventasVigentes.forEach((v) => {
-      const key = v.payment_method || "—";
-      const cur = map.get(key) || { ventas: 0, total: 0 };
-      cur.ventas += 1;
-      cur.total += Number(v.total_amount || 0);
-      map.set(key, cur);
+    ventasVigentesBase.forEach((v) => {
+      pagosDeVenta(v).forEach((p) => {
+        const cur = map.get(p.method) || { ventas: 0, total: 0 };
+        cur.ventas += 1;
+        cur.total  += Number(p.total);
+        map.set(p.method, cur);
+      });
     });
-    const rows = Array.from(map.entries()).map(([pago, val]) => ({
-      key: pago, label: LABELS_PAGO[pago] || pago, ventas: val.ventas, total: val.total
+    const rows = Array.from(map.entries()).map(([key, val]) => ({
+      key,
+      label: LABELS_PAGO[key] || key,
+      ventas: val.ventas,
+      total: val.total,
     })).sort((a, b) => b.total - a.total);
-    const totVentas = rows.reduce((a, r) => a + r.ventas, 0);
+    const totVentas  = rows.reduce((a, r) => a + r.ventas, 0);
     const totImporte = rows.reduce((a, r) => a + r.total, 0);
     return { rows, totales: { ventas: totVentas, total: totImporte } };
-  }, [ventasVigentes]);
+  }, [ventasVigentesBase]);
 
-  // Estadística pagos (CANCELADAS)
-  const statsPagoCancel = useMemo(() => {
-    const map = new Map();
-    ventasCanceladas.forEach((v) => {
-      const key = v.payment_method || "—";
-      const cur = map.get(key) || { ventas: 0, total: 0 };
-      cur.ventas += 1;
-      cur.total += Number(v.total_amount || 0);
-      map.set(key, cur);
-    });
-    const rows = Array.from(map.entries()).map(([pago, val]) => ({
-      key: pago, label: LABELS_PAGO[pago] || pago, ventas: val.ventas, total: val.total
-    })).sort((a, b) => b.total - a.total);
-    const totVentas = rows.reduce((a, r) => a + r.ventas, 0);
-    const totImporte = rows.reduce((a, r) => a + r.total, 0);
-    return { rows, totales: { ventas: totVentas, total: totImporte } };
-  }, [ventasCanceladas]);
-
-  // Estadística categorías (VIGENTES, prorrateo; incluye Sin categoría)
   const statsCategoria = useMemo(() => {
     const map = new Map();
-    ventasVigentes.forEach((v) => {
+    ventasVigentesBase.forEach((v) => {
       const names = (v.categories || []).map(c => (c?.name || "").trim()).filter(Boolean);
       const set = new Set(names);
       if (set.size === 0) set.add("Sin categoría");
@@ -451,45 +622,24 @@ export default function HistorialPOS({ cambiarVista }) {
     const totVentas = rows.reduce((a, r) => a + r.ventas, 0);
     const totImporte = rows.reduce((a, r) => a + r.total, 0);
     return { rows, totales: { ventas: totVentas, total: totImporte } };
-  }, [ventasVigentes]);
+  }, [ventasVigentesBase]);
 
-  // Estadística categorías (CANCELADAS)
-  const statsCategoriaCancel = useMemo(() => {
-    const map = new Map();
-    ventasCanceladas.forEach((v) => {
-      const names = (v.categories || []).map(c => (c?.name || "").trim()).filter(Boolean);
-      const set = new Set(names);
-      if (set.size === 0) set.add("Sin categoría");
-      const prorrata = Number(v.total_amount || 0) / set.size;
-      set.forEach((name) => {
-        const cur = map.get(name) || { ventas: 0, total: 0 };
-        cur.ventas += 1; cur.total += prorrata; map.set(name, cur);
-      });
-    });
-    const rows = Array.from(map.entries()).map(([label, val]) => ({
-      key: label, label, ventas: val.ventas, total: val.total
-    })).sort((a, b) => b.total - a.total);
-    const totVentas = rows.reduce((a, r) => a + r.ventas, 0);
-    const totImporte = rows.reduce((a, r) => a + r.total, 0);
-    return { rows, totales: { ventas: totVentas, total: totImporte } };
-  }, [ventasCanceladas]);
-
-  // Estado para tabs "Por tipo de pago" y "Por categoría" (VIGENTES)
+  // Tabs "Por pago" / "Por categoría"
   const [pagoSeleccionado, setPagoSeleccionado] = useState("");
   const ventasPorPago = useMemo(() => {
     if (!pagoSeleccionado) return [];
-    return ventasVigentes.filter((v) => v.payment_method === pagoSeleccionado);
-  }, [ventasVigentes, pagoSeleccionado]);
+    return ventasVigentesBase.filter((v) => pagosDeVenta(v).some(p => p.method === pagoSeleccionado));
+  }, [ventasVigentesBase, pagoSeleccionado]);
 
-  const [categoriaTabSel, setCategoriaTabSel] = useState(""); // nombre
+  const [categoriaTabSel, setCategoriaTabSel] = useState("");
   const ventasPorCategoria = useMemo(() => {
     if (!categoriaTabSel) return [];
-    return ventasVigentes.filter((v) => {
+    return ventasVigentesBase.filter((v) => {
       const names = (v.categories || []).map(c => (c?.name || "").trim());
       if (categoriaTabSel === "Sin categoría") return names.length === 0;
       return names.includes(categoriaTabSel);
     });
-  }, [ventasVigentes, categoriaTabSel]);
+  }, [ventasVigentesBase, categoriaTabSel]);
 
   // Handlers tabla
   const handleChangePage = (_, newPage) => setPagina(newPage);
@@ -637,220 +787,176 @@ export default function HistorialPOS({ cambiarVista }) {
         </Grid>
       </Paper>
 
-      <Stack sx={{ flex: 1 }} spacing={2}>
-        {/* KPIs: SOLO VIGENTES y bloque aparte de CANCELADAS */}
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={3}>
-            <KpiCard title={`Ventas vigentes (${textoRango})`} value={money(totalVigentes)} hint={tipoPago ? `Filtrado por ${LABELS_PAGO[tipoPago]}` : "Todas las formas de pago"} />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <KpiCard title="# Tickets vigentes" value={ticketsVigentes} hint="Cantidad de ventas" />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <KpiCard title="Ticket prom. vigente" value={money(ticketPromVigente)} />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <KpiCard title="Canceladas (importe)" value={money(totalCanceladas)} hint={`# ${ticketsCanceladas}`} color="error" />
-          </Grid>
+      {/* KPIs resumidos */}
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={4}>
+          <SummaryCard
+            title={`Ventas (${textoRango})`}
+            amount={totalVigentes}
+            count={ticketsVigentes}
+            avg={ticketPromVigente}
+            color="success"
+            hint={tipoPago ? `Filtrado por ${LABELS_PAGO[tipoPago]}` : undefined}
+          />
         </Grid>
 
-        <Paper sx={{ borderRadius: 3, p: 1.5 }}>
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" allowScrollButtonsMobile>
-            <Tab label="Resumen" />
-            <Tab label="Ventas" />
-            <Tab label="Por tipo de pago" />
-            <Tab label="Por categoría" />
-            <Tab icon={<HistoryIcon />} iconPosition="start" label="Cancelaciones (historial)" />
-          </Tabs>
-          <Divider sx={{ mb: 2 }} />
+        <Grid item xs={12} md={4}>
+          <SummaryCard
+            title="Canceladas"
+            amount={totalCancelaciones}
+            count={ticketsCanceladas}
+            avg={ticketPromCancelada}
+            color="error"
+            hint="Basado en fecha de creación de la venta"
+          />
+        </Grid>
 
-          {/* Resumen */}
-          {tab === 0 && (
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
-                <StatsList title="Por tipo de pago (vigentes)" rows={statsPago.rows} total={statsPago.totales.total} />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <StatsList title="Por categoría (vigentes)" rows={statsCategoria.rows} total={statsCategoria.totales.total} />
-              </Grid>
+        <Grid item xs={12} md={4}>
+          <SummaryCard
+            title="Devueltas"
+            amount={totalDevoluciones}
+            count={ticketsDevoluciones}
+            avg={ticketPromDevolucion}
+            color="info"
+          />
+        </Grid>
+      </Grid>
 
-              <Grid item xs={12} md={6}>
-                <StatsList title="Canceladas · por pago" rows={statsPagoCancel.rows} total={statsPagoCancel.totales.total} />
-              </Grid>
-              <Grid item xs={12} md={6}>
-                <StatsList title="Canceladas · por categoría" rows={statsCategoriaCancel.rows} total={statsCategoriaCancel.totales.total} />
-              </Grid>
+      <Paper sx={{ borderRadius: 3, p: 1.5 }}>
+        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" allowScrollButtonsMobile>
+          <Tab label="Resumen" />
+          <Tab label="Ventas" />
+          <Tab label="Por tipo de pago" />
+          <Tab label="Por categoría" />
+          <Tab icon={<HistoryIcon />} iconPosition="start" label="Devoluciones" />
+          <Tab icon={<HistoryIcon />} iconPosition="start" label="Cancelaciones" />
+        </Tabs>
+        <Divider sx={{ mb: 2 }} />
 
-              <Grid item xs={12}>
-                <Typography variant="caption" color="text.secondary">
-                  * En categoría se prorratea el total de cada venta entre sus categorías para evitar doble conteo.
-                </Typography>
-              </Grid>
+        {/* Resumen */}
+        {tab === 0 && (
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={6}>
+              <StatsList title="Por tipo de pago (vigentes)" rows={statsPago.rows} total={statsPago.totales.total} />
             </Grid>
-          )}
+            <Grid item xs={12} md={6}>
+              <StatsList title="Por categoría (vigentes)" rows={statsCategoria.rows} total={statsCategoria.totales.total} />
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" color="text.secondary">
+                * En categoría se prorratea el total de cada venta entre sus categorías para evitar doble conteo.
+              </Typography>
+            </Grid>
+          </Grid>
+        )}
 
-          {/* Ventas (SOLO vigentes) con acciones */}
-          {tab === 1 && (
-            loading ? (
+        {/* Ventas (vigentes) con acciones */}
+        {tab === 1 && (
+          loading ? (
+            <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
+          ) : (
+            <SalesTable
+              rows={ventasFiltradas}
+              pagina={pagina}
+              rowsPerPage={rowsPerPage}
+              onPage={handleChangePage}
+              onRpp={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPagina(0); }}
+              fechaFallback={fechaInicio}
+              abrirTicket={(id) => { setVentaSeleccionada(id); setModalTicketOpen(true); }}
+              abrirDetalles={(id) => { setVentaSeleccionada(id); setModalDetallesOpen(true); }}
+              cancelarVenta={(id) => { setVentaSeleccionada(id); setModalCancelarOpen(true); }}
+              devolverVenta={(id) => { setVentaSeleccionada(id); setModalDevolverOpen(true); }}
+            />
+          )
+        )}
+
+        {/* Por tipo de pago */}
+        {tab === 2 && (
+          <Stack spacing={2}>
+            <Typography variant="subtitle1" fontWeight="bold">Selecciona un tipo de pago</Typography>
+            <PaymentPicker
+              stats={statsPago}
+              selected={pagoSeleccionado}
+              onSelect={(val) => setPagoSeleccionado(val === pagoSeleccionado ? "" : val)}
+            />
+            {!pagoSeleccionado ? (
+              <Typography variant="body2" color="text.secondary">Elige un tipo de pago para ver las ventas correspondientes.</Typography>
+            ) : loading ? (
               <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
+            ) : ventasPorPago.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No hay ventas para {LABELS_PAGO[pagoSeleccionado] || pagoSeleccionado} en el rango seleccionado.</Typography>
             ) : (
-              <SalesTable
-                rows={ventasFiltradas}
-                pagina={pagina}
-                rowsPerPage={rowsPerPage}
-                onPage={handleChangePage}
-                onRpp={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPagina(0); }}
-                fechaFallback={fechaInicio}
+              <SalesCardsGrid
+                rows={ventasPorPago}
                 abrirTicket={(id) => { setVentaSeleccionada(id); setModalTicketOpen(true); }}
                 abrirDetalles={(id) => { setVentaSeleccionada(id); setModalDetallesOpen(true); }}
-                cancelarVenta={(id) => { setVentaSeleccionada(id); setModalCancelarOpen(true); }}
-                devolverVenta={(id) => { setVentaSeleccionada(id); setModalDevolverOpen(true); }}
               />
-            )
-          )}
+            )}
+          </Stack>
+        )}
 
-          {/* Por tipo de pago (vigentes) */}
-          {tab === 2 && (
-            <Stack spacing={2}>
-              <Typography variant="subtitle1" fontWeight="bold">Selecciona un tipo de pago</Typography>
-              <PaymentPicker
-                stats={statsPago}
-                selected={pagoSeleccionado}
-                onSelect={(val) => setPagoSeleccionado(val === pagoSeleccionado ? "" : val)}
-              />
-              {!pagoSeleccionado ? (
-                <Typography variant="body2" color="text.secondary">Elige un tipo de pago para ver las ventas correspondientes.</Typography>
-              ) : loading ? (
-                <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
-              ) : ventasPorPago.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">No hay ventas para {LABELS_PAGO[pagoSeleccionado] || pagoSeleccionado} en el rango seleccionado.</Typography>
-              ) : (
-                <SalesCardsGrid
-                  rows={ventasPorPago}
-                  abrirTicket={(id) => { setVentaSeleccionada(id); setModalTicketOpen(true); }}
-                  abrirDetalles={(id) => { setVentaSeleccionada(id); setModalDetallesOpen(true); }}
-                />
-              )}
+        {/* Por categoría */}
+        {tab === 3 && (
+          <Stack spacing={2}>
+            <Typography variant="subtitle1" fontWeight="bold">Selecciona una categoría</Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              {statsCategoria.rows.map((r) => {
+                const value = r.label;
+                const active = categoriaTabSel === value;
+                return (
+                  <Chip
+                    key={value}
+                    clickable
+                    onClick={() => setCategoriaTabSel(active ? "" : value)}
+                    label={`${value} · ${money(r.total)}`}
+                    color={active ? "primary" : "default"}
+                    variant={active ? "filled" : "outlined"}
+                    sx={{ borderRadius: 2 }}
+                  />
+                );
+              })}
             </Stack>
-          )}
 
-          {/* Por categoría (vigentes) */}
-          {tab === 3 && (
-            <Stack spacing={2}>
-              <Typography variant="subtitle1" fontWeight="bold">Selecciona una categoría</Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {statsCategoria.rows.map((r) => {
-                  const value = r.label;
-                  const active = categoriaTabSel === value;
-                  return (
-                    <Chip
-                      key={value}
-                      clickable
-                      onClick={() => setCategoriaTabSel(active ? "" : value)}
-                      label={`${value} · ${money(r.total)}`}
-                      color={active ? "primary" : "default"}
-                      variant={active ? "filled" : "outlined"}
-                      sx={{ borderRadius: 2 }}
-                    />
-                  );
-                })}
-              </Stack>
-
-              {!categoriaTabSel ? (
-                <Typography variant="body2" color="text.secondary">Elige una categoría para ver las ventas correspondientes.</Typography>
-              ) : loading ? (
-                <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
-              ) : ventasPorCategoria.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">No hay ventas para la categoría “{categoriaTabSel}” en el rango seleccionado.</Typography>
-              ) : (
-                <SalesCardsGrid
-                  rows={ventasPorCategoria}
-                  abrirTicket={(id) => { setVentaSeleccionada(id); setModalTicketOpen(true); }}
-                  abrirDetalles={(id) => { setVentaSeleccionada(id); setModalDetallesOpen(true); }}
-                />
-              )}
-            </Stack>
-          )}
-
-          {/* Cancelaciones (historial + KPIs) */}
-          {tab === 4 && (
-            loading ? (
+            {!categoriaTabSel ? (
+              <Typography variant="body2" color="text.secondary">Elige una categoría para ver las ventas correspondientes.</Typography>
+            ) : loading ? (
               <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>
+            ) : ventasPorCategoria.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No hay ventas para la categoría “{categoriaTabSel}”.</Typography>
             ) : (
-              <>
-                <Grid container spacing={2} sx={{ px: 2, pb: 1 }}>
-                  <Grid item xs={12} md={4}>
-                    <KpiCard title="Canceladas (importe)" value={money(totalCanceladas)} hint={`Periodo: ${textoRango}`} color="error" />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <KpiCard title="# Canceladas" value={ticketsCanceladas} />
-                  </Grid>
-                  <Grid item xs={12} md={4}>
-                    <KpiCard title="Ticket prom. cancelada" value={money(ticketPromCancelada)} />
-                  </Grid>
-                </Grid>
+              <SalesCardsGrid
+                rows={ventasPorCategoria}
+                abrirTicket={(id) => { setVentaSeleccionada(id); setModalTicketOpen(true); }}
+                abrirDetalles={(id) => { setVentaSeleccionada(id); setModalDetallesOpen(true); }}
+              />
+            )}
+          </Stack>
+        )}
 
-                {ventasCanceladas.length === 0 ? (
-                  <Typography variant="body2" color="text.secondary" sx={{ px: 2, pb: 2 }}>
-                    No hay cancelaciones/devoluciones en el rango seleccionado.
-                  </Typography>
-                ) : (
-                  <Box sx={{ maxHeight: 440, overflowY: "auto", px: 2 }}>
-                    <Table size="small" stickyHeader>
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                          <TableCell align="center"><strong>Folio</strong></TableCell>
-                          <TableCell align="center"><strong>Fecha</strong></TableCell>
-                          <TableCell align="center"><strong>Total</strong></TableCell>
-                          <TableCell align="center"><strong>Pago</strong></TableCell>
-                          <TableCell align="center"><strong>Estado</strong></TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {ventasCanceladas.map((v) => (
-                          <TableRow
-                            key={v.id}
-                            sx={{
-                              backgroundColor:
-                                v.status === "cancelled" ? "#ffebee"
-                                : v.status === "partially_cancelled" ? "#fff8e1"
-                                : "#e3f2fd",
-                            }}
-                          >
-                            <TableCell align="center">#{v.id}</TableCell>
-                            <TableCell align="center">
-                              {v.created_at
-                                ? format(parseISO(v.created_at.slice(0, 10)), "d 'de' MMMM 'del' yyyy", { locale: es })
-                                : "—"}
-                            </TableCell>
-                            <TableCell align="center">{money(v.total_amount)}</TableCell>
-                            <TableCell align="center">{LABELS_PAGO[v.payment_method] || "—"}</TableCell>
-                            <TableCell align="center">
-                              <Chip
-                                size="small"
-                                label={
-                                  v.status === "cancelled" ? "Cancelada"
-                                  : v.status === "partially_cancelled" ? "Parcial"
-                                  : "Devuelta"
-                                }
-                                color={
-                                  v.status === "cancelled" ? "error"
-                                  : v.status === "partially_cancelled" ? "warning"
-                                  : "info"
-                                }
-                              />
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </Box>
-                )}
-              </>
-            )
-          )}
-        </Paper>
-      </Stack>
+        {/* Devoluciones */}
+        {tab === 4 && (
+          <SimpleList
+            rows={devoluciones}
+            loading={loading}
+            color="info"
+            paymentFromSale
+            onTicket={(id) => { setVentaSeleccionada(id); setModalTicketOpen(true); }}
+            onDetails={(id) => { setVentaSeleccionada(id); setModalDetallesOpen(true); }}
+          />
+        )}
+
+        {/* Cancelaciones */}
+        {tab === 5 && (
+          <SimpleList
+            rows={cancelacionesRows}
+            loading={loading}
+            color="error"
+            paymentFromSale
+            onTicket={(id) => { setVentaSeleccionada(id); setModalTicketOpen(true); }}
+            onDetails={(id) => { setVentaSeleccionada(id); setModalDetallesOpen(true); }}
+          />
+        )}
+      </Paper>
 
       {/* Modales */}
       <ModalTicketVenta

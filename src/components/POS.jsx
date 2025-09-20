@@ -233,25 +233,6 @@ export default function POS({ posName, cambiarVista }) {
 
           <Button
             variant="contained"
-            color="error"
-            size="large"
-            startIcon={<ReplayIcon />}
-            sx={{
-              borderRadius: 3,
-              paddingX: 3,
-              paddingY: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              boxShadow: 3,
-            }}
-            onClick={() => cambiarVista("cancelaciones")}
-          >
-            Cancelaciones / Devoluciones
-          </Button>
-
-          <Button
-            variant="contained"
             color="warning"
             size="large"
             startIcon={<ReceiptLongIcon />}

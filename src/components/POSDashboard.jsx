@@ -23,7 +23,7 @@ import  NoteIcon from "@mui/icons-material/Note";
 import POS from "./POS";
 import HistorialVentas from "./HistorialVentas";
 import ComprasFacturadas from "./ComprasFacturadas";
-import CancelaDevoluciones from "./CancelaDevoluciones";
+// import CancelaDevoluciones from "./CancelaDevoluciones";
 import ClientesPOS from "./ClientesPOS";
 import NotasInternas from "./NotasInternas";
 
@@ -59,13 +59,13 @@ const POSDashboard = ({
       color: "#bf0fadff",
       icono: <NoteIcon sx={{ fontSize: 40 }} />,
     },
-    {
-      id: "cancelaciones",
-      titulo: "Cancelaciones / Devoluciones",
-      descripcion: "Administra ventas canceladas o devueltas",
-      color: "#c12b1dff",
-      icono: <ReplayIcon sx={{ fontSize: 40 }} />,
-    },
+    // {
+    //   id: "cancelaciones",
+    //   titulo: "Cancelaciones / Devoluciones",
+    //   descripcion: "Administra ventas canceladas o devueltas",
+    //   color: "#c12b1dff",
+    //   icono: <ReplayIcon sx={{ fontSize: 40 }} />,
+    // },
     {
       id: "facturas",
       titulo: "Facturas",
@@ -116,8 +116,8 @@ const POSDashboard = ({
         return <HistorialVentas cambiarVista={setVista} />;
       case "notas":
         return <NotasInternas cambiarVista={setVista} />;
-      case "cancelaciones":
-        return <CancelaDevoluciones cambiarVista={setVista} />;
+      // case "cancelaciones":
+      //   return <CancelaDevoluciones cambiarVista={setVista} />;
       case "facturas":
         return <ComprasFacturadas cambiarVista={setVista} />;
       case "clientes":

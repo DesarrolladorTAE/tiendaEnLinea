@@ -167,8 +167,8 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
           sx={{ mb: 2 }}
         >
           <Tab value="total" label="REEMBOLSO TOTAL" />
-          <Tab value="parcial" label="DEVOLUCIÓN PARCIAL" />
-          <Tab value="cambio" label="CAMBIO DE PRODUCTO" />
+          {/* <Tab value="parcial" label="DEVOLUCIÓN PARCIAL" /> */}
+          {/* <Tab value="cambio" label="CAMBIO DE PRODUCTO" /> */}
         </Tabs>
 
         {(tab === "parcial" || tab === "cambio") && (
@@ -211,7 +211,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
                       sx={{ width: "100%", justifyContent: "center" }}
                     />
 
-                    {tab === "cambio" && selectedIds.includes(p.id) && (
+                    {/* {tab === "cambio" && selectedIds.includes(p.id) && (
                       <>
                         <TextField
                           label="Buscar producto (nombre o SKU)"
@@ -268,7 +268,7 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
                           })}
                         </Box>
                       </>
-                    )}
+                    )} */}
                   </Paper>
                 </Grid>
               ))}
