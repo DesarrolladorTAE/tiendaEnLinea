@@ -31,9 +31,9 @@ axiosClient.interceptors.response.use(
       window.location.href = "/renovar";
     }
 
-    if (status === 401 && !skipAuthRedirect && !isAuthFlow) {
-      window.location.href = "/login-register";
-    }
+    // if (status === 401 && !skipAuthRedirect && !isAuthFlow) {
+    //   window.location.href = "/login-register";
+    // }
 
     return Promise.reject(err);
   }

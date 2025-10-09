@@ -14,23 +14,21 @@ import {
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import HistoryIcon from "@mui/icons-material/History";
-import ReplayIcon from "@mui/icons-material/Replay";
 import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
-import  NoteIcon from "@mui/icons-material/Note";
+import NoteIcon from "@mui/icons-material/Note";
 
 import POS from "./POS";
 import HistorialVentas from "./HistorialVentas";
 import ComprasFacturadas from "./ComprasFacturadas";
-// import CancelaDevoluciones from "./CancelaDevoluciones";
 import ClientesPOS from "./ClientesPOS";
 import NotasInternas from "./NotasInternas";
 
 const POSDashboard = ({
   posName = "Mi Punto de Venta",
   storeName = "Mi Tienda",
-  posDesdeAdmin = false, // 👈 se recibe desde POSWrapper
+  posDesdeAdmin = false,
 }) => {
   const [vista, setVista] = useState("menu");
   const [loadingLogout, setLoadingLogout] = useState(false);
@@ -59,13 +57,6 @@ const POSDashboard = ({
       color: "#bf0fadff",
       icono: <NoteIcon sx={{ fontSize: 40 }} />,
     },
-    // {
-    //   id: "cancelaciones",
-    //   titulo: "Cancelaciones / Devoluciones",
-    //   descripcion: "Administra ventas canceladas o devueltas",
-    //   color: "#c12b1dff",
-    //   icono: <ReplayIcon sx={{ fontSize: 40 }} />,
-    // },
     {
       id: "facturas",
       titulo: "Facturas",
@@ -116,8 +107,6 @@ const POSDashboard = ({
         return <HistorialVentas cambiarVista={setVista} />;
       case "notas":
         return <NotasInternas cambiarVista={setVista} />;
-      // case "cancelaciones":
-      //   return <CancelaDevoluciones cambiarVista={setVista} />;
       case "facturas":
         return <ComprasFacturadas cambiarVista={setVista} />;
       case "clientes":
@@ -179,13 +168,7 @@ const POSDashboard = ({
                             lineHeight: 1.3,
                           }}
                         >
-                          {opcion.id === "cancelaciones" ? (
-                            <>
-                              Cancelaciones <br /> y Devoluciones
-                            </>
-                          ) : (
-                            opcion.titulo
-                          )}
+                          {opcion.titulo}
                         </Typography>
                         <Typography
                           variant="body2"

@@ -21,7 +21,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 
 import axiosClient from "../config/axiosClientPOS";
-import GateTaeconta from "./auth/GateTaeconta";
+
 
 // ==== Utils & constants ====
 const ESTATUS = [
@@ -259,7 +259,6 @@ export default function NotasInternas({ cambiarVista }) {
         </Button>
       </Box>
 
-      <GateTaeconta>
         {/* Header / Filtros */}
         <Paper
           elevation={0}
@@ -527,7 +526,6 @@ export default function NotasInternas({ cambiarVista }) {
             ))
           )}
         </Stack>
-      </GateTaeconta>
 
       {/* Modal crear/editar */}
       <Dialog

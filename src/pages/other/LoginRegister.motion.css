@@ -317,3 +317,29 @@
   -webkit-text-fill-color:#0f172a !important;
   transition: background-color 9999s ease-in-out 0s !important;
 }
+
+
+/* Fuerza estilos legibles dentro del modal de verificación */
+.verification-modal .modal-content{
+  border-radius: 14px;
+}
+
+.verification-modal .form-control{
+  background:#fff !important;
+  color:#0f172a !important;
+  -webkit-text-fill-color:#0f172a !important; /* corrige autofill */
+  border:1px solid #d0d5dd !important;
+  border-radius:10px !important;
+  box-shadow:none !important;
+  opacity:1 !important;
+  visibility:visible !important;
+}
+
+.verification-modal .form-control::placeholder{
+  color:#64748b !important;
+  opacity:1 !important;
+}
+
+.verification-modal input:-webkit-autofill{
+  transition: background-color 9999s ease-in-out 0s !important;
+}
