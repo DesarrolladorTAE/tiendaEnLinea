@@ -16,6 +16,62 @@
   --void-shadow: rgba(0,0,0,0.65);
 }
 
+/* ==========================================
+   THEME: BIANNI (florería) — slug = "bianni"
+   ========================================== */
+:root[data-neo-theme="biaani"]{
+  /* fondo oscuro con tinte verde */
+  --void-1: rgba(12,16,14,0.94);
+  --void-2: rgba(12,16,14,0.86);
+  --void-3: rgba(12,16,14,0.78);
+
+  /* bordes/sutiles */
+  --void-stroke: rgba(255,255,255,0.07);
+  --void-shadow: rgba(0,0,0,0.65);
+
+  /* tipografía */
+  --void-text: #F4FBF2;    /* casi blanco con leve tinte verde */
+  --void-muted: #B9C6B3;   /* salvia clara/desaturada */
+
+  /* acentos florales */
+  --void-accent: #A8B7A0;  /* 🌿 salvia (precio actual) */
+  --void-pop:    #EAC8D3;  /* 🌸 blush rosado suave */
+  --void-warn:   #FF7AA2;  /* 💗 rosa vivo */
+  --void-amber:  #E8C27E;  /* 💛 ámbar */
+}
+
+/* Aura/borla del borde con la paleta BIANNI */
+:root[data-neo-theme="bianni"] .neo-glow{
+  background: conic-gradient(from var(--angle),
+    #A8B7A0, /* salvia */
+    #EAC8D3, /* blush */
+    #FF7AA2, /* rosa vivo */
+    #E8C27E, /* ámbar */
+    #BFE3CE, /* menta suave */
+    #A8B7A0  /* cierre */
+  );
+  filter: blur(14px) saturate(120%);
+}
+
+/* Estrellas de rating en dorado suave */
+:root[data-neo-theme="bianni"] .neo-card .product-rating i{
+  color: #EAD79B;
+  filter: drop-shadow(0 0 2px rgba(234,215,155,.35));
+}
+
+/* Precio actual: brillo más sutil */
+:root[data-neo-theme="bianni"] .price-current{
+  text-shadow: 0 0 10px rgba(168,183,160,.28), 0 0 22px rgba(168,183,160,.16);
+}
+
+/* Badges con gradientes de la paleta */
+:root[data-neo-theme="bianni"] .badge-off{
+  background: linear-gradient(90deg, var(--void-warn), var(--void-amber));
+}
+:root[data-neo-theme="bianni"] .badge-new{
+  background: linear-gradient(90deg, var(--void-accent), var(--void-pop));
+}
+
 /* ============ Card Shell ============ */
 .neo-card{
   position: relative;
@@ -33,7 +89,7 @@
 .neo-card:hover{ box-shadow: 0 22px 70px rgba(0,0,0,0.7), inset 0 0 0 1px rgba(255,255,255,0.08); }
 .neo-card:hover{ transform: translateY(-2px) scale(1.01); }
 
-/* Animated border aura (SIEMPRE debajo) */
+/* Animated border aura (base; se sobreescribe por tema si aplica) */
 .neo-glow{
   content: "";
   position: absolute; inset: -1px; border-radius: 20px; pointer-events: none;
@@ -43,7 +99,7 @@
   opacity: .0; mix-blend-mode: screen;
   transition: opacity 300ms ease;
   will-change: opacity;
-  z-index: 0;                /* <= bajo */
+  z-index: 0;
 }
 .neo-card:hover .neo-glow{ opacity: .5; }
 
@@ -54,18 +110,24 @@
 
 /* Fine noise overlay for texture (debajo) */
 .neo-card::after{
-  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0; /* <= bajo */
+  content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 0;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0 0.04 0'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   opacity: 0.45; mix-blend-mode: soft-light; animation: grain 6s steps(6) infinite; border-radius: 18px;
 }
-@keyframes grain{ 0%{transform:translate(0,0)}25%{transform:translate(-2%,1%)}50%{transform:translate(2%,-1%)}75%{transform:translate(1%,2%)}100%{transform:translate(0,0)} }
+@keyframes grain{
+  0%{transform:translate(0,0)}
+  25%{transform:translate(-2%,1%)}
+  50%{transform:translate(2%,-1%)}
+  75%{transform:translate(1%,2%)}
+  100%{transform:translate(0,0)}
+}
 
 /* ============ Media ============ */
 .neo-media{ position: relative; aspect-ratio: 1/1; overflow: clip; cursor: pointer; }
 
 /* Shimmer highlight (debajo) */
 .neo-media::before{
-  content: ""; position: absolute; inset: -40% -60% auto; height: 60%; z-index: 0 !important; /* <= bajo */
+  content: ""; position: absolute; inset: -40% -60% auto; height: 60%; z-index: 0 !important;
   pointer-events: none;
   background: radial-gradient(60% 60% at 50% 50%, rgba(120,180,255,.22), rgba(120,180,255,0) 60%),
               linear-gradient(120deg, rgba(255,255,255,.14), rgba(255,255,255,0));
@@ -136,7 +198,7 @@
 
 /* Body highlight (debajo) */
 .neo-card::before{
-  content: ""; position: absolute; inset: 0; pointer-events:none; z-index: 0; /* <= bajo */
+  content: ""; position: absolute; inset: 0; pointer-events:none; z-index: 0;
   opacity: 0; background: radial-gradient(1200px 600px at var(--mx, 50%) var(--my, 0%), rgba(118,224,255,0.12), transparent 60%);
   transition: opacity 180ms ease;
 }
@@ -275,7 +337,7 @@
 /* Cuerpo con scroll si hace falta */
 .product-modal-body { padding: 12px; }
 
-/* Galería limpia: alturas adaptativas */
+/* Galería limpia: alturas adaptativas (desktop) */
 .product-gallery-plain { height: 440px; }
 .product-thumbs-plain { margin-top: 8px; height: 84px; }
 
@@ -297,7 +359,7 @@
     padding: 12px; height: 100%; overflow: auto;
   }
 
-  /* galería ocupa ~55% de alto de viewport; thumbs ~14% */
+  /* galería ~55% del alto del viewport; thumbs ~14% */
   .product-gallery-plain{ height: 55vh; }
   .product-thumbs-plain{ height: 14vh; }
 
@@ -309,33 +371,3 @@
 
   .product-modal-close{ font-size: 30px; color: #000; }
 }
-
-/* Ancho/alto del diálogo */
-.product-modal-dialog { max-width: min(1024px, 96vw); }
-
-/* Botón de cerrar visible y fijo */
-.product-modal-close{
-  position: absolute; top: 10px; right: 12px; z-index: 10;
-  background: transparent; border: 0; color: #000; font-size: 28px; cursor: pointer;
-}
-
-/* Galería/Thumbs sin invadir el texto */
-.product-gallery-plain { height: auto; }
-.product-gallery-plain .swiper { height: 50vh; }
-.product-thumbs-plain { margin-top: 8px; display: block; clear: both; }
-.product-thumbs-plain .swiper { height: 72px; }
-
-/* Responsive móvil: modal a pantalla completa y alturas cómodas */
-@media (max-width: 767.98px){
-  .product-modal-dialog{ margin: 0; max-width: 100vw; height: 100vh; }
-  .product-modal-dialog .modal-content{ border-radius: 0; height: 100%; }
-  .product-modal-body{ padding: 12px; height: 100%; overflow: auto; }
-
-  .product-gallery-plain .swiper{ height: 55vh; }
-  .product-thumbs-plain .swiper{ height: 72px; }
-}
-
-
-.neon-chip { will-change: transform, box-shadow, background; }
-.neon-chip:hover { transform: translateY(-1px); filter: saturate(110%); }
-.neon-chip.is-active { outline: 0; }

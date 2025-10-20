@@ -3,20 +3,20 @@
 const complementos = [
   {
     complemento_id: 1,
-    nombre: "🌐 Dominio personalizado (.com/.mx)",
+    nombre: "🌐 Dominio personalizado (.com)",
     precio: 700,
     tipo: "anual"
   },
   {
     complemento_id: 2,
     nombre: "💳 Implementación de pasarela de pago",
-    precio: 499,
+    precio: 1000,
     tipo: "único",
   },
   {
     complemento_id: 3,
     nombre: "💎 Plantilla premium de catálogo",
-    precio: 1000,
+    precio: 2500,
     tipo: "único"
   },
   {
