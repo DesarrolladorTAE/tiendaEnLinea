@@ -1,8 +1,9 @@
 {
-  "short_name": "Flone React",
+  "short_name": "TeLoRecargo",
   "name": "React Minimalist eCommerce Template",
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#000000",
   "background_color": "#ffffff"
 }
+

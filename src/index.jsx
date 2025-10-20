@@ -14,16 +14,29 @@ import "./assets/scss/style.scss";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import 'leaflet/dist/leaflet.css';
+import { CssBaseline } from '@mui/material';
 
+// ⛔️ Quita el import estático de 'virtual:pwa-register'
+// import { registerSW } from 'virtual:pwa-register';
 
-
-
-
-
-// MUI Theme
-import {  CssBaseline } from '@mui/material';
-// import { ColorModeProvider } from "./context/ThemeContext";
-
+// ✅ Registro del Service Worker (PWA) a prueba de fallos
+if ('serviceWorker' in navigator) {
+  (async () => {
+    try {
+      // En prod siempre existe; en dev requiere devOptions.enabled: true en vite.config.js
+      const { registerSW } = await import('virtual:pwa-register');
+      registerSW({
+        immediate: true,
+        onNeedRefresh() {},
+        onOfflineReady() {},
+      });
+      console.log('[PWA] Service Worker registrado');
+    } catch (e) {
+      // En dev, si el plugin aún no está habilitado o no reiniciaste Vite, no rompe la app
+      console.debug('[PWA] módulo virtual no disponible (dev).', e?.message);
+    }
+  })();
+}
 
 // Despacha los productos en el store
 store.dispatch(setProducts(products));
@@ -32,14 +45,11 @@ store.dispatch(setProducts(products));
 const container = document.getElementById('root');
 const root = createRoot(container);
 
-
 root.render(
   <Provider store={store}>
     <PersistProvider>
-      {/* <ColorModeProvider> */}
-        <CssBaseline />
-        <App />
-      {/* </ColorModeProvider> */}
+      <CssBaseline />
+      <App />
     </PersistProvider>
   </Provider>
 );
