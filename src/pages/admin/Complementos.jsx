@@ -32,7 +32,7 @@ import axiosClient from "../../config/axiosClient";
 import PaypalForm from "../../components/gateways/PaypalForm";
 import complementosLocal from "../../utils/complementos";
 
-// Helper de moneda
+// Helper moneda
 const moneyMX = (n) =>
   new Intl.NumberFormat("es-MX", {
     style: "currency",
@@ -40,9 +40,24 @@ const moneyMX = (n) =>
     maximumFractionDigits: 0,
   }).format(Number.isFinite(Number(n)) ? Number(n) : 0);
 
+// Normalizador seguro (para comparar nombres/slugs)
+const norm = (s) =>
+  String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim();
+
 export default function ComplementosPage() {
   const [catalogo, setCatalogo] = useState([]);
-  const [mis, setMis] = useState([]); // slugs adquiridos
+
+  // Conjuntos de adquiridos (acepta id, slug y nombre normalizado)
+  const [mis, setMis] = useState({
+    ids: new Set(),
+    slugs: new Set(),
+    names: new Set(),
+  });
+
   const [tab, setTab] = useState(0);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
@@ -51,7 +66,12 @@ export default function ComplementosPage() {
   // Para hacer scroll a la sección de pasarela
   const gatewayRef = useRef(null);
 
-  const TIENE_PASARELA = mis.includes("pasarela_pagos");
+  // Saber si el usuario tiene el complemento de pasarela (slugs o nombres comunes)
+  const TIENE_PASARELA =
+    mis.slugs.has("pasarela_pagos") ||
+    mis.names.has("pasarela pagos") ||
+    mis.names.has("implementacion de pasarela de pago") ||
+    mis.names.has("implementacion pasarela de pago");
 
   useEffect(() => {
     setLoading(true);
@@ -60,41 +80,71 @@ export default function ComplementosPage() {
       axiosClient.get("/mis-complementos"),
     ])
       .then(([allRes, misRes]) => {
+        // Catálogo general
         const all = Array.isArray(allRes.data) ? allRes.data : [];
-        const slugs = Array.isArray(misRes.data)
-          ? misRes.data.map((c) => c.slug ?? c)
-          : [];
-        setMis(slugs);
 
-        // Enriquecer solo con tipo/nota si existiera en tu utils, pero sin tocar el precio de utils
+        // /mis-complementos puede venir en data.data o data
+        const raw = misRes?.data?.data ?? misRes?.data ?? [];
+        const list = Array.isArray(raw) ? raw : [];
+
+        const ids = new Set();
+        const slugs = new Set();
+        const names = new Set();
+
+        // Acepta objetos ({id, complemento_id, slug, nombre}) o strings (slug plano)
+        list.forEach((item) => {
+          if (item && typeof item === "object") {
+            if (item.id != null) ids.add(String(item.id));
+            if (item.complemento_id != null)
+              ids.add(String(item.complemento_id));
+            if (item.slug) slugs.add(norm(item.slug));
+            if (item.nombre) names.add(norm(item.nombre));
+          } else {
+            slugs.add(norm(String(item)));
+          }
+        });
+
+        setMis({ ids, slugs, names });
+
+        // Enriquecer con tipo/nota desde utils (sin tocar precio local)
         const merged = all.map((srv) => {
           const local = complementosLocal.find(
             (l) =>
-              (l.slug && srv.slug && l.slug === srv.slug) ||
-              l.nombre?.replace(/[^a-zA-Z]/g, "") ===
-                srv.nombre?.replace(/[^a-zA-Z]/g, "")
+              (l.slug && srv.slug && norm(l.slug) === norm(srv.slug)) ||
+              norm(l.nombre) === norm(srv.nombre) ||
+              String(l.complemento_id) === String(srv.id ?? srv.complemento_id)
           );
           return {
             ...srv,
-            // respetar srv.precio del API; si no hay, quedará undefined
             tipo: local?.tipo || srv.tipo || "",
             nota: local?.nota || srv.nota || "",
           };
         });
+
         setCatalogo(merged);
       })
       .catch(() => setError("No se pudieron cargar los complementos."))
       .finally(() => setLoading(false));
   }, []);
 
+  // Determina si un ítem está adquirido (por id, slug o nombre)
+  const estaAdquirido = (item) => {
+    const idA = String(item.id ?? item.complemento_id ?? "");
+    const slugA = norm(item.slug);
+    const nameA = norm(item.nombre);
+    return (
+      (!!idA && mis.ids.has(idA)) ||
+      (!!slugA && mis.slugs.has(slugA)) ||
+      (!!nameA && mis.names.has(nameA))
+    );
+  };
+
   const filtrados = useMemo(() => {
     if (!q.trim()) return catalogo;
     const term = q.trim().toLowerCase();
     return catalogo.filter((c) =>
       [c.nombre, c.slug, c.descripcion].some((v) =>
-        String(v || "")
-          .toLowerCase()
-          .includes(term)
+        String(v || "").toLowerCase().includes(term)
       )
     );
   }, [q, catalogo]);
@@ -204,8 +254,10 @@ export default function ComplementosPage() {
         ) : (
           <List>
             {filtrados.map((c, idx) => {
-              const adquirido = mis.includes(c.slug);
-              const esPasarela = c.slug === "pasarela_pagos";
+              const adquirido = estaAdquirido(c);
+              const esPasarela =
+                norm(c.slug) === "pasarela_pagos" ||
+                norm(c.nombre).includes("pasarela");
               const secondary = c.descripcion?.trim()
                 ? c.descripcion
                 : c.precio != null
@@ -231,11 +283,7 @@ export default function ComplementosPage() {
                           >
                             Configurar pasarela
                           </Button>
-                        ) : (
-                          <Button variant="contained" size="small">
-                            Gestionar
-                          </Button>
-                        )
+                        ) : null
                       ) : null
                     }
                   >
