@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import SEO from "../../components/seo";
-import axios from "axios"; // 👈 axios puro SOLO para banners
+import axios from "axios";
 import axiosClient from "../../config/axiosClient";
 import axiosSuperadmin from "../../config/axiosSuperadmin";
 import VerificationModal from "../../components/login/VerificationModal";
@@ -11,11 +11,10 @@ import RegisterForm from "../../components/login/RegisterForm";
 import { Modal, Box, Typography, TextField, Button } from "@mui/material";
 import PasswordResetModal from "../../components/login/PasswordResetModal";
 import { showError, showSuccess } from "../../utils/alerts";
-import "./LoginRegister.motion.css"; // 👈 CSS separado
+import "./LoginRegister.motion.css";
 
 const API_URL = "https://mitiendaenlineamx.com.mx/api";
 
-// Helpers para media
 const getExt = (u = "") => {
   try {
     const clean = u.split("?")[0].split("#")[0];
@@ -28,7 +27,6 @@ const isImageUrl = (u) =>
   ["png", "jpg", "jpeg", "gif", "webp", "avif"].includes(getExt(u));
 const isVideoUrl = (u) => ["mp4", "webm", "ogg"].includes(getExt(u));
 
-// Duraciones (solo videos a 15s; imágenes normales a 5s)
 const IMAGE_MS = 5000;
 const VIDEO_MS = 15000;
 
@@ -43,6 +41,7 @@ const LoginRegister = () => {
     telefono: "",
     password: "",
     password_confirmation: "",
+    referral: "", // 🔹 NUEVO: guardamos el código de referido si viene en la URL
   });
 
   const [verificationCode, setVerificationCode] = useState("");
@@ -57,17 +56,32 @@ const LoginRegister = () => {
   const [storeLogin, setStoreLogin] = useState({ login: "", password: "" });
   const [showResetModal, setShowResetModal] = useState(false);
 
-  // ⏲️ Long-press del logo
   const pressTimerRef = useRef(null);
 
-  /* ========= BANNERS (SOLO LOGIN PARA AMBOS) ========= */
+  // 🔹 NUEVO: referencia para hacer scroll al formulario de registro
+  const registerFormRef = useRef(null);
+
+  /* ========= BANNERS ========= */
   const [slidesLogin, setSlidesLogin] = useState([]);
   const [activeLogin, setActiveLogin] = useState(0);
   const [activeRegister, setActiveRegister] = useState(0);
 
-  // Timers por modo (timeouts dependientes del tipo de slide)
   const tLoginRef = useRef(null);
   const tRegisterRef = useRef(null);
+
+  // 🔹 NUEVO: detectar ?ref o ?promo y pasar directo a registro
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref") || params.get("promo");
+    if (ref) {
+      setModo("register");
+      setRegisterData((prev) => ({ ...prev, referral: String(ref).trim() }));
+      // un pequeño delay para que renderice y luego scrollear al form
+      setTimeout(() => {
+        registerFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 250);
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -97,7 +111,6 @@ const LoginRegister = () => {
 
         const candidates = arr.filter((b) => isActive(b) && urlOf(b));
 
-        // Preferimos banners etiquetados para login; si no, "Principal"; si no, cualquiera activo
         const loginOnly = candidates.filter((b) =>
           hasAny(b, ["login", "signin", "acceso"])
         );
@@ -134,7 +147,6 @@ const LoginRegister = () => {
     };
   }, []);
 
-  // Helpers de programación por modo
   const scheduleLogin = (idx) => {
     clearTimeout(tLoginRef.current);
     if (modo !== "login" || slidesLogin.length < 2) return;
@@ -155,21 +167,18 @@ const LoginRegister = () => {
     }, dur);
   };
 
-  // Programar avance cuando cambia modo o índice (LOGIN)
   useEffect(() => {
     if (modo === "login") scheduleLogin(activeLogin);
     return () => clearTimeout(tLoginRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modo, activeLogin, slidesLogin]);
 
-  // Programar avance cuando cambia modo o índice (REGISTER)
   useEffect(() => {
     if (modo === "register") scheduleRegister(activeRegister);
     return () => clearTimeout(tRegisterRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modo, activeRegister, slidesLogin]);
 
-  /* ========= Helpers ========= */
   const startCooldown = () => {
     let seconds = 60;
     setCooldown(seconds);
@@ -227,6 +236,7 @@ const LoginRegister = () => {
         email: registerData.email,
         phone_number: registerData.telefono,
         password: registerData.password,
+        referral_code: registerData.referral || undefined, // 🔹 NUEVO
       };
 
       await axiosClient.post("/registro/enviar-codigo", payload, {
@@ -264,6 +274,7 @@ const LoginRegister = () => {
         email: registerData.email,
         phone_number: registerData.telefono,
         password: registerData.password,
+        referral_code: registerData.referral || undefined, // 🔹 NUEVO
       };
       await axiosClient.post("/registro/enviar-codigo", payload, {
         __skipAuthRedirect: true,
@@ -285,7 +296,7 @@ const LoginRegister = () => {
     try {
       const res = await axiosClient.post(
         "/registro/verificar",
-        { email: registerData.email, code: verificationCode },
+        { email: registerData.email, code: verificationCode,referral_code: registerData.referral || undefined,  },
         { __skipAuthRedirect: true, headers: { "x-skip-auth-redirect": "1" } }
       );
       localStorage.setItem("AUTH_TOKEN", res.data.token);
@@ -300,9 +311,8 @@ const LoginRegister = () => {
     }
   };
 
-  /* ========= Slides visibles y layout ========= */
   const isLogin = modo === "login";
-  const slides = slidesLogin; // 👉 mismos banners para ambos
+  const slides = slidesLogin;
   const active = isLogin ? activeLogin : activeRegister;
   const setActiveIdx = isLogin ? setActiveLogin : setActiveRegister;
   const current = slides[active];
@@ -314,7 +324,6 @@ const LoginRegister = () => {
     `auth-panel ${isLogin ? "grid-login img-left" : "grid-register img-right"} ` +
     (!hasMedia ? "no-media" : "");
 
-  /* ========= Render ========= */
   return (
     <>
       <SEO titleTemplate="Login" description="Inicio de sesión y registro" />
@@ -323,15 +332,13 @@ const LoginRegister = () => {
         className={`auth-neo ${isLogin ? "is-login" : "is-register"}`}
         style={{ minHeight: "100vh" }}
       >
-        {/* Figuras decorativas */}
         <div className="fx fx-blob b1" aria-hidden />
         <div className="fx fx-blob b2" aria-hidden />
         <div className="fx fx-ring r1" aria-hidden />
 
-        {/* ===== Panel grande con dos columnas ===== */}
         <div className="container">
           <div className={panelClass}>
-            {/* Columna MEDIA (banner) */}
+            {/* MEDIA */}
             {hasMedia ? (
               <aside className="col-media">
                 <div key={`${modo}-${active}`} className="auth-banner">
@@ -355,7 +362,6 @@ const LoginRegister = () => {
                         playsInline
                         loop={false}
                         controls={false}
-                        // Para que se vea “normal” sin agrandar más de lo que permita el frame:
                         style={{
                           width: "100%",
                           height: "auto",
@@ -374,7 +380,6 @@ const LoginRegister = () => {
                         <button
                           key={i}
                           onClick={() => {
-                            // Al cambiar manualmente, reseteamos el timeout del modo actual
                             if (isLogin) {
                               clearTimeout(tLoginRef.current);
                               setActiveIdx(i);
@@ -393,7 +398,7 @@ const LoginRegister = () => {
               </aside>
             ) : null}
 
-            {/* Columna FORM */}
+            {/* FORM */}
             <main className="col-form">
               <div className="text-center mb-3">
                 <img
@@ -408,12 +413,10 @@ const LoginRegister = () => {
                     );
                   }}
                   onMouseUp={() => {
-                    if (pressTimerRef.current)
-                      clearTimeout(pressTimerRef.current);
+                    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
                   }}
                   onMouseLeave={() => {
-                    if (pressTimerRef.current)
-                      clearTimeout(pressTimerRef.current);
+                    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
                   }}
                   onTouchStart={() => {
                     pressTimerRef.current = setTimeout(
@@ -422,8 +425,7 @@ const LoginRegister = () => {
                     );
                   }}
                   onTouchEnd={() => {
-                    if (pressTimerRef.current)
-                      clearTimeout(pressTimerRef.current);
+                    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
                   }}
                 />
               </div>
@@ -464,7 +466,7 @@ const LoginRegister = () => {
                 </>
               ) : (
                 <>
-                  <h1 className="auth-heading">Crear cuenta</h1>
+                  <h1 className="auth-heading" ref={registerFormRef}>Crear cuenta</h1>
                   <p className="auth-sub">Regístrate en minutos</p>
 
                   <RegisterForm
@@ -476,6 +478,9 @@ const LoginRegister = () => {
                     togglePassword={() => setShowPassword(!showPassword)}
                     loading={loading}
                     registerBlocked={registerBlocked}
+                    // 🔹 NUEVO: props para promo y código
+                    promoFromLink={Boolean(registerData.referral)}
+                    referralCode={registerData.referral}
                   />
 
                   <hr className="auth-hr" />
