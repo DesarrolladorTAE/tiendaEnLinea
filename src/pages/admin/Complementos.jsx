@@ -4,11 +4,8 @@ import {
   Box,
   Paper,
   Typography,
-  Tabs,
-  Tab,
   Stack,
   Button,
-  Divider,
   List,
   ListItem,
   ListItemAvatar,
@@ -24,13 +21,10 @@ import SearchIcon from "@mui/icons-material/Search";
 import ExtensionIcon from "@mui/icons-material/Extension";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import RadioButtonUncheckedIcon from "@mui/icons-material/RadioButtonUnchecked";
-import PaymentIcon from "@mui/icons-material/Payment";
-import CreditCardIcon from "@mui/icons-material/CreditCard";
-import VerifiedIcon from "@mui/icons-material/Verified";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import axiosClient from "../../config/axiosClient";
-import PaypalForm from "../../components/gateways/PaypalForm";
 import complementosLocal from "../../utils/complementos";
+import PaypalModal from "../../components/gateways/PaypalForm"; // 👈 modal nuevo
 
 // Helper moneda
 const moneyMX = (n) =>
@@ -50,20 +44,12 @@ const norm = (s) =>
 
 export default function ComplementosPage() {
   const [catalogo, setCatalogo] = useState([]);
-
-  // Conjuntos de adquiridos (acepta id, slug y nombre normalizado)
-  const [mis, setMis] = useState({
-    ids: new Set(),
-    slugs: new Set(),
-    names: new Set(),
-  });
-
-  const [tab, setTab] = useState(0);
+  const [mis, setMis] = useState({ ids: new Set(), slugs: new Set(), names: new Set() });
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [paypalOpen, setPaypalOpen] = useState(false);
 
-  // Para hacer scroll a la sección de pasarela
   const gatewayRef = useRef(null);
 
   // Saber si el usuario tiene el complemento de pasarela (slugs o nombres comunes)
@@ -75,15 +61,9 @@ export default function ComplementosPage() {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      axiosClient.get("/complementos"),
-      axiosClient.get("/mis-complementos"),
-    ])
+    Promise.all([axiosClient.get("/complementos"), axiosClient.get("/mis-complementos")])
       .then(([allRes, misRes]) => {
-        // Catálogo general
         const all = Array.isArray(allRes.data) ? allRes.data : [];
-
-        // /mis-complementos puede venir en data.data o data
         const raw = misRes?.data?.data ?? misRes?.data ?? [];
         const list = Array.isArray(raw) ? raw : [];
 
@@ -91,12 +71,10 @@ export default function ComplementosPage() {
         const slugs = new Set();
         const names = new Set();
 
-        // Acepta objetos ({id, complemento_id, slug, nombre}) o strings (slug plano)
         list.forEach((item) => {
           if (item && typeof item === "object") {
             if (item.id != null) ids.add(String(item.id));
-            if (item.complemento_id != null)
-              ids.add(String(item.complemento_id));
+            if (item.complemento_id != null) ids.add(String(item.complemento_id));
             if (item.slug) slugs.add(norm(item.slug));
             if (item.nombre) names.add(norm(item.nombre));
           } else {
@@ -106,7 +84,6 @@ export default function ComplementosPage() {
 
         setMis({ ids, slugs, names });
 
-        // Enriquecer con tipo/nota desde utils (sin tocar precio local)
         const merged = all.map((srv) => {
           const local = complementosLocal.find(
             (l) =>
@@ -149,18 +126,6 @@ export default function ComplementosPage() {
     );
   }, [q, catalogo]);
 
-  const goToGateway = () => {
-    setTab(0); // PayPal por defecto
-    setTimeout(() => {
-      if (gatewayRef.current) {
-        gatewayRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }
-    }, 50);
-  };
-
   return (
     <Box sx={{ p: { xs: 2, md: 3 }, pb: 6 }}>
       {/* Cabecera */}
@@ -170,8 +135,7 @@ export default function ComplementosPage() {
           p: 2.5,
           mb: 3,
           borderRadius: 3,
-          background:
-            "linear-gradient(135deg, rgba(10,18,36,1) 0%, rgba(26,33,54,1) 100%)",
+          background: "linear-gradient(135deg, rgba(10,18,36,1) 0%, rgba(26,33,54,1) 100%)",
           color: "#fff",
         }}
       >
@@ -181,12 +145,8 @@ export default function ComplementosPage() {
             Complementos
           </Typography>
         </Stack>
-        <Typography
-          variant="body2"
-          sx={{ mt: 0.5, opacity: 0.9, color: "#fff" }}
-        >
-          Activa funciones extra para tu tienda. Los adquiridos se muestran con
-          una insignia verde.
+        <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.9, color: "#fff" }}>
+          Activa funciones extra para tu tienda. Los adquiridos se muestran con una insignia verde.
         </Typography>
         <TextField
           size="small"
@@ -256,8 +216,7 @@ export default function ComplementosPage() {
             {filtrados.map((c, idx) => {
               const adquirido = estaAdquirido(c);
               const esPasarela =
-                norm(c.slug) === "pasarela_pagos" ||
-                norm(c.nombre).includes("pasarela");
+                norm(c.slug) === "pasarela_pagos" || norm(c.nombre).includes("pasarela");
               const secondary = c.descripcion?.trim()
                 ? c.descripcion
                 : c.precio != null
@@ -274,16 +233,14 @@ export default function ComplementosPage() {
                       "&:hover": { bgcolor: "action.hover" },
                     }}
                     secondaryAction={
-                      adquirido ? (
-                        esPasarela ? (
-                          <Button
-                            onClick={goToGateway}
-                            variant="contained"
-                            size="small"
-                          >
-                            Configurar pasarela
-                          </Button>
-                        ) : null
+                      adquirido && esPasarela ? (
+                        <Button
+                          onClick={() => setPaypalOpen(true)}
+                          variant="contained"
+                          size="small"
+                        >
+                          Configurar pasarela
+                        </Button>
                       ) : null
                     }
                   >
@@ -301,10 +258,7 @@ export default function ComplementosPage() {
                     <ListItemText
                       primary={
                         <Stack direction="row" alignItems="center" spacing={1}>
-                          <Typography
-                            variant="subtitle1"
-                            sx={{ fontWeight: 700 }}
-                          >
+                          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
                             {c.nombre}
                           </Typography>
                           {adquirido ? (
@@ -330,20 +284,10 @@ export default function ComplementosPage() {
                               color="default"
                             />
                           )}
-                          {c.slug && (
-                            <Chip
-                              size="small"
-                              variant="outlined"
-                              label={c.slug}
-                            />
-                          )}
                         </Stack>
                       }
                       secondary={
-                        <Typography
-                          variant="body2"
-                          sx={{ color: "text.secondary" }}
-                        >
+                        <Typography variant="body2" sx={{ color: "text.secondary" }}>
                           {secondary}
                         </Typography>
                       }
@@ -356,102 +300,8 @@ export default function ComplementosPage() {
         )}
       </Paper>
 
-      {/* Sección Pasarela de Pagos */}
-      {TIENE_PASARELA ? (
-        <Paper
-          ref={gatewayRef}
-          variant="outlined"
-          sx={{
-            p: { xs: 2, md: 2.5 },
-            borderRadius: 3,
-            background: "linear-gradient(135deg, #f7f9fc 0%, #ffffff 100%)",
-          }}
-        >
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <PaymentIcon />
-            <Typography variant="h6" sx={{ fontWeight: 800 }}>
-              Configuración de pasarela de pagos
-            </Typography>
-          </Stack>
-          <Typography variant="body2" sx={{ mt: 0.5, mb: 2 }}>
-            Elige el proveedor y configura tus credenciales. Cada tienda cobra
-            con su propia cuenta.
-          </Typography>
-
-          <Tabs
-            value={tab}
-            onChange={(_, v) => setTab(v)}
-            sx={{
-              mb: 2,
-              "& .MuiTabs-indicator": { height: 3, borderRadius: 3 },
-            }}
-          >
-            <Tab
-              icon={<VerifiedIcon />}
-              iconPosition="start"
-              label="PayPal"
-              sx={{ textTransform: "none", fontWeight: 700 }}
-            />
-            <Tab
-              icon={<CreditCardIcon />}
-              iconPosition="start"
-              label="Conekta"
-              sx={{ textTransform: "none", fontWeight: 700 }}
-            />
-          </Tabs>
-
-          {tab === 0 && (
-            <>
-              <PaypalForm />
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="caption">
-                Recomendación: inicia en <strong>Sandbox</strong> para pruebas y
-                luego cambia a <strong>Live</strong>.
-              </Typography>
-            </>
-          )}
-
-          {tab === 1 && (
-            <Paper
-              variant="outlined"
-              sx={{ p: 2, borderRadius: 2, bgcolor: "action.hover" }}
-            >
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                sx={{ mb: 1 }}
-              >
-                <CreditCardIcon />
-                <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Conekta (próximamente)
-                </Typography>
-              </Stack>
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                Aquí podrás capturar tus llaves públicas/privadas y activar
-                pagos con tarjeta con Conekta.
-              </Typography>
-              <Button disabled variant="contained" sx={{ mt: 2 }}>
-                Configurar Conekta
-              </Button>
-            </Paper>
-          )}
-        </Paper>
-      ) : (
-        <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
-          <Typography variant="body2" sx={{ mb: 1 }}>
-            No cuentas con el complemento <strong>Pasarela de Pagos</strong>.
-          </Typography>
-          <Stack direction="row" spacing={1}>
-            <Button size="small" variant="contained">
-              Adquirir
-            </Button>
-            <Button size="small" variant="text">
-              Ver planes
-            </Button>
-          </Stack>
-        </Paper>
-      )}
+      {/* Modal PayPal */}
+      <PaypalModal open={paypalOpen} onClose={() => setPaypalOpen(false)} />
     </Box>
   );
 }
