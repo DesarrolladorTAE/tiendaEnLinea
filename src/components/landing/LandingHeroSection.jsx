@@ -8,6 +8,7 @@ import {
   useMediaQuery,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import InstallPWAButton from "../../components/pwa/InstallPWAButton";
 
 const LINE1 = ["Recarga", "tu", "saldo"];
 const LINE2 = ["fácil", "y", "rápido"];
@@ -100,7 +101,9 @@ const LandingHeroSectionResponsive = () => {
             gap={2}
             justifyContent={isMobile ? "center" : "flex-start"}
           >
-            {/* <Button
+
+            
+            <Button
               variant="contained"
               onClick={() => navigate("/loginmui")}
               sx={{
@@ -115,7 +118,9 @@ const LandingHeroSectionResponsive = () => {
               }}
             >
               Empezar ahora
-            </Button> */}
+            </Button>
+            
+             <InstallPWAButton />
           </Box>
         </Grid>
 

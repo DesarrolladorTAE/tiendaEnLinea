@@ -6,9 +6,12 @@ import {
   useMediaQuery,
   Button,
   Fade,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { useNavigate } from "react-router-dom";
+import { Home as HomeIcon } from "@mui/icons-material"; // ✅ Icono de casita
 import LoginForm from "../../components/login/LoginForm";
 import LoginAgentForm from "../../components/login/LoginAgentForm";
 import LoginSelector from "../../components/login/LoginSelector";
@@ -76,18 +79,40 @@ const LoginOverlayResponsiveMUI = () => {
             flexDirection: "column",
             alignItems: "center",
             gap: 2,
-            bgcolor: "#f4f6f9", // ✅ fondo gris claro que contrasta con azul
+            bgcolor: "#f4f6f9",
             color: "#333",
+            position: "relative",
             transform: "translateY(20px)",
             animation: "riseIn 0.6s ease-out forwards",
           }}
         >
-          {/* Logo en la parte superior */}
+          {/* ✅ Icono de casita arriba a la derecha */}
+          <Tooltip title="Volver al inicio">
+            <IconButton
+              onClick={() => navigate("/")}
+              sx={{
+                position: "absolute",
+                top: 16,
+                right: 16,
+                color: "#0077B6",
+                bgcolor: "rgba(0,0,0,0.04)",
+                "&:hover": {
+                  bgcolor: "rgba(0,0,0,0.08)",
+                  transform: "scale(1.05)",
+                },
+                transition: "all 0.2s ease-in-out",
+              }}
+            >
+              <HomeIcon fontSize="large" />
+            </IconButton>
+          </Tooltip>
+
+          {/* Logo */}
           <Box
             component="img"
             src="/assets/img/logo1.png"
             alt="Logo TeLoRecargo"
-            sx={{ width: 180, height: "auto", mb: 1 }}
+            sx={{ width: 180, height: "auto", mb: 1, mt: 2 }}
           />
 
           <Typography variant="h5" fontWeight="bold" textAlign="center">
@@ -111,7 +136,7 @@ const LoginOverlayResponsiveMUI = () => {
               mt: 3,
               width: "100%",
               textAlign: "center",
-              bgcolor: "#00b5e5", // ✅ Fondo suave opcional
+              bgcolor: "#00b5e5",
               borderRadius: 2,
               py: 2,
               px: 2,
@@ -123,7 +148,9 @@ const LoginOverlayResponsiveMUI = () => {
               color="text.primary"
               sx={{ display: "inline" }}
             >
-              {mode === "login" ? "¿No tienes cuenta? " : "¿Ya tienes cuenta? "}
+              {mode === "login"
+                ? "¿No tienes cuenta? "
+                : "¿Ya tienes cuenta? "}
             </Typography>
 
             <Button

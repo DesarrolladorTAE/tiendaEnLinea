@@ -28,11 +28,11 @@ const SolicitarRecarga = () => {
 
   const bancos = [
     {
-      bank: "BBVA",
-      logo: "/assets/img/bbva.png",
-      accountNumber: "0116325122",
-      clabe: "012261001163251221",
-      beneficiary: "Tecnologías Administrativas Elad S de RL de CV®",
+      bank: "Santander",
+      logo: "/assets/img/santander.png",
+      accountNumber: "6551128849",
+      clabe: "014261655112884941",
+      beneficiary: "Tecnologías Administrativas ELAD S. de R.L. de C.V.",
     },
     {
       bank: "Scotiabank",
@@ -40,9 +40,17 @@ const SolicitarRecarga = () => {
       accountNumber: "25600737834",
       clabe: "044261256007378342",
       oxxo: "5579-2091-3760-4226",
-      beneficiary: "Tecnologías Administrativas Elad S de RL de CV®",
+      beneficiary: "Tecnologías Administrativas ELAD S. de R.L. de C.V.",
+    },
+    {
+      bank: "BBVA",
+      logo: "/assets/img/bbva.png",
+      accountNumber: "0116325122",
+      clabe: "012261001163251221",
+      beneficiary: "Tecnologías Administrativas ELAD S. de R.L. de C.V.",
     },
   ];
+
 
   useEffect(() => {
     fetchHistory();

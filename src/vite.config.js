@@ -1,13 +1,16 @@
+// vite.config.js
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   plugins: [
-    react(),
+    // 👈 PON EL PWA ANTES QUE react()
     VitePWA({
       registerType: "autoUpdate",
-      strategies: "generateSW",                 // 👈 igual que el otro proyecto
+      strategies: "generateSW",
+      srcDir: "src",
+      filename: "sw.js",
       includeAssets: ["favicon.ico","robots.txt","icons/apple-touch-icon.png"],
       manifest: {
         name: "Te Lo Recargo",
@@ -25,16 +28,17 @@ export default defineConfig({
         ]
       },
       workbox: {
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // opcional
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         navigateFallback: "index.html",
-        // evita cachear/Interceptar ciertas rutas (ajústalo a tus APIs si aplica)
         navigateFallbackDenylist: [/^\/api\//],
       },
       devOptions: {
-        enabled: true,      // 👈 habilita SW en desarrollo
-        type: "module",     // igual que tu ejemplo
+        enabled: true,
+        type: "module",
+        navigateFallback: "index.html",
       },
     }),
+    react(), // 👈 ahora después
   ],
   server: { hmr: { overlay: false } },
   build: { outDir: "dist" },
