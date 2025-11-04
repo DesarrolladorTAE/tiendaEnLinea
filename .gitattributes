@@ -1,4 +1,4 @@
-dist/assets/img/WebConnect_x64_v1.0.10.msi filter=lfs diff=lfs merge=lfs -text
-dist/locales.zip filter=lfs diff=lfs merge=lfs -text
 *.msi filter=lfs diff=lfs merge=lfs -text
+dist/locales.zip filter=lfs diff=lfs merge=lfs -text
+dist/assets/img/WebConnect_x64_v1.0.10.msi filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
