@@ -72,7 +72,7 @@ Referencia: ${referencia}`.trim();
             src={b.logo}
             alt={b.bank}
             style={{
-              height: 28,
+              height: 58,
               objectFit: "contain",
               filter: selected === idx ? "none" : "grayscale(1) opacity(.6)",
               transition: "filter .2s ease",
