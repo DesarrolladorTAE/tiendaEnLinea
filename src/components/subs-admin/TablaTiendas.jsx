@@ -1,5 +1,5 @@
-// TablaTiendas.jsx con plan_id, estado vencido/activo dinámico y modal de fecha
-import React, { useState, useEffect } from "react";
+// TablaTiendas.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   TableContainer,
@@ -27,7 +27,17 @@ import ModalHistorialSuscripciones from "./ModalHistorialSuscripciones.jsx";
 import ModalAgregarSuscripcion from "./ModalAgregarSuscripcion";
 import planes from "../../utils/planes";
 
+const filasPorPagina = 10;
+
 const TablaTiendas = ({ tiendas }) => {
+  // ===== Estado local de datos para poder mutarlos sin recargar =====
+  const [data, setData] = useState(() => Array.isArray(tiendas) ? tiendas : []);
+
+  useEffect(() => {
+    // si cambian desde el padre, sincroniza
+    setData(Array.isArray(tiendas) ? tiendas : []);
+  }, [tiendas]);
+
   useEffect(() => {
     console.log("TIENDAS RECIBIDAS:", tiendas);
   }, [tiendas]);
@@ -38,35 +48,61 @@ const TablaTiendas = ({ tiendas }) => {
   const [filtro, setFiltro] = useState("");
   const [pagina, setPagina] = useState(1);
   const [mostrarFecha, setMostrarFecha] = useState(null);
-  const filasPorPagina = 10;
 
   const estaVencido = (fecha) => {
     if (!fecha) return true;
     return new Date(fecha) < new Date();
   };
 
-  const tiendasFiltradas = tiendas
-    .filter((t) => Boolean(t.is_active))
-    .filter((t) => t.name.toLowerCase().includes(filtro.toLowerCase()));
+  // ====== filtros y paginado sobre "data" local ======
+  const tiendasFiltradas = useMemo(
+    () =>
+      (data || [])
+        .filter((t) => Boolean(t.is_active))
+        .filter((t) => (t.name || "").toLowerCase().includes(filtro.toLowerCase())),
+    [data, filtro]
+  );
 
-  const totalPaginas = Math.ceil(tiendasFiltradas.length / filasPorPagina);
-  const tiendasPaginadas = tiendasFiltradas.slice(
-    (pagina - 1) * filasPorPagina,
-    pagina * filasPorPagina
+  const totalPaginas = Math.ceil(tiendasFiltradas.length / filasPorPagina) || 1;
+  const tiendasPaginadas = useMemo(
+    () =>
+      tiendasFiltradas.slice(
+        (pagina - 1) * filasPorPagina,
+        pagina * filasPorPagina
+      ),
+    [tiendasFiltradas, pagina]
   );
 
   useEffect(() => {
     setPagina(1);
   }, [filtro]);
 
-  const limpiarFiltro = () => {
-    setFiltro("");
-  };
+  const limpiarFiltro = () => setFiltro("");
 
   const obtenerNombrePlan = (planId) => {
     if (!planId) return "Sin plan activo";
     const plan = planes.find((p) => p.plan_id === planId);
     return plan ? plan.nombre : "Desconocido";
+  };
+
+  // ====== callback cuando el modal guarda exitosamente ======
+  const handleModalSaved = (updated) => {
+    if (!updated || !updated.id) {
+      // si no regresa la tienda completa, no hacemos nada
+      setAbrirAgregar(false);
+      setTiendaSeleccionada(null);
+      return;
+    }
+    setData((prev) =>
+      (prev || []).map((t) => (t.id === updated.id ? { ...t, ...updated } : t))
+    );
+    setAbrirAgregar(false);
+    setTiendaSeleccionada(null);
+
+    // Si se está viendo el diálogo de fecha de esa tienda, también refresca
+    if (mostrarFecha && mostrarFecha.id === updated.id) {
+      setMostrarFecha((prev) => ({ ...(prev || {}), ...updated }));
+    }
   };
 
   return (
@@ -85,7 +121,7 @@ const TablaTiendas = ({ tiendas }) => {
         </Button>
       </Box>
 
-      <Fade in={true} timeout={800}>
+      <Fade in timeout={800}>
         <TableContainer
           component={Paper}
           sx={{ borderRadius: 3, boxShadow: 4, backgroundColor: "#e3f2fd" }}
@@ -155,6 +191,15 @@ const TablaTiendas = ({ tiendas }) => {
                   </TableCell>
                 </TableRow>
               ))}
+              {tiendasPaginadas.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <Typography align="center" sx={{ py: 2, opacity: 0.8 }}>
+                      No hay tiendas que coincidan con tu búsqueda.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </TableContainer>
@@ -172,15 +217,38 @@ const TablaTiendas = ({ tiendas }) => {
       )}
 
       {mostrarFecha && (
-        <Dialog open onClose={() => setMostrarFecha(null)}>
+        <Dialog
+          open
+          onClose={() => setMostrarFecha(null)}
+          fullWidth
+          maxWidth="xs"
+        >
           <DialogTitle>Información de expiración</DialogTitle>
           <DialogContent>
             <Typography>
               {!mostrarFecha.plan_expiration
-                ? `La versión demo terminó el ${new Date(mostrarFecha.trial_ends_at).toLocaleDateString("es-MX", { day: 'numeric', month: 'long', year: 'numeric' })}`
+                ? `La versión demo terminó el ${new Date(
+                    mostrarFecha.trial_ends_at
+                  ).toLocaleDateString("es-MX", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}`
                 : estaVencido(mostrarFecha.plan_expiration)
-                ? `Esta tienda venció el ${new Date(mostrarFecha.plan_expiration).toLocaleDateString("es-MX", { day: 'numeric', month: 'long', year: 'numeric' })}`
-                : `Esta tienda vencerá el ${new Date(mostrarFecha.plan_expiration).toLocaleDateString("es-MX", { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                ? `Esta tienda venció el ${new Date(
+                    mostrarFecha.plan_expiration
+                  ).toLocaleDateString("es-MX", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}`
+                : `Esta tienda vencerá el ${new Date(
+                    mostrarFecha.plan_expiration
+                  ).toLocaleDateString("es-MX", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}`}
             </Typography>
           </DialogContent>
         </Dialog>
@@ -193,11 +261,16 @@ const TablaTiendas = ({ tiendas }) => {
           tienda={tiendaSeleccionada}
         />
       )}
+
       {abrirAgregar && tiendaSeleccionada && (
         <ModalAgregarSuscripcion
           open={abrirAgregar}
-          onClose={() => setAbrirAgregar(false)}
+          onClose={() => {
+            setAbrirAgregar(false);
+            setTiendaSeleccionada(null);
+          }}
           tienda={tiendaSeleccionada}
+          onSaved={handleModalSaved}  
         />
       )}
     </Box>

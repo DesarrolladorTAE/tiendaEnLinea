@@ -14,19 +14,23 @@ import {
   IconButton,
   Chip,
   Box,
+  Stack,
 } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import axiosClient from "../../config/axiosClient";
 import { showError } from "../../utils/alerts";
 import planes from "../../utils/planes";
-import Renovar from "../../pages/other/Renovar";
+// ⬇️ Usa tu Modal de planes y complementos
+import ModalPlanesComplementos from "../../components/suscripciones/ModalPlanes"; 
+
 
 const PlanActualCard = () => {
   const [plan, setPlan] = useState(null);
   const [vigencia, setVigencia] = useState(null);
   const [isExpired, setIsExpired] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
 
   const formatearFecha = (fechaIso) => {
     const fecha = new Date(fechaIso);
@@ -54,24 +58,25 @@ const PlanActualCard = () => {
 
         setPlan(encontrado);
 
-        const fechaVigencia = store.plan_id === 1
-          ? store.trial_ends_at
-          : store.plan_expiration;
+        const demo = Number(store.plan_id) === 1;
+        setIsDemo(demo);
+
+        const fechaVigencia = demo ? store.trial_ends_at : store.plan_expiration;
 
         if (fechaVigencia) {
           setVigencia(formatearFecha(fechaVigencia));
-
           const now = new Date();
           const fin = new Date(fechaVigencia);
           setIsExpired(fin < now);
         }
       })
-      .catch(() => {
-        showError("No se pudo cargar el plan actual.");
-      });
+      .catch(() => showError("No se pudo cargar el plan actual."));
   }, []);
 
   if (!plan) return null;
+
+  const actionLabel = isDemo ? "Activa tu tienda" : "Adelanta tu pago";
+  const actionColor = isDemo ? "success" : "secondary";
 
   return (
     <>
@@ -81,7 +86,7 @@ const PlanActualCard = () => {
             💼 Tu Plan Actual
           </Typography>
 
-          <Box display="flex" alignItems="center" justifyContent="space-between">
+          <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
             <Typography variant="h5" fontWeight="bold" color="primary">
               {plan.nombre}
             </Typography>
@@ -93,15 +98,7 @@ const PlanActualCard = () => {
             />
           </Box>
 
-          <Typography
-            variant="body1"
-            sx={{
-              mt: 1,
-              fontWeight: 500,
-              color: "#444",
-              fontSize: "1rem",
-            }}
-          >
+          <Typography variant="body1" sx={{ mt: 1, fontWeight: 500, color: "#444" }}>
             {vigencia || "Sin definir"}
           </Typography>
 
@@ -120,40 +117,38 @@ const PlanActualCard = () => {
             ))}
           </List>
 
-          {isExpired && (
+          {/* Acciones */}
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ mt: 3 }}>
+            {/* Botón dinámico: siempre visible */}
             <Button
               variant="contained"
-              color="primary"
+              color={actionColor}
               onClick={() => setModalOpen(true)}
-              sx={{ mt: 3 }}
               fullWidth
             >
-              Renovar Plan
+              {actionLabel}
             </Button>
-          )}
+
+            {/* Botón de renovar: solo si ya está vencido (abre el mismo modal) */}
+            {isExpired && (
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => setModalOpen(true)}
+                fullWidth
+              >
+                Renovar Plan
+              </Button>
+            )}
+          </Stack>
         </CardContent>
       </Card>
 
-      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ m: 0, p: 2 }}>
-          Renovar Plan
-          <IconButton
-            aria-label="close"
-            onClick={() => setModalOpen(false)}
-            sx={{
-              position: "absolute",
-              right: 8,
-              top: 8,
-              color: (theme) => theme.palette.grey[500],
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent dividers>
-          <Renovar />
-        </DialogContent>
-      </Dialog>
+      {/* Modal de Planes y Complementos */}
+      <ModalPlanesComplementos
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+      />
     </>
   );
 };

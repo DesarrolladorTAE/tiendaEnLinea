@@ -103,7 +103,11 @@ const AdminContent = () => {
 };
 
 const AdminLayout = () => (
-  <TiendaProvider>
+ <TiendaProvider
+  autoAlerta
+  forzarCTA={false}          // opcional
+  soloUnaVezPorSesion={false} // <- clave: muestra en cada carga si cumple condiciones
+>
     <AdminContent />
   </TiendaProvider>
 );
