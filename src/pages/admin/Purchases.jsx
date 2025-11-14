@@ -1,114 +1,146 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Box, Typography, Table, TableHead, TableBody, TableRow, TableCell,
-  Paper, TextField, MenuItem, Stack, Avatar, Button, IconButton,
-  Autocomplete, Checkbox, Chip
+  Box, Stack, Paper, Typography, Table, TableHead, TableRow, TableCell, TableBody,
+  TextField, MenuItem, Checkbox, Chip, Button, IconButton, Dialog, DialogTitle,
+  DialogContent, DialogActions, Pagination, Tooltip
 } from "@mui/material";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import FileDownloadIcon from "@mui/icons-material/FileDownload";
-import RestartAltIcon from "@mui/icons-material/RestartAlt";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 
-const Compras = () => {
-  const [compras, setCompras] = useState([]);
-  const [usuarios, setUsuarios] = useState([]);
-  const [filtradas, setFiltradas] = useState([]);
+/* ================= helpers ================= */
+const monthsMx = [
+  "enero","febrero","marzo","abril","mayo","junio",
+  "julio","agosto","septiembre","octubre","noviembre","diciembre"
+];
 
-  const [comprobanteSeleccionado, setComprobanteSeleccionado] = useState(null);
-  const [zoom, setZoom] = useState(1);
+function monthRange(isoYear, isoMonth0) {
+  const start = new Date(isoYear, isoMonth0, 1, 0, 0, 0, 0);
+  const end = new Date(isoYear, isoMonth0 + 1, 1, 0, 0, 0, 0);
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return { startStr: fmt(start), endStr: fmt(end) };
+}
+
+function money(n = 0) {
+  const v = Number(n || 0);
+  return `$${v.toFixed(2)} MXN`;
+}
+
+/* ================= componente ================= */
+export default function VentasDelMes() {
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month0, setMonth0] = useState(today.getMonth());
+
+  const [ventas, setVentas] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   const [seleccion, setSeleccion] = useState([]);
   const [usoCfdi, setUsoCfdi] = useState("S01");
 
-  const [filtros, setFiltros] = useState({
-    fecha_inicio: "",
-    fecha_fin: "",
-    usuario_id: "",
-    status: "confirmado",
-  });
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 15;
 
-  const obtenerCompras = async (f = {}) => {
-    const query = new URLSearchParams(f).toString();
-    const { data } = await axios.get(`/admin/compras?${query}`);
-    return data;
-  };
+  const [modalOpen, setModalOpen] = useState(false);
+  const [comprobanteUrl, setComprobanteUrl] = useState(null);
 
-  const cargarCompras = async () => {
+  // 🔹 Carga TODAS las ventas del mes (sin filtrar status)
+  const loadVentas = async () => {
+    setLoading(true);
     try {
-      const data = await obtenerCompras(filtros);
-      const resultado = filtros.status ? data.filter((c) => c.status === filtros.status) : data;
-      setCompras(resultado);
-      setFiltradas(resultado);
+      const { startStr, endStr } = monthRange(year, month0);
+      const params = new URLSearchParams({
+        fecha_inicio: startStr,
+        fecha_fin: endStr,
+      }).toString();
+
+      const { data } = await axios.get(`/admin/compras?${params}`);
+
+      const todas = Array.isArray(data) ? data : [];
+      todas.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setVentas(todas);
       setSeleccion([]);
+      setPage(1);
     } catch {
-      toast.error("❌ No se pudo cargar el historial de compras.");
-    }
-  };
-
-  const cargarUsuarios = async () => {
-    try {
-      const { data } = await axios.get("/admin/usuarios");
-      setUsuarios(data);
-    } catch {
-      toast.error("⚠️ Error al cargar usuarios");
+      toast.error("❌ No se pudo cargar Ventas del Mes.");
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    cargarCompras();
-    cargarUsuarios();
-  }, []);
+    loadVentas();
+  }, [year, month0]);
 
-  useEffect(() => {
-    cargarCompras();
-  }, [filtros]);
+  const totalVendido = useMemo(
+    () => ventas.reduce((acc, v) => acc + Number(v.monto || 0), 0),
+    [ventas]
+  );
 
-  const handleFiltro = (e) => {
-    setFiltros({ ...filtros, [e.target.name]: e.target.value });
-  };
+  const elegibles = useMemo(
+    () => ventas.filter((v) => !v.folio_factura).map((v) => v.id),
+    [ventas]
+  );
 
-  const limpiarFiltros = () => {
-    setFiltros({ fecha_inicio: "", fecha_fin: "", usuario_id: "", status: "confirmado" });
-    setComprobanteSeleccionado(null);
-  };
+  const allChecked = ventas.length > 0 && seleccion.length === ventas.length;
+  const indeterminate = seleccion.length > 0 && !allChecked;
+
+  const pageCount = Math.max(1, Math.ceil(ventas.length / rowsPerPage));
+  const pageRows = useMemo(() => {
+    const start = (page - 1) * rowsPerPage;
+    return ventas.slice(start, start + rowsPerPage);
+  }, [page, ventas]);
 
   const toggleSeleccion = (id) => {
-    setSeleccion((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSeleccion((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
   const seleccionarTodo = (checked) => {
-    setSeleccion(checked ? filtradas.map((c) => c.id) : []);
+    setSeleccion(checked ? ventas.map((v) => v.id) : []);
+  };
+
+  const abrirComprobante = (url) => {
+    if (!url) return toast.info("No hay comprobante para esta venta.");
+    setComprobanteUrl(url);
+    setModalOpen(true);
   };
 
   const exportarExcel = () => {
-    const datos = filtradas.map((c) => ({
-      Usuario: `${c.user?.name || ""} ${c.user?.apellidos || ""}`.trim() || "Sin nombre",
-      Monto: c.monto,
-      Tipo: c.tipo,
-      Folio: c.folio_factura || "",
-      Descripción: c.descripcion,
-      Referencia: c.referencia,
-      Fecha: new Date(c.created_at).toLocaleString(),
+    const datos = ventas.map((v) => ({
+      Tienda: `${v.user?.name || ""} ${v.user?.apellidos || ""}`.trim() || "Sin nombre",
+      Tipo: v.tipo,
+      Monto: Number(v.monto || 0),
+      Descripción: v.descripcion || "",
+      Referencia: v.referencia || "",
+      Fecha: new Date(v.created_at).toLocaleString(),
+      FolioFactura: v.folio_factura || "",
+      PDF: v.pdf_url || "",
+      XML: v.xml_url || "",
+      Estado: v.status || "",
     }));
     const hoja = XLSX.utils.json_to_sheet(datos);
     const libro = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(libro, hoja, "Compras");
+    XLSX.utils.book_append_sheet(libro, hoja, "VentasMes");
     const excelBuffer = XLSX.write(libro, { bookType: "xlsx", type: "array" });
     const archivo = new Blob([excelBuffer], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
-    saveAs(archivo, "compras.xlsx");
+    saveAs(archivo, `ventas_${monthsMx[month0]}_${year}.xlsx`);
   };
 
   const timbrarPG = async () => {
-    if (seleccion.length === 0) return toast.info("Selecciona al menos una compra.");
+    if (seleccion.length === 0) return toast.info("Selecciona al menos una venta.");
     try {
       const { data } = await axios.post("/admin/facturacion-saldo/publico-general", {
         transaccion_ids: seleccion,
@@ -117,203 +149,214 @@ const Compras = () => {
         metodoPago: "PUE",
       });
       toast.success(`✅ Timbrado PG folio ${data.folio}`);
-      cargarCompras();
+      loadVentas();
     } catch (e) {
       toast.error(e?.response?.data?.message || "❌ Error al timbrar (PG).");
     }
   };
 
-  const timbrarPorUsuario = async () => {
-    if (seleccion.length === 0) return toast.info("Selecciona al menos una compra.");
+  const timbrarPorTienda = async () => {
+    if (seleccion.length === 0) return toast.info("Selecciona al menos una venta.");
     try {
       const { data } = await axios.post("/admin/facturacion-saldo/por-usuario", {
         transaccion_ids: seleccion,
-        uso_cfdi: usoCfdi === "S01" ? "G03" : usoCfdi, // sugerencia
+        uso_cfdi: usoCfdi === "S01" ? "G03" : usoCfdi,
         formaPago: "03",
         metodoPago: "PUE",
       });
-      toast.success(`✅ Timbrado por usuario folio ${data.folio}`);
-      cargarCompras();
+      toast.success(`✅ Timbrado por tienda folio ${data.folio}`);
+      loadVentas();
     } catch (e) {
-      toast.error(e?.response?.data?.message || "❌ Error al timbrar (por usuario).");
+      toast.error(e?.response?.data?.message || "❌ Error al timbrar (por tienda).");
     }
   };
 
-  const totalesConfirmadas = filtradas.filter((c) => c.status === "confirmado");
-  const totalIngresos = totalesConfirmadas
-    .filter((c) => c.tipo === "ingreso")
-    .reduce((sum, c) => sum + parseFloat(c.monto), 0);
-  const totalEgresos = totalesConfirmadas
-    .filter((c) => c.tipo === "egreso")
-    .reduce((sum, c) => sum + parseFloat(c.monto), 0);
-
-  const allChecked = filtradas.length > 0 && seleccion.length === filtradas.length;
+  const limpiar = () => {
+    const t = new Date();
+    setYear(t.getFullYear());
+    setMonth0(t.getMonth());
+  };
 
   return (
-    <Box display="flex" flexDirection={{ xs: "column", md: "row" }} gap={3} sx={{ mt: 2 }}>
-      <Box flex={1}>
-        <Stack spacing={2} mb={2}>
-          <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", md: "center" }}>
-            <Typography variant="h5" color="primary">📜 Historial de Ventas de Saldo</Typography>
-            <Stack direction="row" spacing={1} sx={{ mt: { xs: 1, md: 0 } }}>
-              <TextField
-                select
-                size="small"
-                label="Uso CFDI"
-                value={usoCfdi}
-                onChange={(e) => setUsoCfdi(e.target.value)}
-                sx={{ width: 120 }}
-              >
-                <MenuItem value="S01">S01</MenuItem>
-                <MenuItem value="G03">G03</MenuItem>
-              </TextField>
-              <Button variant="contained" color="success" onClick={timbrarPG}>
-                Timbrar Púb. Gral.
-              </Button>
-              <Button variant="contained" color="primary" onClick={timbrarPorUsuario}>
-                Timbrar por Usuario
-              </Button>
-              <Button variant="outlined" startIcon={<FileDownloadIcon />} onClick={exportarExcel}>
-                Exportar Excel
-              </Button>
-              <IconButton onClick={limpiarFiltros} title="Limpiar filtros">
-                <RestartAltIcon />
-              </IconButton>
-            </Stack>
-          </Stack>
-
-          <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-            <TextField label="Fecha Inicio" type="date" name="fecha_inicio" value={filtros.fecha_inicio} onChange={handleFiltro} InputLabelProps={{ shrink: true }} sx={{ flex: 1, borderRadius: 2 }} fullWidth />
-            <TextField label="Fecha Fin" type="date" name="fecha_fin" value={filtros.fecha_fin} onChange={handleFiltro} InputLabelProps={{ shrink: true }} sx={{ flex: 1, borderRadius: 2 }} fullWidth />
-            <Autocomplete
-              options={usuarios}
-              getOptionLabel={(option) => `${option.name || ""} ${option.apellidos || ""}`.trim()}
-              value={usuarios.find((u) => u.id === filtros.usuario_id) || null}
-              onChange={(_, newValue) => setFiltros({ ...filtros, usuario_id: newValue ? newValue.id : "" })}
-              renderInput={(params) => <TextField {...params} label="Usuario" fullWidth sx={{ borderRadius: 2 }} />}
-              sx={{ flex: 2 }}
-            />
-            <TextField select label="Estado" name="status" value={filtros.status} onChange={handleFiltro} fullWidth sx={{ flex: 1, borderRadius: 2 }}>
-              <MenuItem value="confirmado">Confirmadas</MenuItem>
-              <MenuItem value="rechazada">Rechazadas</MenuItem>
-              <MenuItem value="">Todas</MenuItem>
-            </TextField>
-          </Stack>
+    <Box sx={{ mt: 2 }}>
+      {/* Encabezado */}
+      <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
+        <Stack direction="row" alignItems="center" gap={2}>
+          <Typography variant="h5">Ventas del Mes ✅</Typography>
+          <Chip
+            label={`Mes actual: ${monthsMx[month0][0].toUpperCase()}${monthsMx[month0].slice(1)} de ${year}`}
+            color="secondary"
+          />
         </Stack>
 
-        <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
-          {/* deja el alto grande pero con scroll para ver TODAS */}
-          <Box sx={{ maxHeight: "70vh", overflowY: "auto" }}>
-            <Table stickyHeader>
-              <TableHead>
-                <TableRow sx={{ bgcolor: "#6C63FF" }}>
-                  <TableCell sx={{ color: "#fff", width: 48 }}>
-                    <Checkbox
-                      color="secondary"
-                      checked={allChecked}
-                      indeterminate={seleccion.length > 0 && !allChecked}
-                      onChange={(e) => seleccionarTodo(e.target.checked)}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Usuario</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Monto</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Descripción</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Referencia</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Fecha</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Facturación</TableCell>
-                  <TableCell sx={{ color: "#fff" }}>Comprobante</TableCell>
-                </TableRow>
-              </TableHead>
+        <Stack direction="row" alignItems="center" gap={1}>
+          <TextField
+            select size="small" label="Mes"
+            value={month0}
+            onChange={(e) => setMonth0(Number(e.target.value))}
+            sx={{ minWidth: 170 }}
+          >
+            {monthsMx.map((m, idx) => (
+              <MenuItem key={m} value={idx}>
+                {m[0].toUpperCase() + m.slice(1)}
+              </MenuItem>
+            ))}
+          </TextField>
 
-              <TableBody>
-                {filtradas.map((c) => {
-                  const checked = seleccion.includes(c.id);
+          <TextField
+            select size="small" label="Año"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            sx={{ width: 110 }}
+          >
+            {[year - 2, year - 1, year, year + 1].map((y) => (
+              <MenuItem key={y} value={y}>{y}</MenuItem>
+            ))}
+          </TextField>
+
+          <Tooltip title="Exportar a Excel">
+            <IconButton onClick={exportarExcel}><FileDownloadIcon /></IconButton>
+          </Tooltip>
+          <Tooltip title="Restablecer a mes actual">
+            <IconButton onClick={limpiar}><RestartAltIcon /></IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
+
+      {/* Total vendido y acciones */}
+      <Stack direction="row" alignItems="center" gap={3} sx={{ my: 2 }} flexWrap="wrap">
+        <Typography variant="h6">
+          💰 Total vendido: <strong>{money(totalVendido)}</strong>
+        </Typography>
+        {/* <Chip label={`Elegibles: ${elegibles.length}`} />
+        <Chip color="primary" label={`Seleccionadas: ${seleccion.length}`} /> */}
+        <TextField
+          select size="small" label="Uso CFDI" value={usoCfdi}
+          onChange={(e) => setUsoCfdi(e.target.value)}
+          sx={{ width: 120 }}
+        >
+          <MenuItem value="S01">S01</MenuItem>
+          <MenuItem value="G03">G03</MenuItem>
+        </TextField>
+        <Button variant="contained" color="success" onClick={timbrarPG}>
+          Facturar a Público General
+        </Button>
+        <Button variant="contained" onClick={timbrarPorTienda}>
+          Facturar por Tienda
+        </Button>
+      </Stack>
+
+      {/* Tabla */}
+      <Paper sx={{ borderRadius: 3, overflow: "hidden" }}>
+        <Box sx={{ maxHeight: "62vh", overflow: "auto" }}>
+          <Table stickyHeader>
+            <TableHead>
+              <TableRow sx={{ bgcolor: "#6C63FF" }}>
+                <TableCell sx={{ color: "#fff", width: 48 }}>
+                  <Checkbox
+                    color="secondary"
+                    checked={allChecked}
+                    indeterminate={indeterminate}
+                    onChange={(e) => seleccionarTodo(e.target.checked)}
+                  />
+                </TableCell>
+                <TableCell sx={{ color: "#fff" }}>Tienda</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Tipo</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Fecha</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Monto</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Estado</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Archivos</TableCell>
+                <TableCell sx={{ color: "#fff" }}>Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+
+            <TableBody>
+              {loading ? (
+                <TableRow><TableCell colSpan={8}>Cargando…</TableCell></TableRow>
+              ) : pageRows.length === 0 ? (
+                <TableRow><TableCell colSpan={8}>Sin registros en este mes.</TableCell></TableRow>
+              ) : (
+                pageRows.map((v) => {
+                  const checked = seleccion.includes(v.id);
+                  const nombreTienda = `${v.user?.name || ""} ${v.user?.apellidos || ""}`.trim() || "Sin nombre";
+                  const fecha = new Date(v.created_at);
+                  const fechaLabel = `${fecha.getDate()} de ${monthsMx[fecha.getMonth()]} de ${fecha.getFullYear()}`;
                   return (
-                    <TableRow key={c.id} hover selected={checked}>
+                    <TableRow key={v.id} hover selected={checked}>
                       <TableCell>
-                        <Checkbox color="secondary" checked={checked} onChange={() => toggleSeleccion(c.id)} />
+                        <Checkbox color="secondary" checked={checked} onChange={() => toggleSeleccion(v.id)} />
+                      </TableCell>
+                      <TableCell>{nombreTienda}</TableCell>
+                      <TableCell>
+                        <Chip size="small" label={v.tipo || "—"} />
+                      </TableCell>
+                      <TableCell>{fechaLabel}</TableCell>
+                      <TableCell>{money(v.monto)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          color={v.status === "confirmado" ? "success" : v.status === "rechazada" ? "error" : "default"}
+                          label={v.status || "Desconocido"}
+                        />
                       </TableCell>
                       <TableCell>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <Avatar>{c.user?.name?.[0] || "U"}</Avatar>
-                          <Typography>{`${c.user?.name || ""} ${c.user?.apellidos || ""}`.trim()}</Typography>
-                        </Stack>
-                      </TableCell>
-                      <TableCell>${Number(c.monto).toFixed(2)}</TableCell>
-                      <TableCell>{c.descripcion}</TableCell>
-                      <TableCell>{c.referencia}</TableCell>
-                      <TableCell>{new Date(c.created_at).toLocaleString()}</TableCell>
-                      <TableCell>
-                        {c.folio_factura ? (
-                          <Stack direction="row" spacing={1} alignItems="center">
-                            <Chip size="small" color="success" label={`Folio ${c.folio_factura}`} />
-                            {c.pdf_url && (
-                              <IconButton component="a" href={c.pdf_url} target="_blank" rel="noopener noreferrer" title="PDF" size="small">
-                                <PictureAsPdfIcon fontSize="small" />
-                              </IconButton>
-                            )}
-                            {c.xml_url && (
-                              <IconButton component="a" href={c.xml_url} target="_blank" rel="noopener noreferrer" title="XML" size="small">
-                                <InsertDriveFileIcon fontSize="small" />
-                              </IconButton>
-                            )}
-                          </Stack>
-                        ) : (
-                          <Chip size="small" label="Sin facturar" />
+                        {v.pdf_url && (
+                          <IconButton component="a" href={v.pdf_url} target="_blank" rel="noopener noreferrer" size="small" title="PDF">
+                            <PictureAsPdfIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                        {v.xml_url && (
+                          <IconButton component="a" href={v.xml_url} target="_blank" rel="noopener noreferrer" size="small" title="XML">
+                            <InsertDriveFileIcon fontSize="small" />
+                          </IconButton>
                         )}
                       </TableCell>
                       <TableCell>
                         <Button
-                          variant="outlined"
                           size="small"
-                          color="secondary"
+                          variant="outlined"
                           startIcon={<VisibilityIcon />}
-                          onClick={() => {
-                            setComprobanteSeleccionado(c.comprobante);
-                            setZoom(1);
-                          }}
+                          onClick={() => abrirComprobante(v.comprobante)}
                         >
-                          Abrir
+                          Ver comprobante
                         </Button>
                       </TableCell>
                     </TableRow>
                   );
-                })}
-              </TableBody>
-            </Table>
-          </Box>
-
-          <Box sx={{ px: 2, py: 2, bgcolor: "#F5F5F5", borderTop: "1px solid #ccc" }}>
-            <Typography variant="body1">
-              <strong>Totales Confirmados:</strong> Ingresos: ${totalIngresos.toFixed(2)} | Egresos: ${totalEgresos.toFixed(2)} | Neto: {(totalIngresos - totalEgresos).toFixed(2)}
-            </Typography>
-          </Box>
-        </Paper>
-      </Box>
-
-      <Box sx={{ width: { xs: "100%", md: 400 }, maxHeight: "85vh", overflow: "auto", bgcolor: "#F5F7FF", p: 0, borderRadius: 2, boxShadow: 4, position: { md: "sticky" }, top: { md: 80 } }}>
-        <Box sx={{ px: 2, py: 1, bgcolor: "#F5F7FF", position: "sticky", top: 0, zIndex: 2 }}>
-          <Typography variant="h6" color="secondary" mb={1}>📎 Comprobante</Typography>
-          <Box display="flex" justifyContent="center" alignItems="center">
-            <IconButton onClick={() => setZoom((z) => Math.min(z + 0.1, 3))}><AddIcon /></IconButton>
-            <Typography variant="body2">Zoom: {Math.round(zoom * 100)}%</Typography>
-            <IconButton onClick={() => setZoom((z) => Math.max(z - 0.1, 0.3))}><RemoveIcon /></IconButton>
-          </Box>
+                })
+              )}
+            </TableBody>
+          </Table>
         </Box>
-        <Box sx={{ px: 2, pb: 2 }}>
-          {comprobanteSeleccionado ? (
-            comprobanteSeleccionado.endsWith(".pdf") ? (
-              <Box component="iframe" src={comprobanteSeleccionado} width="100%" height={600 * zoom} style={{ border: "none" }} title="Comprobante PDF" />
-            ) : (
-              <Box component="img" src={comprobanteSeleccionado} alt="Comprobante" sx={{ width: `${zoom * 100}%`, objectFit: "contain" }} />
-            )
+
+        {/* Paginación */}
+        <Stack direction="row" justifyContent="center" sx={{ py: 2 }}>
+          <Pagination
+            page={page}
+            count={pageCount}
+            onChange={(_, p) => setPage(p)}
+            size="medium"
+            color="primary"
+          />
+        </Stack>
+      </Paper>
+
+      {/* Modal Comprobante */}
+      <Dialog open={modalOpen} onClose={() => setModalOpen(false)} fullWidth maxWidth="md">
+        <DialogTitle>Comprobante</DialogTitle>
+        <DialogContent dividers>
+          {!comprobanteUrl ? (
+            <Typography variant="body2">No hay comprobante.</Typography>
+          ) : comprobanteUrl.toLowerCase().endsWith(".pdf") ? (
+            <Box component="iframe" src={comprobanteUrl} width="100%" height={600} style={{ border: "none" }} title="Comprobante PDF" />
           ) : (
-            <Typography variant="body2" color="text.secondary">Selecciona una compra para ver el comprobante 📂</Typography>
+            <Box component="img" src={comprobanteUrl} alt="Comprobante" sx={{ width: "100%", height: "auto", objectFit: "contain" }} />
           )}
-        </Box>
-      </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setModalOpen(false)}>Cerrar</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
-};
-
-export default Compras;
+}
