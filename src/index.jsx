@@ -6,12 +6,9 @@ import { store } from "./store/store.jsx";
 import PersistProvider from "./store/providers/persist-provider.jsx";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
+import NavidadToggle from "./components/NavidadToggle";
 
-
-// Estilos y librerías
-// import "animate.css";
-// import "yet-another-react-lightbox/styles.css";
-// import "yet-another-react-lightbox/plugins/thumbnails.css";
+// Estilos
 import "swiper/swiper-bundle.min.css";
 import "./assets/scss/style.scss";
 import "./i18n";
@@ -23,6 +20,10 @@ const root = createRoot(container);
 root.render(
   <Provider store={store}>
     <PersistProvider>
+      {/* 🎄 Botón y nieve global */}
+      <NavidadToggle />
+
+      {/* Tu app normal */}
       <App />
     </PersistProvider>
   </Provider>
