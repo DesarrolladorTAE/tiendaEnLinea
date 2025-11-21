@@ -15,6 +15,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import "leaflet/dist/leaflet.css";
 import { CssBaseline } from "@mui/material";
+import NavidadToggle from "./components/NavidadToggle";
 
 // ✅ Registro del Service Worker (solo en producción)
 // ✅ Registro del Service Worker en DEV y PROD
@@ -41,6 +42,8 @@ const root = createRoot(container);
 root.render(
   <Provider store={store}>
     <PersistProvider>
+          {/* 🎄 Botón y nieve global */}
+      <NavidadToggle />
       <CssBaseline />
       <App />
     </PersistProvider>
