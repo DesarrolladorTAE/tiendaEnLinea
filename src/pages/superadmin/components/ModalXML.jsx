@@ -1,7 +1,14 @@
 import React, { useEffect, useState } from "react";
 import {
-  Modal, Box, Typography, IconButton, Button, Stack,
-  useMediaQuery, useTheme, Divider
+  Modal,
+  Box,
+  Typography,
+  IconButton,
+  Button,
+  Stack,
+  useMediaQuery,
+  useTheme,
+  Divider,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
@@ -23,8 +30,9 @@ const formatXml = (xml) => {
     .map((node) => {
       let indent = 0;
       if (node.match(/.+<\/\w[^>]*>$/)) indent = 0;
-      else if (node.match(/^<\/\w/)) { if (pad !== 0) pad -= 1; }
-      else if (node.match(/^<\w[^>]*[^\/]>.*$/)) indent = 1;
+      else if (node.match(/^<\/\w/)) {
+        if (pad !== 0) pad -= 1;
+      } else if (node.match(/^<\w[^>]*[^\/]>.*$/)) indent = 1;
       const line = PADDING.repeat(pad) + node;
       pad += indent;
       return line;
@@ -32,28 +40,52 @@ const formatXml = (xml) => {
     .join("\r\n");
 };
 
-export default function ModalXML({ open, onClose, downloadUrl, fileName = "factura.xml", titulo = "Vista previa XML" }) {
+export default function ModalXML({
+  open,
+  onClose,
+  downloadUrl,
+  fileName = "factura.xml",
+  titulo = "Vista previa XML",
+}) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const [xmlContent, setXmlContent] = useState("Cargando...");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+
+    // Si no hay URL, mostramos mensaje directo
+    if (!downloadUrl) {
+      setXmlContent("No se encontró la ruta para descargar el XML.");
+      return;
+    }
+
     (async () => {
+      setLoading(true);
       try {
-        const res = await fetch(downloadUrl);
+        const res = await fetch(downloadUrl, { credentials: "include" });
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} al cargar XML`);
+        }
+
         const text = await res.text();
         setXmlContent(formatXml(text));
       } catch (err) {
         console.error("Error al cargar XML:", err);
-        setXmlContent("Error al cargar el XML.");
+        setXmlContent("Error al cargar el XML desde el servidor.");
+      } finally {
+        setLoading(false);
       }
     })();
   }, [open, downloadUrl]);
 
   const handleDownload = async () => {
+    if (!downloadUrl) return;
     try {
-      const res = await fetch(downloadUrl);
+      const res = await fetch(downloadUrl, { credentials: "include" });
+      if (!res.ok) throw new Error(`HTTP ${res.status} al descargar XML`);
       const blob = await res.blob();
       const a = document.createElement("a");
       const url = window.URL.createObjectURL(blob);
@@ -70,7 +102,7 @@ export default function ModalXML({ open, onClose, downloadUrl, fileName = "factu
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(xmlContent);
+      await navigator.clipboard.writeText(xmlContent || "");
     } catch (e) {
       console.error("No se pudo copiar el XML", e);
     }
@@ -106,15 +138,38 @@ export default function ModalXML({ open, onClose, downloadUrl, fileName = "factu
           }}
         >
           <CodeIcon color="secondary" fontSize="small" />
-          <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <Typography
+            variant="subtitle1"
+            fontWeight={700}
+            sx={{
+              flex: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
             {titulo}
           </Typography>
 
           <Stack direction="row" spacing={0.5}>
-            <IconButton size="small" onClick={copyToClipboard}><ContentCopyIcon fontSize="small" /></IconButton>
-            <IconButton size="small" onClick={handleDownload}><FileDownloadIcon fontSize="small" /></IconButton>
+            <IconButton
+              size="small"
+              onClick={copyToClipboard}
+              disabled={loading || !downloadUrl}
+            >
+              <ContentCopyIcon fontSize="small" />
+            </IconButton>
+            <IconButton
+              size="small"
+              onClick={handleDownload}
+              disabled={loading || !downloadUrl}
+            >
+              <FileDownloadIcon fontSize="small" />
+            </IconButton>
             <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
-            <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
+            <IconButton size="small" onClick={onClose}>
+              <CloseIcon fontSize="small" />
+            </IconButton>
           </Stack>
         </Stack>
 
@@ -131,14 +186,27 @@ export default function ModalXML({ open, onClose, downloadUrl, fileName = "factu
               lineHeight: 1.6,
             }}
           >
-            {xmlContent}
+            {loading ? "Cargando XML..." : xmlContent}
           </SyntaxHighlighter>
         </Box>
 
         {/* Footer */}
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} sx={{ p: 2, borderTop: "1px solid", borderColor: "divider" }}>
-          <Button variant="outlined" onClick={onClose} fullWidth={isMobile}>Cerrar</Button>
-          <Button variant="contained" color="success" onClick={handleDownload} startIcon={<FileDownloadIcon />} fullWidth={isMobile}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+          sx={{ p: 2, borderTop: "1px solid", borderColor: "divider" }}
+        >
+          <Button variant="outlined" onClick={onClose} fullWidth={isMobile}>
+            Cerrar
+          </Button>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleDownload}
+            startIcon={<FileDownloadIcon />}
+            disabled={loading || !downloadUrl}
+            fullWidth={isMobile}
+          >
             Descargar XML
           </Button>
         </Stack>

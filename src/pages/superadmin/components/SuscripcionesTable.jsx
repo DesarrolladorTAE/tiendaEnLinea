@@ -1,7 +1,18 @@
 import React, { useMemo, useState } from "react";
 import {
-  Table, TableHead, TableRow, TableCell, TableBody, Checkbox, TablePagination,
-  Link, TableContainer, Paper, Chip, Stack, Tooltip
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Checkbox,
+  TablePagination,
+  Link,
+  TableContainer,
+  Paper,
+  Chip,
+  Stack,
+  Tooltip,
 } from "@mui/material";
 import LocalMallOutlinedIcon from "@mui/icons-material/LocalMallOutlined";
 import ExtensionOutlinedIcon from "@mui/icons-material/ExtensionOutlined";
@@ -15,7 +26,13 @@ const TypeChip = ({ tipo }) => {
     <Chip
       size="small"
       label={isPlan ? "Plan" : "Complemento"}
-      icon={isPlan ? <LocalMallOutlinedIcon fontSize="small" /> : <ExtensionOutlinedIcon fontSize="small" />}
+      icon={
+        isPlan ? (
+          <LocalMallOutlinedIcon fontSize="small" />
+        ) : (
+          <ExtensionOutlinedIcon fontSize="small" />
+        )
+      }
       sx={{
         px: 1,
         fontWeight: 600,
@@ -39,7 +56,9 @@ const StatusChip = ({ facturado, facturado_pg }) => {
     );
   }
   if (facturado) {
-    return <Chip size="small" label="Facturado" color="success" variant="filled" />;
+    return (
+      <Chip size="small" label="Facturado" color="success" variant="filled" />
+    );
   }
   return <Chip size="small" label="Sin facturar" variant="outlined" />;
 };
@@ -57,7 +76,11 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
   const [tituloXML, setTituloXML] = useState("");
 
   const fmt = useMemo(
-    () => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }),
+    () =>
+      new Intl.NumberFormat("es-MX", {
+        style: "currency",
+        currency: "MXN",
+      }),
     []
   );
 
@@ -68,11 +91,14 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
 
   const allVisibleIds = useMemo(() => pageRows.map((r) => r.id), [pageRows]);
   const allVisibleChecked = useMemo(
-    () => allVisibleIds.every((id) => seleccion.includes(id)) && allVisibleIds.length > 0,
+    () =>
+      allVisibleIds.every((id) => seleccion.includes(id)) &&
+      allVisibleIds.length > 0,
     [allVisibleIds, seleccion]
   );
   const someVisibleChecked = useMemo(
-    () => allVisibleIds.some((id) => seleccion.includes(id)) && !allVisibleChecked,
+    () =>
+      allVisibleIds.some((id) => seleccion.includes(id)) && !allVisibleChecked,
     [allVisibleIds, seleccion]
   );
 
@@ -80,29 +106,67 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
     if (allVisibleChecked) {
       setSeleccion((prev) => prev.filter((id) => !allVisibleIds.includes(id)));
     } else {
-      setSeleccion((prev) => Array.from(new Set([...prev, ...allVisibleIds])));
+      setSeleccion((prev) =>
+        Array.from(new Set([...prev, ...allVisibleIds]))
+      );
     }
   };
   const toggleOne = (id) => {
-    setSeleccion((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSeleccion((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   };
 
-  // Elige archivos propios y si no, los de PG
-  const getPDFUrl = (item) => item.pdf_url || item.pg_pdf_url || "";
-  const getXMLUrl = (item) => item.xml_url || item.pg_xml_url || "";
+  /**
+   * Helpers para PDF/XML:
+   * - Si tiene url directa (propia o de PG), usarla.
+   * - Si NO tiene url pero SÍ tiene folio, usar el controlador.
+   *
+   * Ajusta "folio_factura" al nombre real de tu campo de folio en el row
+   * y las rutas /admin/subscriptions/... a tus rutas reales.
+   */
+  const getPDFUrl = (item) => {
+    if (item.pdf_url || item.pg_pdf_url) {
+      return item.pdf_url || item.pg_pdf_url;
+    }
+    // Si no hay PDF guardado pero sí folio, usar el controlador
+    if (item.folio_factura || item.folio) {
+      const id = item.id;
+      // 🔴 AJUSTA ESTA RUTA SEGÚN TUS ROUTES DE LARAVEL
+      return `/admin/subscriptions/${id}/factura/pdf`;
+    }
+    return "";
+  };
+
+  const getXMLUrl = (item) => {
+    if (item.xml_url || item.pg_xml_url) {
+      return item.xml_url || item.pg_xml_url;
+    }
+    if (item.folio_factura || item.folio) {
+      const id = item.id;
+      // 🔴 AJUSTA ESTA RUTA SEGÚN TUS ROUTES DE LARAVEL
+      return `/admin/subscriptions/${id}/factura/xml`;
+    }
+    return "";
+  };
 
   const handleOpenPDF = (item) => {
     const url = getPDFUrl(item);
     if (!url) return;
     setPdfUrl(url);
-    setTituloPDF(`PDF • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`);
+    setTituloPDF(
+      `PDF • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
+    );
     setOpenPDF(true);
   };
+
   const handleOpenXML = (item) => {
     const url = getXMLUrl(item);
     if (!url) return;
     setXmlUrl(url);
-    setTituloXML(`XML • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`);
+    setTituloXML(
+      `XML • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
+    );
     setOpenXML(true);
   };
 
@@ -142,9 +206,13 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
               <TableCell>Tienda</TableCell>
               <TableCell width={160}>Tipo</TableCell>
               <TableCell width={200}>Fecha</TableCell>
-              <TableCell width={140} align="right">Monto</TableCell>
+              <TableCell width={140} align="right">
+                Monto
+              </TableCell>
               <TableCell width={180}>Estado</TableCell>
-              <TableCell width={160} align="center">Archivos</TableCell>
+              <TableCell width={160} align="center">
+                Archivos
+              </TableCell>
             </TableRow>
           </TableHead>
 
@@ -156,24 +224,43 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
               return (
                 <TableRow key={item.id} hover>
                   <TableCell padding="checkbox">
-                    <Checkbox checked={seleccion.includes(item.id)} onChange={() => toggleOne(item.id)} />
+                    <Checkbox
+                      checked={seleccion.includes(item.id)}
+                      onChange={() => toggleOne(item.id)}
+                    />
                   </TableCell>
                   <TableCell>{page * rowsPerPage + idx + 1}</TableCell>
                   <TableCell>
                     <Stack direction="column" spacing={0}>
                       <span style={{ fontWeight: 600 }}>{item.tienda}</span>
-                      <span style={{ fontSize: 12, color: "#7a7a7a" }}>#{item.id}</span>
+                      <span style={{ fontSize: 12, color: "#7a7a7a" }}>
+                        #{item.id}
+                      </span>
                     </Stack>
                   </TableCell>
-                  <TableCell><TypeChip tipo={item.tipo} /></TableCell>
-                  <TableCell>{dayjs(item.fecha).format("DD [de] MMMM YYYY")}</TableCell>
-                  <TableCell align="right">{fmt.format(Number(item.monto) || 0)}</TableCell>
-                  <TableCell><StatusChip facturado={item.facturado} facturado_pg={item.facturado_pg} /></TableCell>
+                  <TableCell>
+                    <TypeChip tipo={item.tipo} />
+                  </TableCell>
+                  <TableCell>
+                    {dayjs(item.fecha).format("DD [de] MMMM YYYY")}
+                  </TableCell>
+                  <TableCell align="right">
+                    {fmt.format(Number(item.monto) || 0)}
+                  </TableCell>
+                  <TableCell>
+                    <StatusChip
+                      facturado={item.facturado}
+                      facturado_pg={item.facturado_pg}
+                    />
+                  </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
                       {pdf ? (
                         <Tooltip title="Ver PDF">
-                          <Link component="button" onClick={() => handleOpenPDF(item)}>
+                          <Link
+                            component="button"
+                            onClick={() => handleOpenPDF(item)}
+                          >
                             PDF
                           </Link>
                         </Tooltip>
@@ -183,7 +270,10 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
                       <span style={{ color: "#bbb" }}>|</span>
                       {xml ? (
                         <Tooltip title="Ver XML">
-                          <Link component="button" onClick={() => handleOpenXML(item)}>
+                          <Link
+                            component="button"
+                            onClick={() => handleOpenXML(item)}
+                          >
                             XML
                           </Link>
                         </Tooltip>
