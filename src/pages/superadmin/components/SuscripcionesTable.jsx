@@ -70,8 +70,8 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
   // Modales
   const [openPDF, setOpenPDF] = useState(false);
   const [openXML, setOpenXML] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState("");
-  const [xmlUrl, setXmlUrl] = useState("");
+  const [pdfUrl, setPdfUrl] = useState(""); // aquí guardamos el folio_factura
+  const [xmlUrl, setXmlUrl] = useState(""); // aquí guardamos el folio_factura
   const [tituloPDF, setTituloPDF] = useState("");
   const [tituloXML, setTituloXML] = useState("");
 
@@ -111,6 +111,7 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
       );
     }
   };
+
   const toggleOne = (id) => {
     setSeleccion((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -119,56 +120,52 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
 
   /**
    * Helpers para PDF/XML:
-   * - Si tiene url directa (propia o de PG), usarla.
-   * - Si NO tiene url pero SÍ tiene folio, usar el controlador.
-   *
-   * Ajusta "folio_factura" al nombre real de tu campo de folio en el row
-   * y las rutas /admin/subscriptions/... a tus rutas reales.
+   * - Solo mostramos botones si EXISTE folio_factura.
+   * - El valor que se regresa es el folio (facturaId para TAE).
    */
-  const getPDFUrl = (item) => {
-    if (item.pdf_url || item.pg_pdf_url) {
-      return item.pdf_url || item.pg_pdf_url;
-    }
-    // Si no hay PDF guardado pero sí folio, usar el controlador
-    if (item.folio_factura || item.folio) {
-      const id = item.id;
-      // 🔴 AJUSTA ESTA RUTA SEGÚN TUS ROUTES DE LARAVEL
-      return `/admin/subscriptions/${id}/factura/pdf`;
-    }
-    return "";
-  };
+const getPDFKey = (item) => {
+  const folio =
+    item.folio_factura ??
+    item.folio_facturado ??
+    item.folio ??
+    "";
 
-  const getXMLUrl = (item) => {
-    if (item.xml_url || item.pg_xml_url) {
-      return item.xml_url || item.pg_xml_url;
-    }
-    if (item.folio_factura || item.folio) {
-      const id = item.id;
-      // 🔴 AJUSTA ESTA RUTA SEGÚN TUS ROUTES DE LARAVEL
-      return `/admin/subscriptions/${id}/factura/xml`;
-    }
-    return "";
-  };
+  return folio ? String(folio).trim() : "";
+};
 
-  const handleOpenPDF = (item) => {
-    const url = getPDFUrl(item);
-    if (!url) return;
-    setPdfUrl(url);
-    setTituloPDF(
-      `PDF • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
-    );
-    setOpenPDF(true);
-  };
+const getXMLKey = (item) => {
+  const folio =
+    item.folio_factura ??
+    item.folio_facturado ??
+    item.folio ??
+    "";
 
-  const handleOpenXML = (item) => {
-    const url = getXMLUrl(item);
-    if (!url) return;
-    setXmlUrl(url);
-    setTituloXML(
-      `XML • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
-    );
-    setOpenXML(true);
-  };
+  return folio ? String(folio).trim() : "";
+};
+
+const handleOpenPDF = (item) => {
+  const folio = getPDFKey(item);
+  if (!folio) return;
+
+  setPdfUrl(folio);
+  setTituloPDF(
+    `PDF • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
+  );
+  setOpenPDF(true);
+};
+
+const handleOpenXML = (item) => {
+  const folio = getXMLKey(item);
+  if (!folio) return;
+
+  setXmlUrl(folio);
+  setTituloXML(
+    `XML • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
+  );
+  setOpenXML(true);
+};
+
+
 
   return (
     <>
@@ -218,8 +215,8 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
 
           <TableBody>
             {pageRows.map((item, idx) => {
-              const pdf = getPDFUrl(item);
-              const xml = getXMLUrl(item);
+              const pdfKey = getPDFKey(item);
+              const xmlKey = getXMLKey(item);
 
               return (
                 <TableRow key={item.id} hover>
@@ -255,7 +252,7 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
-                      {pdf ? (
+                      {pdfKey ? (
                         <Tooltip title="Ver PDF">
                           <Link
                             component="button"
@@ -268,7 +265,7 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
                         <span style={{ color: "#bbb" }}>—</span>
                       )}
                       <span style={{ color: "#bbb" }}>|</span>
-                      {xml ? (
+                      {xmlKey ? (
                         <Tooltip title="Ver XML">
                           <Link
                             component="button"
@@ -307,14 +304,14 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
       <ModalPDF
         open={openPDF}
         onClose={() => setOpenPDF(false)}
-        pdfUrl={pdfUrl}
+        pdfUrl={pdfUrl} // folio_factura
         titulo={tituloPDF}
         fileName={tituloPDF.replaceAll(" ", "_") + ".pdf"}
       />
       <ModalXML
         open={openXML}
         onClose={() => setOpenXML(false)}
-        downloadUrl={xmlUrl}
+        downloadUrl={xmlUrl} // folio_factura
         titulo={tituloXML}
         fileName={tituloXML.replaceAll(" ", "_") + ".xml"}
       />
