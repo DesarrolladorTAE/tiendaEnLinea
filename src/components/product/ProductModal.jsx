@@ -146,14 +146,27 @@ export default function ProductModal({
       <Box sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1.5 }}>
         <Stack direction="row" alignItems="flex-start" spacing={2}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              variant="h6"
-              sx={{ color: PALETTE.txt, fontWeight: 900, letterSpacing: ".2px" }}
-              noWrap
-              title={product?.name}
-            >
-              {product?.name}
-            </Typography>
+<Typography
+  variant="h6"
+  sx={{
+    color: PALETTE.txt,
+    fontWeight: 900,
+    letterSpacing: ".2px",
+    overflow: "hidden",
+    whiteSpace: {
+      xs: "normal",  // móvil: permite varias líneas
+      sm: "nowrap"   // desktop/tablet: una sola línea
+    },
+    textOverflow: {
+      xs: "clip",    // móvil: sin "..."
+      sm: "ellipsis" // desktop: con "..."
+    }
+  }}
+  title={product?.name}
+>
+  {product?.name}
+</Typography>
+
 
             <Stack direction="row" spacing={1.25} alignItems="center" sx={{ mt: 0.5, flexWrap: "wrap" }}>
               {product?.rating > 0 ? (

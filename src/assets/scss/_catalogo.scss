@@ -220,6 +220,69 @@
 
 /* Grid Spacing */
 .col-xl-4 .neo-card, .col-sm-6 .neo-card{ margin-bottom: 24px; }
+.col-6 .neo-card,
+.col-sm-6 .neo-card,
+.col-xl-4 .neo-card {
+  margin-bottom: 24px;
+}
+/* ====== AJUSTES DE BADGES + BOTONES EN MÓVIL ====== */
+@media (max-width: 575.98px) {
+
+  /* Badges más pequeños y menos invasivos */
+  .neo-badges{
+    top: 6px;
+    left: 6px;
+    gap: 4px;
+  }
+
+  .neo-badges span{
+    padding: 3px 7px;
+    font-size: 10px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.45);
+  }
+
+  /* Las acciones YA NO flotan sobre la imagen */
+  .neo-media{
+    padding-bottom: 8px; /* un respiro antes de las acciones */
+  }
+
+  .neo-actions{
+    position: static;          /* sale del overlay */
+    bottom: auto;
+    right: auto;
+    transform: none !important;
+    opacity: 1 !important;
+    margin: 6px 8px 0;
+    width: calc(100% - 16px);
+    justify-content: space-between;
+  }
+
+  /* Botones más compactos y “de barra” */
+  .neo-actions .btn-glow{
+    flex: 1;
+    justify-content: center;
+    padding: 6px 4px;
+    font-size: 11px;
+    border-radius: 10px;
+    box-shadow: 0 8px 18px rgba(118,224,255,0.28),
+                inset 0 0 0 1px rgba(0,0,0,0.06);
+  }
+
+  .neo-actions .btn-glow + .btn-glow{
+    margin-left: 6px;
+  }
+
+  /* Si usas iconos dentro, que no se coman todo el espacio */
+  .neo-actions .btn-glow i{
+    font-size: 13px;
+  }
+
+  /* Un poco menos de altura total de la card para que el grid se vea ligero */
+  .neo-card{
+    border-radius: 14px;
+  }
+}
+
 
 /* ================================
    NEO CARD — COMPACT VARIANT
