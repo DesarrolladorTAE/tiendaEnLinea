@@ -70,8 +70,8 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
   // Modales
   const [openPDF, setOpenPDF] = useState(false);
   const [openXML, setOpenXML] = useState(false);
-  const [pdfUrl, setPdfUrl] = useState(""); // aquí guardamos el folio_factura
-  const [xmlUrl, setXmlUrl] = useState(""); // aquí guardamos el folio_factura
+  const [pdfUrl, setPdfUrl] = useState(""); // URL endpoint
+  const [xmlUrl, setXmlUrl] = useState(""); // URL endpoint
   const [tituloPDF, setTituloPDF] = useState("");
   const [tituloXML, setTituloXML] = useState("");
 
@@ -90,25 +90,25 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
   );
 
   const allVisibleIds = useMemo(() => pageRows.map((r) => r.id), [pageRows]);
+
   const allVisibleChecked = useMemo(
     () =>
       allVisibleIds.every((id) => seleccion.includes(id)) &&
       allVisibleIds.length > 0,
     [allVisibleIds, seleccion]
   );
+
   const someVisibleChecked = useMemo(
     () =>
       allVisibleIds.some((id) => seleccion.includes(id)) && !allVisibleChecked,
-    [allVisibleIds, seleccion]
+    [allVisibleIds, seleccion, allVisibleChecked]
   );
 
   const toggleAllVisible = () => {
     if (allVisibleChecked) {
       setSeleccion((prev) => prev.filter((id) => !allVisibleIds.includes(id)));
     } else {
-      setSeleccion((prev) =>
-        Array.from(new Set([...prev, ...allVisibleIds]))
-      );
+      setSeleccion((prev) => Array.from(new Set([...prev, ...allVisibleIds])));
     }
   };
 
@@ -119,53 +119,38 @@ export default function SuscripcionesTable({ rows, seleccion, setSeleccion }) {
   };
 
   /**
-   * Helpers para PDF/XML:
-   * - Solo mostramos botones si EXISTE folio_factura.
-   * - El valor que se regresa es el folio (facturaId para TAE).
+   * Solo para mostrar/ocultar botones (si existe folio_factura).
+   * El endpoint real usa subscription id.
    */
-const getPDFKey = (item) => {
-  const folio =
-    item.folio_factura ??
-    item.folio_facturado ??
-    item.folio ??
-    "";
+  const getPDFKey = (item) => {
+    const folio = item.folio_factura ?? item.folio_facturado ?? item.folio ?? "";
+    return folio ? String(folio).trim() : "";
+  };
 
-  return folio ? String(folio).trim() : "";
-};
+  const getXMLKey = (item) => {
+    const folio = item.folio_factura ?? item.folio_facturado ?? item.folio ?? "";
+    return folio ? String(folio).trim() : "";
+  };
 
-const getXMLKey = (item) => {
-  const folio =
-    item.folio_factura ??
-    item.folio_facturado ??
-    item.folio ??
-    "";
+  const handleOpenPDF = (item) => {
+    if (!item?.id) return;
 
-  return folio ? String(folio).trim() : "";
-};
+    const url = `https://mitiendaenlineamx.com.mx/api/subscriptions/${item.id}/pdf`;
 
-const handleOpenPDF = (item) => {
-  const folio = getPDFKey(item);
-  if (!folio) return;
+    setPdfUrl(url);
+    setTituloPDF(`PDF • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`);
+    setOpenPDF(true);
+  };
 
-  setPdfUrl(folio);
-  setTituloPDF(
-    `PDF • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
-  );
-  setOpenPDF(true);
-};
+  const handleOpenXML = (item) => {
+    if (!item?.id) return;
 
-const handleOpenXML = (item) => {
-  const folio = getXMLKey(item);
-  if (!folio) return;
+    const url = `https://mitiendaenlineamx.com.mx/api/subscriptions/${item.id}/xml`;
 
-  setXmlUrl(folio);
-  setTituloXML(
-    `XML • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`
-  );
-  setOpenXML(true);
-};
-
-
+    setXmlUrl(url);
+    setTituloXML(`XML • ${item.tienda} • ${dayjs(item.fecha).format("DD/MM/YYYY")}`);
+    setOpenXML(true);
+  };
 
   return (
     <>
@@ -226,51 +211,49 @@ const handleOpenXML = (item) => {
                       onChange={() => toggleOne(item.id)}
                     />
                   </TableCell>
+
                   <TableCell>{page * rowsPerPage + idx + 1}</TableCell>
+
                   <TableCell>
                     <Stack direction="column" spacing={0}>
                       <span style={{ fontWeight: 600 }}>{item.tienda}</span>
-                      <span style={{ fontSize: 12, color: "#7a7a7a" }}>
-                        #{item.id}
-                      </span>
+                      <span style={{ fontSize: 12, color: "#7a7a7a" }}>#{item.id}</span>
                     </Stack>
                   </TableCell>
+
                   <TableCell>
                     <TypeChip tipo={item.tipo} />
                   </TableCell>
+
                   <TableCell>
                     {dayjs(item.fecha).format("DD [de] MMMM YYYY")}
                   </TableCell>
+
                   <TableCell align="right">
                     {fmt.format(Number(item.monto) || 0)}
                   </TableCell>
+
                   <TableCell>
-                    <StatusChip
-                      facturado={item.facturado}
-                      facturado_pg={item.facturado_pg}
-                    />
+                    <StatusChip facturado={item.facturado} facturado_pg={item.facturado_pg} />
                   </TableCell>
+
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} justifyContent="center">
                       {pdfKey ? (
                         <Tooltip title="Ver PDF">
-                          <Link
-                            component="button"
-                            onClick={() => handleOpenPDF(item)}
-                          >
+                          <Link component="button" onClick={() => handleOpenPDF(item)}>
                             PDF
                           </Link>
                         </Tooltip>
                       ) : (
                         <span style={{ color: "#bbb" }}>—</span>
                       )}
+
                       <span style={{ color: "#bbb" }}>|</span>
+
                       {xmlKey ? (
                         <Tooltip title="Ver XML">
-                          <Link
-                            component="button"
-                            onClick={() => handleOpenXML(item)}
-                          >
+                          <Link component="button" onClick={() => handleOpenXML(item)}>
                             XML
                           </Link>
                         </Tooltip>
@@ -304,14 +287,15 @@ const handleOpenXML = (item) => {
       <ModalPDF
         open={openPDF}
         onClose={() => setOpenPDF(false)}
-        pdfUrl={pdfUrl} // folio_factura
+        pdfUrl={pdfUrl}
         titulo={tituloPDF}
         fileName={tituloPDF.replaceAll(" ", "_") + ".pdf"}
       />
+
       <ModalXML
         open={openXML}
         onClose={() => setOpenXML(false)}
-        downloadUrl={xmlUrl} // folio_factura
+        xmlUrl={xmlUrl} // ✅ URL endpoint
         titulo={tituloXML}
         fileName={tituloXML.replaceAll(" ", "_") + ".xml"}
       />
