@@ -140,24 +140,14 @@ const Catalogo = () => {
       setOffset(0);
       return;
     }
-    if (type === "category") {
-      // value puede ser id o objeto {id,name}
-      let cat = normCatObj(value);
+   if (type === "category") {
+  // value YA VIENE como {id,name,type} desde ShopTopAction
+  setSelectedCategory(value || null);
+  setCurrentPage(1);
+  setOffset(0);
+  return;
+}
 
-      // Si vino id/slug, trata de obtener el objeto completo de la lista categories
-      if (cat && (typeof value === "string" || typeof value === "number")) {
-        const match = (categories || []).find((c) => {
-          const cid = c?.id ?? c?.value ?? c?.slug ?? c?.name;
-          return String(cid) === String(value);
-        });
-        if (match) cat = normCatObj(match);
-      }
-
-      setSelectedCategory(cat); // null limpia
-      setCurrentPage(1);
-      setOffset(0);
-      return;
-    }
 
     // Si más adelante agregas: rango de precio, sort, etc., manéjalo aquí.
   };
@@ -174,15 +164,30 @@ const Catalogo = () => {
     }
 
     // Filtro por categoría (match por id o name/slug)
-    if (selectedCategory) {
-      const wantId = String(selectedCategory.id).toLowerCase();
-      const wantName = String(selectedCategory.name ?? selectedCategory.id).toLowerCase();
+  if (selectedCategory) {
+  // si es padre: filtra por hijas
+  if (selectedCategory.type === "parent") {
+    const kids = (categories || []).filter(
+      (c) => Number(c.parent_id) === Number(selectedCategory.id)
+    );
+    const kidIds = new Set(kids.map((k) => String(k.id).toLowerCase()));
 
-      base = base.filter((p) => {
-        const tokens = getProductCategoryTokensFromProduct(p); // ['zapatos','hombre','123']
-        return tokens.includes(wantId) || tokens.includes(wantName);
-      });
-    }
+    base = base.filter((p) => {
+      const tokens = getProductCategoryTokensFromProduct(p);
+      return tokens.some((t) => kidIds.has(String(t).toLowerCase()));
+    });
+  } else {
+    // hija o suelta normal
+    const wantId = String(selectedCategory.id).toLowerCase();
+    const wantName = String(selectedCategory.name ?? selectedCategory.id).toLowerCase();
+
+    base = base.filter((p) => {
+      const tokens = getProductCategoryTokensFromProduct(p);
+      return tokens.includes(wantId) || tokens.includes(wantName);
+    });
+  }
+}
+
 
     // Ordenamiento opcional:
     // base = getSortedProducts(base, sortType, sortValue);

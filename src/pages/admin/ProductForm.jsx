@@ -54,7 +54,7 @@ function ProductForm() {
     },
   });
 
-  const [categoriesOptions, setCategoriesOptions] = useState([]);
+  // const [categoriesOptions, setCategoriesOptions] = useState([]);
   const discount = watch("discount");
   const variations = watch("variations") || [];
   const hasVariations = variations.length > 0;
@@ -94,6 +94,73 @@ function ProductForm() {
   const [ivaOriginal, setIvaOriginal] = useState(null);
   const [initialPrice, setInitialPrice] = useState(null);
   const [initialBasePrice, setInitialBasePrice] = useState(null);
+  const [categoriesOptions, setCategoriesOptions] = useState([]);
+const [childrenByParent, setChildrenByParent] = useState(new Map());
+
+const buildCategoryOptionsWithMap = (flat) => {
+  const parents = flat.filter((c) => c.parent_id == null);
+  const byParent = new Map();
+
+  flat.forEach((c) => {
+    if (c.parent_id != null) {
+      const arr = byParent.get(c.parent_id) ?? [];
+      arr.push(c);
+      byParent.set(c.parent_id, arr);
+    }
+  });
+
+  // Guardamos el map para expandir en submit
+  setChildrenByParent(byParent);
+
+  // Construimos options para el select
+  const options = [];
+
+  parents
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+    .forEach((p) => {
+      const kids = (byParent.get(p.id) ?? []).sort((a, b) =>
+        String(a.name).localeCompare(String(b.name))
+      );
+
+      if (kids.length) {
+        // PADRE seleccionable ✅
+        options.push({
+          value: p.id,
+          label: `🗂️ ${p.name} (guardar todas sus hijas)`,
+          meta: { type: "parent" },
+        });
+
+        // HIJAS
+        kids.forEach((k) => {
+          options.push({
+            value: k.id,
+            label: `   ↳ 👶 ${k.name}`,
+            meta: { type: "child", parent_id: p.id },
+          });
+        });
+      } else {
+        // SUELTA
+        options.push({
+          value: p.id,
+          label: `📄 ${p.name}`,
+          meta: { type: "single" },
+        });
+      }
+    });
+
+  setCategoriesOptions(options);
+};
+
+const fetchOptions = async () => {
+  try {
+    const catRes = await axiosClient.get("/admin/categories");
+    const cats = catRes.data.categories ?? catRes.data ?? [];
+    buildCategoryOptionsWithMap(cats);
+  } catch (error) {
+    console.error("Error cargando categorías:", error);
+  }
+};
+
 
   // ---------- INIT ----------
 
@@ -106,19 +173,25 @@ function ProductForm() {
     initializeForm();
   }, [id]);
 
-  const fetchOptions = async () => {
-    try {
-      const [catRes] = await Promise.all([
-        axiosClient.get("/admin/categories"),
-      ]);
+  // const fetchOptions = async () => {
+  //   try {
+  //     const [catRes] = await Promise.all([
+  //       axiosClient.get("/admin/categories"),
+  //     ]);
 
-      setCategoriesOptions(
-        catRes.data.map((c) => ({ value: c.id, label: c.name }))
-      );
-    } catch (error) {
-      console.error("Error cargando categorías:", error);
-    }
-  };
+  //     setCategoriesOptions(
+  //       catRes.data.map((c) => ({ value: c.id, label: c.name }))
+  //     );
+  //   } catch (error) {
+  //     console.error("Error cargando categorías:", error);
+  //   }
+  // };
+const mapSelectedCats = (catsFromApi) => {
+  return catsFromApi.map((c) => {
+    const found = categoriesOptions.find((o) => Number(o.value) === Number(c.id));
+    return found ?? { value: c.id, label: c.name };
+  });
+};
 
   const fetchProduct = async (productId) => {
     try {
@@ -157,10 +230,8 @@ function ProductForm() {
         fullDescription: product.fullDescription || "",
         iva: product.iva !== null ? product.iva.toString() : "null",
         offerEnd,
-        category: product.categories.map((c) => ({
-          value: c.id,
-          label: c.name,
-        })),
+        category: mapSelectedCats(product.categories),
+
         tags: product.tags.map((t) => ({ value: t.id, label: t.name })),
         variations:
           product.variation?.map((v) => ({
@@ -243,6 +314,27 @@ function ProductForm() {
   };
 
   // ---------- SUBMIT ----------
+  const expandSelectedCategories = (selected) => {
+  // selected = [{value,label}, ...]
+  const ids = (selected || []).map((x) => Number(x.value)).filter(Boolean);
+
+  const final = new Set();
+
+  for (const id of ids) {
+    const kids = childrenByParent.get(id);
+
+    if (kids && kids.length) {
+      // si es padre, agregamos hijas
+      kids.forEach((k) => final.add(Number(k.id)));
+    } else {
+      // suelta o hija
+      final.add(id);
+    }
+  }
+
+  return Array.from(final);
+};
+
 
   const onSubmit = async (data) => {
     setMessage("");
@@ -320,11 +412,11 @@ function ProductForm() {
         formData.append("offerEnd", formattedOfferEnd);
       }
 
-      if (data.category?.length) {
-        data.category.forEach((cat) => {
-          formData.append("category[]", cat.value);
-        });
-      }
+     if (data.category?.length) {
+  const expandedIds = expandSelectedCategories(data.category);
+  expandedIds.forEach((id) => formData.append("category[]", String(id)));
+}
+
 
       if (data.tags?.length) {
         data.tags.forEach((tag) => formData.append("tag[]", tag.value));

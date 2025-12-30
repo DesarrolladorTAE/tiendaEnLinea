@@ -22,11 +22,15 @@ import CircularProgress from "@mui/material/CircularProgress";
 export default function ReporteTipoVentas() {
   const [fechaInicio, setFechaInicio] = useState(dayjs().format("YYYY-MM-DD"));
   const [fechaFin, setFechaFin] = useState(dayjs().format("YYYY-MM-DD"));
+
   const [sucursales, setSucursales] = useState([]);
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState(""); // "" = todas
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState(""); // "" | number
+
   const [tipoPago, setTipoPago] = useState("todos");
+
   const [categorias, setCategorias] = useState([]);
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas"); // "todas" = todas
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas"); // "todas" | number
+
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +40,7 @@ export default function ReporteTipoVentas() {
   useEffect(() => {
     axiosClient
       .get("/admin/pos")
-      .then(({ data }) => setSucursales(data || []))
+      .then(({ data }) => setSucursales(Array.isArray(data) ? data : []))
       .catch((err) => console.error("❌ Error al cargar sucursales", err));
   }, []);
 
@@ -44,7 +48,7 @@ export default function ReporteTipoVentas() {
   useEffect(() => {
     axiosClient
       .get("/admin/categories")
-      .then(({ data }) => setCategorias(data || []))
+      .then(({ data }) => setCategorias(Array.isArray(data) ? data : []))
       .catch((err) => console.error("❌ Error al cargar categorías", err));
   }, []);
 
@@ -67,9 +71,26 @@ export default function ReporteTipoVentas() {
     return true;
   };
 
+  const buildParams = () => ({
+    inicio: fechaInicio,
+    fin: fechaFin,
+    pos:
+      sucursalSeleccionada === "" || sucursalSeleccionada == null
+        ? null
+        : Number(sucursalSeleccionada),
+    tipo_pago: tipoPago,
+    categoria:
+      categoriaSeleccionada === "todas" || categoriaSeleccionada == null
+        ? "todas"
+        : Number(categoriaSeleccionada),
+  });
+
   const consultarVentas = async () => {
     if (!validarFechas()) return;
+
     setLoading(true);
+
+    // Limpia PDF anterior
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
       setPdfUrl(null);
@@ -86,27 +107,16 @@ export default function ReporteTipoVentas() {
       const response = await axios.get(
         "https://mitiendaenlineamx.com.mx/api/reporte/ventas-por-pago",
         {
-          params: {
-            inicio: fechaInicio,
-            fin: fechaFin,
-            pos: sucursalSeleccionada === "" ? null : Number(sucursalSeleccionada),
-            tipo_pago: tipoPago,
-            categoria:
-              !categoriaSeleccionada || categoriaSeleccionada === "todas"
-                ? "todas"
-                : Number(categoriaSeleccionada),
-          },
+          params: buildParams(),
           responseType: "blob",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
-      if (typeof showSuccess === "function") showSuccess("Reporte generado.");
+      showSuccess?.("Reporte generado.");
     } catch (error) {
       let mensaje = "Error al generar el reporte";
       if (error.response?.data && error.response.data instanceof Blob) {
@@ -125,6 +135,7 @@ export default function ReporteTipoVentas() {
 
   const generarExcel = async () => {
     if (!validarFechas()) return;
+
     setLoading(true);
 
     const token = localStorage.getItem("AUTH_TOKEN");
@@ -138,27 +149,16 @@ export default function ReporteTipoVentas() {
       const response = await axios.get(
         "https://mitiendaenlineamx.com.mx/api/reporte/ventas/excel",
         {
-          params: {
-            inicio: fechaInicio,
-            fin: fechaFin,
-            pos: sucursalSeleccionada === "" ? null : Number(sucursalSeleccionada),
-            tipo_pago: tipoPago,
-            categoria:
-              !categoriaSeleccionada || categoriaSeleccionada === "todas"
-                ? "todas"
-                : Number(categoriaSeleccionada),
-          },
+          params: buildParams(),
           responseType: "blob",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
-      // Descargar Excel
       const blob = new Blob([response.data], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
+
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -169,7 +169,9 @@ export default function ReporteTipoVentas() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      if (typeof showSuccess === "function") showSuccess("Excel exportado.");
+      window.URL.revokeObjectURL(url);
+
+      showSuccess?.("Excel exportado.");
     } catch (error) {
       let mensaje = "Error al generar el Excel";
       if (error.response?.data && error.response.data instanceof Blob) {
@@ -197,7 +199,7 @@ export default function ReporteTipoVentas() {
       </Button>
 
       <Typography variant="h5" gutterBottom>
-        📄 Reporte de Ventas por Tipo de Pago
+        Reporte de Ventas por Tipo de Pago
       </Typography>
 
       <Box
@@ -255,20 +257,22 @@ export default function ReporteTipoVentas() {
               <Select
                 labelId="sucursal-label"
                 label="Sucursal"
-                value={sucursalSeleccionada} // "" = todas
+                value={sucursalSeleccionada} // "" | number
                 displayEmpty
-                onChange={(e) =>
-                  setSucursalSeleccionada(
-                    e.target.value === "" ? "" : Number(e.target.value)
-                  )
-                }
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSucursalSeleccionada(v === "" ? "" : Number(v));
+                }}
                 renderValue={(selected) => {
                   if (selected === "" || selected == null)
                     return "Todas las sucursales";
-                  const suc = (sucursales || []).find((x) => x.id === selected);
+                  const selId = Number(selected);
+                  const suc = (sucursales || []).find(
+                    (x) => Number(x.id) === selId
+                  );
                   return suc
-                    ? suc.name ?? suc.nombre ?? `Sucursal #${selected}`
-                    : `Sucursal #${selected}`;
+                    ? suc.name ?? suc.nombre ?? `Sucursal #${selId}`
+                    : `Sucursal #${selId}`;
                 }}
               >
                 <MenuItem value="">
@@ -290,14 +294,20 @@ export default function ReporteTipoVentas() {
               <Select
                 labelId="categoria-label"
                 label="Categoría"
-                value={categoriaSeleccionada} // "todas" = todas
+                value={categoriaSeleccionada} // "todas" | number
                 displayEmpty
-                onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setCategoriaSeleccionada(v === "todas" ? "todas" : Number(v));
+                }}
                 renderValue={(selected) => {
                   if (selected === "todas" || selected == null)
                     return "Todas las categorías";
-                  const cat = (categorias || []).find((c) => c.id === selected);
-                  return cat ? cat.name : `Categoría #${selected}`;
+                  const selId = Number(selected);
+                  const cat = (categorias || []).find(
+                    (c) => Number(c.id) === selId
+                  );
+                  return cat ? cat.name : `Categoría #${selId}`;
                 }}
               >
                 <MenuItem value="todas">

@@ -14,7 +14,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  IconButton
+  IconButton,
+  Alert
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -37,7 +38,6 @@ const PALETTE = {
   muted: "rgba(255,255,255,0.62)",
   accent: "#7C4DFF",
   accentSoft: "rgba(124,77,255,0.12)",
-  glow: "0 10px 38px rgba(124,77,255,0.35)",
   cyan: "#76E0FF",
   cyanSoft: "rgba(118,224,255,0.10)",
   pink: "#FF5EA6",
@@ -52,34 +52,55 @@ const ShopTopAction = ({
   loadingCats = false
 }) => {
   const [searchTerm, setSearchTerm] = React.useState("");
-  const [activeCat, setActiveCat] = React.useState(null);
+  const [activeCat, setActiveCat] = React.useState(null); 
+  // activeCat: {id,name,type:'parent'|'child'|'single'} o null
 
-  // Mostrar todas: Collapse (<=50) o Dialog (>50)
+  // Mostrar todas: Collapse (<=20) o Dialog (>20)
   const [showAll, setShowAll] = React.useState(false);
   const [openAllDialog, setOpenAllDialog] = React.useState(false);
   const [allFilter, setAllFilter] = React.useState("");
 
   const manyCats = !loadingCats && categories.length > 20;
 
-  const sample = React.useMemo(() => {
-    if (!categories || categories.length === 0) return [];
-    return pickRandom(categories, 5);
+  /** ===== Armar árbol desde flat: parents + children + singles ===== */
+  const { treeParents, singles, allFlat } = React.useMemo(() => {
+    const list = Array.isArray(categories) ? categories : [];
+
+    const parents = list.filter((c) => c?.parent_id == null);
+    const childrenByParent = new Map();
+
+    list.forEach((c) => {
+      if (c?.parent_id != null) {
+        const arr = childrenByParent.get(c.parent_id) ?? [];
+        arr.push(c);
+        childrenByParent.set(c.parent_id, arr);
+      }
+    });
+
+    const tree = parents
+      .map((p) => ({
+        ...p,
+        children: (childrenByParent.get(p.id) ?? []).sort((a, b) =>
+          String(a.name).localeCompare(String(b.name))
+        )
+      }))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+    const parentsWithKids = tree.filter((p) => (p.children?.length ?? 0) > 0);
+    const singlesOnly = tree.filter((p) => (p.children?.length ?? 0) === 0);
+
+    return { treeParents: parentsWithKids, singles: singlesOnly, allFlat: list };
   }, [categories]);
+
+  /** ===== Sugerencias: mezcla de padres/hijas/sueltas ===== */
+  const sample = React.useMemo(() => {
+    if (!allFlat || allFlat.length === 0) return [];
+    return pickRandom(allFlat, 6);
+  }, [allFlat]);
 
   const onSearch = (val) => {
     setSearchTerm(val);
     getFilterSortParams("searchQuery", val);
-  };
-
-  const selectCat = (cat) => {
-    // Si clic en la misma -> deselecciona
-    if (activeCat?.id === cat?.id) {
-      setActiveCat(null);
-      getFilterSortParams("category", null);
-    } else {
-      setActiveCat(cat);
-      getFilterSortParams("category", cat?.id ?? cat); // por si vienen como string
-    }
   };
 
   const clearCategory = () => {
@@ -87,22 +108,112 @@ const ShopTopAction = ({
     getFilterSortParams("category", null);
   };
 
+  /** Seleccionar: padre/hija/suelta */
+  const selectCategory = (payload) => {
+    // payload: {id,name,type}
+    if (activeCat?.id === payload?.id && activeCat?.type === payload?.type) {
+      clearCategory();
+      return;
+    }
+    setActiveCat(payload);
+    // 🔥 aquí mandamos el objeto completo, no solo id
+    getFilterSortParams("category", payload);
+  };
+
+  /** “Ver todas” */
+  const toggleSeeAll = () => {
+    if (manyCats) setOpenAllDialog(true);
+    else setShowAll((s) => !s);
+  };
+
+  /** Filtrado del dialog "todas" */
   const filteredAllCats = React.useMemo(() => {
     const q = allFilter.trim().toLowerCase();
-    if (!q) return categories;
-    return categories.filter((c) =>
-      String(c?.name ?? c?.label ?? c?.slug ?? c?.id)
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [allFilter, categories]);
+    if (!q) return allFlat;
 
-  const toggleSeeAll = () => {
-    if (manyCats) {
-      setOpenAllDialog(true);
-    } else {
-      setShowAll((s) => !s);
+    return allFlat.filter((c) =>
+      String(c?.name ?? c?.id).toLowerCase().includes(q)
+    );
+  }, [allFilter, allFlat]);
+
+  /** Helper: detectar tipo por parent_id para el dialog */
+  const detectType = React.useCallback(
+    (c) => {
+      if (c?.parent_id != null) return "child";
+      // es parent_id null: puede ser padre o suelta. Si está en treeParents => padre.
+      const isParent = treeParents.some((p) => p.id === c.id);
+      return isParent ? "parent" : "single";
+    },
+    [treeParents]
+  );
+
+  /** ===== Estilos por tipo (sin iconos) ===== */
+  const chipStyleByType = (type, active) => {
+    // padre: sólido, grande; hija: punteado, compacto; suelta: neutro
+    if (type === "parent") {
+      return {
+        height: 36,
+        fontWeight: 900,
+        borderRadius: 2,
+        border: `1px solid ${active ? PALETTE.cyan : "rgba(255,255,255,0.18)"}`,
+        bgcolor: active ? "rgba(118,224,255,0.14)" : "rgba(255,255,255,0.06)",
+        color: active ? PALETTE.cyan : PALETTE.txt
+      };
     }
+    if (type === "child") {
+      return {
+        height: 30,
+        fontWeight: 800,
+        borderRadius: 999,
+        border: `1px dashed ${
+          active ? PALETTE.accent : "rgba(255,255,255,0.18)"
+        }`,
+        bgcolor: active ? PALETTE.accentSoft : "rgba(255,255,255,0.04)",
+        color: active ? "#fff" : PALETTE.txt
+      };
+    }
+    // single
+    return {
+      height: 32,
+      fontWeight: 800,
+      borderRadius: 999,
+      border: `1px solid ${active ? PALETTE.pink : "rgba(255,255,255,0.14)"}`,
+      bgcolor: active ? PALETTE.pinkSoft : "rgba(255,255,255,0.04)",
+      color: active ? PALETTE.pink : PALETTE.txt
+    };
+  };
+
+  const TypePill = ({ label, type }) => {
+    const bg =
+      type === "parent"
+        ? "rgba(118,224,255,0.10)"
+        : type === "child"
+        ? "rgba(124,77,255,0.10)"
+        : "rgba(255,94,166,0.10)";
+
+    const br =
+      type === "parent"
+        ? `1px solid rgba(118,224,255,0.35)`
+        : type === "child"
+        ? `1px dashed rgba(124,77,255,0.35)`
+        : `1px solid rgba(255,94,166,0.35)`;
+
+    return (
+      <Box
+        sx={{
+          px: 1,
+          py: 0.4,
+          borderRadius: 999,
+          bgcolor: bg,
+          border: br,
+          fontSize: 12,
+          fontWeight: 900,
+          color: PALETTE.txt
+        }}
+      >
+        {label}
+      </Box>
+    );
   };
 
   return (
@@ -122,21 +233,30 @@ const ShopTopAction = ({
         }}
       >
         {/* Encabezado */}
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 1.5 }}>
           <Typography
             variant="h6"
-            sx={{
-              fontWeight: 900,
-              letterSpacing: ".3px",
-              color: PALETTE.txt
-            }}
+            sx={{ fontWeight: 900, letterSpacing: ".3px", color: PALETTE.txt }}
           >
             Explorar productos
           </Typography>
           <Typography variant="body2" sx={{ color: PALETTE.muted }}>
-            Filtra por nombre o categoría para encontrar lo que necesitas.
+            Busca por nombre o filtra por categoría.
           </Typography>
         </Box>
+
+        {/* Leyenda sin iconos */}
+        <Stack
+          direction="row"
+          spacing={1}
+          useFlexGap
+          flexWrap="wrap"
+          sx={{ mb: 2 }}
+        >
+          <TypePill type="parent" label="Padre: agrupa hijas" />
+          <TypePill type="child" label="Hija: categoría específica" />
+          <TypePill type="single" label="Suelta: sin padre" />
+        </Stack>
 
         {/* Buscador */}
         <TextField
@@ -168,77 +288,70 @@ const ShopTopAction = ({
 
         <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
 
-        {/* Sugerencias + chip Todas */}
+        {/* Aviso cuando se elige PADRE */}
+        {activeCat?.type === "parent" && (
+          <Alert
+            severity="info"
+            sx={{
+              mb: 2,
+              borderRadius: 2,
+              bgcolor: "rgba(118,224,255,0.08)",
+              color: PALETTE.txt,
+              border: `1px solid ${PALETTE.stroke}`,
+              "& .MuiAlert-icon": { color: PALETTE.cyan }
+            }}
+          >
+            Seleccionaste un <b>Padre</b>. Se mostrarán productos de{" "}
+            <b>todas sus hijas</b>.
+          </Alert>
+        )}
+
+        {/* Sugerencias rápidas */}
         {!loadingCats && sample.length > 0 && (
-          <Box>
+          <Box sx={{ mb: 1.5 }}>
             <Typography
               variant="subtitle2"
-              sx={{ mb: 1, fontWeight: 800, color: PALETTE.muted }}
+              sx={{ mb: 1, fontWeight: 900, color: PALETTE.muted }}
             >
-              Sugerencias de categorías
+              Sugerencias
             </Typography>
 
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              {/* Chip TODAS (limpia filtro) */}
+              {/* Todas */}
               <Chip
-                label="TODAS"
+                label="Todas"
                 onClick={clearCategory}
-                variant="filled"
                 sx={{
-                  px: 1.25,
                   height: 34,
+                  borderRadius: 2,
                   fontWeight: 900,
-                  letterSpacing: ".2px",
-                  color: activeCat ? PALETTE.cyan : "#0B0E12",
-                  borderRadius: 999,
-                  border: `1px solid ${activeCat ? "rgba(255,255,255,.12)" : PALETTE.cyan}`,
                   bgcolor: activeCat ? "rgba(255,255,255,.06)" : "#fff",
-                  boxShadow: activeCat ? "none" : "0 14px 34px rgba(118,224,255,0.30)",
-                  cursor: "pointer",
-                  transition: "all .18s ease",
-                  "&:hover": {
-                    boxShadow: activeCat
-                      ? "0 0 18px rgba(118,224,255,.28)"
-                      : "0 20px 48px rgba(118,224,255,0.40)"
-                  }
+                  color: activeCat ? PALETTE.txt : "#0B0E12",
+                  border: `1px solid ${
+                    activeCat ? "rgba(255,255,255,.14)" : "rgba(255,255,255,.60)"
+                  }`
                 }}
               />
 
-              {sample.map((cat) => {
-                const active = activeCat?.id === cat.id;
+              {sample.map((c) => {
+                const type = detectType(c);
+                const payload = { id: c.id, name: c.name, type };
+                const active =
+                  activeCat?.id === payload.id && activeCat?.type === payload.type;
+
                 return (
                   <Chip
-                    key={cat.id}
-                    label={cat.name}
-                    onClick={() => selectCat(cat)}
-                    variant="filled"
-                    sx={{
-                      px: 1.25,
-                      height: 34,
-                      fontWeight: 800,
-                      letterSpacing: ".2px",
-                      color: active ? "#fff" : PALETTE.cyan,
-                      borderRadius: 999,
-                      border: `1px solid ${
-                        active ? PALETTE.accent : "rgba(255,255,255,.12)"
-                      }`,
-                      bgcolor: active ? PALETTE.accentSoft : "rgba(255,255,255,.06)",
-                      boxShadow: active ? PALETTE.glow : "none",
-                      cursor: "pointer",
-                      transition: "all .18s ease",
-                      "&:hover": {
-                        boxShadow: active
-                          ? "0 0 42px rgba(124,77,255,0.5)"
-                          : "0 0 18px rgba(118,224,255,0.28)"
-                      }
-                    }}
+                    key={`sample-${c.id}`}
+                    label={c.name}
+                    onClick={() => selectCategory(payload)}
+                    sx={chipStyleByType(type, active)}
                   />
                 );
               })}
             </Stack>
 
             {/* Botón Ver todas */}
-            {categories.length > sample.length && (
+            {allFlat.length > sample.length && (
               <Box sx={{ mt: 1.5, display: "flex", justifyContent: "flex-end" }}>
                 <Button
                   onClick={toggleSeeAll}
@@ -250,69 +363,142 @@ const ShopTopAction = ({
                     borderRadius: 2,
                     color: "#0B0E12",
                     bgcolor: "#fff",
-                    boxShadow: "0 14px 34px rgba(118,224,255,0.30)",
-                    "&:hover": {
-                      bgcolor: "#fff",
-                      boxShadow: "0 20px 48px rgba(118,224,255,0.40)"
-                    }
+                    "&:hover": { bgcolor: "#fff" }
                   }}
                 >
                   {manyCats
                     ? "Ver todas (panel)"
                     : showAll
-                    ? "Ocultar categorías"
-                    : "Ver todas las categorías"}
+                    ? "Ocultar"
+                    : "Ver todas"}
                 </Button>
               </Box>
             )}
+          </Box>
+        )}
 
-            {/* Todas las categorías (modo Collapse) */}
-            {!manyCats && (
-              <Collapse in={showAll} unmountOnExit>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  useFlexGap
-                  flexWrap="wrap"
-                  sx={{ mt: 1.75 }}
+        {/* Vista completa (Collapse si no son muchas) */}
+        {!loadingCats && !manyCats && (
+          <Collapse in={showAll} unmountOnExit>
+            <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
+
+            {/* Padres con hijas */}
+            {treeParents.length > 0 && (
+              <Box sx={{ mb: 2 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ mb: 1, fontWeight: 900, color: PALETTE.muted }}
                 >
-                  {categories.map((cat) => {
-                    const active = activeCat?.id === cat.id;
+                  Padres (agrupan hijas)
+                </Typography>
+
+                <Stack gap={1}>
+                  {treeParents.map((p) => {
+                    const payloadP = { id: p.id, name: p.name, type: "parent" };
+                    const activeP =
+                      activeCat?.id === p.id && activeCat?.type === "parent";
+
+                    return (
+                      <Box
+                        key={`parent-${p.id}`}
+                        sx={{
+                          p: 1.2,
+                          borderRadius: 2,
+                          border: `1px solid ${PALETTE.stroke}`,
+                          bgcolor: "rgba(255,255,255,0.03)"
+                        }}
+                      >
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          useFlexGap
+                          flexWrap="wrap"
+                        >
+                          <Chip
+                            label={p.name}
+                            onClick={() => selectCategory(payloadP)}
+                            sx={chipStyleByType("parent", activeP)}
+                          />
+                          <Box
+                            sx={{
+                              px: 1,
+                              py: 0.35,
+                              borderRadius: 999,
+                              fontSize: 12,
+                              fontWeight: 900,
+                              color: PALETTE.muted,
+                              border: `1px solid rgba(255,255,255,0.10)`
+                            }}
+                          >
+                            {p.children.length} hijas
+                          </Box>
+                        </Stack>
+
+                        {/* Hijas */}
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          useFlexGap
+                          flexWrap="wrap"
+                          sx={{ mt: 1 }}
+                        >
+                          {p.children.map((c) => {
+                            const payloadC = {
+                              id: c.id,
+                              name: c.name,
+                              type: "child",
+                              parent_id: p.id
+                            };
+                            const activeC =
+                              activeCat?.id === c.id && activeCat?.type === "child";
+
+                            return (
+                              <Chip
+                                key={`child-${c.id}`}
+                                label={c.name}
+                                onClick={() => selectCategory(payloadC)}
+                                sx={chipStyleByType("child", activeC)}
+                              />
+                            );
+                          })}
+                        </Stack>
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              </Box>
+            )}
+
+            {/* Sueltas */}
+            {singles.length > 0 && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ mb: 1, fontWeight: 900, color: PALETTE.muted }}
+                >
+                  Sueltas (sin padre)
+                </Typography>
+
+                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+                  {singles.map((s) => {
+                    const payloadS = { id: s.id, name: s.name, type: "single" };
+                    const activeS =
+                      activeCat?.id === s.id && activeCat?.type === "single";
+
                     return (
                       <Chip
-                        key={`all-${cat.id}`}
-                        label={cat.name}
-                        onClick={() => selectCat(cat)}
-                        variant="filled"
-                        sx={{
-                          px: 1.15,
-                          height: 32,
-                          fontWeight: 800,
-                          letterSpacing: ".2px",
-                          color: active ? PALETTE.pink : PALETTE.txt,
-                          borderRadius: 999,
-                          border: `1px solid ${
-                            active ? PALETTE.pink : "rgba(255,255,255,.12)"
-                          }`,
-                          bgcolor: active ? PALETTE.pinkSoft : "rgba(255,255,255,.06)",
-                          boxShadow: active
-                            ? "0 0 28px rgba(255,94,166,.35)"
-                            : "none",
-                          cursor: "pointer",
-                          transition: "all .18s ease",
-                          "&:hover": {
-                            boxShadow: active
-                              ? "0 0 34px rgba(255,94,166,.45)"
-                              : "0 0 16px rgba(118,224,255,.25)"
-                          }
-                        }}
+                        key={`single-${s.id}`}
+                        label={s.name}
+                        onClick={() => selectCategory(payloadS)}
+                        sx={chipStyleByType("single", activeS)}
                       />
                     );
                   })}
                 </Stack>
-              </Collapse>
+              </Box>
             )}
-          </Box>
+          </Collapse>
         )}
 
         {/* Pie: contador */}
@@ -328,11 +514,11 @@ const ShopTopAction = ({
         >
           <Typography variant="body2" sx={{ color: PALETTE.muted }}>
             Mostrando{" "}
-            <Typography component="span" sx={{ color: PALETTE.cyan, fontWeight: 800 }}>
+            <Typography component="span" sx={{ color: PALETTE.cyan, fontWeight: 900 }}>
               {sortedProductCount}
             </Typography>{" "}
             de{" "}
-            <Typography component="span" sx={{ color: PALETTE.txt, fontWeight: 700 }}>
+            <Typography component="span" sx={{ color: PALETTE.txt, fontWeight: 800 }}>
               {productCount}
             </Typography>{" "}
             productos
@@ -340,7 +526,7 @@ const ShopTopAction = ({
         </Box>
       </Card>
 
-      {/* ===== Dialog de TODAS las categorías (cuando hay muchas) ===== */}
+      {/* ===== Dialog "todas" cuando hay muchas ===== */}
       <Dialog
         open={openAllDialog}
         onClose={() => setOpenAllDialog(false)}
@@ -357,9 +543,7 @@ const ShopTopAction = ({
           }
         }}
       >
-        <DialogTitle
-          sx={{ pr: 6, fontWeight: 900, letterSpacing: ".2px", color: PALETTE.txt }}
-        >
+        <DialogTitle sx={{ pr: 6, fontWeight: 900, color: PALETTE.txt }}>
           Todas las categorías
           <IconButton
             onClick={() => setOpenAllDialog(false)}
@@ -396,7 +580,7 @@ const ShopTopAction = ({
             }}
           />
 
-          {/* Contenedor scrollable */}
+          {/* Scroll */}
           <Box
             sx={{
               maxHeight: { xs: 360, sm: 420 },
@@ -410,44 +594,44 @@ const ShopTopAction = ({
             }}
           >
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-              {filteredAllCats.map((cat) => {
-                const active = activeCat?.id === cat.id;
+              {/* Botón "Todas" */}
+              <Chip
+                label="Todas"
+                onClick={() => {
+                  clearCategory();
+                  setOpenAllDialog(false);
+                }}
+                sx={{
+                  height: 34,
+                  borderRadius: 2,
+                  fontWeight: 900,
+                  bgcolor: "#fff",
+                  color: "#0B0E12",
+                  border: "1px solid rgba(255,255,255,.60)"
+                }}
+              />
+
+              {filteredAllCats.map((c) => {
+                const type = detectType(c);
+                const payload = { id: c.id, name: c.name, type };
+                const active =
+                  activeCat?.id === payload.id && activeCat?.type === payload.type;
+
                 return (
                   <Chip
-                    key={`dlg-${cat.id}`}
-                    label={cat.name}
+                    key={`dlg-${c.id}`}
+                    label={c.name}
                     onClick={() => {
-                      selectCat(cat);
+                      selectCategory(payload);
                       setOpenAllDialog(false);
                     }}
-                    variant="filled"
-                    sx={{
-                      px: 1.15,
-                      height: 32,
-                      fontWeight: 800,
-                      letterSpacing: ".2px",
-                      color: active ? PALETTE.pink : PALETTE.txt,
-                      borderRadius: 999,
-                      border: `1px solid ${
-                        active ? PALETTE.pink : "rgba(255,255,255,.12)"
-                      }`,
-                      bgcolor: active ? PALETTE.pinkSoft : "rgba(255,255,255,.06)",
-                      boxShadow: active ? "0 0 28px rgba(255,94,166,.35)" : "none",
-                      cursor: "pointer",
-                      transition: "all .18s ease",
-                      "&:hover": {
-                        boxShadow: active
-                          ? "0 0 34px rgba(255,94,166,.45)"
-                          : "0 0 16px rgba(118,224,255,.25)"
-                      }
-                    }}
+                    sx={chipStyleByType(type, active)}
                   />
                 );
               })}
             </Stack>
           </Box>
 
-          {/* Acciones rápidas */}
           <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
             <Button
               onClick={clearCategory}
