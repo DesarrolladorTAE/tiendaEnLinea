@@ -6,7 +6,7 @@ import { store } from "./store/store.jsx";
 import PersistProvider from "./store/providers/persist-provider.jsx";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
-import NavidadToggle from "./components/NavidadToggle";
+// import NavidadToggle from "./components/NavidadToggle";
 
 // Estilos
 import "swiper/swiper-bundle.min.css";
@@ -21,7 +21,7 @@ root.render(
   <Provider store={store}>
     <PersistProvider>
       {/* 🎄 Botón y nieve global */}
-      <NavidadToggle />
+      {/* <NavidadToggle /> */}
 
       {/* Tu app normal */}
       <App />

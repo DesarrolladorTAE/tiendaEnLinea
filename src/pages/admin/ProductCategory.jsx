@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../config/axiosClient";
 
 import {
@@ -29,12 +29,7 @@ import {
   Chip,
   Tooltip,
   Paper,
-  // useMediaQuery,
-  AppBar,
-  Toolbar,
 } from "@mui/material";
-
-// import { useTheme } from "@mui/material/styles";
 
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -45,17 +40,23 @@ import FolderIcon from "@mui/icons-material/Folder";
 import SubdirectoryArrowRightIcon from "@mui/icons-material/SubdirectoryArrowRight";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import CloseIcon from "@mui/icons-material/Close";
-// import { useTheme, useMediaQuery } from "@mui/material";
-// import { useTheme } from "@mui/material/styles";
-// import useMediaQuery from "@mui/material/useMediaQuery";
+
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
 
+// ✅ Hook de gating (el que ya hiciste)
+import useCategoriaPadreGate from "../../hooks/useCategoriaPadreGate";
+
 const Category = () => {
+  // ✅ Gate por plan
+  const { planId, isPlanSoloSueltas, reasonHierarchy, openPlanesModal } =
+    useCategoriaPadreGate();
+
   // Data
-  const [parentsTree, setParentsTree] = useState([]); // tree
-  const [flat, setFlat] = useState([]); // flat
+  const [parentsTree, setParentsTree] = useState([]); // tree (padres con hijas)
+  const [flat, setFlat] = useState([]); // flat (todas)
   const [loading, setLoading] = useState(false);
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -79,7 +80,7 @@ const Category = () => {
   // Form
   const [form, setForm] = useState({
     name: "",
-    parent_id: "", // "" => sin padre
+    parent_id: "", // "" => sin padre (suelta)
     editingId: null,
   });
 
@@ -142,7 +143,7 @@ const Category = () => {
   const totalSueltas = singles.length;
 
   const modo = useMemo(() => {
-    if (form.parent_id === "") return "PADRE";
+    if (form.parent_id === "") return "SUELTA";
     return "HIJA";
   }, [form.parent_id]);
 
@@ -154,9 +155,14 @@ const Category = () => {
   };
 
   const openEdit = (cat) => {
+    // Si es plan solo sueltas y la categoría es hija, no debería pasar,
+    // pero si existe por data vieja, al editar lo forzamos a suelta para no romper.
+    const parentValue =
+      isPlanSoloSueltas ? "" : cat.parent_id ?? "";
+
     setForm({
       name: cat.name ?? "",
-      parent_id: cat.parent_id ?? "",
+      parent_id: parentValue,
       editingId: cat.id,
     });
     setFormOpen(true);
@@ -187,7 +193,6 @@ const Category = () => {
 
   const rebuildTreeFromFlat = () => {
     // Rebuild tree purely from flat: group by parent_id, and only show parents with children.
-    // This avoids calling backend again.
     setParentsTree(() => {
       const parents = flat.filter((c) => c.parent_id == null);
       const childrenByParent = new Map();
@@ -231,6 +236,16 @@ const Category = () => {
         parent_id: form.parent_id === "" ? null : Number(form.parent_id),
       };
 
+      // ✅ Regla: Plan 2 SOLO SUELTAS => si intenta crear HIJA, bloquear.
+      if (isPlanSoloSueltas && payload.parent_id !== null) {
+        showSnackbar(
+          reasonHierarchy ||
+            "🔒 Plan Negocio: solo puedes crear categorías sueltas (sin padre y sin hijas).",
+          "warning"
+        );
+        return;
+      }
+
       if (form.editingId) {
         const res = await axiosClient.post(
           `admin/categories/${form.editingId}`,
@@ -240,11 +255,12 @@ const Category = () => {
           }
         );
 
-        // API puede devolver category o category directo. Cubrimos ambos.
-        const updated = res?.data?.category ??
-          res?.data ?? { id: form.editingId, ...payload };
-        upsertFlat(updated);
+        const updated =
+          res?.data?.category ??
+          res?.data ??
+          { id: form.editingId, ...payload };
 
+        upsertFlat(updated);
         showSnackbar("✅ Categoría actualizada");
       } else {
         const res = await axiosClient.post("admin/categories", payload);
@@ -276,19 +292,16 @@ const Category = () => {
     try {
       await axiosClient.delete(`admin/categories/${deleteDialog.id}`);
 
-      // Optimistic remove
       const id = deleteDialog.id;
       removeFromFlat(id);
 
-      // Also: if it was a parent, children might be re-parented by FK on backend.
-      // Since we are not refetching, we do a safe refresh ONLY in that scenario.
       const wasParent = flat.some((c) => c.parent_id === null && c.id === id);
       const hadChildren = flat.some((c) => c.parent_id === id);
 
       setDeleteDialog({ open: false, id: null, name: "" });
       showSnackbar("🗑️ Categoría eliminada");
 
-      // If parent had children, we MUST refresh to match DB behavior (nullOnDelete).
+      // Si borraste un padre con hijas, el backend puede “soltarlas”.
       if (wasParent && hadChildren) {
         await fetchAll();
       }
@@ -326,9 +339,18 @@ const Category = () => {
               📁 Categorías
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              🗂️ Padre = Carpeta. 👶 Hija = Va dentro. 📄 Suelta = No está
-              dentro de nadie.
+              🗂️ Padre = Carpeta. 👶 Hija = Va dentro. 📄 Suelta = No está dentro
+              de nadie.
             </Typography>
+
+            {Boolean(planId) && (
+              <Typography variant="caption" color="text.secondary">
+                Plan actual: <b>{planId}</b>{" "}
+                {isPlanSoloSueltas
+                  ? "· Solo SUELTAS ✅ (jerarquía bloqueada 🔒)"
+                  : "· Jerarquía disponible ✅"}
+              </Typography>
+            )}
           </Box>
 
           <Stack
@@ -374,7 +396,7 @@ const Category = () => {
         </Stack>
       </Paper>
 
-      {/* CONTENT: 2 columnas en desktop, 1 columna en mobile */}
+      {/* CONTENT */}
       <Stack
         direction={{ xs: "column", md: "row" }}
         gap={2}
@@ -398,12 +420,8 @@ const Category = () => {
               <Typography fontWeight={900}>
                 No hay padres con hijas todavía 💤
               </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
-                Crea una categoría y luego hazla hija eligiendo un padre.
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Crea categorías. Si tu plan permite jerarquía, podrás hacer hijas.
               </Typography>
             </Paper>
           ) : (
@@ -501,20 +519,10 @@ const Category = () => {
                           >
                             <ListItemText
                               primary={
-                                <Stack
-                                  direction="row"
-                                  alignItems="center"
-                                  gap={1}
-                                >
+                                <Stack direction="row" alignItems="center" gap={1}>
                                   <SubdirectoryArrowRightIcon fontSize="small" />
-                                  <Typography fontWeight={700}>
-                                    {c.name}
-                                  </Typography>
-                                  <Chip
-                                    size="small"
-                                    label="Hija"
-                                    variant="outlined"
-                                  />
+                                  <Typography fontWeight={700}>{c.name}</Typography>
+                                  <Chip size="small" label="Hija" variant="outlined" />
                                 </Stack>
                               }
                               secondary={`Dentro de: ${p.name}`}
@@ -524,8 +532,7 @@ const Category = () => {
                       </List>
                     ) : (
                       <Typography variant="body2" color="text.secondary">
-                        👶 Sin hijas. Puedes crear una hija eligiendo este padre
-                        en el formulario.
+                        👶 Sin hijas.
                       </Typography>
                     )}
                   </CardContent>
@@ -550,11 +557,7 @@ const Category = () => {
                 <Chip label={`${singles.length}`} variant="outlined" />
               </Stack>
 
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.5 }}
-              >
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Son categorías normales que no están dentro de nadie.
               </Typography>
 
@@ -567,10 +570,9 @@ const Category = () => {
               ) : (
                 <Box
                   sx={{
-                    maxHeight: { xs: 260, md: 420 }, // 👈 alto con scroll (mobile vs desktop)
+                    maxHeight: { xs: 260, md: 420 },
                     overflowY: "auto",
-                    pr: 0.5, // 👈 espacio para que no choque el scrollbar
-                    // scroll bonito (WebKit)
+                    pr: 0.5,
                     "&::-webkit-scrollbar": { width: 8 },
                     "&::-webkit-scrollbar-thumb": {
                       backgroundColor: "rgba(0,0,0,0.25)",
@@ -615,9 +617,7 @@ const Category = () => {
                         }
                       >
                         <ListItemText
-                          primary={
-                            <Typography fontWeight={700}>{c.name}</Typography>
-                          }
+                          primary={<Typography fontWeight={700}>{c.name}</Typography>}
                           secondary="📄 Suelta"
                         />
                       </ListItem>
@@ -642,7 +642,7 @@ const Category = () => {
         </Box>
       </Stack>
 
-      {/* FORM MODAL (responsive) */}
+      {/* FORM MODAL */}
       <Dialog
         open={formOpen}
         onClose={closeForm}
@@ -653,7 +653,7 @@ const Category = () => {
             borderRadius: 3,
             width: "100%",
             maxWidth: 520,
-            m: isMobile ? 2 : "auto", // 👈 margen en móvil (cuadro)
+            m: isMobile ? 2 : "auto",
           },
         }}
       >
@@ -688,9 +688,29 @@ const Category = () => {
 
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            🗂️ Si no eliges padre, se queda “suelta” (o puede ser padre). 👶 Si
-            eliges padre, se vuelve hija.
+            📄 Suelta = no eliges padre. 👶 Hija = eliges un padre.
           </Typography>
+
+          {/* ✅ Aviso: Plan 2 solo sueltas */}
+          {isPlanSoloSueltas && (
+            <Alert
+              severity="info"
+              sx={{ borderRadius: 2, mb: 2 }}
+              action={
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={openPlanesModal}
+                  sx={{ textTransform: "none", fontWeight: 800 }}
+                >
+                  Ver planes
+                </Button>
+              }
+            >
+              <b>Plan {planId || "?"}</b>: solo puedes crear <b>categorías sueltas</b>.
+              No puedes crear hijas ni jerarquía.
+            </Alert>
+          )}
 
           <Box component="form" onSubmit={handleSubmit}>
             <Stack gap={2}>
@@ -708,16 +728,26 @@ const Category = () => {
               />
 
               <FormControl variant="filled" fullWidth disabled={formLoading}>
-                <InputLabel id="parent-label">
-                  ¿Va dentro de un Padre?
-                </InputLabel>
+                <InputLabel id="parent-label">¿Va dentro de un Padre?</InputLabel>
 
                 <Select
                   labelId="parent-label"
                   value={form.parent_id}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, parent_id: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+
+                    // 🚫 Plan 2: bloquear selección de padre (solo sueltas)
+                    if (isPlanSoloSueltas && v !== "") {
+                      showSnackbar(
+                        reasonHierarchy ||
+                          "🔒 Plan Negocio: solo categorías sueltas (sin padre y sin hijas).",
+                        "warning"
+                      );
+                      return;
+                    }
+
+                    setForm((p) => ({ ...p, parent_id: v }));
+                  }}
                   MenuProps={{
                     PaperProps: {
                       sx: {
@@ -737,27 +767,36 @@ const Category = () => {
                   }}
                 >
                   <MenuItem value="">
-                    <em>NO (Se queda suelta / padre) 📄🗂️</em>
+                    <em>NO (Se queda suelta) 📄</em>
                   </MenuItem>
 
                   {parentOptions
                     .filter((p) => p.id !== form.editingId)
                     .map((p) => (
-                      <MenuItem key={p.id} value={p.id}>
-                        🗂️ {p.name}
+                      <MenuItem
+                        key={p.id}
+                        value={p.id}
+                        disabled={isPlanSoloSueltas}
+                      >
+                        🗂️ {p.name} {isPlanSoloSueltas ? "🔒" : ""}
                       </MenuItem>
                     ))}
                 </Select>
               </FormControl>
 
               <Box>
-                {modo === "PADRE" ? (
-                  <Chip
-                    label="🗂️ Se guardará como suelta/padre"
-                    variant="outlined"
-                  />
+                {modo === "SUELTA" ? (
+                  <Chip label="📄 Se guardará como suelta" variant="outlined" />
                 ) : (
-                  <Chip label="👶 Se guardará como hija" variant="outlined" />
+                  <Chip
+                    label={
+                      isPlanSoloSueltas
+                        ? "🔒 Hija bloqueada en Plan Negocio"
+                        : "👶 Se guardará como hija"
+                    }
+                    variant="outlined"
+                    color={isPlanSoloSueltas ? "warning" : "default"}
+                  />
                 )}
               </Box>
 
@@ -807,9 +846,7 @@ const Category = () => {
         maxWidth="sm"
         fullWidth
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>
-          🧠 ¿Cómo funciona esto?
-        </DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>🧠 ¿Cómo funciona esto?</DialogTitle>
         <DialogContent dividers>
           <Typography sx={{ mb: 1 }}>Versión para humano sin dolor:</Typography>
 
@@ -817,7 +854,7 @@ const Category = () => {
             <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
               <Typography fontWeight={900}>🗂️ Padre</Typography>
               <Typography variant="body2" color="text.secondary">
-                Es una categoría que puede tener hijas dentro.
+                Categoría que puede tener hijas.
               </Typography>
             </Paper>
 
@@ -836,21 +873,27 @@ const Category = () => {
             </Paper>
           </Stack>
 
-          <Divider sx={{ my: 2 }} />
-
-          <Typography fontWeight={900} sx={{ mb: 1 }}>
-            ✅ Pasos:
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 0.7 }}>
-            1) ➕ “Nueva categoría”
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 0.7 }}>
-            2) ✍️ Escribe el nombre
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 0.7 }}>
-            3) 👶 Si quieres que sea hija: elige un padre
-          </Typography>
-          <Typography variant="body2">4) ✅ Guardar</Typography>
+          {!isPlanSoloSueltas ? null : (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Alert
+                severity="warning"
+                sx={{ borderRadius: 2 }}
+                action={
+                  <Button
+                    color="inherit"
+                    size="small"
+                    onClick={openPlanesModal}
+                    sx={{ textTransform: "none", fontWeight: 800 }}
+                  >
+                    Ver planes
+                  </Button>
+                }
+              >
+                Plan {planId || "?"}: solo categorías sueltas. Jerarquía bloqueada.
+              </Alert>
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setHelpOpen(false)} variant="contained">
@@ -872,8 +915,8 @@ const Category = () => {
             color="text.secondary"
             sx={{ display: "block", mt: 1 }}
           >
-            Si borras un padre con hijas, el backend puede “soltarlas”
-            (parent_id = null). En ese caso refrescamos una vez.
+            Si borras un padre con hijas, el backend puede “soltarlas” (parent_id =
+            null). En ese caso refrescamos una vez.
           </Typography>
         </DialogContent>
         <DialogActions>

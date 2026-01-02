@@ -37,7 +37,6 @@ function pickRandom(items, n = 5) {
 const PALETTE = {
   bgCard:
     "linear-gradient(180deg, rgba(10,12,16,0.92) 0%, rgba(12,14,20,0.92) 100%)",
-  // más opaco para evitar transparencias en el menú
   bgMenu:
     "linear-gradient(180deg, rgba(10,12,16,0.98) 0%, rgba(12,14,20,0.98) 100%)",
   stroke: "rgba(255,255,255,0.10)",
@@ -49,7 +48,6 @@ const PALETTE = {
   cyanSoft: "rgba(118,224,255,0.10)",
   pink: "#FF5EA6",
   pinkSoft: "rgba(255,94,166,0.12)",
-  // fondo sólido para el header sticky del buscador (NO transparente)
   menuHeaderBg: "rgba(12,14,20,0.98)"
 };
 
@@ -70,6 +68,9 @@ const ShopTopAction = ({
 
   const manyCats = !loadingCats && categories.length > 20;
 
+  // ✅ Control del open del Select (para cerrar al seleccionar)
+  const [selectOpen, setSelectOpen] = React.useState(false);
+
   // ===== Detectar si vienen agrupables (children o parent_id) =====
   const hasChildrenShape = React.useMemo(
     () =>
@@ -89,7 +90,6 @@ const ShopTopAction = ({
   const { groups, singles } = React.useMemo(() => {
     const list = Array.isArray(categories) ? categories : [];
 
-    // Caso 1: ya vienen con children
     if (hasChildrenShape) {
       const grouped = list
         .filter((c) => (c?.children?.length ?? 0) > 0)
@@ -102,22 +102,22 @@ const ShopTopAction = ({
       return { groups: grouped, singles: singlesOnly };
     }
 
-    // Caso 2: flat con parent_id
     const parents = list.filter((c) => c?.parent_id == null);
     const childrenByParent = new Map();
 
     list.forEach((c) => {
       if (c?.parent_id != null) {
-        const arr = childrenByParent.get(c.parent_id) ?? [];
+        const key = String(c.parent_id);
+        const arr = childrenByParent.get(key) ?? [];
         arr.push(c);
-        childrenByParent.set(c.parent_id, arr);
+        childrenByParent.set(key, arr);
       }
     });
 
     const grouped = parents
       .map((p) => ({
         ...p,
-        children: (childrenByParent.get(p.id) ?? []).sort((a, b) =>
+        children: (childrenByParent.get(String(p.id)) ?? []).sort((a, b) =>
           String(a.name).localeCompare(String(b.name))
         )
       }))
@@ -145,34 +145,27 @@ const ShopTopAction = ({
 
   const onSearch = (val) => {
     setSearchTerm(val);
+    console.log("🔎 searchQuery:", val);
     getFilterSortParams("searchQuery", val);
   };
 
   // ===== Select: estado + búsqueda dentro =====
-  // value: "" | "p:ID" | "c:ID" | "s:ID"
   const [selectValue, setSelectValue] = React.useState("");
   const [selectQuery, setSelectQuery] = React.useState("");
 
-  const MENU_SEARCH_STICKY_TOP = 0;
-
   const selectOptions = React.useMemo(() => {
     const q = selectQuery.trim().toLowerCase();
-
     if (!q) return { groups, singles: singlesDedup };
 
-    // filtra hijos por búsqueda
     const filteredGroups = groups
-      .map((g) => ({
-        ...g,
-        children: (g.children ?? []).filter((c) =>
-          String(c?.name ?? "").toLowerCase().includes(q)
-        )
-      }))
-      // si coincide el nombre del padre, mantenlo con todos sus hijos
       .map((g) => {
         const parentMatches = String(g?.name ?? "").toLowerCase().includes(q);
-        if (parentMatches) return { ...g, children: g.children ?? [] };
-        return g;
+        const kids = (g.children ?? []).filter((c) =>
+          String(c?.name ?? "").toLowerCase().includes(q)
+        );
+        return parentMatches
+          ? { ...g, children: g.children ?? [] }
+          : { ...g, children: kids };
       })
       .filter((g) => (g.children?.length ?? 0) > 0);
 
@@ -184,9 +177,14 @@ const ShopTopAction = ({
   }, [selectQuery, groups, singlesDedup]);
 
   const clearCategory = () => {
+    console.group("🧹 CLEAR CATEGORY");
+    console.log("Before:", { selectValue, activeCat, selectOpen });
+    console.groupEnd();
+
     setActiveCat(null);
     setSelectValue("");
     setSelectQuery("");
+    setSelectOpen(false);
     getFilterSortParams("category", null);
   };
 
@@ -222,9 +220,34 @@ const ShopTopAction = ({
     return { kind, id: rawId };
   };
 
+  // ✅ “Force pick”: selecciona y CIERRA el menú
+  const handlePickCategory = (payload, value) => {
+    console.group("🟣 CATEGORY PICK");
+    console.log("payload:", payload);
+    console.log("value:", value);
+    console.groupEnd();
+
+    setSelectValue(value);
+    setActiveCat(payload);
+
+    console.warn("➡️ getFilterSortParams(category)", payload);
+    getFilterSortParams("category", payload);
+
+    // ✅ CIERRA el menú al seleccionar
+    setSelectOpen(false);
+  };
+
+  // ✅ onChange normal (por si MUI decide sí funcionar)
   const onSelectChange = (e) => {
     const value = e.target.value;
+
+    console.group("🟠 SELECT onChange");
+    console.log("raw value:", value);
+    console.log("prev selectValue:", selectValue);
+    console.groupEnd();
+
     setSelectValue(value);
+    setSelectOpen(false); // ✅ cerrar SIEMPRE al seleccionar
 
     if (!value) {
       setActiveCat(null);
@@ -234,73 +257,63 @@ const ShopTopAction = ({
 
     const { kind, id } = parseSelect(value);
 
-    // Padre
     if (kind === "p") {
       const g = groups.find((x) => String(x.id) === String(id));
-      const payload = {
-        id: g?.id ?? id,
-        name: g?.name ?? String(id),
-        type: "parent"
-      };
+      const payload = { id: g?.id ?? id, name: g?.name ?? String(id), type: "parent" };
       setActiveCat(payload);
       getFilterSortParams("category", payload);
       return;
     }
 
-    // Hijo
     if (kind === "c") {
       for (const g of groups) {
         const c = (g.children ?? []).find((x) => String(x.id) === String(id));
         if (c) {
-          const payload = {
-            id: c.id,
-            name: c.name,
-            type: "child",
-            parent_id: g.id
-          };
+          const payload = { id: c.id, name: c.name, type: "child", parent_id: g.id };
           setActiveCat(payload);
           getFilterSortParams("category", payload);
           return;
         }
       }
-      // fallback hijo sin grupo (raro)
       const payload = { id, name: String(id), type: "child" };
       setActiveCat(payload);
       getFilterSortParams("category", payload);
       return;
     }
 
-    // Suelta
     if (kind === "s") {
       const s = singlesDedup.find((x) => String(x.id) === String(id));
-      const payload = {
-        id: s?.id ?? id,
-        name: s?.name ?? String(id),
-        type: "single"
-      };
+      const payload = { id: s?.id ?? id, name: s?.name ?? String(id), type: "single" };
       setActiveCat(payload);
       getFilterSortParams("category", payload);
       return;
     }
 
-    // fallback
     const payload = { id, name: String(id), type: "single" };
     setActiveCat(payload);
     getFilterSortParams("category", payload);
   };
-  const handlePickCategory = (payload, value) => {
-  console.group("🟣 CATEGORY PICK");
-  console.log("Payload:", payload);
-  console.log("Select value:", value);
-  console.groupEnd();
 
-  setSelectValue(value);
-  setActiveCat(payload);
-
-  console.warn("➡️ getFilterSortParams(category)", payload);
-  getFilterSortParams("category", payload);
-};
-
+  // 🔥 Logs de forma/agrupación
+  React.useEffect(() => {
+    console.group("🧾 CATEGORIES SHAPE");
+    console.log("loadingCats:", loadingCats);
+    console.log("categories length:", categories?.length);
+    console.log("hasChildrenShape:", hasChildrenShape);
+    console.log("hasParentIdShape:", hasParentIdShape);
+    console.log("useGroupedSelect:", useGroupedSelect);
+    console.log("groups:", groups);
+    console.log("singlesDedup:", singlesDedup);
+    console.groupEnd();
+  }, [
+    loadingCats,
+    categories,
+    hasChildrenShape,
+    hasParentIdShape,
+    useGroupedSelect,
+    groups,
+    singlesDedup
+  ]);
 
   return (
     <>
@@ -380,6 +393,17 @@ const ShopTopAction = ({
                 label="Categoría"
                 onChange={onSelectChange}
                 displayEmpty
+                open={selectOpen}
+                onOpen={() => {
+                  console.log("🟦 SELECT OPEN");
+                  setSelectOpen(true);
+                }}
+                onClose={() => {
+                  console.log("🟥 SELECT CLOSE");
+                  setSelectOpen(false);
+                  // opcional: limpiar filtro al cerrar
+                  // setSelectQuery("");
+                }}
                 renderValue={(val) => {
                   if (!val) return <span style={{ color: PALETTE.txt }}>TODAS</span>;
                   return (
@@ -404,9 +428,6 @@ const ShopTopAction = ({
                       },
                       "& .MuiMenuItem-root:hover": {
                         bgcolor: "rgba(118,224,255,0.10)"
-                      },
-                      "& .MuiMenuItem-root.Mui-focusVisible": {
-                        bgcolor: "rgba(118,224,255,0.14)"
                       },
                       "& .MuiMenuItem-root.Mui-selected": {
                         bgcolor: "rgba(124,77,255,0.16) !important"
@@ -447,14 +468,14 @@ const ShopTopAction = ({
                   bgcolor: "rgba(255,255,255,0.06)"
                 }}
               >
-                {/* ===== Buscador dentro del menú (FIJO + NO transparente) ===== */}
+                {/* Buscador dentro del menú */}
                 <ListSubheader
                   disableSticky={false}
                   sx={{
                     bgcolor: PALETTE.menuHeaderBg,
                     backgroundImage: "none",
                     position: "sticky",
-                    top: MENU_SEARCH_STICKY_TOP,
+                    top: 0,
                     zIndex: 10,
                     px: 1,
                     py: 1,
@@ -468,6 +489,7 @@ const ShopTopAction = ({
                     value={selectQuery}
                     onChange={(e) => setSelectQuery(e.target.value)}
                     onKeyDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -490,60 +512,88 @@ const ShopTopAction = ({
                 </ListSubheader>
 
                 {/* TODAS */}
-                <MenuItem value="">
+                <MenuItem
+                  value=""
+                  onClick={() => {
+                    console.log("✅ Click TODAS");
+                    clearCategory();
+                  }}
+                >
                   <Typography sx={{ fontWeight: 900, color: PALETTE.txt }}>
                     TODAS
                   </Typography>
                 </MenuItem>
 
-                {/* Grupos + Padre seleccionable + Hijas */}
-            {selectOptions.groups.map((g) => (
-  <React.Fragment key={`grp-${g.id}`}>
-    {/* ✅ PADRE seleccionable */}
-    <MenuItem
-      value={`p:${g.id}`}
-      sx={{
-        fontWeight: 950,
-        color: "#fff",
-        bgcolor: "rgba(255,255,255,0.04)",
-        borderTop: "1px solid rgba(255,255,255,0.06)",
-        borderBottom: "1px solid rgba(255,255,255,0.06)"
-      }}
-    >
-      <Typography sx={{ fontWeight: 950, color: "#fff" }}>
-        {g.name}
-      </Typography>
-    </MenuItem>
+                {/* Grupos: Padre seleccionable + Hijas */}
+                {selectOptions.groups.map((g) => {
+                  const parentValue = `p:${g.id}`;
+                  const parentPayload = { id: g.id, name: g.name, type: "parent" };
 
-    {/* ✅ HIJAS */}
-    {(g.children ?? []).map((c) => (
-      <MenuItem
-        key={`cat-${c.id}`}
-        value={`c:${c.id}`}
-        sx={{
-          pl: 4.5,
-          position: "relative",
-          "&::before": {
-            content: '""',
-            position: "absolute",
-            left: 18,
-            top: 8,
-            bottom: 8,
-            width: 2,
-            borderRadius: 999,
-            background: "rgba(118,224,255,0.22)"
-          },
-          "&:hover": { bgcolor: "rgba(118,224,255,0.08)" }
-        }}
-      >
-        <Typography sx={{ color: PALETTE.txt, fontWeight: 800 }}>
-          {c.name}
-        </Typography>
-      </MenuItem>
-    ))}
-  </React.Fragment>
-))}
+                  return (
+                    <React.Fragment key={`grp-${g.id}`}>
+                      {/* PADRE */}
+                      <MenuItem
+                        value={parentValue}
+                        onClick={() => {
+                          console.log("✅ Click PARENT:", parentValue);
+                          handlePickCategory(parentPayload, parentValue);
+                        }}
+                        sx={{
+                          fontWeight: 950,
+                          color: "#fff",
+                          bgcolor: "rgba(255,255,255,0.04)",
+                          borderTop: "1px solid rgba(255,255,255,0.06)",
+                          borderBottom: "1px solid rgba(255,255,255,0.06)"
+                        }}
+                      >
+                        <Typography sx={{ fontWeight: 950, color: "#fff" }}>
+                          {g.name}
+                        </Typography>
+                      </MenuItem>
 
+                      {/* HIJAS */}
+                      {(g.children ?? []).map((c) => {
+                        const childValue = `c:${c.id}`;
+                        const childPayload = {
+                          id: c.id,
+                          name: c.name,
+                          type: "child",
+                          parent_id: g.id
+                        };
+
+                        return (
+                          <MenuItem
+                            key={`cat-${c.id}`}
+                            value={childValue}
+                            onClick={() => {
+                              console.log("✅ Click CHILD:", childValue);
+                              handlePickCategory(childPayload, childValue);
+                            }}
+                            sx={{
+                              pl: 4.5,
+                              position: "relative",
+                              "&::before": {
+                                content: '""',
+                                position: "absolute",
+                                left: 18,
+                                top: 8,
+                                bottom: 8,
+                                width: 2,
+                                borderRadius: 999,
+                                background: "rgba(118,224,255,0.22)"
+                              },
+                              "&:hover": { bgcolor: "rgba(118,224,255,0.08)" }
+                            }}
+                          >
+                            <Typography sx={{ color: PALETTE.txt, fontWeight: 800 }}>
+                              {c.name}
+                            </Typography>
+                          </MenuItem>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
 
                 {/* Sueltas */}
                 {selectOptions.singles.length > 0 && (
@@ -568,13 +618,25 @@ const ShopTopAction = ({
                   </ListSubheader>
                 )}
 
-                {selectOptions.singles.map((s) => (
-                  <MenuItem key={`single-${s.id}`} value={`s:${s.id}`}>
-                    <Typography sx={{ color: PALETTE.txt, fontWeight: 800 }}>
-                      {s.name}
-                    </Typography>
-                  </MenuItem>
-                ))}
+                {selectOptions.singles.map((s) => {
+                  const singleValue = `s:${s.id}`;
+                  const singlePayload = { id: s.id, name: s.name, type: "single" };
+
+                  return (
+                    <MenuItem
+                      key={`single-${s.id}`}
+                      value={singleValue}
+                      onClick={() => {
+                        console.log("✅ Click SINGLE:", singleValue);
+                        handlePickCategory(singlePayload, singleValue);
+                      }}
+                    >
+                      <Typography sx={{ color: PALETTE.txt, fontWeight: 800 }}>
+                        {s.name}
+                      </Typography>
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
 
@@ -596,7 +658,7 @@ const ShopTopAction = ({
             </Stack>
           </Box>
         ) : (
-          /* ===== Si NO hay grupos => tu UI de chips intacta ===== */
+          // ===== Si NO hay grupos => UI de chips =====
           !loadingCats &&
           sample.length > 0 && (
             <Box>
@@ -622,16 +684,9 @@ const ShopTopAction = ({
                     border: `1px solid ${
                       activeCat ? "rgba(255,255,255,.12)" : PALETTE.cyan
                     }`,
-                    boxShadow: activeCat
-                      ? "none"
-                      : "0 14px 34px rgba(118,224,255,0.30)",
+                    boxShadow: activeCat ? "none" : "0 14px 34px rgba(118,224,255,0.30)",
                     cursor: "pointer",
-                    transition: "all .18s ease",
-                    "&:hover": {
-                      boxShadow: activeCat
-                        ? "0 0 18px rgba(118,224,255,.28)"
-                        : "0 20px 48px rgba(118,224,255,0.40)"
-                    }
+                    transition: "all .18s ease"
                   }}
                 />
 
@@ -642,7 +697,6 @@ const ShopTopAction = ({
                       key={cat.id}
                       label={cat.name}
                       onClick={() => {
-                        // chips aquí mandan "single"
                         const payload = { id: cat.id, name: cat.name, type: "single" };
                         setActiveCat(payload);
                         getFilterSortParams("category", payload);
@@ -661,12 +715,7 @@ const ShopTopAction = ({
                         bgcolor: active ? PALETTE.accentSoft : "rgba(255,255,255,.06)",
                         boxShadow: active ? PALETTE.glow : "none",
                         cursor: "pointer",
-                        transition: "all .18s ease",
-                        "&:hover": {
-                          boxShadow: active
-                            ? "0 0 42px rgba(124,77,255,0.5)"
-                            : "0 0 18px rgba(118,224,255,0.28)"
-                        }
+                        transition: "all .18s ease"
                       }}
                     />
                   );
@@ -685,11 +734,7 @@ const ShopTopAction = ({
                       borderRadius: 2,
                       color: "#0B0E12",
                       bgcolor: "#fff",
-                      boxShadow: "0 14px 34px rgba(118,224,255,0.30)",
-                      "&:hover": {
-                        bgcolor: "#fff",
-                        boxShadow: "0 20px 48px rgba(118,224,255,0.40)"
-                      }
+                      boxShadow: "0 14px 34px rgba(118,224,255,0.30)"
                     }}
                   >
                     {manyCats
@@ -733,16 +778,8 @@ const ShopTopAction = ({
                               active ? PALETTE.pink : "rgba(255,255,255,.12)"
                             }`,
                             bgcolor: active ? PALETTE.pinkSoft : "rgba(255,255,255,.06)",
-                            boxShadow: active
-                              ? "0 0 28px rgba(255,94,166,.35)"
-                              : "none",
                             cursor: "pointer",
-                            transition: "all .18s ease",
-                            "&:hover": {
-                              boxShadow: active
-                                ? "0 0 34px rgba(255,94,166,.45)"
-                                : "0 0 16px rgba(118,224,255,.25)"
-                            }
+                            transition: "all .18s ease"
                           }}
                         />
                       );
@@ -797,9 +834,7 @@ const ShopTopAction = ({
             }
           }}
         >
-          <DialogTitle
-            sx={{ pr: 6, fontWeight: 900, letterSpacing: ".2px", color: PALETTE.txt }}
-          >
+          <DialogTitle sx={{ pr: 6, fontWeight: 900, color: PALETTE.txt }}>
             Todas las categorías
             <IconButton
               onClick={() => setOpenAllDialog(false)}
@@ -836,18 +871,7 @@ const ShopTopAction = ({
               }}
             />
 
-            <Box
-              sx={{
-                maxHeight: { xs: 360, sm: 420 },
-                overflowY: "auto",
-                pr: 0.5,
-                "&::-webkit-scrollbar": { width: 8 },
-                "&::-webkit-scrollbar-thumb": {
-                  background: "rgba(255,255,255,0.18)",
-                  borderRadius: 999
-                }
-              }}
-            >
+            <Box sx={{ maxHeight: { xs: 360, sm: 420 }, overflowY: "auto", pr: 0.5 }}>
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                 {filteredAllCats.map((cat) => {
                   const active = activeCat?.id === cat.id;
@@ -873,16 +897,8 @@ const ShopTopAction = ({
                           active ? PALETTE.pink : "rgba(255,255,255,.12)"
                         }`,
                         bgcolor: active ? PALETTE.pinkSoft : "rgba(255,255,255,.06)",
-                        boxShadow: active
-                          ? "0 0 28px rgba(255,94,166,.35)"
-                          : "none",
                         cursor: "pointer",
-                        transition: "all .18s ease",
-                        "&:hover": {
-                          boxShadow: active
-                            ? "0 0 34px rgba(255,94,166,.45)"
-                            : "0 0 16px rgba(118,224,255,.25)"
-                        }
+                        transition: "all .18s ease"
                       }}
                     />
                   );

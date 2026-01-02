@@ -1,4 +1,4 @@
-import React, { lazy, useEffect, useRef, useState, Suspense } from "react";
+import React, { lazy, useEffect, useRef, useState, Suspense, useMemo } from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
@@ -7,7 +7,10 @@ import ProductTable from "../../components/products-list/ProductTable";
 import ProductPagination from "../../components/products-list/ProductPagination";
 import useComplementosActivos from "../../hooks/useComplementosActivos";
 import Taebanner from "../../components/admin/promociones/Taebanner";
-import LabelModal from "./modals/LabelModal"; // 👈 importar el modal
+import LabelModal from "./modals/LabelModal";
+
+// ✅ nuevo modal
+import CategoryModal from "../../components/products-list/CategoryModal";
 
 const ProductImages = lazy(() => import("./ProductImages"));
 
@@ -19,30 +22,51 @@ const ProductList = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [cargandoCSV, setCargandoCSV] = useState(false);
   const [error, setError] = useState(null);
+
+  // categorías
+  const [categoriesFlat, setCategoriesFlat] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
+
+  // modal etiquetas
   const fileInputRef = useRef();
   const [openLabels, setOpenLabels] = useState(false);
   const [labelProduct, setLabelProduct] = useState(null);
 
-  const { puedeCrear, cargando, totalProductos, limitePermitido } =
-    useLimiteProductos();
+  // ✅ modal categorías multi
+  const [openCats, setOpenCats] = useState(false);
+  const [catProduct, setCatProduct] = useState(null);
+  const [savingCats, setSavingCats] = useState(false);
 
+  const { puedeCrear, cargando, totalProductos, limitePermitido } = useLimiteProductos();
   const productsPerPage = 10;
   const { tieneComplemento } = useComplementosActivos();
 
   useEffect(() => {
     fetchProductos();
+    fetchCategorias();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const handleOpenLabels = (product) => {
-    // 👈 abre modal de etiquetas
     setLabelProduct(product);
     setOpenLabels(true);
   };
   const handleCloseLabels = () => setOpenLabels(false);
+
+  const handleOpenCats = (product) => {
+    setCatProduct(product);
+    setOpenCats(true);
+  };
+  const handleCloseCats = () => {
+    if (savingCats) return;
+    setOpenCats(false);
+    setCatProduct(null);
+  };
+
+  // filtrar
   useEffect(() => {
     const term = searchTerm.toLowerCase();
-    const resultado = products.filter((p) =>
-      p.name?.toLowerCase().includes(term)
-    );
+    const resultado = products.filter((p) => p.name?.toLowerCase().includes(term));
     setFiltered(resultado);
     setCurrentPage(1);
   }, [searchTerm, products]);
@@ -50,18 +74,55 @@ const ProductList = () => {
   const fetchProductos = async () => {
     try {
       const res = await axiosClient.get("/admin/products");
-      setProducts(res.data || []);
+      setProducts(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Error al obtener productos:", error);
       setError("Error al obtener productos.");
     }
   };
 
+  const fetchCategorias = async () => {
+    try {
+      setCategoriesLoading(true);
+      const res = await axiosClient.get("/admin/categories");
+      const cats = res?.data?.categories ?? res?.data ?? [];
+      setCategoriesFlat(Array.isArray(cats) ? cats : []);
+    } catch (e) {
+      console.error("Error al obtener categorías:", e);
+    } finally {
+      setCategoriesLoading(false);
+    }
+  };
+
+  // Construir árbol padre->hijas (sin backend extra)
+  const categoriesTree = useMemo(() => {
+    const flat = categoriesFlat || [];
+    const parents = flat.filter((c) => c.parent_id == null);
+    const childrenByParent = new Map();
+
+    for (const c of flat) {
+      if (c.parent_id != null) {
+        const arr = childrenByParent.get(c.parent_id) ?? [];
+        arr.push(c);
+        childrenByParent.set(c.parent_id, arr);
+      }
+    }
+
+    return parents
+      .map((p) => ({
+        ...p,
+        children: (childrenByParent.get(p.id) ?? []).sort((a, b) =>
+          String(a.name).localeCompare(String(b.name))
+        ),
+      }))
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  }, [categoriesFlat]);
+
   const handleDelete = async (id) => {
     if (!window.confirm("¿Eliminar este producto?")) return;
     try {
       await axiosClient.delete(`/admin/products/${id}`);
-      setProducts(products.filter((p) => p.id !== id));
+      setProducts((prev) => prev.filter((p) => p.id !== id));
     } catch (error) {
       console.error("Error al eliminar producto:", error);
       alert("Error al eliminar.");
@@ -69,14 +130,16 @@ const ProductList = () => {
   };
 
   const cargarCSV = () => {
-    fileInputRef.current.click();
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
+
     const formData = new FormData();
     formData.append("archivo", file);
+
     setCargandoCSV(true);
     try {
       const res = await axiosClient.post("/cargar/importarDesdeCSV", formData, {
@@ -89,8 +152,47 @@ const ProductList = () => {
       alert("Error al importar el archivo CSV.");
     } finally {
       setCargandoCSV(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  // ✅ Guardar múltiples categorías (sync pivot)
+  // Backend esperado: PATCH /admin/products/{id}/categories { category_ids: number[] }
+const handleSaveCategories = async (productId, categoryIds) => {
+  setSavingCats(true);
+
+  // ✅ Optimista: actualiza UI primero
+  setProducts((prev) =>
+    prev.map((p) =>
+      p.id === productId
+        ? {
+            ...p,
+            category_ids: categoryIds,
+          }
+        : p
+    )
+  );
+
+  try {
+    // 🚨 IMPORTANTE: POST + _method en lugar de PATCH
+    await axiosClient.post(`/admin/products/${productId}/categories`, {
+      _method: "PATCH",
+      category_ids: categoryIds,
+    });
+
+    // 🔄 refrescar para sincronizar categorías normalizadas del backend
+    await fetchProductos();
+  } catch (e) {
+    console.error("Error al guardar categorías:", e);
+
+    // rollback seguro
+    await fetchProductos();
+    alert("Error al guardar categorías.");
+  } finally {
+    setSavingCats(false);
+  }
+};
+
 
   const totalPages = Math.ceil(filtered.length / productsPerPage);
   const paginatedProducts = filtered.slice(
@@ -102,10 +204,7 @@ const ProductList = () => {
     return (
       <div className="bg-dark text-white p-4">
         <Suspense fallback={<p className="text-white">Cargando imágenes...</p>}>
-          <ProductImages
-            productId={selectedProduct.id}
-            onClose={() => setSelectedProduct(null)}
-          />
+          <ProductImages productId={selectedProduct.id} onClose={() => setSelectedProduct(null)} />
         </Suspense>
       </div>
     );
@@ -113,7 +212,6 @@ const ProductList = () => {
 
   return (
     <>
-      {/* Contenedor de productos */}
       <div className="bg-dark text-white p-4 shadow rounded border border-light mb-4">
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <h2 className="text-white mb-0">🛒 Lista de Productos</h2>
@@ -126,10 +224,7 @@ const ProductList = () => {
           </p>
         </div>
 
-        <ProductSearchBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-        />
+        <ProductSearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
           {tieneComplemento(6) && (
@@ -141,15 +236,10 @@ const ProductList = () => {
                 onChange={handleFileChange}
                 style={{ display: "none" }}
               />
-              <button
-                className="btn btn-warning me-2"
-                onClick={cargarCSV}
-                disabled={cargandoCSV}
-              >
-                {cargandoCSV
-                  ? "Importando CSV..."
-                  : "📤 Importar productos CSV"}
+              <button className="btn btn-warning me-2" onClick={cargarCSV} disabled={cargandoCSV}>
+                {cargandoCSV ? "Importando CSV..." : "📤 Importar productos CSV"}
               </button>
+
               <a
                 href="/assets/ejemploCSV/CSVejemplo.csv"
                 download
@@ -161,16 +251,12 @@ const ProductList = () => {
           )}
 
           {puedeCrear ? (
-            <Link
-              to="new"
-              className="btn btn-outline-light d-flex align-items-center gap-2"
-            >
+            <Link to="new" className="btn btn-outline-light d-flex align-items-center gap-2">
               <span className="fs-5">➕</span> Crear Producto
             </Link>
           ) : (
             <div className="text-warning text-end">
-              Límite alcanzado (
-              {limitePermitido === Infinity ? "∞" : limitePermitido})
+              Límite alcanzado ({limitePermitido === Infinity ? "∞" : limitePermitido})
             </div>
           )}
         </div>
@@ -183,23 +269,31 @@ const ProductList = () => {
           productsPerPage={productsPerPage}
           onDelete={handleDelete}
           onOpenImages={setSelectedProduct}
-          onOpenLabels={handleOpenLabels} // 👈 pasar función para abrir modal
+          onOpenLabels={handleOpenLabels}
+          // ✅ categorías para chips + modal
+          categoriesTree={categoriesTree}
+          categoriesFlat={categoriesFlat}
+          categoriesLoading={categoriesLoading}
+          onOpenCategories={handleOpenCats}
         />
 
-        <LabelModal
-          open={openLabels}
-          onClose={handleCloseLabels}
-          product={labelProduct}
+        <LabelModal open={openLabels} onClose={handleCloseLabels} product={labelProduct} />
+
+        {/* ✅ Modal multi categorías */}
+        <CategoryModal
+          open={openCats}
+          onClose={handleCloseCats}
+          product={catProduct}
+          categoriesFlat={categoriesFlat}
+          categoriesTree={categoriesTree}
+          loading={categoriesLoading}
+          saving={savingCats}
+          onSave={handleSaveCategories}
         />
 
-        <ProductPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-        />
+        <ProductPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
       </div>
 
-      {/* Banner de promociones en sección aparte */}
       <div className="bg-white text-dark rounded shadow mb-4">
         <Taebanner />
       </div>
