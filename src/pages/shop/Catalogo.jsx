@@ -1,7 +1,6 @@
 import React, { Fragment, useState, useEffect, useMemo } from "react";
 import Paginator from "react-hooks-paginator";
 import { useLocation, useParams } from "react-router-dom";
-// import { getSortedProducts } from "../../helpers/product"; // <- úsalo si luego agregas ordenamiento
 import SEO from "../../components/seo";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
@@ -10,12 +9,12 @@ import { useStoreData } from "../../hooks/useStoreData";
 import WhatsAppFloatingButton from "../../components/WhatsAppFloatingButton";
 import axios from "axios";
 
-// 👇 monkey‑patch para quitar el warning en dev (react-hooks-paginator con React 18)
+// 👇 monkey-patch para quitar el warning en dev (react-hooks-paginator con React 18)
 if (Paginator && "defaultProps" in Paginator) {
   try {
     // eslint-disable-next-line no-param-reassign
     Paginator.defaultProps = undefined;
-  } catch {}
+  } catch { }
 }
 
 const API_BASE = "https://mitiendaenlineamx.com.mx/api";
@@ -23,69 +22,87 @@ const pageLimit = 12;
 
 /* ========================= Helpers ========================= */
 
-/** Normaliza una categoría a {id, name} cuando venga como id, slug, objeto, etc. */
-function normCatObj(cat) {
-  if (!cat) return null;
-  if (typeof cat === "string" || typeof cat === "number") {
-    return { id: cat, name: String(cat) };
-  }
-  if (typeof cat === "object") {
-    const id = cat.id ?? cat.value ?? cat.slug ?? cat.name;
-    const name = cat.name ?? cat.label ?? cat.slug ?? String(id ?? "");
-    return id ? { id, name } : null;
-  }
-  return null;
-}
-
-/** Extrae tokens de categoría presentes en un producto (minúsculas). 
- * Soporta: product.category (string|obj|array), categoryId, category_id, categories[], tags[].
+/**
+ * Devuelve tokens de categoría por producto, soportando:
+ * ✅ backend nuevo: product.categories = [{id,name,parent_id}]
+ * 🩹 backend viejo: product.category = ["NombreCat", ...]
  */
 function getProductCategoryTokensFromProduct(p) {
   const out = new Set();
 
-  // by id numérico/slug directo
-  const idLike = p?.categoryId ?? p?.category_id ?? p?.catId;
-  if (idLike !== null && idLike !== undefined) out.add(String(idLike).toLowerCase());
+  const push = (v) => {
+    if (v === null || v === undefined) return;
+    out.add(String(v).toLowerCase());
+  };
 
-  // product.category (string | obj | array)
+  // ✅ nuevo: categories [{id,name,parent_id}]
+  if (Array.isArray(p?.categories)) {
+    p.categories.forEach((c) => {
+      if (!c) return;
+      if (typeof c === "string" || typeof c === "number") {
+        push(c);
+      } else if (typeof c === "object") {
+        push(c.id);
+        push(c.name);
+        push(c.slug);
+        push(c.parent_id);
+      }
+    });
+  }
+
+  // 🩹 viejo: category ["Nombre", ...] o {id,name}
   const c = p?.category;
-  if (typeof c === "string") {
-    out.add(c.toLowerCase());
-  } else if (Array.isArray(c)) {
-    c.forEach((x) => {
-      if (!x) return;
-      if (typeof x === "string") out.add(x.toLowerCase());
-      else if (typeof x === "object") {
-        const t = x.id ?? x.slug ?? x.value ?? x.name;
-        if (t) out.add(String(t).toLowerCase());
-      }
-    });
-  } else if (typeof c === "object" && c) {
-    const t = c.id ?? c.slug ?? c.value ?? c.name;
-    if (t) out.add(String(t).toLowerCase());
+  if (Array.isArray(c)) {
+    c.forEach((x) => push(x));
+  } else if (typeof c === "string" || typeof c === "number") {
+    push(c);
+  } else if (c && typeof c === "object") {
+    push(c.id);
+    push(c.name);
+    push(c.slug);
   }
 
-  // product.categories (array)
-  const cats = p?.categories;
-  if (Array.isArray(cats)) {
-    cats.forEach((x) => {
-      if (!x) return;
-      if (typeof x === "string") out.add(x.toLowerCase());
-      else if (typeof x === "object") {
-        const t = x.id ?? x.slug ?? x.value ?? x.name;
-        if (t) out.add(String(t).toLowerCase());
-      }
-    });
-  }
+  // campos alternos (por si)
+  push(p?.categoryId);
+  push(p?.category_id);
+  push(p?.catId);
+  push(p?.categoria_id);
+  push(p?.categoriaId);
 
-  // product.tags (por si las usan como categoría)
-  const tags = p?.tags;
-  if (Array.isArray(tags)) {
-    tags.forEach((t) => t && out.add(String(t).toLowerCase()));
-  }
+  // tags por si los usan como categoría
+  if (Array.isArray(p?.tags)) p.tags.forEach((t) => push(t));
 
   return Array.from(out);
 }
+
+/**
+ * Construye mapa { parentId -> [children] } para flat,
+ * y también soporta tree (parents con children).
+ */
+function buildChildrenIndex(categories) {
+  const childrenByParent = new Map();
+
+  (categories || []).forEach((c) => {
+    if (!c) return;
+
+    // modo tree
+    if (Array.isArray(c.children) && c.children.length) {
+      childrenByParent.set(String(c.id), c.children);
+      return;
+    }
+
+    // modo flat
+    if (c.parent_id != null) {
+      const key = String(c.parent_id);
+      const arr = childrenByParent.get(key) || [];
+      arr.push(c);
+      childrenByParent.set(key, arr);
+    }
+  });
+
+  return childrenByParent;
+}
+
 
 /* ========================= Componente ========================= */
 
@@ -98,7 +115,7 @@ const Catalogo = () => {
 
   // filtros
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(null); // {id, name} o null
+  const [selectedCategory, setSelectedCategory] = useState(null); // {id,name,type,parent_id?}
 
   // paginación
   const [offset, setOffset] = useState(0);
@@ -108,16 +125,19 @@ const Catalogo = () => {
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
 
-  // fetch categorías
+  // fetch categorías (flat por default)
   useEffect(() => {
     let alive = true;
     setLoadingCats(true);
+
     axios
-      .get(`${API_BASE}/public/stores/slug/${storeSlug}/categories`)
+      .get(`${API_BASE}/public/stores/slug/${storeSlug}/categories?mode=tree`)
       .then(({ data }) => {
         if (!alive) return;
-        setCategories(data?.categories ?? []);
+        // 👇 en mode=tree el backend manda "parents"
+        setCategories(data?.parents ?? []);
       })
+
       .catch(() => {
         if (!alive) return;
         setCategories([]);
@@ -125,6 +145,7 @@ const Catalogo = () => {
       .finally(() => {
         if (alive) setLoadingCats(false);
       });
+
     return () => {
       alive = false;
     };
@@ -140,17 +161,15 @@ const Catalogo = () => {
       setOffset(0);
       return;
     }
-   if (type === "category") {
-  // value YA VIENE como {id,name,type} desde ShopTopAction
-  setSelectedCategory(value || null);
-  setCurrentPage(1);
-  setOffset(0);
-  return;
-}
-
-
-    // Si más adelante agregas: rango de precio, sort, etc., manéjalo aquí.
+    if (type === "category") {
+      setSelectedCategory(value || null);
+      setCurrentPage(1);
+      setOffset(0);
+      return;
+    }
   };
+
+  const childrenIndex = useMemo(() => buildChildrenIndex(categories), [categories]);
 
   /* ====== Derivados: filtrado y paginación ====== */
 
@@ -160,40 +179,71 @@ const Catalogo = () => {
     // Búsqueda por nombre
     const q = searchQuery.trim().toLowerCase();
     if (q) {
-      base = base.filter((p) => (p?.name ?? "").toLowerCase().includes(q));
+      base = base.filter((p) => String(p?.name ?? "").toLowerCase().includes(q));
     }
 
-    // Filtro por categoría (match por id o name/slug)
-  if (selectedCategory) {
-  // si es padre: filtra por hijas
-  if (selectedCategory.type === "parent") {
-    const kids = (categories || []).filter(
-      (c) => Number(c.parent_id) === Number(selectedCategory.id)
+    // Filtro por categoría
+if (selectedCategory?.id) {
+  console.group("🟢 APPLY CATEGORY FILTER");
+  console.log("Selected:", selectedCategory);
+
+  const wantId = String(selectedCategory.id).toLowerCase();
+  const wantName = String(selectedCategory.name ?? "").toLowerCase();
+
+  const tokensMatchAny = (p, ids, names) => {
+    const tokens = getProductCategoryTokensFromProduct(p).map((t) =>
+      String(t).toLowerCase()
     );
-    const kidIds = new Set(kids.map((k) => String(k.id).toLowerCase()));
 
-    base = base.filter((p) => {
-      const tokens = getProductCategoryTokensFromProduct(p);
-      return tokens.some((t) => kidIds.has(String(t).toLowerCase()));
+    const match = tokens.some(
+      (t) => ids.has(t) || names.has(t)
+    );
+
+    if (match) {
+      console.log("✅ MATCH PRODUCT:", p.name, tokens);
+    }
+
+    return match;
+  };
+
+  // ===== PADRE =====
+  if (selectedCategory.type === "parent") {
+    const parent = categories.find(
+      (c) => String(c.id) === String(selectedCategory.id)
+    );
+
+    const children =
+      parent?.children ??
+      categories.filter(
+        (c) => String(c.parent_id) === String(selectedCategory.id)
+      );
+
+    const ids = new Set([wantId]);
+    const names = new Set([wantName]);
+
+    children.forEach((c) => {
+      ids.add(String(c.id).toLowerCase());
+      names.add(String(c.name).toLowerCase());
     });
+
+    console.log("📦 Parent IDs:", [...ids]);
+    console.log("📦 Parent Names:", [...names]);
+
+    base = base.filter((p) => tokensMatchAny(p, ids, names));
   } else {
-    // hija o suelta normal
-    const wantId = String(selectedCategory.id).toLowerCase();
-    const wantName = String(selectedCategory.name ?? selectedCategory.id).toLowerCase();
+    // ===== HIJA / SINGLE =====
+    const ids = new Set([wantId]);
+    const names = new Set([wantName]);
 
-    base = base.filter((p) => {
-      const tokens = getProductCategoryTokensFromProduct(p);
-      return tokens.includes(wantId) || tokens.includes(wantName);
-    });
+    base = base.filter((p) => tokensMatchAny(p, ids, names));
   }
+
+  console.groupEnd();
 }
 
 
-    // Ordenamiento opcional:
-    // base = getSortedProducts(base, sortType, sortValue);
-
     return base;
-  }, [products, searchQuery, selectedCategory]);
+  }, [products, searchQuery, selectedCategory, childrenIndex]);
 
   const currentData = useMemo(
     () => filteredProducts.slice(offset, offset + pageLimit),
@@ -220,7 +270,7 @@ const Catalogo = () => {
       <Breadcrumb
         pages={[
           { label: "BIENVENIDO", path: pathname },
-          { label: "CATALOGO", path: pathname }
+          { label: "CATALOGO", path: pathname },
         ]}
       />
 
@@ -231,8 +281,8 @@ const Catalogo = () => {
               <ShopTopbar
                 getLayout={getLayout}
                 getFilterSortParams={getFilterSortParams}
-                productCount={products.length}
-                sortedProductCount={filteredProducts.length} // total tras filtros
+                productCount={Array.isArray(products) ? products.length : 0}
+                sortedProductCount={filteredProducts.length}
                 categories={categories}
                 loadingCats={loadingCats}
               />

@@ -36,19 +36,47 @@ export default function ReporteTipoVentas() {
 
   const navigate = useNavigate();
 
+  // Helpers: normaliza respuesta (porque tus endpoints no siempre tienen el mismo shape)
+  const normalizeArray = (res) => {
+    const d = res?.data ?? res;
+    // soporta: [..] | { categories: [..] } | { data: [..] }
+    const arr = Array.isArray(d)
+      ? d
+      : Array.isArray(d?.categories)
+      ? d.categories
+      : Array.isArray(d?.data)
+      ? d.data
+      : [];
+    return arr;
+  };
+
+  const sortByName = (arr) =>
+    [...(arr || [])].sort((a, b) =>
+      String(a?.name || a?.nombre || "").localeCompare(
+        String(b?.name || b?.nombre || ""),
+        "es"
+      )
+    );
+
   // Cargar sucursales
   useEffect(() => {
     axiosClient
       .get("/admin/pos")
-      .then(({ data }) => setSucursales(Array.isArray(data) ? data : []))
+      .then((res) => {
+        const arr = normalizeArray(res);
+        setSucursales(sortByName(arr));
+      })
       .catch((err) => console.error("❌ Error al cargar sucursales", err));
   }, []);
 
-  // Cargar categorías
+  // Cargar categorías (FIX)
   useEffect(() => {
     axiosClient
       .get("/admin/categories")
-      .then(({ data }) => setCategorias(Array.isArray(data) ? data : []))
+      .then((res) => {
+        const arr = normalizeArray(res);
+        setCategorias(sortByName(arr));
+      })
       .catch((err) => console.error("❌ Error al cargar categorías", err));
   }, []);
 
@@ -257,7 +285,7 @@ export default function ReporteTipoVentas() {
               <Select
                 labelId="sucursal-label"
                 label="Sucursal"
-                value={sucursalSeleccionada} // "" | number
+                value={sucursalSeleccionada}
                 displayEmpty
                 onChange={(e) => {
                   const v = e.target.value;
@@ -294,7 +322,7 @@ export default function ReporteTipoVentas() {
               <Select
                 labelId="categoria-label"
                 label="Categoría"
-                value={categoriaSeleccionada} // "todas" | number
+                value={categoriaSeleccionada}
                 displayEmpty
                 onChange={(e) => {
                   const v = e.target.value;
@@ -385,6 +413,6 @@ export default function ReporteTipoVentas() {
           </Stack>
         </Paper>
       </Box>
-    </Box>
+    </Box> 
   );
 }

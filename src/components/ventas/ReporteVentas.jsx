@@ -23,28 +23,49 @@ import CircularProgress from "@mui/material/CircularProgress";
 export default function ReporteVentas() {
   const [fechaInicio, setFechaInicio] = useState(dayjs().format("YYYY-MM-DD"));
   const [fechaFin, setFechaFin] = useState(dayjs().format("YYYY-MM-DD"));
+
   const [sucursales, setSucursales] = useState([]);
-  const [sucursalSeleccionada, setSucursalSeleccionada] = useState("todas"); // "" o "todas" = todas
+  const [sucursalSeleccionada, setSucursalSeleccionada] = useState("todas"); // "todas" | number
+
   const [categorias, setCategorias] = useState([]);
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas"); // "" o "todas" = todas
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("todas"); // "todas" | number
+
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
+  // Helpers para normalizar respuesta de API (porque la gente ama cambiar formatos)
+  const normalizeArray = (payload) => {
+    const d = payload?.data ?? payload;
+    // soporta: [..] | { categories: [..] } | { data: [..] }
+    const arr =
+      Array.isArray(d) ? d : Array.isArray(d?.categories) ? d.categories : Array.isArray(d?.data) ? d.data : [];
+    return arr;
+  };
+
+  const sortByName = (arr) =>
+    [...(arr || [])].sort((a, b) => String(a?.name || "").localeCompare(String(b?.name || ""), "es"));
+
   // Cargar sucursales (POS)
   useEffect(() => {
     axiosClient
       .get("/admin/pos")
-      .then(({ data }) => setSucursales(data || []))
+      .then((res) => {
+        const arr = normalizeArray(res);
+        setSucursales(sortByName(arr));
+      })
       .catch((err) => console.error("❌ Error al cargar sucursales", err));
   }, []);
 
-  // Cargar categorías
+  // Cargar categorías (FIX real)
   useEffect(() => {
     axiosClient
       .get("/admin/categories")
-      .then(({ data }) => setCategorias(data || []))
+      .then((res) => {
+        const arr = normalizeArray(res);
+        setCategorias(sortByName(arr));
+      })
       .catch((err) => console.error("❌ Error al cargar categorías", err));
   }, []);
 
@@ -65,41 +86,45 @@ export default function ReporteVentas() {
       return false;
     }
     return true;
-    };
+  };
+
+  const buildParams = () => ({
+    inicio: fechaInicio,
+    fin: fechaFin,
+    pos:
+      sucursalSeleccionada === "todas" || sucursalSeleccionada == null
+        ? "todas"
+        : Number(sucursalSeleccionada),
+    categoria:
+      categoriaSeleccionada === "todas" || categoriaSeleccionada == null
+        ? "todas"
+        : Number(categoriaSeleccionada),
+  });
 
   const consultarVentas = async () => {
     if (!validarFechas()) return;
 
     setLoading(true);
+
     if (pdfUrl) {
       URL.revokeObjectURL(pdfUrl);
       setPdfUrl(null);
     }
 
     const token = localStorage.getItem("AUTH_TOKEN");
+    if (!token) {
+      showError("Sesión no válida. Inicia sesión nuevamente.");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await axios.get(
         "https://mitiendaenlineamx.com.mx/api/reporte-utilidades/pdf",
         {
-          params: {
-            inicio: fechaInicio,
-            fin: fechaFin,
-            // si el usuario eligió "todas", enviamos 'todas'
-            pos:
-              !sucursalSeleccionada || sucursalSeleccionada === "todas"
-                ? "todas"
-                : sucursalSeleccionada,
-            // nuevo filtro de categoría (funciona igual que POS)
-            categoria:
-              !categoriaSeleccionada || categoriaSeleccionada === "todas"
-                ? "todas"
-                : categoriaSeleccionada,
-          },
+          params: buildParams(),
           responseType: "blob",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
@@ -107,10 +132,8 @@ export default function ReporteVentas() {
       const url = URL.createObjectURL(blob);
       setPdfUrl(url);
     } catch (error) {
-      if (
-        error.response?.status === 422 &&
-        error.response.data instanceof Blob
-      ) {
+      // Manejo especial del 422 con Blob JSON
+      if (error.response?.status === 422 && error.response.data instanceof Blob) {
         const text = await error.response.data.text();
         try {
           const json = JSON.parse(text);
@@ -164,7 +187,7 @@ export default function ReporteVentas() {
       </Button>
 
       <Typography variant="h5" gutterBottom>
-        📄 Reporte de Utilidades
+        Reporte de Utilidades
       </Typography>
 
       <Box
@@ -221,12 +244,24 @@ export default function ReporteVentas() {
                 labelId="sucursal-label"
                 value={sucursalSeleccionada}
                 label="Sucursal"
-                onChange={(e) => setSucursalSeleccionada(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSucursalSeleccionada(v === "todas" ? "todas" : Number(v));
+                }}
+                renderValue={(selected) => {
+                  if (selected === "todas" || selected == null)
+                    return "Todas las sucursales";
+                  const idSel = Number(selected);
+                  const suc = (sucursales || []).find((s) => Number(s.id) === idSel);
+                  return suc
+                    ? suc.name ?? suc.nombre ?? `Sucursal #${idSel}`
+                    : `Sucursal #${idSel}`;
+                }}
               >
                 <MenuItem value="todas">Todas las sucursales</MenuItem>
-                {sucursales.map((s) => (
+                {(sucursales || []).map((s) => (
                   <MenuItem key={s.id} value={s.id}>
-                    {s.name}
+                    {s.name ?? s.nombre}
                   </MenuItem>
                 ))}
               </Select>
@@ -239,10 +274,20 @@ export default function ReporteVentas() {
                 labelId="categoria-label"
                 value={categoriaSeleccionada}
                 label="Categoría"
-                onChange={(e) => setCategoriaSeleccionada(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setCategoriaSeleccionada(v === "todas" ? "todas" : Number(v));
+                }}
+                renderValue={(selected) => {
+                  if (selected === "todas" || selected == null)
+                    return "Todas las categorías";
+                  const idSel = Number(selected);
+                  const cat = (categorias || []).find((c) => Number(c.id) === idSel);
+                  return cat ? cat.name : `Categoría #${idSel}`;
+                }}
               >
                 <MenuItem value="todas">Todas las categorías</MenuItem>
-                {categorias.map((c) => (
+                {(categorias || []).map((c) => (
                   <MenuItem key={c.id} value={c.id}>
                     {c.name}
                   </MenuItem>
