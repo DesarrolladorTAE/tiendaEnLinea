@@ -97,7 +97,7 @@ const PersonalizacionSitio = lazy(() => import("./pages/other/PersnalizacionSiti
 const App = () => {
   return (
     <Router>
-      // Evento page view de GTM
+      {/* // Evento page view de GTM */}
       <GtmPageViewTracker />
       <ScrollToTop>
         <Toaster position="top-right" reverseOrder={false} />
