@@ -6,6 +6,7 @@ import SuperAdminRoutes from "./routes/SuperAdminRoutes";
 import { Container } from "@mui/material";
 import WhatsappButton from "./components/WhatsappButton";
 import { Toaster } from "react-hot-toast";
+import GtmPageViewTracker from "./components/tracking/GtmPageViewTracker.jsx";
 
 // home pages
 const HomeTest = lazy(() => import("./pages/home/HomeTest.jsx"));
@@ -96,6 +97,8 @@ const PersonalizacionSitio = lazy(() => import("./pages/other/PersnalizacionSiti
 const App = () => {
   return (
     <Router>
+      // Evento page view de GTM
+      <GtmPageViewTracker />
       <ScrollToTop>
         <Toaster position="top-right" reverseOrder={false} />
         <Suspense
