@@ -1,4 +1,11 @@
-import React, { lazy, useEffect, useRef, useState, Suspense, useMemo } from "react";
+import React, {
+  lazy,
+  useEffect,
+  useRef,
+  useState,
+  Suspense,
+  useMemo,
+} from "react";
 import { Link } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
@@ -8,6 +15,7 @@ import ProductPagination from "../../components/products-list/ProductPagination"
 import useComplementosActivos from "../../hooks/useComplementosActivos";
 import Taebanner from "../../components/admin/promociones/Taebanner";
 import LabelModal from "./modals/LabelModal";
+import { useTienda } from "../../context/TiendaContext";
 
 // ✅ nuevo modal
 import CategoryModal from "../../components/products-list/CategoryModal";
@@ -37,9 +45,23 @@ const ProductList = () => {
   const [catProduct, setCatProduct] = useState(null);
   const [savingCats, setSavingCats] = useState(false);
 
-  const { puedeCrear, cargando, totalProductos, limitePermitido } = useLimiteProductos();
+  const { puedeCrear, cargando, totalProductos, limitePermitido } =
+    useLimiteProductos();
   const productsPerPage = 10;
   const { tieneComplemento } = useComplementosActivos();
+
+  const { tienda, tiendaLoading } = useTienda();
+
+  const planId = Number(tienda?.plan_id || 0);
+
+  // ✅ permitir por plan 1 o 4
+  const permitidoPorPlan = planId === 1 || planId === 4;
+
+  // ✅ permitir por complemento 6 (lo que ya usas)
+  const permitidoPorComplemento = tieneComplemento(6);
+
+  // ✅ regla final
+  const puedeImportarMasivo = permitidoPorPlan || permitidoPorComplemento;
 
   useEffect(() => {
     fetchProductos();
@@ -66,7 +88,9 @@ const ProductList = () => {
   // filtrar
   useEffect(() => {
     const term = searchTerm.toLowerCase();
-    const resultado = products.filter((p) => p.name?.toLowerCase().includes(term));
+    const resultado = products.filter((p) =>
+      p.name?.toLowerCase().includes(term)
+    );
     setFiltered(resultado);
     setCurrentPage(1);
   }, [searchTerm, products]);
@@ -158,41 +182,40 @@ const ProductList = () => {
 
   // ✅ Guardar múltiples categorías (sync pivot)
   // Backend esperado: PATCH /admin/products/{id}/categories { category_ids: number[] }
-const handleSaveCategories = async (productId, categoryIds) => {
-  setSavingCats(true);
+  const handleSaveCategories = async (productId, categoryIds) => {
+    setSavingCats(true);
 
-  // ✅ Optimista: actualiza UI primero
-  setProducts((prev) =>
-    prev.map((p) =>
-      p.id === productId
-        ? {
-            ...p,
-            category_ids: categoryIds,
-          }
-        : p
-    )
-  );
+    // ✅ Optimista: actualiza UI primero
+    setProducts((prev) =>
+      prev.map((p) =>
+        p.id === productId
+          ? {
+              ...p,
+              category_ids: categoryIds,
+            }
+          : p
+      )
+    );
 
-  try {
-    // 🚨 IMPORTANTE: POST + _method en lugar de PATCH
-    await axiosClient.post(`/admin/products/${productId}/categories`, {
-      _method: "PATCH",
-      category_ids: categoryIds,
-    });
+    try {
+      // 🚨 IMPORTANTE: POST + _method en lugar de PATCH
+      await axiosClient.post(`/admin/products/${productId}/categories`, {
+        _method: "PATCH",
+        category_ids: categoryIds,
+      });
 
-    // 🔄 refrescar para sincronizar categorías normalizadas del backend
-    await fetchProductos();
-  } catch (e) {
-    console.error("Error al guardar categorías:", e);
+      // 🔄 refrescar para sincronizar categorías normalizadas del backend
+      await fetchProductos();
+    } catch (e) {
+      console.error("Error al guardar categorías:", e);
 
-    // rollback seguro
-    await fetchProductos();
-    alert("Error al guardar categorías.");
-  } finally {
-    setSavingCats(false);
-  }
-};
-
+      // rollback seguro
+      await fetchProductos();
+      alert("Error al guardar categorías.");
+    } finally {
+      setSavingCats(false);
+    }
+  };
 
   const totalPages = Math.ceil(filtered.length / productsPerPage);
   const paginatedProducts = filtered.slice(
@@ -204,7 +227,10 @@ const handleSaveCategories = async (productId, categoryIds) => {
     return (
       <div className="bg-dark text-white p-4">
         <Suspense fallback={<p className="text-white">Cargando imágenes...</p>}>
-          <ProductImages productId={selectedProduct.id} onClose={() => setSelectedProduct(null)} />
+          <ProductImages
+            productId={selectedProduct.id}
+            onClose={() => setSelectedProduct(null)}
+          />
         </Suspense>
       </div>
     );
@@ -224,10 +250,14 @@ const handleSaveCategories = async (productId, categoryIds) => {
           </p>
         </div>
 
-        <ProductSearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+        <ProductSearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+        />
 
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          {tieneComplemento(6) && (
+          {!tiendaLoading && puedeImportarMasivo && (
+
             <div>
               <input
                 type="file"
@@ -236,8 +266,14 @@ const handleSaveCategories = async (productId, categoryIds) => {
                 onChange={handleFileChange}
                 style={{ display: "none" }}
               />
-              <button className="btn btn-warning me-2" onClick={cargarCSV} disabled={cargandoCSV}>
-                {cargandoCSV ? "Importando CSV..." : "📤 Importar productos CSV"}
+              <button
+                className="btn btn-warning me-2"
+                onClick={cargarCSV}
+                disabled={cargandoCSV}
+              >
+                {cargandoCSV
+                  ? "Importando CSV..."
+                  : "📤 Importar productos CSV"}
               </button>
 
               <a
@@ -251,12 +287,16 @@ const handleSaveCategories = async (productId, categoryIds) => {
           )}
 
           {puedeCrear ? (
-            <Link to="new" className="btn btn-outline-light d-flex align-items-center gap-2">
+            <Link
+              to="new"
+              className="btn btn-outline-light d-flex align-items-center gap-2"
+            >
               <span className="fs-5">➕</span> Crear Producto
             </Link>
           ) : (
             <div className="text-warning text-end">
-              Límite alcanzado ({limitePermitido === Infinity ? "∞" : limitePermitido})
+              Límite alcanzado (
+              {limitePermitido === Infinity ? "∞" : limitePermitido})
             </div>
           )}
         </div>
@@ -277,7 +317,11 @@ const handleSaveCategories = async (productId, categoryIds) => {
           onOpenCategories={handleOpenCats}
         />
 
-        <LabelModal open={openLabels} onClose={handleCloseLabels} product={labelProduct} />
+        <LabelModal
+          open={openLabels}
+          onClose={handleCloseLabels}
+          product={labelProduct}
+        />
 
         {/* ✅ Modal multi categorías */}
         <CategoryModal
@@ -291,7 +335,11 @@ const handleSaveCategories = async (productId, categoryIds) => {
           onSave={handleSaveCategories}
         />
 
-        <ProductPagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+        <ProductPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       <div className="bg-white text-dark rounded shadow mb-4">

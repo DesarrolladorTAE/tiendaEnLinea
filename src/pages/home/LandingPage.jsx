@@ -1,5 +1,5 @@
-import React, { useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useCallback, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import "./landing.css";
 import planes from "../../utils/planes";
 
@@ -12,19 +12,43 @@ import Contact from "./components/Contact";
 import Footer from "./components/Footer";
 import ScrollTopButton from "./components/ScrollTopButton";
 
+const PATH_TO_SECTION = {
+  "/": "home",
+  "/platform": "platform",
+  "/features": "features",
+  "/services": "services",
+  "/contact-landing": "contact",
+};
+
 const LandingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const scrollToSection = useCallback((sectionId) => {
     const target = document.getElementById(sectionId);
     if (!target) return;
+
     const offsetTop = target.offsetTop - 61;
     window.scrollTo({ top: offsetTop, behavior: "smooth" });
   }, []);
 
+  // ✅ Cuando cambia la URL, hace scroll a la sección correspondiente
+  useEffect(() => {
+    const sectionId = PATH_TO_SECTION[location.pathname];
+    if (!sectionId) return;
+
+    // pequeño delay para asegurar que el DOM ya renderizó
+    const t = setTimeout(() => scrollToSection(sectionId), 0);
+    return () => clearTimeout(t);
+  }, [location.pathname, scrollToSection]);
+
   return (
     <div className="landing-root">
-      <Navbar onNavClick={scrollToSection} onLogin={() => navigate("/login-register")} />
+      {/* ✅ Ahora el navbar cambia la URL, pero seguimos en la misma landing */}
+      <Navbar
+        onNavClick={(path) => navigate(path)}
+        onLogin={() => navigate("/login-register")}
+      />
 
       <main>
         <section id="home">
