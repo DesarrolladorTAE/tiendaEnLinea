@@ -1,5 +1,5 @@
-// src/components/POS/CartSidebar.jsx
-import React, { useState } from "react";
+// src/components/POS/Cart.jsx
+import React, { useMemo, useState } from "react";
 import {
   Box,
   Typography,
@@ -13,9 +13,14 @@ import {
   Checkbox,
   Stack,
   Divider,
+  Chip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DiscountIcon from "@mui/icons-material/Percent";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
+import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
+
 import ModalCambioDescuento from "./ModalCambioDescuento";
 import { showError } from "../../utils/alerts";
 
@@ -42,7 +47,39 @@ export default function CartSidebar({
   setScannerEnabled,
   setModalDescuentoActivo,
   setCart,
+  variant = "desktop", // ✅ "desktop" | "mobile"
 }) {
+  // ✅ Mobile flag
+  const isMobile = variant === "mobile";
+
+  // ✅ Tap-to-edit: en móvil, inputs readonly hasta tocar
+  const [activeField, setActiveField] = useState(null);
+
+  const tapToEditProps = (fieldKey, inputMode = "text") => ({
+    InputProps: {
+      readOnly: isMobile && activeField !== fieldKey,
+    },
+    inputProps: {
+      inputMode,
+    },
+    onClick: (e) => {
+      if (!isMobile) return;
+      if (activeField !== fieldKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveField(fieldKey);
+        requestAnimationFrame(() => {
+          const input = e.currentTarget.querySelector("input");
+          input?.focus();
+        });
+      }
+    },
+    onBlur: () => {
+      if (!isMobile) return;
+      setActiveField(null);
+    },
+  });
+
   // Selección (1 a 3)
   const [selected, setSelected] = useState(["efectivo"]);
 
@@ -57,23 +94,28 @@ export default function CartSidebar({
 
   const [productoEditar, setProductoEditar] = useState(null);
 
-  const total = cart.reduce(
-    (sum, item) =>
-      sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
-    0
+  const total = useMemo(
+    () =>
+      cart.reduce(
+        (sum, item) =>
+          sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+        0
+      ),
+    [cart]
   );
 
   const setDetail = (k, patch) =>
     setDetails((prev) => ({ ...prev, [k]: { ...prev[k], ...patch } }));
 
   const selectedCount = selected.length;
-  const sumSelected = selected.reduce(
-    (acc, m) =>
-      acc +
-      (Number.isFinite(toNumber(details[m].amount))
-        ? toNumber(details[m].amount)
-        : 0),
-    0
+
+  const sumSelected = useMemo(
+    () =>
+      selected.reduce((acc, m) => {
+        const n = toNumber(details[m].amount);
+        return acc + (Number.isFinite(n) ? n : 0);
+      }, 0),
+    [selected, details]
   );
 
   // Cambios visuales
@@ -121,29 +163,6 @@ export default function CartSidebar({
       discount_percent: parseFloat(item.discount || 0),
     }));
 
-  // Recorta sobrepago priorizando efectivo (opcional)
-  const recortarExceso = (payments, totalAmount) => {
-    let sum = payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-    let exceso = +(sum - totalAmount).toFixed(2);
-    if (exceso <= 0) return payments;
-
-    const tryCut = (idx) => {
-      const cut = Math.min(exceso, payments[idx].amount);
-      payments[idx].amount = +(payments[idx].amount - cut).toFixed(2);
-      exceso = +(exceso - cut).toFixed(2);
-    };
-
-    // Primero efectivo(s)
-    payments.forEach((p, i) => {
-      if (exceso > 0 && p.method === "efectivo") tryCut(i);
-    });
-
-    // Si aún hay exceso, recorta del último
-    if (exceso > 0) tryCut(payments.length - 1);
-
-    return payments;
-  };
-
   const handleConfirm = () => {
     if (cart.length === 0) return;
 
@@ -163,13 +182,14 @@ export default function CartSidebar({
           showError("El efectivo recibido no cubre el total.");
           return;
         }
+
         const aplicado = Math.min(recibido, total);
         const r = +recibido.toFixed(2);
+
         payments = [
           {
             method: "efectivo",
-            amount: +aplicado.toFixed(2), // aplicado a la venta
-            amount: r,  // aliases para backend/ticket
+            amount: +aplicado.toFixed(2),
             recibido: r,
             cash_received: r,
             efectivo_recibido: r,
@@ -198,6 +218,7 @@ export default function CartSidebar({
       for (const m of selected) {
         const { amount, referencia, ultimos4 } = details[m];
         const val = toNumber(amount);
+
         if (!Number.isFinite(val) || val <= 0) {
           showError("Todos los montos deben ser mayores que 0.");
           return;
@@ -228,28 +249,27 @@ export default function CartSidebar({
         const { amount, referencia, ultimos4 } = details[m];
         const val = toNumber(amount);
         const p = { method: m, amount: +val.toFixed(2) };
+
         if (CARDLIKE.includes(m)) {
           p.referencia = (referencia || "").trim();
           p.ultimos_4 = ultimos4 || "";
         }
+
         if (m === "efectivo") {
           const r = +val.toFixed(2);
           p.recibido = r;
           p.cash_received = r;
           p.efectivo_recibido = r;
         }
+
         return p;
       });
-
-      // Si quieres evitar sobrepago neto, recorta priorizando efectivo:
-      // payments = recortarExceso(payments, total);
     }
 
     const data = {
       total_amount: +total.toFixed(2),
       items: buildItemsPayload(),
       payments,
-      // Si tu backend acepta "change" a nivel raíz, el hook lo agregará también.
     };
 
     onCheckout(data);
@@ -262,6 +282,7 @@ export default function CartSidebar({
       tc: { amount: "", referencia: "", ultimos4: "" },
       transferencia: { amount: "", referencia: "", ultimos4: "" },
     });
+    setActiveField(null);
   };
 
   const aplicarCambioProducto = (nuevoProducto) => {
@@ -285,152 +306,235 @@ export default function CartSidebar({
     setCart(actualizado);
   };
 
-  return (
-    <Box sx={{ position: "sticky", top: 20, alignSelf: "start", zIndex: 1 }}>
-      <Typography variant="h6" gutterBottom>
-        Carrito
-      </Typography>
+  const paperSx = {
+    p: { xs: 1.5, md: 2 },
+    borderRadius: 3,
+    background: "#fff",
+    borderColor: "divider",
+    boxShadow: variant === "desktop" ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
+  };
 
-      <Paper variant="outlined" sx={{ p: 2 }}>
+  const rootSx = {
+    position: variant === "desktop" ? "sticky" : "relative",
+    top: variant === "desktop" ? 20 : "auto",
+    alignSelf: "start",
+    zIndex: 1,
+  };
+
+  const inputCommon = {
+    onFocus: () => setScannerEnabled?.(false),
+    onBlur: () => setScannerEnabled?.(true),
+  };
+
+  const disableConfirm =
+    cart.length === 0 ||
+    (selectedCount === 1 &&
+      selected[0] === "efectivo" &&
+      (!Number.isFinite(toNumber(cashReceived)) ||
+        toNumber(cashReceived) + 0.00001 < total)) ||
+    (selectedCount >= 2 &&
+      selected
+        .map((m) => toNumber(details[m].amount))
+        .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
+        0.00001 <
+        total);
+
+  return (
+    <Box sx={rootSx}>
+      {/* Header */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 1,
+        }}
+      >
+        <Stack direction="row" spacing={1} alignItems="center">
+          <ShoppingCartRoundedIcon fontSize="small" />
+          <Typography variant="h6" sx={{ fontWeight: 900 }}>
+            Carrito
+          </Typography>
+          <Chip
+            size="small"
+            label={`${cart.length} item${cart.length === 1 ? "" : "s"}`}
+            sx={{ ml: 0.5 }}
+          />
+        </Stack>
+
+        <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
+      </Box>
+
+      <Paper variant="outlined" sx={paperSx}>
         {cart.length === 0 ? (
           <Typography color="text.secondary">Sin artículos</Typography>
         ) : (
-          <Box component="ul" sx={{ listStyle: "none", p: 0 }}>
+          <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0 }}>
+            {/* Items */}
             {cart.map((item) => (
               <Box
-                key={item.id}
+                key={`${item.id}-${item.variation_id || "nv"}-${item.size || "ns"}`}
                 component="li"
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mb={1}
+                sx={{
+                  py: 1.2,
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                }}
               >
-                <Box>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Typography variant="body2">
-                      {item.name} {item.variation?.color}{" "}
-                      {item.size ? `- ${item.size}` : ""}
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="flex-start"
+                  spacing={1}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontWeight: 700 }}
+                      noWrap
+                    >
+                      {item.name}{" "}
+                      {item.variation?.color ? `· ${item.variation.color}` : ""}{" "}
+                      {item.size ? `· ${item.size}` : ""}
                     </Typography>
 
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        if (item.quantity > 1) {
+                    <Typography variant="caption" color="text.secondary">
+                      ${Number(item.price || 0).toFixed(2)} c/u · Subtotal: $
+                      {(item.price * item.quantity).toFixed(2)}
+                    </Typography>
+
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ mt: 1 }}
+                    >
+                      <IconButton
+                        size="small"
+                        onClick={() => {
+                          if (item.quantity > 1) {
+                            setCart((prev) =>
+                              prev.map((prod) =>
+                                prod.id === item.id
+                                  ? {
+                                      ...prod,
+                                      quantity:
+                                        Math.floor(Number(prod.quantity)) - 1,
+                                    }
+                                  : prod
+                              )
+                            );
+                          }
+                        }}
+                      >
+                        <RemoveRoundedIcon fontSize="small" />
+                      </IconButton>
+
+                      <TextField
+                        value={item.inputValue ?? item.quantity}
+                        type="text"
+                        size="small"
+                        {...inputCommon}
+                        {...tapToEditProps(`qty-${item.id}`, "decimal")}
+                        inputProps={{
+                          ...tapToEditProps(`qty-${item.id}`, "decimal").inputProps,
+                          style: { textAlign: "center", width: 72 },
+                          pattern: "[0-9]*[.,]?[0-9]*",
+                        }}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (/^\d*\.?\d*$/.test(val)) {
+                            setCart((prev) =>
+                              prev.map((prod) =>
+                                prod.id === item.id
+                                  ? {
+                                      ...prod,
+                                      inputValue: val,
+                                      quantity:
+                                        val === "" || val === "."
+                                          ? 0
+                                          : parseFloat(val),
+                                    }
+                                  : prod
+                              )
+                            );
+                          }
+                        }}
+                        onBlurCapture={() => {
+                          setCart((prev) =>
+                            prev.map((prod) =>
+                              prod.id === item.id
+                                ? { ...prod, inputValue: undefined }
+                                : prod
+                            )
+                          );
+                        }}
+                      />
+
+                      <IconButton
+                        size="small"
+                        onClick={() => {
                           setCart((prev) =>
                             prev.map((prod) =>
                               prod.id === item.id
                                 ? {
                                     ...prod,
                                     quantity:
-                                      Math.floor(Number(prod.quantity)) - 1,
+                                      Math.floor(Number(prod.quantity)) + 1,
                                   }
                                 : prod
                             )
                           );
-                        }
-                      }}
-                    >
-                      -
-                    </IconButton>
-
-                    <TextField
-                      value={item.inputValue ?? item.quantity}
-                      type="text"
-                      inputProps={{
-                        inputMode: "decimal",
-                        style: { textAlign: "center", width: 60 },
-                      }}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (/^\d*\.?\d*$/.test(val)) {
-                          setCart((prev) =>
-                            prev.map((prod) =>
-                              prod.id === item.id
-                                ? {
-                                    ...prod,
-                                    inputValue: val,
-                                    quantity:
-                                      val === "" || val === "."
-                                        ? 0
-                                        : parseFloat(val),
-                                  }
-                                : prod
-                            )
-                          );
-                        }
-                      }}
-                      onBlur={() => {
-                        setCart((prev) =>
-                          prev.map((prod) =>
-                            prod.id === item.id
-                              ? { ...prod, inputValue: undefined }
-                              : prod
-                          )
-                        );
-                      }}
-                      size="small"
-                    />
-
-                    <IconButton
-                      size="small"
-                      onClick={() => {
-                        setCart((prev) =>
-                          prev.map((prod) =>
-                            prod.id === item.id
-                              ? {
-                                  ...prod,
-                                  quantity:
-                                    Math.floor(Number(prod.quantity)) + 1,
-                                }
-                              : prod
-                          )
-                        );
-                      }}
-                    >
-                      +
-                    </IconButton>
+                        }}
+                      >
+                        <AddRoundedIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
                   </Box>
 
-                  <Typography variant="caption" color="text.secondary">
-                    ${(item.price * item.quantity).toFixed(2)}
-                  </Typography>
-                </Box>
-                <Box>
-                  <Tooltip title="Editar descuento">
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => {
-                        setProductoEditar(item);
-                        setModalDescuentoActivo(true);
-                      }}
-                    >
-                      <DiscountIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                  <IconButton
-                    size="small"
-                    onClick={() => onRemove(item.id)}
-                    color="error"
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Box>
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Tooltip title="Editar descuento">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => {
+                          setProductoEditar(item);
+                          setModalDescuentoActivo?.(true);
+                        }}
+                      >
+                        <DiscountIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Eliminar">
+                      <IconButton
+                        size="small"
+                        onClick={() => onRemove(item.id)}
+                        color="error"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
+                </Stack>
               </Box>
             ))}
 
             {/* ---- Sección de cobro ---- */}
-            <Box mt={2} borderTop={1} pt={1} borderColor="divider">
-              <Typography variant="subtitle1">
+            <Box sx={{ pt: 1.5 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
                 Total: ${total.toFixed(2)}
               </Typography>
 
-              <Box mt={2}>
-                <Typography variant="subtitle2" gutterBottom>
+              <Box sx={{ mt: 1.5 }}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{ fontWeight: 800 }}
+                  gutterBottom
+                >
                   Método(s) de pago (máx. 3)
                 </Typography>
 
-                {/* Lista de métodos */}
                 <Stack spacing={1.25}>
                   {METHODS.map(({ key, label }) => {
                     const isChecked = selected.includes(key);
@@ -440,10 +544,14 @@ export default function CartSidebar({
                       <Box
                         key={key}
                         sx={{
-                          p: 1,
+                          p: 1.25,
                           border: "1px solid",
-                          borderColor: "divider",
-                          borderRadius: 1,
+                          borderColor: isChecked ? "primary.main" : "divider",
+                          borderRadius: 2,
+                          background: isChecked
+                            ? "rgba(25,118,210,0.04)"
+                            : "#fff",
+                          transition: "all 120ms ease",
                         }}
                       >
                         <FormGroup>
@@ -455,32 +563,45 @@ export default function CartSidebar({
                                 size="small"
                               />
                             }
-                            label={label}
+                            label={
+                              <Typography sx={{ fontWeight: 700 }}>
+                                {label}
+                              </Typography>
+                            }
                           />
                         </FormGroup>
 
                         {isChecked && (
-                          <Box sx={{ pl: 5, pt: 1 }}>
+                          <Box sx={{ pl: 4.5, pt: 1 }}>
                             {selectedCount === 1 ? (
                               key === "efectivo" ? (
                                 <>
                                   <TextField
-                                    label="💵 Efectivo recibido"
-                                    type="number"
+                                    label="Efectivo recibido"
+                                    type="text"
                                     fullWidth
                                     margin="dense"
                                     value={cashReceived}
                                     onChange={(e) =>
                                       setCashReceived(e.target.value)
                                     }
-                                    inputProps={{ min: 0, step: "0.01" }}
-                                    onFocus={() => setScannerEnabled?.(false)}
-                                    onBlur={() => setScannerEnabled?.(true)}
+                                    {...inputCommon}
+                                    {...tapToEditProps(
+                                      "cashReceived",
+                                      "decimal"
+                                    )}
+                                    inputProps={{
+                                      ...tapToEditProps(
+                                        "cashReceived",
+                                        "decimal"
+                                      ).inputProps,
+                                      pattern: "[0-9]*[.,]?[0-9]*",
+                                    }}
                                   />
                                   {cambioUnico > 0 && (
                                     <Typography
                                       variant="body2"
-                                      sx={{ mt: 0.5, fontWeight: "bold" }}
+                                      sx={{ mt: 0.5, fontWeight: 900 }}
                                     >
                                       Cambio: ${cambioUnico.toFixed(2)}
                                     </Typography>
@@ -493,8 +614,10 @@ export default function CartSidebar({
                                     color="text.secondary"
                                     sx={{ mb: 1 }}
                                   >
-                                    Se cobrará el total con {label}.
+                                    Se cobrará el total con{" "}
+                                    <strong>{label}</strong>.
                                   </Typography>
+
                                   <Stack
                                     direction={{ xs: "column", sm: "row" }}
                                     spacing={1}
@@ -509,6 +632,8 @@ export default function CartSidebar({
                                           referencia: e.target.value,
                                         })
                                       }
+                                      {...inputCommon}
+                                      {...tapToEditProps(`ref-${key}`, "text")}
                                     />
                                     {CARDLIKE.includes(key) && (
                                       <TextField
@@ -524,13 +649,23 @@ export default function CartSidebar({
                                             setDetail(key, { ultimos4: v });
                                         }}
                                         placeholder="2541"
-                                        sx={{ width: 160 }}
+                                        sx={{ width: { xs: "100%", sm: 170 } }}
+                                        {...inputCommon}
+                                        {...tapToEditProps(
+                                          `ult4-${key}`,
+                                          "numeric"
+                                        )}
                                         InputProps={{
+                                          ...tapToEditProps(
+                                            `ult4-${key}`,
+                                            "numeric"
+                                          ).InputProps,
                                           startAdornment: (
                                             <Typography
                                               sx={{
                                                 mr: 1,
                                                 whiteSpace: "nowrap",
+                                                color: "text.secondary",
                                               }}
                                             >
                                               **** **** ****
@@ -548,14 +683,25 @@ export default function CartSidebar({
                                   <Stack spacing={1}>
                                     <TextField
                                       label="Monto"
-                                      type="number"
+                                      type="text"
                                       value={d.amount}
                                       onChange={(e) =>
                                         setDetail(key, { amount: e.target.value })
                                       }
-                                      inputProps={{ min: 0, step: "0.01" }}
                                       fullWidth
                                       margin="dense"
+                                      {...inputCommon}
+                                      {...tapToEditProps(
+                                        `amount-${key}`,
+                                        "decimal"
+                                      )}
+                                      inputProps={{
+                                        ...tapToEditProps(
+                                          `amount-${key}`,
+                                          "decimal"
+                                        ).inputProps,
+                                        pattern: "[0-9]*[.,]?[0-9]*",
+                                      }}
                                     />
                                     <TextField
                                       label="Referencia"
@@ -567,6 +713,8 @@ export default function CartSidebar({
                                       }
                                       fullWidth
                                       margin="dense"
+                                      {...inputCommon}
+                                      {...tapToEditProps(`ref-${key}`, "text")}
                                     />
                                     <TextField
                                       label="Últimos 4"
@@ -582,10 +730,23 @@ export default function CartSidebar({
                                       placeholder="2541"
                                       fullWidth
                                       margin="dense"
+                                      {...inputCommon}
+                                      {...tapToEditProps(
+                                        `ult4-${key}`,
+                                        "numeric"
+                                      )}
                                       InputProps={{
+                                        ...tapToEditProps(
+                                          `ult4-${key}`,
+                                          "numeric"
+                                        ).InputProps,
                                         startAdornment: (
                                           <Typography
-                                            sx={{ mr: 1, whiteSpace: "nowrap" }}
+                                            sx={{
+                                              mr: 1,
+                                              whiteSpace: "nowrap",
+                                              color: "text.secondary",
+                                            }}
                                           >
                                             ****
                                           </Typography>
@@ -596,14 +757,25 @@ export default function CartSidebar({
                                 ) : (
                                   <TextField
                                     label="Monto"
-                                    type="number"
+                                    type="text"
                                     value={d.amount}
                                     onChange={(e) =>
                                       setDetail(key, { amount: e.target.value })
                                     }
-                                    inputProps={{ min: 0, step: "0.01" }}
                                     fullWidth
                                     margin="dense"
+                                    {...inputCommon}
+                                    {...tapToEditProps(
+                                      `amount-${key}`,
+                                      "decimal"
+                                    )}
+                                    inputProps={{
+                                      ...tapToEditProps(
+                                        `amount-${key}`,
+                                        "decimal"
+                                      ).inputProps,
+                                      pattern: "[0-9]*[.,]?[0-9]*",
+                                    }}
                                   />
                                 )}
                               </>
@@ -615,7 +787,6 @@ export default function CartSidebar({
                   })}
                 </Stack>
 
-                {/* Resumen 2-3 métodos */}
                 {selectedCount >= 2 && (
                   <Box sx={{ mt: 1.5 }}>
                     <Divider sx={{ mb: 1 }} />
@@ -623,10 +794,7 @@ export default function CartSidebar({
                       Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
                     </Typography>
                     {cambioMulti > 0 && (
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 0.5, fontWeight: "bold" }}
-                      >
+                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
                         Cambio: ${cambioMulti.toFixed(2)}
                       </Typography>
                     )}
@@ -636,25 +804,16 @@ export default function CartSidebar({
                 <Button
                   variant="contained"
                   color="success"
-                  disabled={
-                    cart.length === 0 ||
-                    (selectedCount === 1 &&
-                      selected[0] === "efectivo" &&
-                      (!Number.isFinite(toNumber(cashReceived)) ||
-                        toNumber(cashReceived) + 0.00001 < total)) ||
-                    (selectedCount >= 2 &&
-                      (selected
-                        .map((m) => toNumber(details[m].amount))
-                        .reduce(
-                          (a, b) => a + (Number.isFinite(b) ? b : 0),
-                          0
-                        ) +
-                        0.00001 <
-                        total))
-                  }
+                  disabled={disableConfirm}
                   onClick={handleConfirm}
                   fullWidth
-                  sx={{ mt: 2 }}
+                  sx={{
+                    mt: 2,
+                    py: 1.2,
+                    borderRadius: 2,
+                    fontWeight: 900,
+                    textTransform: "none",
+                  }}
                 >
                   Confirmar pago
                 </Button>
@@ -671,13 +830,13 @@ export default function CartSidebar({
           onApply={(nuevoProducto) => {
             aplicarCambioProducto(nuevoProducto);
             setProductoEditar(null);
-            setModalDescuentoActivo(false);
+            setModalDescuentoActivo?.(false);
           }}
           onClose={() => {
             setProductoEditar(null);
-            setModalDescuentoActivo(false);
+            setModalDescuentoActivo?.(false);
           }}
-          onOpen={() => setModalDescuentoActivo(true)}
+          onOpen={() => setModalDescuentoActivo?.(true)}
         />
       )}
     </Box>
