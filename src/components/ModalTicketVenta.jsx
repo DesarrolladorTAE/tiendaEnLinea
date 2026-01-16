@@ -19,20 +19,66 @@ import { showSuccess, showError } from "../utils/alerts";
 export default function ModalTicketVenta({ open, onClose, ventaId }) {
   const [numero, setNumero] = useState("");
   const [sending, setSending] = useState(false);
+  const [loadingPrint, setLoadingPrint] = useState(false);
 
   if (!ventaId) return null;
 
+  // ✅ URL para previsualizar PDF (Laravel en internet)
   const baseUrl = window.location.origin.includes("localhost")
     ? "https://mitiendaenlineamx.com.mx"
     : window.location.origin;
 
   const url = `${baseUrl}/api/sales/${ventaId}/ticket.pdf`;
 
-  const handlePrint = () => {
-    const iframe = document.getElementById("iframe-ticket");
-    if (iframe?.contentWindow) {
-      iframe.contentWindow.focus();
-      iframe.contentWindow.print();
+  const handlePrint = async () => {
+    setLoadingPrint(true);
+    try {
+      // ✅ Ticket simulado en TEXTO PLANO (ESC/POS)
+      const text = [
+        "ZAPATERIA CHUCHO",
+        "RFC: XAXX010101000",
+        "TEL: 55 1234 5678",
+        "------------------------------",
+        `TICKET #${ventaId}`,
+        `FECHA: ${new Date().toLocaleString()}`,
+        "CAJA: POS-1",
+        "------------------------------",
+        "Producto A        1 x 50.00  50.00",
+        "Producto B        2 x 25.00  50.00",
+        "------------------------------",
+        "SUBTOTAL:                86.21",
+        "IVA 16%:                 13.79",
+        "TOTAL:                  100.00",
+        "------------------------------",
+        "PAGO: EFECTIVO           200.00",
+        "CAMBIO:                 100.00",
+        "",
+        "GRACIAS POR SU COMPRA",
+        "www.mitiendaenlineamx.com.mx",
+        "",
+        "",
+      ].join("\n");
+
+      // ✅ Si estás dentro de la app (WebView) debe existir este objeto
+      if (window.AndroidPrintBridge?.print) {
+        window.AndroidPrintBridge.print(
+          JSON.stringify({
+            text,
+            cut: true,
+            openDrawer: true, // ✅ abre cajón si lo implementaste en PrintBridge
+          })
+        );
+        showSuccess("🖨️ Enviado a imprimir (USB)");
+        return;
+      }
+
+      // Si no estás en WebView, falla (para que no creas que imprimió)
+      throw new Error("No estás dentro de la app TaePrintBridge (WebView).");
+    } catch (err) {
+      console.error(err);
+      showError(`❌ Error al imprimir: ${err.message || err}`);
+    } finally {
+      setLoadingPrint(false);
     }
   };
 
@@ -49,9 +95,9 @@ export default function ModalTicketVenta({ open, onClose, ventaId }) {
 
     setSending(true);
     try {
-      await axiosClient.post(`/sales/${ventaId}/send-whatsapp`, { phone : numero });
+      await axiosClient.post(`/sales/${ventaId}/send-whatsapp`, { phone: numero });
       showSuccess("Ticket enviado por WhatsApp correctamente.");
-      setNumero(""); // <-- Limpia el input después del envío
+      setNumero("");
     } catch (error) {
       console.error("Error al enviar WhatsApp:", error);
       showError("No se pudo enviar el ticket.");
@@ -74,11 +120,7 @@ export default function ModalTicketVenta({ open, onClose, ventaId }) {
           id="iframe-ticket"
           title="Ticket PDF"
           src={url}
-          style={{
-            width: "100%",
-            height: "600px",
-            border: "none",
-          }}
+          style={{ width: "100%", height: "600px", border: "none" }}
         />
       </DialogContent>
 
@@ -106,10 +148,11 @@ export default function ModalTicketVenta({ open, onClose, ventaId }) {
         <Button
           onClick={handlePrint}
           variant="contained"
-          startIcon={<PrintIcon />}
+          startIcon={loadingPrint ? <CircularProgress size={18} color="inherit" /> : <PrintIcon />}
           color="primary"
+          disabled={loadingPrint}
         >
-          Imprimir
+          {loadingPrint ? "Imprimiendo..." : "Imprimir"}
         </Button>
 
         <Button onClick={onClose} variant="outlined" color="secondary">

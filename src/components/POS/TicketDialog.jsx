@@ -59,17 +59,41 @@ export default function TicketDialog({
     }
   };
 
-  const handlePrint = async () => {
-    setLoadingPrint(true);
-    try {
-      await onPrint();
-    } catch (err) {
-      console.error(err);
-      showError("❌ Error al imprimir ticket");
-    } finally {
-      setLoadingPrint(false);
+const handlePrint = async () => {
+  setLoadingPrint(true);
+  try {
+    const text = [
+      "TAE PRINT TEST",
+      "------------------------------",
+      "Ticket #000123",
+      `Fecha: ${new Date().toLocaleString()}`,
+      "",
+      "Producto A     1 x 50.00  50.00",
+      "Producto B     2 x 25.00  50.00",
+      "------------------------------",
+      "TOTAL:                 100.00",
+      "",
+      "GRACIAS POR SU COMPRA",
+      "",
+      "",
+    ].join("\n");
+
+    if (window.AndroidPrintBridge?.print) {
+      window.AndroidPrintBridge.print(JSON.stringify({ text, cut: true }));
+      showSuccess("🖨️ Enviado a imprimir (USB)");
+      return;
     }
-  };
+
+    throw new Error("No estas dentro de la app TaePrintBridge (WebView).");
+  } catch (err) {
+    console.error(err);
+    showError(`❌ Error al imprimir: ${err.message || err}`);
+  } finally {
+    setLoadingPrint(false);
+  }
+};
+
+
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
