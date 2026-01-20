@@ -15,7 +15,7 @@ const Footer = () => {
 
         <hr className="my-4" style={{ borderColor: "#1f2937" }} />
         <div className="text-center">
-          <p className="text-white mb-0">© 2025 TAE. Todos los derechos reservados.</p>
+          <p className="text-white mb-0">© 2026 TAE. Todos los derechos reservados.</p>
         </div>
       </div>
     </footer>
