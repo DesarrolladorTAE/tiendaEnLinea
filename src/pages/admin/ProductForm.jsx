@@ -1,20 +1,61 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import "bootstrap/dist/css/bootstrap.min.css";
-// import VariationItem from "../../components/admin/VariationItem";
-import CustomSelect from "../../components/admin/CustomSelect";
+import { Switch } from "@mui/material";
+
+import useLimiteProductos from "../../hooks/useLimiteProductos";
+import { showSuccess, showError } from "../../utils/alerts";
+
 import ProductField from "../../components/admin/ProductField";
 import TextAreaField from "../../components/admin/TextAreaField";
-import { Switch } from "@mui/material";
-import useLimiteProductos from "../../hooks/useLimiteProductos";
-import {
-  buscarClavesProducto,
-  buscarClavesUnidad,
-  buscarUnidadesMedida,
-} from "../../services/taecontaApi";
-import { showSuccess, showError } from "../../utils/alerts";
+import CustomSelect from "../../components/admin/CustomSelect";
+
+import SatFields from "../../components/admin/productForm/SatFields";
+import VariantsEditor from "../../components/admin/productForm/VariantsEditor";
+
+/**
+ * ✅ Helper: agrega a FormData usando notación bracket
+ * Ej:
+ *  appendFormData(fd, "variants", [{ stock: 2, attributes: { Color:"Rojo"} }])
+ * genera:
+ *  variants[0][stock]=2
+ *  variants[0][attributes][Color]=Rojo
+ */
+function appendFormData(formData, key, value) {
+  if (value === undefined) return;
+
+  if (value === null) {
+    formData.append(key, "");
+    return;
+  }
+
+  // File
+  if (value instanceof File) {
+    formData.append(key, value);
+    return;
+  }
+
+  // Array
+  if (Array.isArray(value)) {
+    value.forEach((v, i) => {
+      appendFormData(formData, `${key}[${i}]`, v);
+    });
+    return;
+  }
+
+  // Object
+  if (typeof value === "object") {
+    Object.entries(value).forEach(([k, v]) => {
+      appendFormData(formData, `${key}[${k}]`, v);
+    });
+    return;
+  }
+
+  // Primitive
+  formData.append(key, String(value));
+}
 
 function ProductForm() {
   const { id } = useParams();
@@ -44,164 +85,154 @@ function ProductForm() {
       fullDescription: "",
       category: [],
       tags: [],
-      variations: [],
       visible: true,
-      unidad_medida: "",
+
+      // SAT
+      unidad_medida_id: "",
       costo_compra: "",
       clave_producto_servicio: "",
       clave_unidad: "",
+
+      // IVA/base
+      iva: "",
       base_price: "",
+
+      // UI actual (variations color + sizes)
+      // variations: [],
+      variants: [],
+
+      // ✅ FUTURO (si luego haces UI para opciones/units)
+      options: [],
+      units: [],
     },
   });
 
-  // const [categoriesOptions, setCategoriesOptions] = useState([]);
-  const discount = watch("discount");
-  const variations = watch("variations") || [];
-  const hasVariations = variations.length > 0;
+  // ====== categorías padre/hijas ======
+  const [categoriesOptions, setCategoriesOptions] = useState([]);
+  const [childrenByParent, setChildrenByParent] = useState(new Map());
 
-  // valores "crudos" del formulario
+  const buildCategoryOptionsWithMap = (flat) => {
+    const parents = flat.filter((c) => c.parent_id == null);
+    const byParent = new Map();
+
+    flat.forEach((c) => {
+      if (c.parent_id != null) {
+        const arr = byParent.get(c.parent_id) ?? [];
+        arr.push(c);
+        byParent.set(c.parent_id, arr);
+      }
+    });
+
+    setChildrenByParent(byParent);
+
+    const options = [];
+
+    parents
+      .sort((a, b) => String(a.name).localeCompare(String(b.name)))
+      .forEach((p) => {
+        const kids = (byParent.get(p.id) ?? []).sort((a, b) =>
+          String(a.name).localeCompare(String(b.name)),
+        );
+
+        if (kids.length) {
+          options.push({
+            value: p.id,
+            label: `🗂️ ${p.name} (guardar todas sus hijas)`,
+            meta: { type: "parent" },
+          });
+
+          kids.forEach((k) => {
+            options.push({
+              value: k.id,
+              label: `   ↳ 👶 ${k.name}`,
+              meta: { type: "child", parent_id: p.id },
+            });
+          });
+        } else {
+          options.push({
+            value: p.id,
+            label: `📄 ${p.name}`,
+            meta: { type: "single" },
+          });
+        }
+      });
+
+    setCategoriesOptions(options);
+  };
+
+  const fetchOptions = async () => {
+    try {
+      const catRes = await axiosClient.get("/admin/categories");
+      const cats = catRes.data.categories ?? catRes.data ?? [];
+      buildCategoryOptionsWithMap(cats);
+    } catch (error) {
+      console.error("Error cargando categorías:", error);
+    }
+  };
+
+  const expandSelectedCategories = (selected) => {
+    const ids = (selected || []).map((x) => Number(x.value)).filter(Boolean);
+    const final = new Set();
+
+    for (const cid of ids) {
+      const kids = childrenByParent.get(cid);
+      if (kids && kids.length) {
+        kids.forEach((k) => final.add(Number(k.id)));
+      } else {
+        final.add(cid);
+      }
+    }
+    return Array.from(final);
+  };
+
+  // ====== watchers IVA/base ======
+  const discount = watch("discount");
+  // const variations = watch("variations") || [];
+  // const hasVariations = variations.length > 0;
+
   const priceStr = watch("price") || "0";
   const ivaRaw = watch("iva");
   const basePriceStr = watch("base_price") || "0";
 
-  // numéricos
   const price = parseFloat(priceStr) || 0;
-  const iva =
-    ivaRaw !== "null" && ivaRaw !== "" ? parseFloat(ivaRaw) || 0 : 0;
-  const basePriceNum = parseFloat(basePriceStr) || 0;
+  const iva = ivaRaw !== "null" && ivaRaw !== "" ? parseFloat(ivaRaw) || 0 : 0;
 
-  const {
-    fields: variationFields,
-    append: appendVariation,
-    remove: removeVariation,
-  } = useFieldArray({
-    control,
-    name: "variations",
-  });
-
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [imageFiles, setImageFiles] = useState([]);
-  const [opcionesClaveProducto, setOpcionesClaveProducto] = useState([]);
-  const [opcionesClaveUnidad, setOpcionesClaveUnidad] = useState([]);
-  const [claveProdInput, setClaveProdInput] = useState("");
-  const [claveUnidadInput, setClaveUnidadInput] = useState("");
-  const [unidadMedidaInput, setUnidadMedidaInput] = useState("");
-  const [opcionesUnidadMedida, setOpcionesUnidadMedida] = useState([]);
-
-  // para controlar recálculos en edición
+  // control recálculos edición
   const [productoCargado, setProductoCargado] = useState(false);
   const [ivaOriginal, setIvaOriginal] = useState(null);
   const [initialPrice, setInitialPrice] = useState(null);
   const [initialBasePrice, setInitialBasePrice] = useState(null);
-  const [categoriesOptions, setCategoriesOptions] = useState([]);
-const [childrenByParent, setChildrenByParent] = useState(new Map());
 
-const buildCategoryOptionsWithMap = (flat) => {
-  const parents = flat.filter((c) => c.parent_id == null);
-  const byParent = new Map();
+  // imágenes
+  const [imageFiles, setImageFiles] = useState([]);
 
-  flat.forEach((c) => {
-    if (c.parent_id != null) {
-      const arr = byParent.get(c.parent_id) ?? [];
-      arr.push(c);
-      byParent.set(c.parent_id, arr);
-    }
-  });
-
-  // Guardamos el map para expandir en submit
-  setChildrenByParent(byParent);
-
-  // Construimos options para el select
-  const options = [];
-
-  parents
-    .sort((a, b) => String(a.name).localeCompare(String(b.name)))
-    .forEach((p) => {
-      const kids = (byParent.get(p.id) ?? []).sort((a, b) =>
-        String(a.name).localeCompare(String(b.name))
-      );
-
-      if (kids.length) {
-        // PADRE seleccionable ✅
-        options.push({
-          value: p.id,
-          label: `🗂️ ${p.name} (guardar todas sus hijas)`,
-          meta: { type: "parent" },
-        });
-
-        // HIJAS
-        kids.forEach((k) => {
-          options.push({
-            value: k.id,
-            label: `   ↳ 👶 ${k.name}`,
-            meta: { type: "child", parent_id: p.id },
-          });
-        });
-      } else {
-        // SUELTA
-        options.push({
-          value: p.id,
-          label: `📄 ${p.name}`,
-          meta: { type: "single" },
-        });
-      }
-    });
-
-  setCategoriesOptions(options);
-};
-
-const fetchOptions = async () => {
-  try {
-    const catRes = await axiosClient.get("/admin/categories");
-    const cats = catRes.data.categories ?? catRes.data ?? [];
-    buildCategoryOptionsWithMap(cats);
-  } catch (error) {
-    console.error("Error cargando categorías:", error);
-  }
-};
-
-
-  // ---------- INIT ----------
-
+  // ====== INIT ======
   useEffect(() => {
-    const initializeForm = async () => {
+    const init = async () => {
       await fetchOptions();
       if (id) await fetchProduct(id);
     };
-
-    initializeForm();
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // const fetchOptions = async () => {
-  //   try {
-  //     const [catRes] = await Promise.all([
-  //       axiosClient.get("/admin/categories"),
-  //     ]);
-
-  //     setCategoriesOptions(
-  //       catRes.data.map((c) => ({ value: c.id, label: c.name }))
-  //     );
-  //   } catch (error) {
-  //     console.error("Error cargando categorías:", error);
-  //   }
-  // };
-const mapSelectedCats = (catsFromApi) => {
-  return catsFromApi.map((c) => {
-    const found = categoriesOptions.find((o) => Number(o.value) === Number(c.id));
-    return found ?? { value: c.id, label: c.name };
-  });
-};
+  const mapSelectedCats = (catsFromApi) => {
+    return (catsFromApi || []).map((c) => {
+      const found = categoriesOptions.find(
+        (o) => Number(o.value) === Number(c.id),
+      );
+      return found ?? { value: c.id, label: c.name };
+    });
+  };
 
   const fetchProduct = async (productId) => {
     try {
       const response = await axiosClient.get(
-        `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`
+        `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`,
       );
       const product = response.data;
 
       let offerEnd = "";
-
       if (product.offerEnd) {
         const date = new Date(product.offerEnd);
         offerEnd = date.toISOString().slice(0, 16);
@@ -217,6 +248,13 @@ const mapSelectedCats = (catsFromApi) => {
           ? Number(product.base_price).toFixed(2)
           : "";
 
+      // ✅ Si tu API ya regresa variants, aquí podrías reconstruir variations,
+      // pero como tu UI actual usa "variations color + sizes", lo dejamos vacío
+      // (puedes implementarlo después si quieres).
+      const loadedVariations = product.variation
+        ? product.variation.map((v) => ({ ...v, sizes: v.size || [] }))
+        : [];
+
       reset({
         sku: product.sku || "",
         name: product.name || "",
@@ -231,13 +269,8 @@ const mapSelectedCats = (catsFromApi) => {
         iva: product.iva !== null ? product.iva.toString() : "null",
         offerEnd,
         category: mapSelectedCats(product.categories),
-
-        tags: product.tags.map((t) => ({ value: t.id, label: t.name })),
-        variations:
-          product.variation?.map((v) => ({
-            ...v,
-            sizes: v.size || [],
-          })) || [],
+        tags: (product.tags || []).map((t) => ({ value: t.id, label: t.name })),
+        variations: loadedVariations || [],
         visible: Boolean(product.visible),
 
         costo_compra: product.purchase_cost?.toString() || "",
@@ -245,104 +278,111 @@ const mapSelectedCats = (catsFromApi) => {
         clave_producto_servicio: product.clave_producto_sat || "",
         clave_unidad: product.clave_unidad_sat || "",
         base_price: basePriceFromApi,
+
+        options: product.options || [],
+        units: product.units || [],
       });
 
       setProductoCargado(true);
       setIvaOriginal(product.iva !== null ? Number(product.iva) : null);
       setInitialPrice(product.price);
       setInitialBasePrice(product.base_price);
-
-      setUnidadMedidaInput(product.unidad_medida_texto || "");
-      setClaveProdInput(product.clave_producto_sat || "");
-      setClaveUnidadInput(product.clave_unidad_sat || "");
     } catch (err) {
       console.error("Error al cargar producto para editar:", err);
       showError("No se pudo cargar el producto para edición.");
     }
   };
 
-  // ---------- LÓGICA DE CÁLCULO ----------
+  // ====== CÁLCULO base_price ======
 
-  // CREAR: de precio final + IVA → base_price (solo cuando no es edición)
+  // CREAR: de precio final + IVA → base_price
   useEffect(() => {
     if (!isEdit) {
       if (!isNaN(price) && !isNaN(iva)) {
         const nuevoBase = (price / (1 + (iva || 0))).toFixed(2);
-        if (nuevoBase !== basePriceStr) {
-          setValue("base_price", nuevoBase);
-        }
+        if (nuevoBase !== basePriceStr) setValue("base_price", nuevoBase);
       }
     }
   }, [price, iva, isEdit, basePriceStr, setValue]);
 
-  // EDITAR: si el usuario CAMBIA el IVA, recalculamos el precio final usando base_price
+  // EDITAR: si cambia el IVA, recalcula precio final usando base_price
   useEffect(() => {
     if (!isEdit) return;
     if (!productoCargado) return;
     if (ivaOriginal === null) return;
 
-    // si el IVA sigue igual, no tocamos el precio
     if (iva === ivaOriginal) return;
 
+    const basePriceNum = parseFloat(basePriceStr) || 0;
     if (!isNaN(basePriceNum) && !isNaN(iva)) {
       const nuevoPrecio = (basePriceNum * (1 + iva)).toFixed(2);
-      if (nuevoPrecio !== priceStr) {
-        setValue("price", nuevoPrecio);
-      }
+      if (nuevoPrecio !== priceStr) setValue("price", nuevoPrecio);
     }
   }, [
     isEdit,
     productoCargado,
     ivaOriginal,
     iva,
-    basePriceNum,
+    basePriceStr,
     priceStr,
     setValue,
   ]);
 
-  // Botón manual para recalcular base_price a partir de price+IVA
   const handleRecalculateBase = () => {
     const currentPrice = parseFloat(watch("price") || "0");
     const ivaValue = watch("iva");
     const ivaNum =
-      ivaValue === "null" || ivaValue === ""
-        ? 0
-        : parseFloat(ivaValue) || 0;
+      ivaValue === "null" || ivaValue === "" ? 0 : parseFloat(ivaValue) || 0;
 
     const newBase = (currentPrice / (1 + (ivaNum || 0))).toFixed(2);
     setValue("base_price", newBase);
   };
 
-  // ---------- SUBMIT ----------
-  const expandSelectedCategories = (selected) => {
-  // selected = [{value,label}, ...]
-  const ids = (selected || []).map((x) => Number(x.value)).filter(Boolean);
+  // ====== MAP: variations (UI) -> variants (backend) ======
+  const buildVariantsFromVariations = (data) => {
+    const vars = data.variations || [];
+    const out = [];
 
-  const final = new Set();
+    vars.forEach((v) => {
+      const color = (v.color || "").trim();
+      const sizes = Array.isArray(v.sizes) ? v.sizes : [];
 
-  for (const id of ids) {
-    const kids = childrenByParent.get(id);
+      sizes
+        .filter((s) => (s?.name || "").trim() !== "")
+        .forEach((s) => {
+          const sizeName = String(s.name || "").trim();
+          const stock = Number(s.stock || 0);
 
-    if (kids && kids.length) {
-      // si es padre, agregamos hijas
-      kids.forEach((k) => final.add(Number(k.id)));
-    } else {
-      // suelta o hija
-      final.add(id);
-    }
-  }
+          // SKU opcional (tu backend permite nullable)
+          // Si quieres, puedes generar un sku automático:
+          // const autoSku = `${data.sku}-${color}-${sizeName}`.replace(/\s+/g, "-");
+          out.push({
+            sku: null,
+            name: `${data.name || ""}${color ? ` - ${color}` : ""}${
+              sizeName ? ` - ${sizeName}` : ""
+            }`.trim(),
+            price: null, // si quieres precio por variante, aquí lo pones
+            purchase_cost: null,
+            stock: isNaN(stock) ? 0 : stock,
+            image: null,
+            is_active: true,
+            attributes: {
+              ...(color ? { Color: color } : {}),
+              ...(sizeName ? { Talla: sizeName } : {}),
+            },
+          });
+        });
+    });
 
-  return Array.from(final);
-};
+    return out;
+  };
 
-
+  // ====== SUBMIT ======
   const onSubmit = async (data) => {
-    setMessage("");
-    setError("");
-
     try {
       const formData = new FormData();
 
+      // base fields
       formData.append("sku", data.sku);
       formData.append("name", data.name);
       formData.append("price", data.price?.toString() || "0");
@@ -353,6 +393,14 @@ const mapSelectedCats = (catsFromApi) => {
       formData.append("shortDescription", data.shortDescription);
       formData.append("fullDescription", data.fullDescription);
 
+      // IVA
+      if (data.iva === "null" || data.iva === "") {
+        formData.append("iva", "null"); // ✅ tu backend normaliza 'null' a null
+      } else {
+        formData.append("iva", data.iva);
+      }
+
+      // base_price: siguiendo tu lógica original
       const ivaNumber =
         data.iva === "null" || data.iva === "" ? 0 : parseFloat(data.iva) || 0;
       const priceNumber = parseFloat(data.price || "0");
@@ -360,10 +408,8 @@ const mapSelectedCats = (catsFromApi) => {
       let basePriceToSend;
 
       if (!id) {
-        // CREAR: siempre calculamos base a partir del precio actual
         basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
       } else {
-        // EDITAR: solo recalculamos si CAMBIÓ el price
         const initialPriceFixed =
           initialPrice !== null && initialPrice !== undefined
             ? Number(initialPrice).toFixed(2)
@@ -378,7 +424,6 @@ const mapSelectedCats = (catsFromApi) => {
         if (priceChanged) {
           basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
         } else {
-          // si no cambió el precio, mandamos el base que venía de DB
           basePriceToSend =
             initialBasePrice !== null && initialBasePrice !== undefined
               ? Number(initialBasePrice).toFixed(2)
@@ -388,22 +433,10 @@ const mapSelectedCats = (catsFromApi) => {
 
       formData.append("base_price", basePriceToSend);
 
-      formData.append("unidad_medida_id", data.unidad_medida_id || "");
-      formData.append(
-        "clave_producto_sat",
-        data.clave_producto_servicio || ""
-      );
-      formData.append("clave_unidad_sat", data.clave_unidad || "");
-      formData.append("purchase_cost", data.costo_compra?.toString() || "0");
-
-      if (data.iva === "null" || data.iva === "") {
-        formData.append("iva", "");
-      } else {
-        formData.append("iva", data.iva);
-      }
-
+      // visible boolean
       formData.append("visible", data.visible ? "1" : "0");
 
+      // offerEnd solo si descuento > 0
       if (data.offerEnd && Number(data.discount) > 0) {
         const formattedOfferEnd = new Date(data.offerEnd)
           .toISOString()
@@ -412,52 +445,109 @@ const mapSelectedCats = (catsFromApi) => {
         formData.append("offerEnd", formattedOfferEnd);
       }
 
-     if (data.category?.length) {
-  const expandedIds = expandSelectedCategories(data.category);
-  expandedIds.forEach((id) => formData.append("category[]", String(id)));
-}
+      // SAT fields (nombres exactos backend)
+      formData.append("purchase_cost", data.costo_compra?.toString() || "0");
+      formData.append("unidad_medida_id", data.unidad_medida_id || "");
+      formData.append("clave_producto_sat", data.clave_producto_servicio || "");
+      formData.append("clave_unidad_sat", data.clave_unidad || "");
 
-
-      if (data.tags?.length) {
-        data.tags.forEach((tag) => formData.append("tag[]", tag.value));
-      }
-
-      if (hasVariations) {
-        const variationsPayload = data.variations.map(({ color, sizes }) => ({
-          color,
-          image: "",
-          size: sizes
-            .filter((s) => s.name.trim() !== "")
-            .map(({ name, stock }) => ({
-              name,
-              stock: Number(stock),
-            })),
-        }));
-        formData.append("variation", JSON.stringify(variationsPayload));
+      // categorías (padre -> hijas)
+      if (data.category?.length) {
+        const expandedIds = expandSelectedCategories(data.category);
+        expandedIds.forEach((cid) =>
+          formData.append("category[]", String(cid)),
+        );
       } else {
-        formData.append("stock", data.stock?.toString() || "0");
+        // si quieres enviar vacío explícito, no hace falta
       }
 
+      // tags -> backend espera tag[]
+      if (data.tags?.length) {
+        data.tags.forEach((tag) => formData.append("tag[]", String(tag.value)));
+      }
+
+      // imágenes -> backend valida images.* (lo usual es images[])
       if (imageFiles.length > 0) {
         imageFiles.forEach((file) => {
           formData.append("images[]", file);
         });
       }
+const normalizeVariantsForBackend = (rawVariants = []) => {
+  return rawVariants
+    .map((v) => {
+      const attrsArray = Array.isArray(v.attributes) ? v.attributes : [];
+      const attributesObj = {};
 
+      attrsArray.forEach((a) => {
+        const k = String(a?.name || "").trim();
+        const val = String(a?.value || "").trim();
+        if (!k || !val) return;
+        attributesObj[k] = val;
+      });
+
+      return {
+        sku: v.sku || null,
+        name: v.name || null,
+        price: v.price === "" ? null : Number(v.price),
+        purchase_cost: v.purchase_cost === "" ? null : Number(v.purchase_cost),
+        stock: Number(v.stock || 0),
+        image: v.image || null,
+        is_active:
+          String(v.is_active) === "false" ? false : true,
+        attributes: Object.keys(attributesObj).length ? attributesObj : null,
+      };
+    })
+    .filter((v) => {
+      // si el usuario agregó una variante vacía, la ignoramos
+      const hasAny =
+        (v.name && String(v.name).trim() !== "") ||
+        (v.sku && String(v.sku).trim() !== "") ||
+        Number(v.stock || 0) > 0 ||
+        (v.attributes && Object.keys(v.attributes).length > 0);
+      return hasAny;
+    });
+};
+
+      // ===== VARIANTS / OPTIONS / UNITS =====
+      // Tu UI actual: variations -> variants
+      const variantsPayload = buildVariantsFromVariations(data);
+
+      const variants = watch("variants") || [];
+      const hasVariants = variants.length > 0;
+
+      // stock (backend lo requiere SIEMPRE)
+      // Si hay variantes, manda stock 0 (o la suma si tú quieres).
+      if (!hasVariants) {
+        formData.append("stock", data.stock?.toString() || "0");
+      } else {
+        formData.append("stock", "0");
+      }
+
+      // ✅ Mandar variants como array real via bracket notation
+      if (hasVariants) {
+        appendFormData(formData, "variants", variantsPayload);
+      }
+
+      // (Opcional) si luego agregas UI para options/units:
+      if (Array.isArray(data.options) && data.options.length > 0) {
+        appendFormData(formData, "options", data.options);
+      }
+      if (Array.isArray(data.units) && data.units.length > 0) {
+        appendFormData(formData, "units", data.units);
+      }
+
+      // ===== REQUEST =====
       if (id) {
         formData.append("_method", "PUT");
         await axiosClient.post(`/admin/products/${id}`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
         showSuccess("✅ Producto actualizado con éxito.");
         navigate("/admin/products");
       } else {
+        // OJO: ajusta esta ruta si tu backend usa /CrearProducto2 o /admin/products
         await axiosClient.post("/cargar/products", formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
         showSuccess("✅ Producto creado con éxito.");
         navigate("/admin/products");
@@ -471,8 +561,8 @@ const mapSelectedCats = (catsFromApi) => {
           `❌ Error en la API:\n${JSON.stringify(
             error.response.data.errors,
             null,
-            2
-          )}`
+            2,
+          )}`,
         );
       } else {
         showError("Error de conexión con el servidor.");
@@ -501,8 +591,6 @@ const mapSelectedCats = (catsFromApi) => {
         <h2 className="text-center text-primary">
           {id ? "✏️ Editar Producto" : "📝 Crear Producto"}
         </h2>
-        {message && <div className="alert alert-success">{message}</div>}
-        {error && <div className="alert alert-danger">{error}</div>}
 
         <form onSubmit={handleSubmit(onSubmit)}>
           {/* Información del Producto */}
@@ -513,6 +601,7 @@ const mapSelectedCats = (catsFromApi) => {
               </h4>
             </div>
           </div>
+
           <div className="row">
             <ProductField
               label="Código"
@@ -536,6 +625,7 @@ const mapSelectedCats = (catsFromApi) => {
               validation={{ required: "El precio es obligatorio" }}
               errors={errors}
             />
+
             <div className="col-md-4 mb-3">
               <label className="form-label" htmlFor="iva">
                 Tasa de IVA <span className="text-danger">*</span>
@@ -559,15 +649,13 @@ const mapSelectedCats = (catsFromApi) => {
                 <small className="text-danger">{errors.iva.message}</small>
               )}
 
-              {/* Campo oculto para enviar base_price */}
+              {/* Campo oculto base_price */}
               <input type="hidden" {...register("base_price")} />
 
               <div className="d-flex align-items-center justify-content-between mt-2">
                 <p className="text-info mb-0">
                   Precio Base (SIN IVA):{" "}
-                  <strong>
-                    ${Number(basePriceStr || 0).toFixed(2)} MXN
-                  </strong>
+                  <strong>${Number(basePriceStr || 0).toFixed(2)} MXN</strong>
                 </p>
                 <button
                   type="button"
@@ -578,6 +666,7 @@ const mapSelectedCats = (catsFromApi) => {
                 </button>
               </div>
             </div>
+
             <ProductField
               label="Costo de Compra"
               name="costo_compra"
@@ -595,69 +684,23 @@ const mapSelectedCats = (catsFromApi) => {
               </h4>
             </div>
           </div>
+
           <div className="row">
-            {!hasVariations && (
+            {/* stock solo si NO hay variantes */}
+            {!hasVariants && (
               <ProductField
                 label="Stock"
                 name="stock"
                 type="number"
                 register={register}
                 errors={errors}
+                validation={{
+                  required: "El stock es obligatorio (si no usas variantes)",
+                }}
               />
             )}
 
-            <div className="position-relative col-md-6 mb-3">
-              <label className="form-label text-white">Unidad de Medida</label>
-
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Buscar unidad (ej. cajas, piezas, kg...)"
-                value={unidadMedidaInput}
-                onChange={async (e) => {
-                  const value = e.target.value;
-                  setUnidadMedidaInput(value);
-                  if (value.length >= 2) {
-                    const resultados = await buscarUnidadesMedida(value);
-                    setOpcionesUnidadMedida(resultados);
-                  } else {
-                    setOpcionesUnidadMedida([]);
-                  }
-                }}
-              />
-
-              <input type="hidden" {...register("unidad_medida_id")} />
-
-              {opcionesUnidadMedida.length > 0 && (
-                <div
-                  className="position-absolute bg-white border rounded shadow"
-                  style={{
-                    zIndex: 10,
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                  }}
-                >
-                  {opcionesUnidadMedida.map((item) => (
-                    <div
-                      key={item.id}
-                      className="px-2 py-1 text-dark hover-bg-light"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => {
-                        const valor = `${item.simbolo} - ${item.texto}`;
-                        setUnidadMedidaInput(valor);
-                        setValue("unidad_medida_id", item.id);
-                        setOpcionesUnidadMedida([]);
-                      }}
-                    >
-                      {item.simbolo} - {item.texto}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <SatFields register={register} setValue={setValue} watch={watch} />
 
             <ProductField
               label="Descuento (%)"
@@ -678,117 +721,13 @@ const mapSelectedCats = (catsFromApi) => {
             )}
           </div>
 
-          {/* Facturación */}
-          <div className="row mt-4">
-            <div className="col-12">
-              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                📄 Facturación
-              </h4>
-            </div>
-          </div>
-          <div className="row">
-            <div className="position-relative col-md-6 mb-3">
-              <label className="form-label text-white">
-                Clave Producto/Servicio
-              </label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Buscar clave SAT (ej. 10101502, perros...)"
-                value={claveProdInput}
-                onChange={async (e) => {
-                  const value = e.target.value;
-                  setClaveProdInput(value);
-                  setValue("clave_producto_servicio", value);
-                  if (value.length >= 2) {
-                    const resultados = await buscarClavesProducto(value);
-                    setOpcionesClaveProducto(resultados);
-                  } else {
-                    setOpcionesClaveProducto([]);
-                  }
-                }}
-              />
-              {opcionesClaveProducto.length > 0 && (
-                <div
-                  className="position-absolute bg-white border rounded shadow"
-                  style={{
-                    zIndex: 10,
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                  }}
-                >
-                  {opcionesClaveProducto.map((item) => (
-                    <div
-                      key={item.clave}
-                      className="px-2 py-1 text-dark hover-bg-light"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => {
-                        const valor = `${item.clave} - ${item.descripcion}`;
-                        setClaveProdInput(valor);
-                        setValue("clave_producto_servicio", item.clave);
-                        setOpcionesClaveProducto([]);
-                      }}
-                    >
-                      {item.clave} - {item.descripcion}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="position-relative col-md-6 mb-3">
-              <label className="form-label text-white">Clave Unidad</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Buscar unidad (ej. kilogramo, A41...)"
-                value={claveUnidadInput}
-                onChange={async (e) => {
-                  const value = e.target.value;
-                  setClaveUnidadInput(value);
-                  setValue("clave_unidad", value);
-                  if (value.length >= 2) {
-                    const resultados = await buscarClavesUnidad(value);
-                    setOpcionesClaveUnidad(resultados);
-                  } else {
-                    setOpcionesClaveUnidad([]);
-                  }
-                }}
-              />
-              {opcionesClaveUnidad.length > 0 && (
-                <div
-                  className="position-absolute bg-white border rounded shadow"
-                  style={{
-                    zIndex: 10,
-                    top: "100%",
-                    left: 0,
-                    right: 0,
-                    maxHeight: "200px",
-                    overflowY: "auto",
-                  }}
-                >
-                  {opcionesClaveUnidad.map((item) => (
-                    <div
-                      key={item.clave}
-                      className="px-2 py-1 text-dark hover-bg-light"
-                      style={{ cursor: "pointer" }}
-                      onClick={() => {
-                        const valor = `${item.clave} - ${item.descripcion}`;
-                        setClaveUnidadInput(valor);
-                        setValue("clave_unidad", item.clave);
-                        setOpcionesClaveUnidad([]);
-                      }}
-                    >
-                      {item.clave} - {item.descripcion}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Variantes (tu UI actual) */}
+          <VariantsEditor
+            control={control}
+            register={register}
+            watch={watch}
+            setValue={setValue}
+          />
 
           {/* Sitio Web */}
           <div className="row mt-4">
@@ -848,19 +787,20 @@ const mapSelectedCats = (catsFromApi) => {
               </h4>
             </div>
           </div>
+
           <div className="row">
             <TextAreaField
               label="Descripción Corta"
               name="shortDescription"
               register={register}
-              validation={{ required: "Las descripción corta es obligatoria" }}
+              validation={{ required: "La descripción corta es obligatoria" }}
               errors={errors}
             />
             <TextAreaField
               label="Descripción Larga"
               name="fullDescription"
               register={register}
-              validation={{ required: "Las descripción larga es obligatoria" }}
+              validation={{ required: "La descripción larga es obligatoria" }}
               errors={errors}
             />
           </div>
@@ -892,12 +832,10 @@ const mapSelectedCats = (catsFromApi) => {
                     return;
                   }
 
-                  const tooBig = files.find(
-                    (f) => f.size > 2 * 1024 * 1024
-                  );
+                  const tooBig = files.find((f) => f.size > 2 * 1024 * 1024);
                   if (tooBig) {
                     alert(
-                      `La imagen ${tooBig.name} supera los 2MB permitidos.`
+                      `La imagen ${tooBig.name} supera los 2MB permitidos.`,
                     );
                     return;
                   }
@@ -912,7 +850,7 @@ const mapSelectedCats = (catsFromApi) => {
           <div className="row mt-4">
             <div className="col-12">
               <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                ✅ Categorias
+                ✅ Categorías
               </h4>
             </div>
           </div>
@@ -925,6 +863,15 @@ const mapSelectedCats = (catsFromApi) => {
                 control={control}
                 options={categoriesOptions}
               />
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="row mt-3">
+            <div className="col-md-6 mb-3">
+              <label className="form-label">Etiquetas</label>
+              <CustomSelect name="tags" control={control} options={[]} />
+              {/* si ya tienes options de tags, las conectamos igual que categorías */}
             </div>
           </div>
 
