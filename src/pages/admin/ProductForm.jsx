@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -31,13 +31,11 @@ function appendFormData(formData, key, value) {
     return;
   }
 
-  // File
   if (value instanceof File) {
     formData.append(key, value);
     return;
   }
 
-  // Array
   if (Array.isArray(value)) {
     value.forEach((v, i) => {
       appendFormData(formData, `${key}[${i}]`, v);
@@ -45,7 +43,6 @@ function appendFormData(formData, key, value) {
     return;
   }
 
-  // Object
   if (typeof value === "object") {
     Object.entries(value).forEach(([k, v]) => {
       appendFormData(formData, `${key}[${k}]`, v);
@@ -53,8 +50,78 @@ function appendFormData(formData, key, value) {
     return;
   }
 
-  // Primitive
   formData.append(key, String(value));
+}
+
+/**
+ * Convierte variantes del FORM (attributes array) a payload BACKEND (attributes object)
+ */
+function normalizeVariantsForBackend(rawVariants = []) {
+  return rawVariants
+    .map((v) => {
+      const attrsArray = Array.isArray(v.attributes) ? v.attributes : [];
+      const attributesObj = {};
+
+      attrsArray.forEach((a) => {
+        const k = String(a?.name || "").trim();
+        const val = String(a?.value || "").trim();
+        if (!k || !val) return;
+        attributesObj[k] = val;
+      });
+
+      const stockNum = Number(v.stock || 0);
+
+      return {
+        sku: v.sku ? String(v.sku).trim() : null,
+        name: v.name ? String(v.name).trim() : null,
+        price: v.price === "" || v.price === null || v.price === undefined ? null : Number(v.price),
+        purchase_cost:
+          v.purchase_cost === "" || v.purchase_cost === null || v.purchase_cost === undefined
+            ? null
+            : Number(v.purchase_cost),
+        stock: Number.isFinite(stockNum) ? stockNum : 0,
+        image: v.image instanceof File ? v.image : null, // ✅ aquí
+        is_active: String(v.is_active) === "false" ? false : true,
+        attributes: Object.keys(attributesObj).length ? attributesObj : null,
+      };
+    })
+    .filter((v) => {
+      const hasAny =
+        (v.name && v.name.trim() !== "") ||
+        (v.sku && String(v.sku).trim() !== "") ||
+        Number(v.stock || 0) > 0 ||
+        (v.attributes && Object.keys(v.attributes).length > 0);
+      return hasAny;
+    });
+}
+
+/**
+ * Si tu API regresa variants con attributes como objeto:
+ *   { attributes: { Color:"Rojo", Talla:"CH" } }
+ * lo convertimos a:
+ *   { attributes: [{name:"Color", value:"Rojo"}, ...] }
+ */
+function mapBackendVariantsToForm(backendVariants = []) {
+  return (backendVariants || []).map((v) => {
+    const attrsObj = v?.attributes && typeof v.attributes === "object" ? v.attributes : null;
+    const attrsArray = attrsObj
+      ? Object.entries(attrsObj).map(([name, value]) => ({
+          name: String(name),
+          value: String(value),
+        }))
+      : [{ name: "", value: "" }];
+
+    return {
+      sku: v?.sku || "",
+      name: v?.name || "",
+      price: v?.price ?? "",
+      purchase_cost: v?.purchase_cost ?? "",
+      stock: v?.stock ?? 0,
+      image: v?.image || "",
+      is_active: v?.is_active === false ? "false" : "true", // para el select
+      attributes: attrsArray.length ? attrsArray : [{ name: "", value: "" }],
+    };
+  });
 }
 
 function ProductForm() {
@@ -97,11 +164,10 @@ function ProductForm() {
       iva: "",
       base_price: "",
 
-      // UI actual (variations color + sizes)
-      // variations: [],
+      // ✅ NUEVA UI (variantes libres)
       variants: [],
 
-      // ✅ FUTURO (si luego haces UI para opciones/units)
+      // FUTURO
       options: [],
       units: [],
     },
@@ -131,7 +197,7 @@ function ProductForm() {
       .sort((a, b) => String(a.name).localeCompare(String(b.name)))
       .forEach((p) => {
         const kids = (byParent.get(p.id) ?? []).sort((a, b) =>
-          String(a.name).localeCompare(String(b.name)),
+          String(a.name).localeCompare(String(b.name))
         );
 
         if (kids.length) {
@@ -187,8 +253,6 @@ function ProductForm() {
 
   // ====== watchers IVA/base ======
   const discount = watch("discount");
-  // const variations = watch("variations") || [];
-  // const hasVariations = variations.length > 0;
 
   const priceStr = watch("price") || "0";
   const ivaRaw = watch("iva");
@@ -206,6 +270,10 @@ function ProductForm() {
   // imágenes
   const [imageFiles, setImageFiles] = useState([]);
 
+  // ✅ variantes libres (para UI condicional stock)
+  const variantsWatch = watch("variants") || [];
+  const hasVariants = variantsWatch.length > 0;
+
   // ====== INIT ======
   useEffect(() => {
     const init = async () => {
@@ -218,9 +286,7 @@ function ProductForm() {
 
   const mapSelectedCats = (catsFromApi) => {
     return (catsFromApi || []).map((c) => {
-      const found = categoriesOptions.find(
-        (o) => Number(o.value) === Number(c.id),
-      );
+      const found = categoriesOptions.find((o) => Number(o.value) === Number(c.id));
       return found ?? { value: c.id, label: c.name };
     });
   };
@@ -228,7 +294,7 @@ function ProductForm() {
   const fetchProduct = async (productId) => {
     try {
       const response = await axiosClient.get(
-        `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`,
+        `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`
       );
       const product = response.data;
 
@@ -239,20 +305,16 @@ function ProductForm() {
       }
 
       const priceFromApi =
-        product.price !== null && product.price !== undefined
-          ? Number(product.price).toFixed(2)
-          : "";
+        product.price !== null && product.price !== undefined ? Number(product.price).toFixed(2) : "";
 
       const basePriceFromApi =
         product.base_price !== null && product.base_price !== undefined
           ? Number(product.base_price).toFixed(2)
           : "";
 
-      // ✅ Si tu API ya regresa variants, aquí podrías reconstruir variations,
-      // pero como tu UI actual usa "variations color + sizes", lo dejamos vacío
-      // (puedes implementarlo después si quieres).
-      const loadedVariations = product.variation
-        ? product.variation.map((v) => ({ ...v, sizes: v.size || [] }))
+      // ✅ Si tu API ya regresa variants, los cargamos en el editor
+      const loadedVariants = Array.isArray(product.variants)
+        ? mapBackendVariantsToForm(product.variants)
         : [];
 
       reset({
@@ -270,7 +332,6 @@ function ProductForm() {
         offerEnd,
         category: mapSelectedCats(product.categories),
         tags: (product.tags || []).map((t) => ({ value: t.id, label: t.name })),
-        variations: loadedVariations || [],
         visible: Boolean(product.visible),
 
         costo_compra: product.purchase_cost?.toString() || "",
@@ -278,6 +339,9 @@ function ProductForm() {
         clave_producto_servicio: product.clave_producto_sat || "",
         clave_unidad: product.clave_unidad_sat || "",
         base_price: basePriceFromApi,
+
+        // ✅ variantes libres
+        variants: loadedVariants,
 
         options: product.options || [],
         units: product.units || [],
@@ -318,63 +382,15 @@ function ProductForm() {
       const nuevoPrecio = (basePriceNum * (1 + iva)).toFixed(2);
       if (nuevoPrecio !== priceStr) setValue("price", nuevoPrecio);
     }
-  }, [
-    isEdit,
-    productoCargado,
-    ivaOriginal,
-    iva,
-    basePriceStr,
-    priceStr,
-    setValue,
-  ]);
+  }, [isEdit, productoCargado, ivaOriginal, iva, basePriceStr, priceStr, setValue]);
 
   const handleRecalculateBase = () => {
     const currentPrice = parseFloat(watch("price") || "0");
     const ivaValue = watch("iva");
-    const ivaNum =
-      ivaValue === "null" || ivaValue === "" ? 0 : parseFloat(ivaValue) || 0;
+    const ivaNum = ivaValue === "null" || ivaValue === "" ? 0 : parseFloat(ivaValue) || 0;
 
     const newBase = (currentPrice / (1 + (ivaNum || 0))).toFixed(2);
     setValue("base_price", newBase);
-  };
-
-  // ====== MAP: variations (UI) -> variants (backend) ======
-  const buildVariantsFromVariations = (data) => {
-    const vars = data.variations || [];
-    const out = [];
-
-    vars.forEach((v) => {
-      const color = (v.color || "").trim();
-      const sizes = Array.isArray(v.sizes) ? v.sizes : [];
-
-      sizes
-        .filter((s) => (s?.name || "").trim() !== "")
-        .forEach((s) => {
-          const sizeName = String(s.name || "").trim();
-          const stock = Number(s.stock || 0);
-
-          // SKU opcional (tu backend permite nullable)
-          // Si quieres, puedes generar un sku automático:
-          // const autoSku = `${data.sku}-${color}-${sizeName}`.replace(/\s+/g, "-");
-          out.push({
-            sku: null,
-            name: `${data.name || ""}${color ? ` - ${color}` : ""}${
-              sizeName ? ` - ${sizeName}` : ""
-            }`.trim(),
-            price: null, // si quieres precio por variante, aquí lo pones
-            purchase_cost: null,
-            stock: isNaN(stock) ? 0 : stock,
-            image: null,
-            is_active: true,
-            attributes: {
-              ...(color ? { Color: color } : {}),
-              ...(sizeName ? { Talla: sizeName } : {}),
-            },
-          });
-        });
-    });
-
-    return out;
   };
 
   // ====== SUBMIT ======
@@ -395,14 +411,13 @@ function ProductForm() {
 
       // IVA
       if (data.iva === "null" || data.iva === "") {
-        formData.append("iva", "null"); // ✅ tu backend normaliza 'null' a null
+        formData.append("iva", "null");
       } else {
         formData.append("iva", data.iva);
       }
 
-      // base_price: siguiendo tu lógica original
-      const ivaNumber =
-        data.iva === "null" || data.iva === "" ? 0 : parseFloat(data.iva) || 0;
+      // base_price
+      const ivaNumber = data.iva === "null" || data.iva === "" ? 0 : parseFloat(data.iva) || 0;
       const priceNumber = parseFloat(data.price || "0");
 
       let basePriceToSend;
@@ -411,15 +426,10 @@ function ProductForm() {
         basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
       } else {
         const initialPriceFixed =
-          initialPrice !== null && initialPrice !== undefined
-            ? Number(initialPrice).toFixed(2)
-            : null;
+          initialPrice !== null && initialPrice !== undefined ? Number(initialPrice).toFixed(2) : null;
         const currentPriceFixed = priceNumber.toFixed(2);
 
-        const priceChanged =
-          initialPriceFixed === null
-            ? true
-            : currentPriceFixed !== initialPriceFixed;
+        const priceChanged = initialPriceFixed === null ? true : currentPriceFixed !== initialPriceFixed;
 
         if (priceChanged) {
           basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
@@ -438,10 +448,7 @@ function ProductForm() {
 
       // offerEnd solo si descuento > 0
       if (data.offerEnd && Number(data.discount) > 0) {
-        const formattedOfferEnd = new Date(data.offerEnd)
-          .toISOString()
-          .slice(0, 19)
-          .replace("T", " ");
+        const formattedOfferEnd = new Date(data.offerEnd).toISOString().slice(0, 19).replace("T", " ");
         formData.append("offerEnd", formattedOfferEnd);
       }
 
@@ -454,11 +461,7 @@ function ProductForm() {
       // categorías (padre -> hijas)
       if (data.category?.length) {
         const expandedIds = expandSelectedCategories(data.category);
-        expandedIds.forEach((cid) =>
-          formData.append("category[]", String(cid)),
-        );
-      } else {
-        // si quieres enviar vacío explícito, no hace falta
+        expandedIds.forEach((cid) => formData.append("category[]", String(cid)));
       }
 
       // tags -> backend espera tag[]
@@ -466,69 +469,31 @@ function ProductForm() {
         data.tags.forEach((tag) => formData.append("tag[]", String(tag.value)));
       }
 
-      // imágenes -> backend valida images.* (lo usual es images[])
+      // imágenes -> backend valida images.*
       if (imageFiles.length > 0) {
         imageFiles.forEach((file) => {
           formData.append("images[]", file);
         });
       }
-const normalizeVariantsForBackend = (rawVariants = []) => {
-  return rawVariants
-    .map((v) => {
-      const attrsArray = Array.isArray(v.attributes) ? v.attributes : [];
-      const attributesObj = {};
 
-      attrsArray.forEach((a) => {
-        const k = String(a?.name || "").trim();
-        const val = String(a?.value || "").trim();
-        if (!k || !val) return;
-        attributesObj[k] = val;
-      });
+      // ===== VARIANTS (NUEVA UI) =====
+      const rawVariants = data.variants || [];
+      const variantsPayload = normalizeVariantsForBackend(rawVariants);
+      const hasVariantsPayload = variantsPayload.length > 0;
 
-      return {
-        sku: v.sku || null,
-        name: v.name || null,
-        price: v.price === "" ? null : Number(v.price),
-        purchase_cost: v.purchase_cost === "" ? null : Number(v.purchase_cost),
-        stock: Number(v.stock || 0),
-        image: v.image || null,
-        is_active:
-          String(v.is_active) === "false" ? false : true,
-        attributes: Object.keys(attributesObj).length ? attributesObj : null,
-      };
-    })
-    .filter((v) => {
-      // si el usuario agregó una variante vacía, la ignoramos
-      const hasAny =
-        (v.name && String(v.name).trim() !== "") ||
-        (v.sku && String(v.sku).trim() !== "") ||
-        Number(v.stock || 0) > 0 ||
-        (v.attributes && Object.keys(v.attributes).length > 0);
-      return hasAny;
-    });
-};
-
-      // ===== VARIANTS / OPTIONS / UNITS =====
-      // Tu UI actual: variations -> variants
-      const variantsPayload = buildVariantsFromVariations(data);
-
-      const variants = watch("variants") || [];
-      const hasVariants = variants.length > 0;
-
-      // stock (backend lo requiere SIEMPRE)
-      // Si hay variantes, manda stock 0 (o la suma si tú quieres).
-      if (!hasVariants) {
+      // stock: si hay variantes -> manda 0 (o podrías mandar suma si quieres)
+      if (!hasVariantsPayload) {
         formData.append("stock", data.stock?.toString() || "0");
       } else {
         formData.append("stock", "0");
       }
 
       // ✅ Mandar variants como array real via bracket notation
-      if (hasVariants) {
+      if (hasVariantsPayload) {
         appendFormData(formData, "variants", variantsPayload);
       }
 
-      // (Opcional) si luego agregas UI para options/units:
+      // FUTURO options/units
       if (Array.isArray(data.options) && data.options.length > 0) {
         appendFormData(formData, "options", data.options);
       }
@@ -545,7 +510,6 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
         showSuccess("✅ Producto actualizado con éxito.");
         navigate("/admin/products");
       } else {
-        // OJO: ajusta esta ruta si tu backend usa /CrearProducto2 o /admin/products
         await axiosClient.post("/cargar/products", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
@@ -557,13 +521,7 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
     } catch (error) {
       console.error("❌ Error en la API:", error.response?.data || error);
       if (error.response?.data?.errors) {
-        showError(
-          `❌ Error en la API:\n${JSON.stringify(
-            error.response.data.errors,
-            null,
-            2,
-          )}`,
-        );
+        showError(`❌ Error en la API:\n${JSON.stringify(error.response.data.errors, null, 2)}`);
       } else {
         showError("Error de conexión con el servidor.");
       }
@@ -572,14 +530,12 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
 
   const { puedeCrear, cargando, limitePermitido } = useLimiteProductos();
 
-  if (cargando)
-    return <p className="text-center text-muted">Cargando datos...</p>;
+  if (cargando) return <p className="text-center text-muted">Cargando datos...</p>;
 
   if (!puedeCrear) {
     return (
       <div className="alert alert-warning text-center mt-5">
-        🚫 Has alcanzado el límite de <strong>{limitePermitido}</strong>{" "}
-        productos para tu plan. <br />
+        🚫 Has alcanzado el límite de <strong>{limitePermitido}</strong> productos para tu plan. <br />
         Elimina productos o mejora tu plan para seguir agregando más.
       </div>
     );
@@ -588,17 +544,13 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
   return (
     <div className="container">
       <div className="card bg-dark text-light p-4 shadow-lg">
-        <h2 className="text-center text-primary">
-          {id ? "✏️ Editar Producto" : "📝 Crear Producto"}
-        </h2>
+        <h2 className="text-center text-primary">{id ? "✏️ Editar Producto" : "📝 Crear Producto"}</h2>
 
         <form onSubmit={handleSubmit(onSubmit)}>
           {/* Información del Producto */}
           <div className="row mt-4">
             <div className="col-12">
-              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                🛒 Información del Producto
-              </h4>
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">🛒 Información del Producto</h4>
             </div>
           </div>
 
@@ -632,12 +584,8 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
               </label>
               <select
                 id="iva"
-                className={`form-control bg-secondary border-secondary ${
-                  errors?.iva ? "is-invalid" : ""
-                }`}
-                {...register("iva", {
-                  required: "La tasa de IVA es obligatoria",
-                })}
+                className={`form-control bg-secondary border-secondary ${errors?.iva ? "is-invalid" : ""}`}
+                {...register("iva", { required: "La tasa de IVA es obligatoria" })}
               >
                 <option value="">Selecciona una tasa</option>
                 <option value="0.16">TASA 16%</option>
@@ -645,43 +593,28 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
                 <option value="0">TASA 0%</option>
                 <option value="null">EXENTO</option>
               </select>
-              {errors.iva && (
-                <small className="text-danger">{errors.iva.message}</small>
-              )}
 
-              {/* Campo oculto base_price */}
+              {errors.iva && <small className="text-danger">{errors.iva.message}</small>}
+
               <input type="hidden" {...register("base_price")} />
 
               <div className="d-flex align-items-center justify-content-between mt-2">
                 <p className="text-info mb-0">
-                  Precio Base (SIN IVA):{" "}
-                  <strong>${Number(basePriceStr || 0).toFixed(2)} MXN</strong>
+                  Precio Base (SIN IVA): <strong>${Number(basePriceStr || 0).toFixed(2)} MXN</strong>
                 </p>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-light ms-2"
-                  onClick={handleRecalculateBase}
-                >
+                <button type="button" className="btn btn-sm btn-outline-light ms-2" onClick={handleRecalculateBase}>
                   Recalcular base
                 </button>
               </div>
             </div>
 
-            <ProductField
-              label="Costo de Compra"
-              name="costo_compra"
-              type="text"
-              register={register}
-              errors={errors}
-            />
+            <ProductField label="Costo de Compra" name="costo_compra" type="text" register={register} errors={errors} />
           </div>
 
           {/* Inventario y Descuento */}
           <div className="row mt-4">
             <div className="col-12">
-              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                📦 Inventario y Descuento
-              </h4>
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">📦 Inventario y Descuento</h4>
             </div>
           </div>
 
@@ -694,58 +627,31 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
                 type="number"
                 register={register}
                 errors={errors}
-                validation={{
-                  required: "El stock es obligatorio (si no usas variantes)",
-                }}
+                validation={{ required: "El stock es obligatorio (si no usas variantes)" }}
               />
             )}
 
             <SatFields register={register} setValue={setValue} watch={watch} />
 
-            <ProductField
-              label="Descuento (%)"
-              name="discount"
-              type="number"
-              register={register}
-              errors={errors}
-            />
+            <ProductField label="Descuento (%)" name="discount" type="number" register={register} errors={errors} />
 
             {Number(discount) > 0 && (
-              <ProductField
-                label="Fin de la Oferta"
-                name="offerEnd"
-                type="datetime-local"
-                register={register}
-                errors={errors}
-              />
+              <ProductField label="Fin de la Oferta" name="offerEnd" type="datetime-local" register={register} errors={errors} />
             )}
           </div>
 
-          {/* Variantes (tu UI actual) */}
-          <VariantsEditor
-            control={control}
-            register={register}
-            watch={watch}
-            setValue={setValue}
-          />
+          {/* ✅ Variantes libres */}
+          {/* <VariantsEditor control={control} register={register} watch={watch} setValue={setValue} /> */}
 
           {/* Sitio Web */}
           <div className="row mt-4">
             <div className="col-12">
-              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                🌐 Sitio Web
-              </h4>
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">🌐 Sitio Web</h4>
             </div>
           </div>
 
           <div className="row">
-            <ProductField
-              label="Calificación (0-5)"
-              name="rating"
-              type="number"
-              register={register}
-              errors={errors}
-            />
+            <ProductField label="Calificación (0-5)" name="rating" type="number" register={register} errors={errors} />
 
             <div className="col-md-4 mb-3">
               <label className="form-label" htmlFor="new-switch">
@@ -782,9 +688,7 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
           {/* Descripciones */}
           <div className="row mt-4">
             <div className="col-12">
-              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                📑 Descripciones
-              </h4>
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">📑 Descripciones</h4>
             </div>
           </div>
 
@@ -808,17 +712,13 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
           {/* Imágenes */}
           <div className="row mt-4">
             <div className="col-12">
-              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                🖼️ Imagenes del Producto
-              </h4>
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">🖼️ Imagenes del Producto</h4>
             </div>
           </div>
 
           {!id && (
             <div className="mb-3">
-              <label className="form-label text-white">
-                🖼 Imágenes del producto (hasta 6)
-              </label>
+              <label className="form-label text-white">🖼 Imágenes del producto (hasta 6)</label>
               <input
                 type="file"
                 className="form-control"
@@ -834,9 +734,7 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
 
                   const tooBig = files.find((f) => f.size > 2 * 1024 * 1024);
                   if (tooBig) {
-                    alert(
-                      `La imagen ${tooBig.name} supera los 2MB permitidos.`,
-                    );
+                    alert(`La imagen ${tooBig.name} supera los 2MB permitidos.`);
                     return;
                   }
 
@@ -849,31 +747,24 @@ const normalizeVariantsForBackend = (rawVariants = []) => {
           {/* Categorías */}
           <div className="row mt-4">
             <div className="col-12">
-              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">
-                ✅ Categorías
-              </h4>
+              <h4 className="text-white fs-4 fw-bold border-bottom pb-2 mb-3">✅ Categorías</h4>
             </div>
           </div>
 
           <div className="row">
             <div className="col-md-6 mb-3">
               <label className="form-label">Categoría</label>
-              <CustomSelect
-                name="category"
-                control={control}
-                options={categoriesOptions}
-              />
+              <CustomSelect name="category" control={control} options={categoriesOptions} />
             </div>
           </div>
 
           {/* Tags */}
-          <div className="row mt-3">
+          {/* <div className="row mt-3">
             <div className="col-md-6 mb-3">
               <label className="form-label">Etiquetas</label>
               <CustomSelect name="tags" control={control} options={[]} />
-              {/* si ya tienes options de tags, las conectamos igual que categorías */}
             </div>
-          </div>
+          </div> */}
 
           <button type="submit" className="btn btn-success w-100 mt-4">
             {id ? "✏️ Actualizar Producto" : "✅ Guardar Producto"}
