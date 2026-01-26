@@ -39,7 +39,8 @@ export function appendFormData(formData, key, value) {
 
 /**
  * Convierte variantes del FORM (attributes array) a payload BACKEND (attributes object)
- * + Soporta image por variante (File)
+ * + soporta image por variante (File)
+ * + soporta location_stocks por variante
  */
 export function normalizeVariantsForBackend(rawVariants = []) {
   return (rawVariants || [])
@@ -54,67 +55,166 @@ export function normalizeVariantsForBackend(rawVariants = []) {
         attributesObj[k] = val;
       });
 
-      const stockNum = Number(v.stock || 0);
+      // ✅ location_stocks (multi-almacén por variante)
+      const locRows = Array.isArray(v.location_stocks) ? v.location_stocks : [];
+      const cleanLoc = locRows
+        .map((r) => ({
+          pos_location_id: String(r?.pos_location_id || "").trim(),
+          qty:
+            r?.qty === "" || r?.qty === null || r?.qty === undefined
+              ? ""
+              : Number(r.qty),
+          price:
+            r?.price === "" || r?.price === null || r?.price === undefined
+              ? ""
+              : Number(r.price),
+          purchase_cost:
+            r?.purchase_cost === "" ||
+            r?.purchase_cost === null ||
+            r?.purchase_cost === undefined
+              ? ""
+              : Number(r.purchase_cost),
+        }))
+        .filter((r) => r.pos_location_id !== "");
+
+      const stockNum = Number(v.stock ?? 0);
 
       return {
+        id: v.id ?? null, // (opcional)
         sku: v.sku ? String(v.sku).trim() : null,
         name: v.name ? String(v.name).trim() : null,
-        price:
-          v.price === "" || v.price === null || v.price === undefined
-            ? null
-            : Number(v.price),
+        price: v.price === "" || v.price == null ? null : Number(v.price),
         purchase_cost:
-          v.purchase_cost === "" ||
-          v.purchase_cost === null ||
-          v.purchase_cost === undefined
+          v.purchase_cost === "" || v.purchase_cost == null
             ? null
             : Number(v.purchase_cost),
         stock: Number.isFinite(stockNum) ? stockNum : 0,
-        image: v.image instanceof File ? v.image : null, // ✅ File real
-        is_active: String(v.is_active) === "false" ? false : true,
+
+        // ✅ si hay File, mándalo. Si no, manda image_existing (string)
+        image: v.image instanceof File ? v.image : null,
+        image_existing: !(v.image instanceof File)
+          ? v.image_existing || v.image || null
+          : null,
+
+        is_active: String(v.is_active) === "false" ? 0 : 1,
         attributes: Object.keys(attributesObj).length ? attributesObj : null,
+
+        // ✅ siempre manda arreglo (aunque qty=0) si hay filas
+        location_stocks: cleanLoc,
       };
     })
     .filter((v) => {
+      // ✅ NO filtrar mal: stock 0 también cuenta, y location_stocks también
       const hasAny =
         (v.name && String(v.name).trim() !== "") ||
         (v.sku && String(v.sku).trim() !== "") ||
-        Number(v.stock || 0) > 0 ||
+        v.price !== null ||
+        v.purchase_cost !== null ||
+        v.is_active === 0 ||
+        v.is_active === 1 ||
+        Number(v.stock ?? 0) >= 0 ||
         (v.attributes && Object.keys(v.attributes).length > 0) ||
-        v.image instanceof File;
+        v.image instanceof File ||
+        (typeof v.image_existing === "string" && v.image_existing.trim() !== "") ||
+        (Array.isArray(v.location_stocks) && v.location_stocks.length > 0);
+
       return hasAny;
     });
 }
 
 /**
- * Si tu API regresa variants con attributes como objeto:
- *   { attributes: { Color:"Rojo" } }
- * lo convertimos a:
- *   { attributes: [{name:"Color", value:"Rojo"}] }
+ * Backend -> Form:
+ * - attributes: soporta objeto {Color:"Rojo"} o array [{name,value}]
+ * - location_stocks: soporta array
+ * - image_existing: conserva url si no subes File
  */
 export function mapBackendVariantsToForm(backendVariants = []) {
   return (backendVariants || []).map((v) => {
-    const attrsObj =
-      v?.attributes && typeof v.attributes === "object" ? v.attributes : null;
+    // ✅ attributes
+    let attrsArray = [{ name: "", value: "" }];
 
-    const attrsArray = attrsObj
-      ? Object.entries(attrsObj).map(([name, value]) => ({
-          name: String(name),
-          value: String(value),
+    if (Array.isArray(v?.attributes)) {
+      const arr = v.attributes
+        .map((a) => ({
+          name: String(a?.name || ""),
+          value: String(a?.value || ""),
         }))
-      : [{ name: "", value: "" }];
+        .filter((a) => a.name.trim() && a.value.trim());
+      attrsArray = arr.length ? arr : [{ name: "", value: "" }];
+    } else if (v?.attributes && typeof v.attributes === "object") {
+      const arr = Object.entries(v.attributes)
+        .map(([name, value]) => ({
+          name: String(name || ""),
+          value: String(value || ""),
+        }))
+        .filter((a) => a.name.trim() && a.value.trim());
+      attrsArray = arr.length ? arr : [{ name: "", value: "" }];
+    }
+
+    // ✅ location_stocks
+    const locationStocks = Array.isArray(v?.location_stocks)
+      ? v.location_stocks.map((r) => ({
+          pos_location_id: String(r?.pos_location_id ?? "").trim(),
+          qty: r?.qty ?? "",
+          price: r?.price ?? "",
+          purchase_cost: r?.purchase_cost ?? "",
+        }))
+      : [];
+
+    // ✅ conservar imagen existente
+    const imageExisting = v?.image_url || v?.image || "";
 
     return {
+      id: v?.id ?? null,
       sku: v?.sku || "",
       name: v?.name || "",
       price: v?.price ?? "",
       purchase_cost: v?.purchase_cost ?? "",
       stock: v?.stock ?? 0,
-      image: v?.image_url || v?.image || "", // ✅ URL/string (solo preview)
+
+      image: imageExisting, // preview
+      image_existing: imageExisting, // ✅ para backend
+
       is_active: v?.is_active === false ? "false" : "true",
-      attributes: attrsArray.length ? attrsArray : [{ name: "", value: "" }],
+      attributes: attrsArray,
+
+      location_stocks: locationStocks,
     };
   });
+}
+
+/**
+ * ✅ Deriva "sucursales activas" a nivel PRODUCTO cuando:
+ * - use_location_inventory = true
+ * - pero location_inventories viene vacío
+ * - y hay variantes con location_stocks
+ *
+ * Esto hace que tu UI "Multi-almacenes (Punto de venta)" tenga sucursales seleccionadas
+ * y deje de mostrar "Agrega al menos una sucursal" aunque el inventario sea por variante.
+ */
+function deriveLocationInventoriesFromVariants(product) {
+  const useLoc = Boolean(product?.use_location_inventory);
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  const base = Array.isArray(product?.location_inventories)
+    ? product.location_inventories
+    : [];
+
+  if (!useLoc) return base;
+  if (base.length > 0) return base;
+  if (!variants.length) return base;
+
+  const ids = new Set();
+  variants.forEach((v) => {
+    const rows = Array.isArray(v?.location_stocks) ? v.location_stocks : [];
+    rows.forEach((r) => {
+      const id = r?.pos_location_id;
+      if (id !== null && id !== undefined && String(id).trim() !== "") {
+        ids.add(Number(id));
+      }
+    });
+  });
+
+  return Array.from(ids).map((id) => ({ pos_location_id: id }));
 }
 
 /**
@@ -147,8 +247,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
   const basePriceStr = watch("base_price") || "0";
 
   const price = parseFloat(priceStr) || 0;
-  const iva =
-    ivaRaw !== "null" && ivaRaw !== "" ? parseFloat(ivaRaw) || 0 : 0;
+  const iva = ivaRaw !== "null" && ivaRaw !== "" ? parseFloat(ivaRaw) || 0 : 0;
 
   // variantes (para UI)
   const variantsWatch = watch("variants") || [];
@@ -233,7 +332,6 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
   };
 
   const fetchLocations = async () => {
-    // Ajusta si tu ruta real es otra
     try {
       const res = await axiosClient.get("/admin/pos");
       const data = res.data?.data || res.data?.locations || res.data || [];
@@ -245,7 +343,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
   const fetchProduct = async (productId) => {
     const response = await axiosClient.get(
-      `https://mitiendaenlineamx.com.mx/api/admin/products/${productId}`
+      `https://mitiendaenlineamx.com.mx/api/admin/productos/${productId}`
     );
     const product = response.data;
 
@@ -265,9 +363,18 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
         ? Number(product.base_price).toFixed(2)
         : "";
 
+    // ✅ variantes (con location_stocks + attrs)
     const loadedVariants = Array.isArray(product.variants)
       ? mapBackendVariantsToForm(product.variants)
       : [];
+
+    // ✅ FIX CLAVE:
+    // si multi-almacén está ON y location_inventories viene vacío,
+    // pero hay variantes con location_stocks, derivamos sucursales activas.
+    const locationInventories = deriveLocationInventoriesFromVariants({
+      ...product,
+      variants: product.variants || [],
+    });
 
     reset({
       sku: product.sku || "",
@@ -286,18 +393,22 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       tags: (product.tags || []).map((t) => ({ value: t.id, label: t.name })),
       visible: Boolean(product.visible),
 
+      // SAT
       costo_compra: product.purchase_cost?.toString() || "",
       unidad_medida_id: product.unidad_medida_id || "",
+      // ✅ guardamos texto para que tu UI lo muestre si lo necesita
+      unidad_medida_texto: product.unidad_medida_texto || "",
+
       clave_producto_servicio: product.clave_producto_sat || "",
       clave_unidad: product.clave_unidad_sat || "",
       base_price: basePriceFromApi,
 
       variants: loadedVariants,
 
-      // ✅ multi-almacén (nuevo)
+      // ✅ multi-almacén
       use_location_inventory: Boolean(product.use_location_inventory),
-      location_inventories: Array.isArray(product.location_inventories)
-        ? product.location_inventories
+      location_inventories: Array.isArray(locationInventories)
+        ? locationInventories
         : [],
 
       options: product.options || [],
@@ -375,7 +486,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
        */
       const useLoc = Boolean(data.use_location_inventory);
 
-      const variantsPayloadPreview = normalizeVariantsForBackend(data.variants || []);
+      const variantsPayloadPreview = normalizeVariantsForBackend(
+        data.variants || []
+      );
       const hasVariantsPayload = variantsPayloadPreview.length > 0;
 
       if (useLoc && !hasVariantsPayload) {
@@ -401,7 +514,8 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
         }
 
         const invalidQty = rows.some((r) => {
-          if (r?.qty === "" || r?.qty === null || r?.qty === undefined) return false;
+          if (r?.qty === "" || r?.qty === null || r?.qty === undefined)
+            return false;
           const n = Number(r.qty);
           return !Number.isFinite(n) || n < 0;
         });
@@ -420,11 +534,10 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       }
 
       // ================================
-      // Ya pasamos validaciones, armamos FormData
+      // FormData
       // ================================
       const formData = new FormData();
 
-      // base fields
       formData.append("sku", data.sku);
       formData.append("name", data.name);
       formData.append("price", data.price?.toString() || "0");
@@ -435,7 +548,6 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       formData.append("shortDescription", data.shortDescription);
       formData.append("fullDescription", data.fullDescription);
 
-      // IVA
       if (data.iva === "null" || data.iva === "") formData.append("iva", "null");
       else formData.append("iva", data.iva);
 
@@ -456,9 +568,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
         const currentPriceFixed = priceNumber.toFixed(2);
 
         const priceChanged =
-          initialPriceFixed === null
-            ? true
-            : currentPriceFixed !== initialPriceFixed;
+          initialPriceFixed === null ? true : currentPriceFixed !== initialPriceFixed;
 
         if (priceChanged) {
           basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
@@ -472,10 +582,8 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
       formData.append("base_price", basePriceToSend);
 
-      // visible
       formData.append("visible", data.visible ? "1" : "0");
 
-      // offerEnd solo si descuento > 0
       if (data.offerEnd && Number(data.discount) > 0) {
         const formattedOfferEnd = new Date(data.offerEnd)
           .toISOString()
@@ -506,20 +614,16 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
         imageFiles.forEach((file) => formData.append("images[]", file));
       }
 
-      // variantes (usar el preview ya calculado)
+      // variantes
       const variantsPayload = variantsPayloadPreview;
       const hasVariantsPayload2 = variantsPayload.length > 0;
 
-      // stock global si NO hay variantes
       if (!hasVariantsPayload2) formData.append("stock", data.stock?.toString() || "0");
       else formData.append("stock", "0");
 
       if (hasVariantsPayload2) appendFormData(formData, "variants", variantsPayload);
 
-      /**
-       * ✅ MULTI-ALMACÉN (NUEVO)
-       * Enviar switch + lista
-       */
+      // multi-almacén
       formData.append("use_location_inventory", useLoc ? "1" : "0");
 
       if (useLoc) {
@@ -527,34 +631,35 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
           ? data.location_inventories
           : [];
 
-        // limpiar rows sin sucursal (por seguridad)
         const clean = rows
           .map((r) => ({
             pos_location_id: String(r?.pos_location_id || "").trim(),
-            qty: r?.qty === "" || r?.qty === null || r?.qty === undefined ? "" : Number(r.qty),
-            price: r?.price === "" || r?.price === null || r?.price === undefined ? "" : Number(r.price),
-            purchase_cost:
-              r?.purchase_cost === "" || r?.purchase_cost === null || r?.purchase_cost === undefined
-                ? ""
-                : Number(r.purchase_cost),
+            ...(hasVariantsPayload2
+              ? {}
+              : {
+                  qty: r?.qty === "" || r?.qty == null ? "" : Number(r.qty),
+                  price: r?.price === "" || r?.price == null ? "" : Number(r.price),
+                  purchase_cost:
+                    r?.purchase_cost === "" || r?.purchase_cost == null
+                      ? ""
+                      : Number(r.purchase_cost),
+                }),
           }))
           .filter((r) => r.pos_location_id !== "");
 
-        if (clean.length) {
-          appendFormData(formData, "location_inventories", clean);
-        }
+        if (clean.length) appendFormData(formData, "location_inventories", clean);
       }
 
       // request
       if (id) {
         formData.append("_method", "PUT");
-        await axiosClient.post(`/admin/products/${id}`, formData, {
+        await axiosClient.post(`/admin/productos/${id}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         showSuccess("✅ Producto actualizado con éxito.");
         navigate("/admin/products");
       } else {
-        await axiosClient.post("/cargar/products", formData, {
+        await axiosClient.post("/cargar/productos", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
         showSuccess("✅ Producto creado con éxito.");
