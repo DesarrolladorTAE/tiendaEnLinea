@@ -46,14 +46,14 @@ export function normalizeVariantsForBackend(rawVariants = []) {
   return (rawVariants || [])
     .map((v) => {
       const attrsArray = Array.isArray(v.attributes) ? v.attributes : [];
-      const attributesObj = {};
 
-      attrsArray.forEach((a) => {
-        const k = String(a?.name || "").trim();
-        const val = String(a?.value || "").trim();
-        if (!k || !val) return;
-        attributesObj[k] = val;
-      });
+      // ✅ NO usar objeto (se pisa). Mandar array [{name,value}]
+      const attributesArr = attrsArray
+        .map((a) => ({
+          name: String(a?.name || "").trim(),
+          value: String(a?.value || "").trim(),
+        }))
+        .filter((a) => a.name && a.value);
 
       // ✅ location_stocks (multi-almacén por variante)
       const locRows = Array.isArray(v.location_stocks) ? v.location_stocks : [];
@@ -97,14 +97,16 @@ export function normalizeVariantsForBackend(rawVariants = []) {
           : null,
 
         is_active: String(v.is_active) === "false" ? 0 : 1,
-        attributes: Object.keys(attributesObj).length ? attributesObj : null,
+
+        // ✅ ahora es array (nunca se pisa)
+        attributes: attributesArr,
 
         // ✅ siempre manda arreglo (aunque qty=0) si hay filas
         location_stocks: cleanLoc,
       };
     })
     .filter((v) => {
-      // ✅ NO filtrar mal: stock 0 también cuenta, y location_stocks también
+      // ✅ NO filtrar mal
       const hasAny =
         (v.name && String(v.name).trim() !== "") ||
         (v.sku && String(v.sku).trim() !== "") ||
@@ -113,7 +115,7 @@ export function normalizeVariantsForBackend(rawVariants = []) {
         v.is_active === 0 ||
         v.is_active === 1 ||
         Number(v.stock ?? 0) >= 0 ||
-        (v.attributes && Object.keys(v.attributes).length > 0) ||
+        (Array.isArray(v.attributes) && v.attributes.length > 0) ||
         v.image instanceof File ||
         (typeof v.image_existing === "string" && v.image_existing.trim() !== "") ||
         (Array.isArray(v.location_stocks) && v.location_stocks.length > 0);
@@ -121,6 +123,7 @@ export function normalizeVariantsForBackend(rawVariants = []) {
       return hasAny;
     });
 }
+
 
 /**
  * Backend -> Form:
@@ -154,11 +157,11 @@ export function mapBackendVariantsToForm(backendVariants = []) {
     // ✅ location_stocks
     const locationStocks = Array.isArray(v?.location_stocks)
       ? v.location_stocks.map((r) => ({
-          pos_location_id: String(r?.pos_location_id ?? "").trim(),
-          qty: r?.qty ?? "",
-          price: r?.price ?? "",
-          purchase_cost: r?.purchase_cost ?? "",
-        }))
+        pos_location_id: String(r?.pos_location_id ?? "").trim(),
+        qty: r?.qty ?? "",
+        price: r?.price ?? "",
+        purchase_cost: r?.purchase_cost ?? "",
+      }))
       : [];
 
     // ✅ conservar imagen existente
@@ -395,8 +398,10 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
       // SAT
       costo_compra: product.purchase_cost?.toString() || "",
+      unidad_medida: product.unidad_medida_id
+        ? { value: Number(product.unidad_medida_id), label: product.unidad_medida_texto || "" }
+        : null,
       unidad_medida_id: product.unidad_medida_id || "",
-      // ✅ guardamos texto para que tu UI lo muestre si lo necesita
       unidad_medida_texto: product.unidad_medida_texto || "",
 
       clave_producto_servicio: product.clave_producto_sat || "",
@@ -594,7 +599,11 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
       // SAT
       formData.append("purchase_cost", data.costo_compra?.toString() || "0");
-      formData.append("unidad_medida_id", data.unidad_medida_id || "");
+      formData.append(
+        "unidad_medida_id",
+        data.unidad_medida?.value ? String(data.unidad_medida.value) : (data.unidad_medida_id || "")
+      );
+
       formData.append("clave_producto_sat", data.clave_producto_servicio || "");
       formData.append("clave_unidad_sat", data.clave_unidad || "");
 
@@ -637,13 +646,13 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
             ...(hasVariantsPayload2
               ? {}
               : {
-                  qty: r?.qty === "" || r?.qty == null ? "" : Number(r.qty),
-                  price: r?.price === "" || r?.price == null ? "" : Number(r.price),
-                  purchase_cost:
-                    r?.purchase_cost === "" || r?.purchase_cost == null
-                      ? ""
-                      : Number(r.purchase_cost),
-                }),
+                qty: r?.qty === "" || r?.qty == null ? "" : Number(r.qty),
+                price: r?.price === "" || r?.price == null ? "" : Number(r.price),
+                purchase_cost:
+                  r?.purchase_cost === "" || r?.purchase_cost == null
+                    ? ""
+                    : Number(r.purchase_cost),
+              }),
           }))
           .filter((r) => r.pos_location_id !== "");
 

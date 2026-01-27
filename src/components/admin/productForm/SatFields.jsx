@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   buscarClavesProducto,
   buscarClavesUnidad,
@@ -10,13 +10,38 @@ export default function SatFields({ register, setValue, watch }) {
   const [opcionesClaveUnidad, setOpcionesClaveUnidad] = useState([]);
   const [opcionesUnidadMedida, setOpcionesUnidadMedida] = useState([]);
 
-  const [claveProdInput, setClaveProdInput] = useState(
-    watch("clave_producto_servicio") || ""
-  );
-  const [claveUnidadInput, setClaveUnidadInput] = useState(
-    watch("clave_unidad") || ""
-  );
+  // 👇 valores RHF (cambian cuando haces reset en edición)
+  const claveProductoRHF = watch("clave_producto_servicio") || "";
+  const claveUnidadRHF = watch("clave_unidad") || "";
+  const unidadMedidaTextoRHF = watch("unidad_medida_texto") || "";
+  const unidadMedidaIdRHF = watch("unidad_medida_id") || "";
+
+  // inputs visibles (controlados)
+  const [claveProdInput, setClaveProdInput] = useState("");
+  const [claveUnidadInput, setClaveUnidadInput] = useState("");
   const [unidadMedidaInput, setUnidadMedidaInput] = useState("");
+
+  // ✅ Sync al cargar/editar (cuando reset() cambia watch())
+  useEffect(() => {
+    // Clave producto: si RHF trae solo clave, muéstrala en el input
+    if (claveProductoRHF && claveProdInput === "") {
+      setClaveProdInput(String(claveProductoRHF));
+    }
+    // Clave unidad: idem
+    if (claveUnidadRHF && claveUnidadInput === "") {
+      setClaveUnidadInput(String(claveUnidadRHF));
+    }
+    // Unidad de medida: mostrar texto (PZA - piezas)
+    if (unidadMedidaTextoRHF && unidadMedidaInput === "") {
+      setUnidadMedidaInput(String(unidadMedidaTextoRHF));
+    }
+    // Si no hay nada en RHF y el input tenía algo (por ejemplo al limpiar)
+    if (!unidadMedidaTextoRHF && !unidadMedidaIdRHF && unidadMedidaInput !== "") {
+      // opcional: no lo limpies si no quieres
+      // setUnidadMedidaInput("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveProductoRHF, claveUnidadRHF, unidadMedidaTextoRHF, unidadMedidaIdRHF]);
 
   return (
     <>
@@ -32,6 +57,11 @@ export default function SatFields({ register, setValue, watch }) {
           onChange={async (e) => {
             const value = e.target.value;
             setUnidadMedidaInput(value);
+
+            // si el usuario escribe, estamos “editando”, limpia ID/texto si quieres
+            setValue("unidad_medida_texto", value);
+            if (!value) setValue("unidad_medida_id", "");
+
             if (value.length >= 2) {
               const resultados = await buscarUnidadesMedida(value);
               setOpcionesUnidadMedida(resultados);
@@ -41,7 +71,9 @@ export default function SatFields({ register, setValue, watch }) {
           }}
         />
 
+        {/* hidden para backend */}
         <input type="hidden" {...register("unidad_medida_id")} />
+        <input type="hidden" {...register("unidad_medida_texto")} />
 
         {opcionesUnidadMedida.length > 0 && (
           <div
@@ -63,7 +95,11 @@ export default function SatFields({ register, setValue, watch }) {
                 onClick={() => {
                   const valor = `${item.simbolo} - ${item.texto}`;
                   setUnidadMedidaInput(valor);
+
+                  // ✅ guarda ambos: ID y texto
                   setValue("unidad_medida_id", item.id);
+                  setValue("unidad_medida_texto", valor);
+
                   setOpcionesUnidadMedida([]);
                 }}
               >
@@ -85,6 +121,8 @@ export default function SatFields({ register, setValue, watch }) {
           onChange={async (e) => {
             const value = e.target.value;
             setClaveProdInput(value);
+
+            // si escribe, guarda lo que va escribiendo (o limpia)
             setValue("clave_producto_servicio", value);
 
             if (value.length >= 2) {

@@ -19,12 +19,12 @@ export default function InventoryDiscountSection({
   watch,
   setValue,
   hasVariants,
+  control, // ✅ nuevo
 }) {
   const discount = watch("discount");
 
   return (
     <div className="row">
-      {/* stock solo si NO hay variantes */}
       {!hasVariants && (
         <ProductField
           label="Stock"
@@ -32,16 +32,19 @@ export default function InventoryDiscountSection({
           type="number"
           register={register}
           errors={errors}
-          validation={{
-            required: "El stock es obligatorio (si no usas variantes)",
-          }}
+          validation={{ required: "El stock es obligatorio (si no usas variantes)" }}
         />
       )}
 
-      {/* SAT */}
-      <SatFields register={register} setValue={setValue} watch={watch} />
+      {/* ✅ SAT */}
+      <SatFields
+        register={register}
+        setValue={setValue}
+        watch={watch}
+        control={control} // ✅ nuevo
+        errors={errors}   // ✅ por si quieres mostrar helperText
+      />
 
-      {/* Descuento */}
       <ProductField
         label="Descuento (%)"
         name="discount"
@@ -50,7 +53,6 @@ export default function InventoryDiscountSection({
         errors={errors}
       />
 
-      {/* Fin de oferta si discount > 0 */}
       {Number(discount) > 0 && (
         <ProductField
           label="Fin de la Oferta"
@@ -63,3 +65,4 @@ export default function InventoryDiscountSection({
     </div>
   );
 }
+

@@ -45,7 +45,9 @@ export default function ProductForm() {
       visible: true,
 
       // SAT
+      unidad_medida: null, 
       unidad_medida_id: "",
+       unidad_medida_texto: "",
       costo_compra: "",
       clave_producto_servicio: "",
       clave_unidad: "",
@@ -115,6 +117,7 @@ export default function ProductForm() {
             {/* 2) Inventario y Descuento */}
             <AccordionSection title="📦 Inventario y Descuento">
               <InventoryDiscountSection
+                control={control}
                 register={register}
                 errors={errors}
                 watch={watch}
