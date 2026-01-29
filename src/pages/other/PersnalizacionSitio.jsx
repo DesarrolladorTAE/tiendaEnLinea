@@ -27,7 +27,7 @@ export default function PersonalizacionSitio() {
   if (!data.ok || data.expired) return <TiendaNoDisponible />;
 
   // Render según plan
-  if (data.plan_id === 1) return <Catalogo />; // demo (sin necesidad de id)
+  if (data.plan_id === 1) return <Catalogo storeId={data.id_store} storeSlug={storeSlug} />; // demo (sin necesidad de id)
   if (data.plan_id === 2) return <VistaPlan2 storeId={data.id_store} storeSlug={storeSlug} />;
   if (data.plan_id === 3) return <VistaPlan3 storeId={data.id_store} storeSlug={storeSlug} />;
   if (data.plan_id === 4) return <VistaPlan4 storeId={data.id_store} storeSlug={storeSlug} />;

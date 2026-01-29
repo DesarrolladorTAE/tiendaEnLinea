@@ -106,9 +106,10 @@ function buildChildrenIndex(categories) {
 
 /* ========================= Componente ========================= */
 
-const Catalogo = () => {
+const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
   const { storeSlug } = useParams();
   const { isStoreValid, products, storePhone, storeName } = useStoreData(storeSlug);
+
   const { pathname } = useLocation();
 
   const [layout, setLayout] = useState("grid three-column");
@@ -124,6 +125,7 @@ const Catalogo = () => {
   // categorías
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
+  const storeId = storeIdProp; 
 
   // fetch categorías (flat por default)
   useEffect(() => {
@@ -307,7 +309,7 @@ if (selectedCategory?.id) {
         </div>
       </div>
 
-      <WhatsAppFloatingButton storePhone={storePhone} />
+      <WhatsAppFloatingButton storePhone={storePhone} storeId={storeId} />
     </Fragment>
   );
 };

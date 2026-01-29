@@ -1,34 +1,81 @@
-import React, { useMemo, useState } from "react";
+// src/components/WhatsAppFloatingButton.jsx
+import React, { useMemo, useState, useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
+import axios from "axios";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+
 import {
   clearWhatsappCart,
-  removeFromWhatsappCart,   // quitar por id
+  removeFromWhatsappCart,
   incrementItemQty,
   decrementItemQty,
   setItemQty
 } from "../store/slices/whatsappCartSlice";
 
-const WhatsAppFloatingButton = ({ storePhone }) => {
-  // Hooks SIEMPRE primero
+const API_BASE = "https://mitiendaenlineamx.com.mx/api";
+
+const WhatsAppFloatingButton = ({ storePhone, storeId }) => {
   const items = useSelector((state) => state.whatsappCart.items || []);
   const dispatch = useDispatch();
   const [open, setOpen] = useState(true);
 
-  // Helpers
+  // PayPal state
+  const [pp, setPp] = useState({
+    loading: true,
+    clientId: null,
+    currency: "MXN",
+    mode: "sandbox",
+    brand: "Mi Tienda"
+  });
+
+  // ====== PayPal: cargar credenciales públicas ======
+  useEffect(() => {
+    let alive = true;
+
+    // Debug mínimo
+    console.log("🟣 storeId:", storeId);
+
+    if (!storeId) {
+      setPp((s) => ({ ...s, loading: false, clientId: null }));
+      return;
+    }
+
+    setPp((s) => ({ ...s, loading: true }));
+
+    axios
+      .get(`${API_BASE}/public/paypal/${storeId}/sdk-credentials`)
+      .then(({ data }) => {
+        if (!alive) return;
+        setPp({
+          loading: false,
+          clientId: data?.client_id || null,
+          currency: data?.currency || "MXN",
+          mode: data?.mode || "sandbox",
+          brand: data?.brand || "Mi Tienda"
+        });
+      })
+      .catch(() => {
+        if (!alive) return;
+        setPp((s) => ({ ...s, loading: false, clientId: null }));
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [storeId]);
+
+  // ====== Helpers WhatsApp ======
   const normalizePhone = (phone) => {
     const clean = String(phone || "").replace(/\D/g, "");
-    if (clean.startsWith("52")) return clean;     // ya con lada MX
-    if (clean.length === 10) return `52${clean}`; // agrega lada MX
+    if (clean.startsWith("52")) return clean;
+    if (clean.length === 10) return `52${clean}`;
     return clean;
   };
 
-  // Memos
   const total = useMemo(
     () =>
       items.reduce(
-        (sum, it) =>
-          sum +
-          (Number(it.price) || 0) * (Number(it.qty ?? 1) || 1),
+        (sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty ?? 1) || 1),
         0
       ),
     [items]
@@ -75,8 +122,60 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
     dispatch(clearWhatsappCart());
   };
 
-  // Return condicional DESPUÉS de todos los hooks
+  // Return condicional DESPUÉS de hooks
   if (!storePhone || items.length === 0) return null;
+
+  // ====== PayPal handlers (tu backend) ======
+  const paypalCreateOrder = async () => {
+    if (!storeId) throw new Error("storeId requerido");
+    if (total <= 0) throw new Error("Total inválido");
+
+    const payload = {
+      amount: Number(total.toFixed(2)),
+      currency: pp.currency,
+      reference_id: `STORE-${storeId}-${Date.now()}`,
+      items: items.map((it) => ({
+        name: String(it.name || "Producto").slice(0, 127),
+        quantity: String(Number(it.qty ?? 1) || 1), // 👈 string entero
+        unit_amount: {
+          value: Number(it.price || 0).toFixed(2),
+          currency_code: pp.currency
+        },
+        // extras usados por tu capture para crear Sale
+        product_id: it.product_id ?? it.id,
+        variation_size_id: it.variation_size_id ?? null,
+        unit_price: Number(it.price || 0).toFixed(2)
+      }))
+    };
+
+    const { data } = await axios.post(
+      `${API_BASE}/public/paypal/${storeId}/order`,
+      payload
+    );
+
+    if (!data?.ok || !data?.order_id) {
+      throw new Error("No se pudo crear la orden de PayPal");
+    }
+
+    return data.order_id;
+  };
+
+  const paypalOnApprove = async (data) => {
+    const order_id = data?.orderID;
+    if (!order_id) throw new Error("orderID faltante");
+
+    const res = await axios.post(
+      `${API_BASE}/public/paypal/${storeId}/capture`,
+      { order_id }
+    );
+
+    if (!res.data?.ok) {
+      throw new Error(res.data?.message || "No se pudo capturar el pago");
+    }
+
+    dispatch(clearWhatsappCart());
+    alert("✅ Pago realizado correctamente.");
+  };
 
   return (
     <div
@@ -102,7 +201,7 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
             borderRadius: 16,
             border: "1px solid rgba(0,0,0,.08)",
             boxShadow: "0 12px 30px rgba(0,0,0,.12)",
-            overflow: "hidden"
+            overflow: "visible" // ✅ importante para iframes PayPal
           }}
         >
           <div
@@ -118,7 +217,8 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
             }}
           >
             <strong style={{ fontSize: 14 }}>
-              Tu pedido ({items.reduce((a, it) => a + (Number(it.qty ?? 1) || 1), 0)})
+              Tu pedido (
+              {items.reduce((a, it) => a + (Number(it.qty ?? 1) || 1), 0)})
             </strong>
 
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -172,7 +272,6 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
                         : "none"
                   }}
                 >
-                  {/* Nombre y controles de cantidad */}
                   <div style={{ minWidth: 0 }}>
                     <div
                       title={item.name}
@@ -190,7 +289,9 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
 
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <button
-                        onClick={() => dispatch(decrementItemQty({ id: item.id }))}
+                        onClick={() =>
+                          dispatch(decrementItemQty({ id: item.id }))
+                        }
                         title="Restar"
                         aria-label="Restar unidad"
                         style={{
@@ -228,7 +329,9 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
                       />
 
                       <button
-                        onClick={() => dispatch(incrementItemQty({ id: item.id }))}
+                        onClick={() =>
+                          dispatch(incrementItemQty({ id: item.id }))
+                        }
                         title="Sumar"
                         aria-label="Sumar unidad"
                         style={{
@@ -246,14 +349,7 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
                     </div>
                   </div>
 
-                  {/* Precio, quitar */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10
-                    }}
-                  >
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 12, color: "#666" }}>
                         MX${price.toFixed(2)} c/u
@@ -297,6 +393,30 @@ const WhatsAppFloatingButton = ({ storePhone }) => {
             <span style={{ fontSize: 13, color: "#333" }}>Total</span>
             <strong style={{ fontSize: 15 }}>MX${total.toFixed(2)}</strong>
           </div>
+
+          {/* ✅ PayPal: solo si hay clientId */}
+          {!pp.loading && pp.clientId && (
+            <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(0,0,0,.06)" }}>
+              <PayPalScriptProvider
+                options={{
+                  clientId: pp.clientId,
+                  currency: pp.currency,
+                  intent: "capture"
+                }}
+              >
+                <PayPalButtons
+                  style={{ layout: "vertical" }}
+                  disabled={total <= 0}
+                  createOrder={paypalCreateOrder}
+                  onApprove={paypalOnApprove}
+                  onError={(err) => {
+                    console.error("PayPal error:", err);
+                    alert("❌ Error con PayPal. Intenta de nuevo.");
+                  }}
+                />
+              </PayPalScriptProvider>
+            </div>
+          )}
         </div>
       )}
 
