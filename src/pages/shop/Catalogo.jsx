@@ -14,7 +14,7 @@ if (Paginator && "defaultProps" in Paginator) {
   try {
     // eslint-disable-next-line no-param-reassign
     Paginator.defaultProps = undefined;
-  } catch { }
+  } catch {}
 }
 
 const API_BASE = "https://mitiendaenlineamx.com.mx/api";
@@ -22,11 +22,6 @@ const pageLimit = 12;
 
 /* ========================= Helpers ========================= */
 
-/**
- * Devuelve tokens de categoría por producto, soportando:
- * ✅ backend nuevo: product.categories = [{id,name,parent_id}]
- * 🩹 backend viejo: product.category = ["NombreCat", ...]
- */
 function getProductCategoryTokensFromProduct(p) {
   const out = new Set();
 
@@ -35,7 +30,6 @@ function getProductCategoryTokensFromProduct(p) {
     out.add(String(v).toLowerCase());
   };
 
-  // ✅ nuevo: categories [{id,name,parent_id}]
   if (Array.isArray(p?.categories)) {
     p.categories.forEach((c) => {
       if (!c) return;
@@ -50,7 +44,6 @@ function getProductCategoryTokensFromProduct(p) {
     });
   }
 
-  // 🩹 viejo: category ["Nombre", ...] o {id,name}
   const c = p?.category;
   if (Array.isArray(c)) {
     c.forEach((x) => push(x));
@@ -62,36 +55,28 @@ function getProductCategoryTokensFromProduct(p) {
     push(c.slug);
   }
 
-  // campos alternos (por si)
   push(p?.categoryId);
   push(p?.category_id);
   push(p?.catId);
   push(p?.categoria_id);
   push(p?.categoriaId);
 
-  // tags por si los usan como categoría
   if (Array.isArray(p?.tags)) p.tags.forEach((t) => push(t));
 
   return Array.from(out);
 }
 
-/**
- * Construye mapa { parentId -> [children] } para flat,
- * y también soporta tree (parents con children).
- */
 function buildChildrenIndex(categories) {
   const childrenByParent = new Map();
 
   (categories || []).forEach((c) => {
     if (!c) return;
 
-    // modo tree
     if (Array.isArray(c.children) && c.children.length) {
       childrenByParent.set(String(c.id), c.children);
       return;
     }
 
-    // modo flat
     if (c.parent_id != null) {
       const key = String(c.parent_id);
       const arr = childrenByParent.get(key) || [];
@@ -103,20 +88,22 @@ function buildChildrenIndex(categories) {
   return childrenByParent;
 }
 
-
 /* ========================= Componente ========================= */
 
 const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
-  const { storeSlug } = useParams();
-  const { isStoreValid, products, storePhone, storeName } = useStoreData(storeSlug);
+  const params = useParams();
 
+  // ✅ IMPORTANTE: usa prop si viene, si no params
+  const storeSlug = storeSlugProp ?? params.storeSlug;
+
+  const { isStoreValid, products, storePhone, storeName } = useStoreData(storeSlug);
   const { pathname } = useLocation();
 
   const [layout, setLayout] = useState("grid three-column");
 
   // filtros
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(null); // {id,name,type,parent_id?}
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   // paginación
   const [offset, setOffset] = useState(0);
@@ -125,9 +112,10 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
   // categorías
   const [categories, setCategories] = useState([]);
   const [loadingCats, setLoadingCats] = useState(true);
-  const storeId = storeIdProp; 
 
-  // fetch categorías (flat por default)
+  const storeId = storeIdProp;
+
+  // ✅ NO TOCO TU ENDPOINT: lo dejo igual que antes
   useEffect(() => {
     let alive = true;
     setLoadingCats(true);
@@ -136,10 +124,8 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
       .get(`${API_BASE}/public/stores/slug/${storeSlug}/categories?mode=tree`)
       .then(({ data }) => {
         if (!alive) return;
-        // 👇 en mode=tree el backend manda "parents"
         setCategories(data?.parents ?? []);
       })
-
       .catch(() => {
         if (!alive) return;
         setCategories([]);
@@ -155,7 +141,6 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
 
   const getLayout = (nextLayout) => setLayout(nextLayout);
 
-  /** Recibe eventos desde ShopTopAction */
   const getFilterSortParams = (type, value) => {
     if (type === "searchQuery") {
       setSearchQuery(value ?? "");
@@ -173,86 +158,54 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
 
   const childrenIndex = useMemo(() => buildChildrenIndex(categories), [categories]);
 
-  /* ====== Derivados: filtrado y paginación ====== */
-
   const filteredProducts = useMemo(() => {
     let base = Array.isArray(products) ? products : [];
 
-    // Búsqueda por nombre
     const q = searchQuery.trim().toLowerCase();
     if (q) {
       base = base.filter((p) => String(p?.name ?? "").toLowerCase().includes(q));
     }
 
-    // Filtro por categoría
-if (selectedCategory?.id) {
-  console.group("🟢 APPLY CATEGORY FILTER");
-  console.log("Selected:", selectedCategory);
+    if (selectedCategory?.id) {
+      const wantId = String(selectedCategory.id).toLowerCase();
+      const wantName = String(selectedCategory.name ?? "").toLowerCase();
 
-  const wantId = String(selectedCategory.id).toLowerCase();
-  const wantName = String(selectedCategory.name ?? "").toLowerCase();
+      const tokensMatchAny = (p, ids, names) => {
+        const tokens = getProductCategoryTokensFromProduct(p).map((t) => String(t).toLowerCase());
+        return tokens.some((t) => ids.has(t) || names.has(t));
+      };
 
-  const tokensMatchAny = (p, ids, names) => {
-    const tokens = getProductCategoryTokensFromProduct(p).map((t) =>
-      String(t).toLowerCase()
-    );
+      if (selectedCategory.type === "parent") {
+        const parent = categories.find((c) => String(c.id) === String(selectedCategory.id));
 
-    const match = tokens.some(
-      (t) => ids.has(t) || names.has(t)
-    );
+        const children =
+          parent?.children ??
+          categories.filter((c) => String(c.parent_id) === String(selectedCategory.id));
 
-    if (match) {
-      console.log("✅ MATCH PRODUCT:", p.name, tokens);
+        const ids = new Set([wantId]);
+        const names = new Set([wantName]);
+
+        children.forEach((c) => {
+          ids.add(String(c.id).toLowerCase());
+          names.add(String(c.name).toLowerCase());
+        });
+
+        base = base.filter((p) => tokensMatchAny(p, ids, names));
+      } else {
+        const ids = new Set([wantId]);
+        const names = new Set([wantName]);
+        base = base.filter((p) => tokensMatchAny(p, ids, names));
+      }
     }
 
-    return match;
-  };
-
-  // ===== PADRE =====
-  if (selectedCategory.type === "parent") {
-    const parent = categories.find(
-      (c) => String(c.id) === String(selectedCategory.id)
-    );
-
-    const children =
-      parent?.children ??
-      categories.filter(
-        (c) => String(c.parent_id) === String(selectedCategory.id)
-      );
-
-    const ids = new Set([wantId]);
-    const names = new Set([wantName]);
-
-    children.forEach((c) => {
-      ids.add(String(c.id).toLowerCase());
-      names.add(String(c.name).toLowerCase());
-    });
-
-    console.log("📦 Parent IDs:", [...ids]);
-    console.log("📦 Parent Names:", [...names]);
-
-    base = base.filter((p) => tokensMatchAny(p, ids, names));
-  } else {
-    // ===== HIJA / SINGLE =====
-    const ids = new Set([wantId]);
-    const names = new Set([wantName]);
-
-    base = base.filter((p) => tokensMatchAny(p, ids, names));
-  }
-
-  console.groupEnd();
-}
-
-
     return base;
-  }, [products, searchQuery, selectedCategory, childrenIndex]);
+  }, [products, searchQuery, selectedCategory, childrenIndex, categories]);
 
   const currentData = useMemo(
     () => filteredProducts.slice(offset, offset + pageLimit),
     [filteredProducts, offset]
   );
 
-  // Clamp paginación si cambia el filtrado
   useEffect(() => {
     if (offset >= filteredProducts.length && filteredProducts.length > 0) {
       setCurrentPage(1);
@@ -272,7 +225,7 @@ if (selectedCategory?.id) {
       <Breadcrumb
         pages={[
           { label: "BIENVENIDO", path: pathname },
-          { label: "CATALOGO", path: pathname },
+          { label: "CATALOGO", path: pathname }
         ]}
       />
 
@@ -309,7 +262,12 @@ if (selectedCategory?.id) {
         </div>
       </div>
 
-      <WhatsAppFloatingButton storePhone={storePhone} storeId={storeId} />
+      {/* ✅ CLAVE: pasa storeSlug para que el botón resuelva storeId por /bootstrap */}
+      <WhatsAppFloatingButton
+        storePhone={storePhone}
+        storeId={storeId}
+        storeSlug={storeSlug}
+      />
     </Fragment>
   );
 };
