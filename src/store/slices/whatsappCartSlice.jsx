@@ -1,22 +1,21 @@
-// src/store/slices/whatsappCartSlice.js
+// src/store/slices/whatsappCartSlice.jsx
 import { createSlice, createSelector } from "@reduxjs/toolkit";
 
 const initialState = {
-  items: [] // cada item: { id, name, price, qty }
+  items: [] // { id, name, price, qty }
 };
 
 const whatsappCartSlice = createSlice({
   name: "whatsappCart",
   initialState,
   reducers: {
-    // Agrega al carrito; si ya existe el id, suma qty
     addToWhatsappCart: (state, action) => {
       const { id, name, price, qty = 1 } = action.payload || {};
       if (!id) return;
 
       const idx = state.items.findIndex((it) => it.id === id);
       if (idx >= 0) {
-        state.items[idx].qty += qty;
+        state.items[idx].qty += Number(qty) || 1;
       } else {
         state.items.push({
           id,
@@ -27,14 +26,12 @@ const whatsappCartSlice = createSlice({
       }
     },
 
-    // Suma unidades (por defecto +1)
     incrementItemQty: (state, action) => {
       const { id, step = 1 } = action.payload || {};
       const idx = state.items.findIndex((it) => it.id === id);
       if (idx >= 0) state.items[idx].qty += Number(step) || 1;
     },
 
-    // Resta unidades (por defecto -1). Si queda <= 0, elimina el producto.
     decrementItemQty: (state, action) => {
       const { id, step = 1 } = action.payload || {};
       const idx = state.items.findIndex((it) => it.id === id);
@@ -44,7 +41,6 @@ const whatsappCartSlice = createSlice({
       }
     },
 
-    // Fija una cantidad exacta; si qty <= 0, elimina el producto.
     setItemQty: (state, action) => {
       const { id, qty } = action.payload || {};
       const idx = state.items.findIndex((it) => it.id === id);
@@ -55,13 +51,11 @@ const whatsappCartSlice = createSlice({
       }
     },
 
-    // Elimina un producto completo por id (compatible con {id} o id directo)
     removeFromWhatsappCart: (state, action) => {
       const id = action.payload?.id ?? action.payload;
       state.items = state.items.filter((item) => item.id !== id);
     },
 
-    // Vaciar todo
     clearWhatsappCart: (state) => {
       state.items = [];
     }
@@ -79,19 +73,20 @@ export const {
 
 export default whatsappCartSlice.reducer;
 
-/* Selectores útiles */
+// Selectores útiles
 export const selectWhatsappCartItems = (state) => state.whatsappCart.items;
 
 export const selectWhatsappCartCount = createSelector(
   selectWhatsappCartItems,
-  (items) => items.reduce((acc, it) => acc + (it.qty || 0), 0)
+  (items) => items.reduce((acc, it) => acc + (Number(it.qty) || 0), 0)
 );
 
 export const selectWhatsappCartTotal = createSelector(
   selectWhatsappCartItems,
   (items) =>
     items.reduce(
-      (sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1),
+      (sum, it) =>
+        sum + (Number(it.price) || 0) * (Number(it.qty ?? 1) || 1),
       0
     )
 );

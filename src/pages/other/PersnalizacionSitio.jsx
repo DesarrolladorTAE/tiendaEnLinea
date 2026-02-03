@@ -16,20 +16,38 @@ export default function PersonalizacionSitio() {
 
   useEffect(() => {
     let alive = true;
+
     axios
       .get(`https://mitiendaenlineamx.com.mx/api/public/tienda/${storeSlug}/vista`)
-      .then(({ data }) => { if (alive) setData(data); })
-      .catch(() => { if (alive) setData({ ok: false, expired: true }); });
-    return () => { alive = false; };
+      .then(({ data }) => {
+        if (!alive) return;
+
+        // ✅ normaliza storeId aunque venga con distinto nombre
+        const normalized = {
+          ...data,
+          storeId: data?.id_store ?? data?.store_id ?? data?.id_store_fk ?? null
+        };
+
+        setData(normalized);
+      })
+      .catch(() => {
+        if (alive) setData({ ok: false, expired: true });
+      });
+
+    return () => {
+      alive = false;
+    };
   }, [storeSlug]);
 
   if (!data) return <div>Cargando…</div>;
   if (!data.ok || data.expired) return <TiendaNoDisponible />;
 
+  const storeId = data.storeId; // ✅ ya normalizado
+
   // Render según plan
-  if (data.plan_id === 1) return <Catalogo />; // demo (sin necesidad de id)
-  if (data.plan_id === 2) return <VistaPlan2 storeId={data.id_store} storeSlug={storeSlug} />;
-  if (data.plan_id === 3) return <VistaPlan3 storeId={data.id_store} storeSlug={storeSlug} />;
-  if (data.plan_id === 4) return <VistaPlan4 storeId={data.id_store} storeSlug={storeSlug} />;
-  return <VistaPlan4 storeId={data.id_store} storeSlug={storeSlug} />;
+  if (data.plan_id === 1) return <Catalogo storeId={storeId} storeSlug={storeSlug} />;
+  if (data.plan_id === 2) return <VistaPlan2 storeId={storeId} storeSlug={storeSlug} />;
+  if (data.plan_id === 3) return <VistaPlan3 storeId={storeId} storeSlug={storeSlug} />;
+  if (data.plan_id === 4) return <VistaPlan4 storeId={storeId} storeSlug={storeSlug} />;
+  return <VistaPlan4 storeId={storeId} storeSlug={storeSlug} />;
 }
