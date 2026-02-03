@@ -242,7 +242,10 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
     console.log("✅ capture response:", res.data);
 
     if (!res.data?.ok) {
-      throw new Error(res.data?.message || "No se pudo capturar el pago");
+      // throw new Error(res.data?.message || "No se pudo capturar el pago");
+      // alert("✅ Comunicate con la Tienda para confirmar el pago.");
+      alert("✅ Tu pedido está casi listo. Comunicate con la Tienda para confirmar el pago.");
+      return;
     }
 
     dispatch(clearWhatsappCart());
