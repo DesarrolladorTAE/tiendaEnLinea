@@ -1,3 +1,4 @@
+import { patch } from "@mui/material";
 import React, { lazy } from "react";
 import { Navigate } from "react-router-dom";
 
@@ -22,10 +23,18 @@ const POSHeader  = lazy(() => import("../wrappers/POSWrapper.jsx"));
 const ReporteTipoVenta = lazy(() => import("../components/ventas/ReporteTipoVenta.jsx"));
 const ReporteInventario = lazy(() => import("../pages/admin/ReporteInventario.jsx"));
 const Complementos = lazy(() => import("../pages/admin/Complementos.jsx"));
+const Sucursales = lazy(() => import("../pages/admin/Sucursales.jsx"));
+const Almacenes = lazy(() => import("../pages/admin/Almacenes.jsx"));
 
 
 export const adminRouteConfig = [
-  { path: "", element: <Navigate to="products" replace /> },
+  // ✅ default cuando entras a /admin
+  { path: "", element: <Navigate to="sucursales" replace /> },
+
+  // ✅ rutas reales (era "patch" por error)
+  { path: "sucursales", element: <Sucursales /> },
+  { path: "almacenes", element: <Almacenes /> },
+
   { path: "products", element: <ProductList /> },
   { path: "products/new", element: <ProductForm /> },
   { path: "products/edit/:id", element: <ProductForm /> },
@@ -39,7 +48,7 @@ export const adminRouteConfig = [
   { path: "pos", element: <POS /> },
   { path: "ventas", element: <Ventas /> },
   { path: "compra", element: <Entradas /> },
-  { path: "ticket", element: <Ticket/>},
+  { path: "ticket", element: <Ticket /> },
   { path: "membresia", element: <Membresia /> },
   { path: "micuenta", element: <MiCuenta /> },
   { path: "reportes", element: <Reporte /> },
@@ -48,5 +57,5 @@ export const adminRouteConfig = [
   { path: "reportes/tipo-venta", element: <ReporteTipoVenta /> },
   { path: "reportes/inventario", element: <ReporteInventario /> },
   { path: "complementos", element: <Complementos /> },
-
 ];
+

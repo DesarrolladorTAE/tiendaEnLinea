@@ -1,12 +1,5 @@
-import React, {
-  lazy,
-  useEffect,
-  useRef,
-  useState,
-  Suspense,
-  useMemo,
-} from "react";
-import { Link } from "react-router-dom";
+import React, { lazy, useEffect, useRef, useState, Suspense, useMemo } from "react";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
 import ProductSearchBar from "../../components/products-list/ProductSearchBar";
@@ -16,13 +9,23 @@ import useComplementosActivos from "../../hooks/useComplementosActivos";
 import Taebanner from "../../components/admin/promociones/Taebanner";
 import LabelModal from "./modals/LabelModal";
 import { useTienda } from "../../context/TiendaContext";
-
-// ✅ nuevo modal
 import CategoryModal from "../../components/products-list/CategoryModal";
+
+// ✅ sucursal seleccionada + layout
+import { useAdminUi } from "../../context/AdminUiContext";
 
 const ProductImages = lazy(() => import("./ProductImages"));
 
 const ProductList = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+
+  const { selectedBranch, setSelectedBranch, setHideLayout } = useAdminUi();
+
+  const branchFromNav = location.state?.branch ?? null;
+  const branchIdFromUrl = params.get("branch_id");
+
   const [products, setProducts] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,29 +48,46 @@ const ProductList = () => {
   const [catProduct, setCatProduct] = useState(null);
   const [savingCats, setSavingCats] = useState(false);
 
-  const { puedeCrear, cargando, totalProductos, limitePermitido } =
-    useLimiteProductos();
+  const { puedeCrear, cargando, totalProductos, limitePermitido } = useLimiteProductos();
   const productsPerPage = 10;
   const { tieneComplemento } = useComplementosActivos();
 
   const { tienda, tiendaLoading } = useTienda();
-
   const planId = Number(tienda?.plan_id || 0);
 
   // ✅ permitir por plan 1 o 4
   const permitidoPorPlan = planId === 1 || planId === 4;
-
   // ✅ permitir por complemento 6 (lo que ya usas)
   const permitidoPorComplemento = tieneComplemento(6);
-
   // ✅ regla final
   const puedeImportarMasivo = permitidoPorPlan || permitidoPorComplemento;
 
+  // ✅ Branch activo (state > context > query)
+  const activeBranch = useMemo(() => {
+    if (branchFromNav?.id) return branchFromNav;
+    if (selectedBranch?.id) return selectedBranch;
+    if (branchIdFromUrl) return { id: Number(branchIdFromUrl) };
+    return null;
+  }, [branchFromNav, selectedBranch, branchIdFromUrl]);
+
+  // ✅ en productos siempre se muestra layout
   useEffect(() => {
-    fetchProductos();
-    fetchCategorias();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    setHideLayout(false);
+  }, [setHideLayout]);
+
+  // ✅ si vienes desde navegación con state, lo guardamos en contexto
+  useEffect(() => {
+    if (branchFromNav?.id) {
+      setSelectedBranch(branchFromNav);
+    }
+  }, [branchFromNav, setSelectedBranch]);
+
+  // ✅ si no hay sucursal, regresamos a sucursales
+  useEffect(() => {
+    if (!activeBranch?.id) {
+      navigate("/admin/sucursales");
+    }
+  }, [activeBranch?.id, navigate]);
 
   const handleOpenLabels = (product) => {
     setLabelProduct(product);
@@ -87,21 +107,25 @@ const ProductList = () => {
 
   // filtrar
   useEffect(() => {
-    const term = searchTerm.toLowerCase();
-    const resultado = products.filter((p) =>
-      p.name?.toLowerCase().includes(term)
-    );
+    const term = (searchTerm || "").toLowerCase();
+    const resultado = (products || []).filter((p) => p.name?.toLowerCase().includes(term));
     setFiltered(resultado);
     setCurrentPage(1);
   }, [searchTerm, products]);
 
   const fetchProductos = async () => {
     try {
-      const res = await axiosClient.get("/admin/products");
+      setError(null);
+
+      const res = await axiosClient.get("/admin/products", {
+        params: activeBranch?.id ? { branch_id: activeBranch.id } : undefined,
+      });
+
       setProducts(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
       console.error("Error al obtener productos:", error);
       setError("Error al obtener productos.");
+      setProducts([]);
     }
   };
 
@@ -117,6 +141,14 @@ const ProductList = () => {
       setCategoriesLoading(false);
     }
   };
+
+  // ✅ cargar productos/categorías cuando hay branch activo
+  useEffect(() => {
+    if (!activeBranch?.id) return;
+    fetchProductos();
+    fetchCategorias();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranch?.id]);
 
   // Construir árbol padre->hijas (sin backend extra)
   const categoriesTree = useMemo(() => {
@@ -168,8 +200,10 @@ const ProductList = () => {
     try {
       const res = await axiosClient.post("/cargar/importarDesdeCSV", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        params: activeBranch?.id ? { branch_id: activeBranch.id } : undefined,
       });
-      fetchProductos();
+
+      await fetchProductos();
       alert(res?.data?.message || "Archivo cargado correctamente.");
     } catch (error) {
       console.error("Error al cargar CSV:", error);
@@ -181,7 +215,6 @@ const ProductList = () => {
   };
 
   // ✅ Guardar múltiples categorías (sync pivot)
-  // Backend esperado: PATCH /admin/products/{id}/categories { category_ids: number[] }
   const handleSaveCategories = async (productId, categoryIds) => {
     setSavingCats(true);
 
@@ -198,18 +231,14 @@ const ProductList = () => {
     );
 
     try {
-      // 🚨 IMPORTANTE: POST + _method en lugar de PATCH
       await axiosClient.post(`/admin/products/${productId}/categories`, {
         _method: "PATCH",
         category_ids: categoryIds,
       });
 
-      // 🔄 refrescar para sincronizar categorías normalizadas del backend
       await fetchProductos();
     } catch (e) {
       console.error("Error al guardar categorías:", e);
-
-      // rollback seguro
       await fetchProductos();
       alert("Error al guardar categorías.");
     } finally {
@@ -239,8 +268,26 @@ const ProductList = () => {
   return (
     <>
       <div className="bg-dark text-white p-4 shadow rounded border border-light mb-4">
-        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <h2 className="text-white mb-0">🛒 Lista de Productos</h2>
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+          <div>
+            <h2 className="text-white mb-1">🛒 Lista de Productos</h2>
+
+            {/* ✅ sucursal activa */}
+            {activeBranch?.id ? (
+              <div className="small">
+                <span className="badge bg-warning text-dark">
+                  📍 Sucursal: {activeBranch?.name ? activeBranch.name : `#${activeBranch.id}`}
+                </span>
+                <Link
+                  to="/admin/sucursales"
+                  className="ms-2 text-decoration-underline text-info"
+                >
+                  Cambiar sucursal
+                </Link>
+              </div>
+            ) : null}
+          </div>
+
           <p className="text-white small mb-0 text-end">
             {cargando
               ? "Cargando límites..."
@@ -250,14 +297,10 @@ const ProductList = () => {
           </p>
         </div>
 
-        <ProductSearchBar
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-        />
+        <ProductSearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
           {!tiendaLoading && puedeImportarMasivo && (
-
             <div>
               <input
                 type="file"
@@ -271,9 +314,7 @@ const ProductList = () => {
                 onClick={cargarCSV}
                 disabled={cargandoCSV}
               >
-                {cargandoCSV
-                  ? "Importando CSV..."
-                  : "📤 Importar productos CSV"}
+                {cargandoCSV ? "Importando CSV..." : "📤 Importar productos CSV"}
               </button>
 
               <a
@@ -287,16 +328,12 @@ const ProductList = () => {
           )}
 
           {puedeCrear ? (
-            <Link
-              to="new"
-              className="btn btn-outline-light d-flex align-items-center gap-2"
-            >
+            <Link to="new" className="btn btn-outline-light d-flex align-items-center gap-2">
               <span className="fs-5">➕</span> Crear Producto
             </Link>
           ) : (
             <div className="text-warning text-end">
-              Límite alcanzado (
-              {limitePermitido === Infinity ? "∞" : limitePermitido})
+              Límite alcanzado ({limitePermitido === Infinity ? "∞" : limitePermitido})
             </div>
           )}
         </div>
@@ -310,20 +347,14 @@ const ProductList = () => {
           onDelete={handleDelete}
           onOpenImages={setSelectedProduct}
           onOpenLabels={handleOpenLabels}
-          // ✅ categorías para chips + modal
           categoriesTree={categoriesTree}
           categoriesFlat={categoriesFlat}
           categoriesLoading={categoriesLoading}
           onOpenCategories={handleOpenCats}
         />
 
-        <LabelModal
-          open={openLabels}
-          onClose={handleCloseLabels}
-          product={labelProduct}
-        />
+        <LabelModal open={openLabels} onClose={handleCloseLabels} product={labelProduct} />
 
-        {/* ✅ Modal multi categorías */}
         <CategoryModal
           open={openCats}
           onClose={handleCloseCats}
