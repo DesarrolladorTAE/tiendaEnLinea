@@ -1,5 +1,17 @@
-import React, { lazy, useEffect, useRef, useState, Suspense, useMemo } from "react";
-import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import React, {
+  lazy,
+  useEffect,
+  useRef,
+  useState,
+  Suspense,
+  useMemo,
+} from "react";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
 import ProductSearchBar from "../../components/products-list/ProductSearchBar";
@@ -48,7 +60,8 @@ const ProductList = () => {
   const [catProduct, setCatProduct] = useState(null);
   const [savingCats, setSavingCats] = useState(false);
 
-  const { puedeCrear, cargando, totalProductos, limitePermitido } = useLimiteProductos();
+  const { puedeCrear, cargando, totalProductos, limitePermitido } =
+    useLimiteProductos();
   const productsPerPage = 10;
   const { tieneComplemento } = useComplementosActivos();
 
@@ -108,7 +121,9 @@ const ProductList = () => {
   // filtrar
   useEffect(() => {
     const term = (searchTerm || "").toLowerCase();
-    const resultado = (products || []).filter((p) => p.name?.toLowerCase().includes(term));
+    const resultado = (products || []).filter((p) =>
+      p.name?.toLowerCase().includes(term),
+    );
     setFiltered(resultado);
     setCurrentPage(1);
   }, [searchTerm, products]);
@@ -117,9 +132,11 @@ const ProductList = () => {
     try {
       setError(null);
 
-      const res = await axiosClient.get("/admin/products", {
-        params: activeBranch?.id ? { branch_id: activeBranch.id } : undefined,
-      });
+      if (!activeBranch?.id) return;
+
+      const res = await axiosClient.get(
+        `/admin/branches/${activeBranch.id}/products`,
+      );
 
       setProducts(Array.isArray(res.data) ? res.data : []);
     } catch (error) {
@@ -168,7 +185,7 @@ const ProductList = () => {
       .map((p) => ({
         ...p,
         children: (childrenByParent.get(p.id) ?? []).sort((a, b) =>
-          String(a.name).localeCompare(String(b.name))
+          String(a.name).localeCompare(String(b.name)),
         ),
       }))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -226,8 +243,8 @@ const ProductList = () => {
               ...p,
               category_ids: categoryIds,
             }
-          : p
-      )
+          : p,
+      ),
     );
 
     try {
@@ -249,7 +266,7 @@ const ProductList = () => {
   const totalPages = Math.ceil(filtered.length / productsPerPage);
   const paginatedProducts = filtered.slice(
     (currentPage - 1) * productsPerPage,
-    currentPage * productsPerPage
+    currentPage * productsPerPage,
   );
 
   if (selectedProduct) {
@@ -276,7 +293,10 @@ const ProductList = () => {
             {activeBranch?.id ? (
               <div className="small">
                 <span className="badge bg-warning text-dark">
-                  📍 Sucursal: {activeBranch?.name ? activeBranch.name : `#${activeBranch.id}`}
+                  📍 Sucursal:{" "}
+                  {activeBranch?.name
+                    ? activeBranch.name
+                    : `#${activeBranch.id}`}
                 </span>
                 <Link
                   to="/admin/sucursales"
@@ -297,7 +317,10 @@ const ProductList = () => {
           </p>
         </div>
 
-        <ProductSearchBar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
+        <ProductSearchBar
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+        />
 
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
           {!tiendaLoading && puedeImportarMasivo && (
@@ -314,7 +337,9 @@ const ProductList = () => {
                 onClick={cargarCSV}
                 disabled={cargandoCSV}
               >
-                {cargandoCSV ? "Importando CSV..." : "📤 Importar productos CSV"}
+                {cargandoCSV
+                  ? "Importando CSV..."
+                  : "📤 Importar productos CSV"}
               </button>
 
               <a
@@ -328,12 +353,16 @@ const ProductList = () => {
           )}
 
           {puedeCrear ? (
-            <Link to="new" className="btn btn-outline-light d-flex align-items-center gap-2">
+            <Link
+              to="new"
+              className="btn btn-outline-light d-flex align-items-center gap-2"
+            >
               <span className="fs-5">➕</span> Crear Producto
             </Link>
           ) : (
             <div className="text-warning text-end">
-              Límite alcanzado ({limitePermitido === Infinity ? "∞" : limitePermitido})
+              Límite alcanzado (
+              {limitePermitido === Infinity ? "∞" : limitePermitido})
             </div>
           )}
         </div>
@@ -353,7 +382,11 @@ const ProductList = () => {
           onOpenCategories={handleOpenCats}
         />
 
-        <LabelModal open={openLabels} onClose={handleCloseLabels} product={labelProduct} />
+        <LabelModal
+          open={openLabels}
+          onClose={handleCloseLabels}
+          product={labelProduct}
+        />
 
         <CategoryModal
           open={openCats}

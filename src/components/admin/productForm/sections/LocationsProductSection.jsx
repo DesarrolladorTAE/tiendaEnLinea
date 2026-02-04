@@ -3,28 +3,28 @@ import React, { useMemo } from "react";
 import { useFieldArray, useWatch } from "react-hook-form";
 
 /**
- * Multi-almacén (punto de venta)
+ * Multi-almacén (WAREHOUSES)
  *
  * defaultValues necesarios:
- *  use_location_inventory: false,
- *  location_inventories: [],
+ *  use_warehouse_inventory: false,
+ *  warehouse_inventories: [],
  *
  * Reglas:
- *  - SIN variantes: qty por sucursal DEBE sumar stock global
- *  - CON variantes: aquí solo seleccionas sucursales (sin qty),
- *    el stock/precio por sucursal va por variante (en VariantsEditor)
+ *  - SIN variantes: qty por almacén DEBE sumar stock global
+ *  - CON variantes: aquí solo seleccionas almacenes (sin qty),
+ *    el stock/precio por almacén va por variante (en VariantsEditor)
  */
 export default function LocationsProductSection({
   control,
   register,
   watch,
   setValue,
-  locations = [],
+  warehouses = [],
 }) {
-  const useLocations = watch("use_location_inventory");
+  const useWarehouses = watch("use_warehouse_inventory");
 
   // ✅ re-render confiable
-  const rows = useWatch({ control, name: "location_inventories" }) || [];
+  const rows = useWatch({ control, name: "warehouse_inventories" }) || [];
   const variants = useWatch({ control, name: "variants" }) || [];
   const hasVariants = variants.length > 0;
 
@@ -32,11 +32,11 @@ export default function LocationsProductSection({
 
   const { fields, append, remove } = useFieldArray({
     control,
-    name: "location_inventories",
+    name: "warehouse_inventories",
   });
 
   const addRow = () => {
-    append({ pos_location_id: "", qty: "", price: "", purchase_cost: "" });
+    append({ warehouse_id: "", qty: "", price: "", purchase_cost: "" });
   };
 
   const sumQty = useMemo(() => {
@@ -44,10 +44,10 @@ export default function LocationsProductSection({
   }, [rows]);
 
   const validation = useMemo(() => {
-    if (!useLocations) {
+    if (!useWarehouses) {
       return {
         level: "info",
-        msg: "Multi-almacén desactivado: se usa stock/precio global.",
+        msg: "Inventario por almacén desactivado: se usa stock/precio global.",
         ok: true,
       };
     }
@@ -56,14 +56,12 @@ export default function LocationsProductSection({
     if (!fields.length) {
       return {
         level: "error",
-        msg: "Agrega al menos una sucursal.",
+        msg: "Agrega al menos un almacén.",
         ok: false,
       };
     }
 
-    const idsAll = (rows || []).map((r) =>
-      String(r?.pos_location_id ?? "").trim()
-    );
+    const idsAll = (rows || []).map((r) => String(r?.warehouse_id ?? "").trim());
     const ids = idsAll.filter(Boolean);
 
     const missing = idsAll.some((x) => !x);
@@ -72,17 +70,17 @@ export default function LocationsProductSection({
     if (missing) {
       return {
         level: "error",
-        msg: "Hay filas sin sucursal seleccionada.",
+        msg: "Hay filas sin almacén seleccionado.",
         ok: false,
       };
     }
 
     if (dup) {
       const name =
-        locations.find((l) => String(l.id) === String(dup))?.name || dup;
+        warehouses.find((w) => String(w.id) === String(dup))?.name || dup;
       return {
         level: "error",
-        msg: `La sucursal "${name}" está repetida. Solo puedes ponerla una vez.`,
+        msg: `El almacén "${name}" está repetido. Solo puedes ponerlo una vez.`,
         ok: false,
       };
     }
@@ -92,8 +90,8 @@ export default function LocationsProductSection({
       return {
         level: "info",
         msg:
-          "Producto con VARIANTES: aquí seleccionas las sucursales que usarán inventario. " +
-          "El stock/precio por sucursal se asigna dentro de cada variante (Variants).",
+          "Producto con VARIANTES: aquí seleccionas los almacenes activos. " +
+          "El stock/precio por almacén se asigna dentro de cada variante (Variants).",
         ok: true,
       };
     }
@@ -127,9 +125,9 @@ export default function LocationsProductSection({
       return {
         level: "warning",
         msg:
-          `La suma por sucursal (${sumQty}) NO coincide con el stock global (${productStock}). ` +
+          `La suma por almacén (${sumQty}) NO coincide con el stock global (${productStock}). ` +
           (diff > 0 ? `Te faltan ${diff}.` : `Te sobran ${Math.abs(diff)}.`),
-        ok: false, // bloquea (tu submit debe validar esto)
+        ok: false, // bloquea (tu submit también valida esto)
       };
     }
 
@@ -138,7 +136,15 @@ export default function LocationsProductSection({
       msg: `Correcto: ${productStock} = ${sumQty} (stock repartido).`,
       ok: true,
     };
-  }, [useLocations, hasVariants, fields.length, rows, locations, productStock, sumQty]);
+  }, [
+    useWarehouses,
+    hasVariants,
+    fields.length,
+    rows,
+    warehouses,
+    productStock,
+    sumQty,
+  ]);
 
   const distributeEvenly = () => {
     const n = rows.length;
@@ -157,7 +163,7 @@ export default function LocationsProductSection({
         q += 1;
         remainder -= 1;
       }
-      setValue(`location_inventories.${i}.qty`, q, {
+      setValue(`warehouse_inventories.${i}.qty`, q, {
         shouldDirty: true,
         shouldTouch: true,
         shouldValidate: true,
@@ -181,11 +187,14 @@ export default function LocationsProductSection({
           <input
             className="form-check-input"
             type="checkbox"
-            id="useLocationInventory"
-            {...register("use_location_inventory")}
+            id="useWarehouseInventory"
+            {...register("use_warehouse_inventory")}
           />
-          <label className="form-check-label text-white" htmlFor="useLocationInventory">
-            Usar inventario por punto de venta (multi-almacén)
+          <label
+            className="form-check-label text-white"
+            htmlFor="useWarehouseInventory"
+          >
+            Usar inventario por almacén (multi-almacén)
           </label>
         </div>
         <small className="text-muted">
@@ -193,7 +202,7 @@ export default function LocationsProductSection({
         </small>
       </div>
 
-      {useLocations && (
+      {useWarehouses && (
         <div className="col-12 mt-2">
           <div className={alertClass} style={{ borderRadius: 10 }}>
             {validation.msg}
@@ -201,11 +210,15 @@ export default function LocationsProductSection({
         </div>
       )}
 
-      {!useLocations ? null : (
+      {!useWarehouses ? null : (
         <>
           <div className="col-12 d-flex gap-2 flex-wrap mt-2 align-items-center">
-            <button type="button" className="btn btn-outline-info" onClick={addRow}>
-              + Agregar sucursal
+            <button
+              type="button"
+              className="btn btn-outline-info"
+              onClick={addRow}
+            >
+              + Agregar almacén
             </button>
 
             {/* ✅ Solo para SIN variantes */}
@@ -231,7 +244,7 @@ export default function LocationsProductSection({
                 </>
               ) : (
                 <>
-                  <small className="text-white">Sucursales activas:</small>{" "}
+                  <small className="text-white">Almacenes activos:</small>{" "}
                   <strong>{fields.length}</strong>{" "}
                   <small className="text-white">/ Variantes:</small>{" "}
                   <strong>{variants.length}</strong>
@@ -243,7 +256,7 @@ export default function LocationsProductSection({
           {fields.length === 0 ? (
             <div className="col-12 mt-3">
               <p className="text-muted mb-0">
-                Agrega al menos una sucursal para asignar inventario.
+                Agrega al menos un almacén para asignar inventario.
               </p>
             </div>
           ) : (
@@ -255,7 +268,7 @@ export default function LocationsProductSection({
                   style={{ borderColor: "rgba(255,255,255,0.12)" }}
                 >
                   <div className="d-flex justify-content-between align-items-center">
-                    <strong className="text-white">Sucursal #{i + 1}</strong>
+                    <strong className="text-white">Almacén #{i + 1}</strong>
                     <button
                       type="button"
                       className="btn btn-sm btn-danger"
@@ -267,15 +280,15 @@ export default function LocationsProductSection({
 
                   <div className="row mt-2">
                     <div className="col-md-5 mb-2">
-                      <label className="form-label text-white">Punto de venta / Sucursal</label>
+                      <label className="form-label text-white">Almacén</label>
                       <select
                         className="form-control"
-                        {...register(`location_inventories.${i}.pos_location_id`)}
+                        {...register(`warehouse_inventories.${i}.warehouse_id`)}
                       >
                         <option value="">Selecciona...</option>
-                        {locations.map((loc) => (
-                          <option key={loc.id} value={loc.id}>
-                            {loc.name}
+                        {warehouses.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.name}
                           </option>
                         ))}
                       </select>
@@ -285,39 +298,43 @@ export default function LocationsProductSection({
                     {!hasVariants && (
                       <>
                         <div className="col-md-3 mb-2">
-                          <label className="form-label text-white">Stock en sucursal</label>
+                          <label className="form-label text-white">
+                            Stock en almacén
+                          </label>
                           <input
                             className="form-control"
                             type="number"
                             step="1"
                             placeholder="0"
-                            {...register(`location_inventories.${i}.qty`)}
+                            {...register(`warehouse_inventories.${i}.qty`)}
                           />
                         </div>
 
                         <div className="col-md-2 mb-2">
                           <label className="form-label text-white">
-                            Precio (opcional) <span title="Si vacío, usa el global">❓</span>
+                            Precio (opcional){" "}
+                            <span title="Si vacío, usa el global">❓</span>
                           </label>
                           <input
                             className="form-control"
                             type="number"
                             step="0.01"
                             placeholder="si vacío: global"
-                            {...register(`location_inventories.${i}.price`)}
+                            {...register(`warehouse_inventories.${i}.price`)}
                           />
                         </div>
 
                         <div className="col-md-2 mb-2">
                           <label className="form-label text-white">
-                            Costo (opcional) <span title="Si vacío, usa el global">❓</span>
+                            Costo (opcional){" "}
+                            <span title="Si vacío, usa el global">❓</span>
                           </label>
                           <input
                             className="form-control"
                             type="number"
                             step="0.01"
                             placeholder="purchase_cost"
-                            {...register(`location_inventories.${i}.purchase_cost`)}
+                            {...register(`warehouse_inventories.${i}.purchase_cost`)}
                           />
                         </div>
                       </>
@@ -325,12 +342,13 @@ export default function LocationsProductSection({
                   </div>
 
                   {!hasVariants ? (
-                    <small className="text-muted">
+                    <small className="text-white">
                       Si dejas precio/costo vacío, se usa el global.
                     </small>
                   ) : (
-                    <small className="text-muted">
-                      Con variantes: el stock/precio por sucursal se define dentro de cada variante.
+                    <small className="text-white">
+                      Con variantes: el stock/precio por almacén se define dentro
+                      de cada variante.
                     </small>
                   )}
                 </div>

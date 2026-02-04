@@ -7,14 +7,14 @@ import VariantsEditor from "../VariantsEditor";
  *
  * Props:
  *  - control, register, watch, setValue (react-hook-form)
- *  - locations: array de sucursales [{id, name, ...}]
+ *  - warehouses: array de almacenes [{id, name, ...}]
  */
 export default function VariantsSection({
   control,
   register,
   watch,
   setValue,
-  locations = [],
+  warehouses = [],
 }) {
   return (
     <div className="row">
@@ -24,7 +24,7 @@ export default function VariantsSection({
           register={register}
           watch={watch}
           setValue={setValue}
-          locations={locations}   // ✅ IMPORTANTe
+          warehouses={warehouses} // ✅ IMPORTANTe
         />
       </div>
     </div>

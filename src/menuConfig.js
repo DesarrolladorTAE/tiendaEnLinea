@@ -11,7 +11,7 @@ const adminNavItems = [
   // { path: "/admin/mi-sitio", label: "🌐 Sitio Web" },
   { path: "/admin/ticket", label: "📄Personaliza tu Ticket"},
   // { path: "/admin/complementos", label: "🔌 Complementos"},
-  { path: "/admin/membresia", label: "📑 Suscripciones"},
+  // { path: "/admin/membresia", label: "📑 Suscripciones"},
 
   // { path: "/admin/micuenta", label: "🪪Mi Cuenta"},
 ];

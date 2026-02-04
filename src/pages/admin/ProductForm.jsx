@@ -45,9 +45,9 @@ export default function ProductForm() {
       visible: true,
 
       // SAT
-      unidad_medida: null, 
+      unidad_medida: null,
       unidad_medida_id: "",
-       unidad_medida_texto: "",
+      unidad_medida_texto: "",
       costo_compra: "",
       clave_producto_servicio: "",
       clave_unidad: "",
@@ -59,11 +59,9 @@ export default function ProductForm() {
       // Variantes libres
       variants: [],
 
-      // Multi-almacén (OPCIONAL)
-      use_location_inventory: false,
-      location_inventories: [],
-
-      pos_location_id: "",
+      // ✅ Multi-almacén (WAREHOUSES)
+      use_warehouse_inventory: false,
+      warehouse_inventories: [],
 
       // FUTURO
       options: [],
@@ -79,8 +77,7 @@ export default function ProductForm() {
     setValue,
   });
 
-  if (cargando)
-    return <p className="text-center text-muted">Cargando datos...</p>;
+  if (cargando) return <p className="text-center text-muted">Cargando datos...</p>;
 
   if (!puedeCrear) {
     return (
@@ -99,7 +96,6 @@ export default function ProductForm() {
           {ui.id ? "✏️ Editar Producto" : "📝 Crear Producto"}
         </h2>
 
-        {/* Bootstrap accordion wrapper */}
         <div className="accordion mt-4" id="productFormAccordion">
           <form onSubmit={handleSubmit(actions.onSubmit)}>
             {/* 1) Información del producto */}
@@ -133,18 +129,18 @@ export default function ProductForm() {
                 register={register}
                 watch={watch}
                 setValue={setValue}
-                locations={ui.locations} // ✅ IMPORTANTe
+                warehouses={ui.warehouses} // ✅ ahora warehouses
               />
             </AccordionSection>
 
-            {/* 4) Multi-almacenes por punto de venta */}
-            <AccordionSection title="🏬 Multi-almacenes (Punto de venta)">
+            {/* 4) Multi-almacenes (WAREHOUSES) */}
+            <AccordionSection title="🏬 Multi-almacenes (Almacenes)">
               <LocationsProductSection
                 control={control}
                 register={register}
                 watch={watch}
                 setValue={setValue}
-                locations={ui.locations}
+                warehouses={ui.warehouses} // ✅ ahora warehouses
               />
             </AccordionSection>
 
@@ -174,10 +170,7 @@ export default function ProductForm() {
 
             {/* 8) Categorías */}
             <AccordionSection title="✅ Categorías">
-              <CategoriesSection
-                control={control}
-                categoriesOptions={ui.categoriesOptions}
-              />
+              <CategoriesSection control={control} categoriesOptions={ui.categoriesOptions} />
             </AccordionSection>
 
             <button type="submit" className="btn btn-success w-100 mt-3">
