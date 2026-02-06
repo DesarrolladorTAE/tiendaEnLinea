@@ -6,164 +6,239 @@ import { showError, showSuccess } from "../../utils/alerts";
 export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState(null);
+
   const [selectedVariation, setSelectedVariation] = useState({});
   const [selectedSize, setSelectedSize] = useState({});
 
-  // --- Cargar/recargar productos ---
+  const [posLocationId, setPosLocationId] = useState(
+    Number(localStorage.getItem("POS_LOCATION_ID")) || null
+  );
+
+  useEffect(() => {
+    const sync = () => {
+      setPosLocationId(Number(localStorage.getItem("POS_LOCATION_ID")) || null);
+    };
+    window.addEventListener("storage", sync);
+    window.addEventListener("pos:changed", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("pos:changed", sync);
+    };
+  }, []);
+
+  const getSelectedVariant = useCallback(
+    (product) => {
+      if (!product?.has_variants) return null;
+
+      const pid = String(product.id);
+      const vid = selectedVariation?.[pid];
+      const list = Array.isArray(product.variants) ? product.variants : [];
+
+      if (vid) return list.find((v) => String(v.id) === String(vid)) || null;
+
+      const active = list.find((v) => v.is_active !== false);
+      return active || list[0] || null;
+    },
+    [selectedVariation]
+  );
+
   const refetchProducts = useCallback(async () => {
     try {
-      const { data } = await axiosClient.get("my-products");
-      setProducts(Array.isArray(data) ? data : []);
+      if (!posLocationId) {
+        setProducts([]);
+        return;
+      }
+
+      const { data } = await axiosClient.get("my-products-by-pos", {
+        params: { pos_location_id: posLocationId },
+      });
+
+      const list = Array.isArray(data?.products) ? data.products : [];
+      setProducts(list);
     } catch (e) {
+      console.error("Error cargando productos POS:", e);
       setProducts([]);
     }
-  }, []);
+  }, [posLocationId]);
 
   useEffect(() => {
     refetchProducts();
   }, [refetchProducts]);
 
-  // --- Utilidades de producto/stock ---
-  const isVariantProduct = (product) =>
-    Array.isArray(product?.variation) && product.variation.length > 0;
+  const isVariantProduct = (product) => !!product?.has_variants;
 
-  const getProductImage = (product) =>
-    Array.isArray(product?.image) && product.image.length > 0
-      ? product.image[0]
-      : null;
-
-  const getAvailableStock = (product) => {
-    if (typeof product?.stock === "number") return product.stock;
-    if (product?.variation && product?.size) {
-      const matchSize = product.variation.size?.find(
-        (s) => s.name === product.size
-      );
-      return matchSize?.stock || 0;
+  // ✅ SOLO imagen del PRODUCTO (card)
+  const getProductImage = (product) => {
+    if (Array.isArray(product?.image) && product.image.length > 0) {
+      return product.image[0];
     }
-    return 0;
+    return null;
   };
+
+  // ✅ Imagen para MODAL (variante)
+  const getVariantImage = (product, variant) => {
+    if (variant?.image_url) return variant.image_url;
+    if (variant?.image) return variant.image;
+    return getProductImage(product);
+  };
+
+  const getAvailableStock = useCallback(
+    (product) => {
+      if (!product) return 0;
+
+      const useWh = !!product.use_warehouse_inventory;
+
+      if (product.has_variants) {
+        const v = getSelectedVariant(product);
+        if (!v) return 0;
+
+        if (!useWh) return Number(v.stock) || 0;
+
+        const rows = Array.isArray(v.warehouse_stocks) ? v.warehouse_stocks : [];
+        return rows.reduce((acc, r) => acc + (Number(r.stock) || 0), 0);
+      }
+
+      if (!useWh) return Number(product.stock) || 0;
+
+      const rows = Array.isArray(product.warehouse_inventories)
+        ? product.warehouse_inventories
+        : [];
+      return rows.reduce((acc, r) => acc + (Number(r.qty) || 0), 0);
+    },
+    [getSelectedVariant]
+  );
 
   const getQuantityInCart = (id) =>
     cart.find((item) => item.id === id)?.quantity || 0;
 
-  // --- Manipulación del carrito ---
+  const getCartKey = useCallback(
+    (product) => {
+      if (!product) return null;
+      if (!product.has_variants) return String(product.id);
+
+      const v = getSelectedVariant(product);
+      if (!v) return String(product.id);
+      return `${product.id}:${v.id}`;
+    },
+    [getSelectedVariant]
+  );
+
+  const getUnitPrice = useCallback(
+    (product) => {
+      if (!product) return 0;
+
+      const descuento = Number(product.discount ?? 0);
+      let base = Number(product.price) || 0;
+
+      if (product.has_variants) {
+        const v = getSelectedVariant(product);
+        base = Number(v?.price) || base;
+      }
+
+      const final = base * (1 - descuento / 100);
+      return Number(final.toFixed(2));
+    },
+    [getSelectedVariant]
+  );
+
   const handleAdd = (product) => {
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id);
-      const descuento = product.discount ?? 0;
-      const precioConDescuento = parseFloat(
-        (product.price * (1 - descuento / 100)).toFixed(2)
-      );
+      const key = getCartKey(product);
+      if (!key) return prevCart;
 
-      const stockDisponible = parseFloat(getAvailableStock(product));
+      const stockDisponible = Number(getAvailableStock(product)) || 0;
+      const unitPrice = getUnitPrice(product);
 
-      if (existingItem) {
-        const cantidadActual = parseFloat(existingItem.quantity);
-        const nuevaCantidad = parseFloat((cantidadActual + 1).toFixed(2));
+      const existing = prevCart.find((i) => i.id === key);
+
+      if (existing) {
+        const nuevaCantidad = Number((Number(existing.quantity || 0) + 1).toFixed(2));
         if (nuevaCantidad > stockDisponible) {
           showError("⚠️ Stock insuficiente.");
           return prevCart;
         }
-        return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: nuevaCantidad } : item
-        );
-      } else {
-        return [
-          ...prevCart,
-          {
-            id: product.id,
-            name: product.name,
-            price_original: product.price, // guardamos original
-            discount: descuento,
-            price: precioConDescuento, // unit_price ya con descuento
-            quantity: 1,
-            variation: product.variation,
-            size: product.size,
-          },
-        ];
+        return prevCart.map((i) => (i.id === key ? { ...i, quantity: nuevaCantidad } : i));
       }
+
+      const v = product.has_variants ? getSelectedVariant(product) : null;
+
+      return [
+        ...prevCart,
+        {
+          id: key,
+          product_id: Number(product.id),
+          variant_id: v ? Number(v.id) : null,
+          name: v ? `${product.name} - ${v.name ?? v.sku ?? v.id}` : product.name,
+          price_original: Number(v?.price ?? product.price ?? unitPrice),
+          discount: Number(product.discount ?? 0),
+          price: Number(unitPrice),
+          quantity: 1,
+          has_variants: !!product.has_variants,
+        },
+      ];
     });
   };
 
   const handleSetQuantity = (product, nuevaCantidad) => {
-    const stockDisponible = parseFloat(getAvailableStock(product));
-    if (nuevaCantidad > stockDisponible) {
+    const key = getCartKey(product);
+    if (!key) return;
+
+    const stockDisponible = Number(getAvailableStock(product)) || 0;
+
+    if (Number(nuevaCantidad) > stockDisponible) {
       showError("⚠️ Stock insuficiente.");
       return;
     }
-    if (!nuevaCantidad || nuevaCantidad <= 0) {
-      setCart((prev) => prev.filter((item) => item.id !== product.id));
+
+    if (!nuevaCantidad || Number(nuevaCantidad) <= 0) {
+      setCart((prev) => prev.filter((item) => item.id !== key));
       return;
     }
+
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === product.id
-          ? { ...item, quantity: parseFloat(nuevaCantidad.toFixed(2)) }
+        item.id === key
+          ? { ...item, quantity: Number(Number(nuevaCantidad).toFixed(2)) }
           : item
       )
     );
   };
 
-  const handleDecrease = (id) => {
+  const handleDecrease = (cartKey) => {
     setCart((prev) => {
-      const index = prev.findIndex((item) => item.id === id);
+      const index = prev.findIndex((item) => item.id === cartKey);
       if (index === -1) return prev;
+
       const updated = [...prev];
-      if (updated[index].quantity > 1) {
-        updated[index].quantity = parseFloat(
-          (updated[index].quantity - 1).toFixed(2)
-        );
+      if (Number(updated[index].quantity) > 1) {
+        updated[index].quantity = Number((Number(updated[index].quantity) - 1).toFixed(2));
         return updated;
       }
-      return prev.filter((item) => item.id !== id);
+      return prev.filter((item) => item.id !== cartKey);
     });
   };
 
-  const handleRemove = (id) => {
-    setCart((prev) => prev.filter((item) => item.id !== id));
+  const handleRemove = (cartKey) => {
+    setCart((prev) => prev.filter((item) => item.id !== cartKey));
   };
 
-  // --- Checkout: crea la venta, refresca productos y retorna 'sale' ---
-  // Recibe { total_amount, payments } calculado en el Cart
   const handleCheckout = useCallback(
     async (checkoutPayloadFromCart) => {
       if (!cart || cart.length === 0) return;
 
-      // Re-map de items para IDs correctos y campos esperados por el backend
-      const items = cart.map((item) => {
-        // a veces id viene como "123-xyz"
-        const [productId] = String(item.id).split("-");
-        let variationSizeId = null;
-        if (item.variation?.size && item.size) {
-          const match = item.variation.size.find((s) => s.name === item.size);
-          variationSizeId = match ? match.id ?? null : null;
-        }
-        return {
-          product_id: parseInt(productId, 10),
-          variation_size_id: variationSizeId,
-          quantity: parseFloat(item.quantity),
-          unit_price: parseFloat(item.price), // precio ya con descuento
-          original_price:
-            parseFloat(
-              item.price_original ??
-                item.original_price ??
-                item.base_price ??
-                item.original ??
-                item.originalPrice
-            ) || parseFloat(item.price),
-          discount_percent: parseFloat(item.discount ?? 0),
-        };
-      });
+      const items = cart.map((item) => ({
+        product_id: Number(item.product_id ?? String(item.id).split(":")[0]),
+        variant_id: item.variant_id ? Number(item.variant_id) : null,
+        quantity: Number(item.quantity),
+        unit_price: Number(item.price),
+        original_price: Number(item.price_original ?? item.price),
+        discount_percent: Number(item.discount ?? 0),
+      }));
 
-      // Normalizar efectivo recibido a partir de payments
       const payments = checkoutPayloadFromCart.payments || [];
       const eff = payments.find((p) => p?.method === "efectivo");
       const rawCashReceived =
-        eff?.cash_received ??
-        eff?.efectivo_recibido ??
-        eff?.recibido ??
-        eff?.amount ??  
-        null;
+        eff?.cash_received ?? eff?.efectivo_recibido ?? eff?.recibido ?? eff?.amount ?? null;
 
       const totalAmount = +checkoutPayloadFromCart.total_amount.toFixed(2);
 
@@ -173,32 +248,25 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           : null;
 
       const change =
-        cashReceived != null
-          ? Math.max(0, +(cashReceived - totalAmount).toFixed(2))
-          : 0;
+        cashReceived != null ? Math.max(0, +(cashReceived - totalAmount).toFixed(2)) : 0;
 
       const payload = {
         total_amount: totalAmount,
         items,
         payments,
         ...(cashReceived != null
-          ? {
-              cash_received: cashReceived,        // alias a nivel raíz
-              efectivo_recibido: cashReceived,    // alias a nivel raíz
-            }
+          ? { cash_received: cashReceived, efectivo_recibido: cashReceived }
           : {}),
-        change, // si backend lo usa, lo mostrará; de lo contrario lo ignora
+        change,
       };
 
       try {
         const saleResponse = await axiosClient.post("/sales", payload);
         const { sale, message } = saleResponse.data;
 
-        // Limpiar carrito y refrescar catálogo/stock sin recargar la página
         setCart([]);
         await refetchProducts();
 
-        // Ticket
         setTicketData(sale);
         showSuccess(`✅ ${message}`);
         setShowTicket(true);
@@ -218,7 +286,6 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   );
 
   return {
-    // state
     search,
     setSearch,
     products,
@@ -226,22 +293,24 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     selectedVariation,
     selectedSize,
 
-    // setters
     setSelectedVariation,
     setSelectedSize,
 
-    // actions
     handleAdd,
     handleRemove,
     handleDecrease,
     handleSetQuantity,
-    handleCheckout, // ← retorna 'sale'
-    refetchProducts, // ← por si quieres refrescar desde el componente
+    handleCheckout,
+    refetchProducts,
 
-    // utils
     getAvailableStock,
     getQuantityInCart,
     getProductImage,
+    getVariantImage, // ✅ nuevo para modal
     isVariantProduct,
+
+    getSelectedVariant,
+    getCartKey,
+    posLocationId,
   };
 }

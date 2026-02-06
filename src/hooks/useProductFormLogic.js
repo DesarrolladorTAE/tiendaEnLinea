@@ -128,36 +128,47 @@ export function normalizeVariantsForBackend(rawVariants = []) {
 export function mapBackendVariantsToForm(backendVariants = []) {
   return (backendVariants || []).map((v) => {
     // ✅ attributes
+    // ✅ attributes (acepta attributes o variant_attributes)
     let attrsArray = [{ name: "", value: "" }];
 
-    if (Array.isArray(v?.attributes)) {
-      const arr = v.attributes
+    const attrsSrc = Array.isArray(v?.attributes)
+      ? v.attributes
+      : Array.isArray(v?.variant_attributes)
+        ? v.variant_attributes
+        : null;
+
+    if (Array.isArray(attrsSrc)) {
+      const arr = attrsSrc
         .map((a) => ({
           name: String(a?.name || ""),
           value: String(a?.value || ""),
         }))
         .filter((a) => a.name.trim() && a.value.trim());
+
       attrsArray = arr.length ? arr : [{ name: "", value: "" }];
     } else if (v?.attributes && typeof v.attributes === "object") {
+      // si algún endpoint aún manda attributes como objeto {Color:"Rojo"}
       const arr = Object.entries(v.attributes)
         .map(([name, value]) => ({
           name: String(name || ""),
           value: String(value || ""),
         }))
         .filter((a) => a.name.trim() && a.value.trim());
+
       attrsArray = arr.length ? arr : [{ name: "", value: "" }];
     }
+
 
     // ✅ warehouse_stocks (tabla real)
     const warehouseStocks = Array.isArray(v?.warehouse_stocks)
       ? v.warehouse_stocks.map((r) => ({
-          warehouse_id: String(r?.warehouse_id ?? "").trim(),
-          stock: r?.stock ?? "",
-          min_stock: r?.min_stock ?? "",
-          max_stock: r?.max_stock ?? "",
-          reorder_point: r?.reorder_point ?? "",
-          location_bin: r?.location_bin ?? "",
-        }))
+        warehouse_id: String(r?.warehouse_id ?? "").trim(),
+        stock: r?.stock ?? "",
+        min_stock: r?.min_stock ?? "",
+        max_stock: r?.max_stock ?? "",
+        reorder_point: r?.reorder_point ?? "",
+        location_bin: r?.location_bin ?? "",
+      }))
       : [];
 
     // ✅ conservar imagen existente
@@ -331,24 +342,24 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     buildCategoryOptionsWithMap(cats);
   };
 
-const fetchWarehouses = async () => {
-  try {
-    if (!branchId) {
+  const fetchWarehouses = async () => {
+    try {
+      if (!branchId) {
+        setWarehouses([]);
+        return;
+      }
+
+      const res = await axiosClient.get(`/branches/${branchId}/warehouses`, {
+        params: { only_active: 1 }, // opcional
+      });
+
+      const data = res.data?.data || res.data?.warehouses || res.data || [];
+      setWarehouses(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("fetchWarehouses error:", e?.response?.data || e);
       setWarehouses([]);
-      return;
     }
-
-    const res = await axiosClient.get(`/branches/${branchId}/warehouses`, {
-      params: { only_active: 1 }, // opcional
-    });
-
-    const data = res.data?.data || res.data?.warehouses || res.data || [];
-    setWarehouses(Array.isArray(data) ? data : []);
-  } catch (e) {
-    console.error("fetchWarehouses error:", e?.response?.data || e);
-    setWarehouses([]);
-  }
-};
+  };
 
 
   const fetchProduct = async (productId) => {
@@ -429,12 +440,12 @@ const fetchWarehouses = async () => {
 
   // ===== INIT =====
   useEffect(() => {
-    fetchCategories().catch(() => {});
+    fetchCategories().catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId]);
 
   useEffect(() => {
-    fetchWarehouses().catch(() => {});
+    fetchWarehouses().catch(() => { });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId]);
 
