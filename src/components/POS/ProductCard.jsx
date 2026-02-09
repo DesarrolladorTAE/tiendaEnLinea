@@ -73,12 +73,12 @@ export default function ProductCard({
 
   const [openVariants, setOpenVariants] = useState(false);
 
-  // ✅ AFUERA: SIEMPRE imagen del PRODUCTO (si tu hook ya está corregido)
+  // ✅ AFUERA: SIEMPRE imagen del PRODUCTO
   const productImg = getProductImage(product);
 
-  // ====== Precio ======
+  // ====== Precio producto (solo para simple) ======
   const hasDiscount = Number(product?.discount) > 0;
-  const priceFinal = hasDiscount
+  const priceFinalProduct = hasDiscount
     ? discountedPrice(product?.price, product?.discount)
     : money(product?.price);
 
@@ -92,6 +92,7 @@ export default function ProductCard({
         warehouse_id: r.warehouse_id,
         warehouse_name: r.warehouse_name || `Almacén ${r.warehouse_id}`,
         qty: r.qty ?? r.stock ?? 0,
+        location_bin: r.location_bin ?? null,
       }))
       .sort((a, b) => (Number(b.qty) || 0) - (Number(a.qty) || 0));
   }, [product]);
@@ -110,8 +111,12 @@ export default function ProductCard({
     if (!hasVariants) {
       const withStock = productWarehouseRows.filter((r) => (Number(r.qty) || 0) > 0);
       if (!withStock.length) return "Sin stock en almacenes";
-      const top = withStock.slice(0, 2).map((r) => `${r.warehouse_name}: ${Number(r.qty) || 0}`);
-      return withStock.length > 2 ? `${top.join(" • ")} • +${withStock.length - 2}` : top.join(" • ");
+      const top = withStock
+        .slice(0, 2)
+        .map((r) => `${r.warehouse_name}: ${Number(r.qty) || 0}`);
+      return withStock.length > 2
+        ? `${top.join(" • ")} • +${withStock.length - 2}`
+        : top.join(" • ");
     }
 
     // con variantes: resumen almacenes
@@ -122,7 +127,11 @@ export default function ProductCard({
       rows.forEach((r) => {
         const wname = r.warehouse_name || `Almacén ${r.warehouse_id}`;
         const key = String(r.warehouse_id);
-        const prev = mapWh.get(key) || { warehouse_id: r.warehouse_id, warehouse_name: wname, stock: 0 };
+        const prev = mapWh.get(key) || {
+          warehouse_id: r.warehouse_id,
+          warehouse_name: wname,
+          stock: 0,
+        };
         prev.stock += Number(r.stock) || 0;
         mapWh.set(key, prev);
       });
@@ -132,29 +141,128 @@ export default function ProductCard({
     const withStock = arr.filter((r) => (Number(r.stock) || 0) > 0);
     if (!withStock.length) return "Sin stock en almacenes";
     const top = withStock.slice(0, 2).map((r) => `${r.warehouse_name}`);
-    return withStock.length > 2 ? `${top.join(" • ")} • +${withStock.length - 2}` : top.join(" • ");
+    return withStock.length > 2
+      ? `${top.join(" • ")} • +${withStock.length - 2}`
+      : top.join(" • ");
   }, [useWh, hasVariants, productWarehouseRows, product]);
 
-  // ====== Add simple ======
-  const qtyInCartSimple = getQuantityInCart(baseId);
+  // =========================================================
+  // PRODUCTO SIMPLE (sin variantes)
+  // =========================================================
+
+  // ✅ qty simple (sin almacén): key base
+  const simpleCartKey = String(baseId);
+  const qtyInCartSimple = getQuantityInCart(simpleCartKey);
   const canAddSimple = !hasVariants;
-  const canClickCardToAdd = isMdUp && canAddSimple;
+
+  // ✅ si es multi-almacén, NO permitir click directo para agregar
+  const canClickCardToAdd = isMdUp && canAddSimple && !useWh;
+
+  // ---- Modal selección almacén (producto simple multi-almacén) ----
+  const [openSimpleWh, setOpenSimpleWh] = useState(false);
+  const [selectedSimpleWarehouseId, setSelectedSimpleWarehouseId] = useState("");
+
+  const simpleWarehouseRow = useMemo(() => {
+    if (!selectedSimpleWarehouseId) return null;
+    return (
+      productWarehouseRows.find(
+        (r) => String(r.warehouse_id) === String(selectedSimpleWarehouseId)
+      ) || null
+    );
+  }, [productWarehouseRows, selectedSimpleWarehouseId]);
+
+  const stockForSimpleWarehouse = useMemo(() => {
+    if (!useWh) return globalStock;
+    if (!simpleWarehouseRow) return 0;
+    return Number(simpleWarehouseRow.qty) || 0;
+  }, [useWh, globalStock, simpleWarehouseRow]);
+
+  // ✅ helper: cart_key para simple multi-almacén (para no mezclar almacenes)
+  const simpleWhCartKey = useMemo(() => {
+    if (!selectedSimpleWarehouseId) return null;
+    return `${baseId}-w${selectedSimpleWarehouseId}`;
+  }, [baseId, selectedSimpleWarehouseId]);
 
   const addSimpleOne = () => {
+    // ✅ si es multi-almacén -> pedir almacén
+    if (useWh) {
+      setOpenSimpleWh(true);
+      const firstWithStock =
+        productWarehouseRows.find((r) => (Number(r.qty) || 0) > 0) || null;
+      setSelectedSimpleWarehouseId(firstWithStock ? String(firstWithStock.warehouse_id) : "");
+      return;
+    }
+
     const stock = globalStock;
     const qty = qtyInCartSimple;
     if (qty < stock) {
       onAdd({
         ...product,
-        id: baseId,
-        quantity: qty + 1,
+
+        // ✅ cart item armado
+        cart_key: String(baseId),
+        id: String(baseId),
+        product_id: Number(baseId),
+
+        variant_id: null,
+        warehouse_id: null,
+        warehouse_name: null,
+
+        display_name: product?.name,
+        name: product?.name,
+
+        original_price: Number(product?.price ?? 0),
+        price_original: Number(product?.price ?? 0),
+        price: Number(priceFinalProduct),
+
+        quantity: 1, // ✅ el hook sumará
+        has_variants: false,
       });
     }
   };
 
-  // ===========================
+  const confirmAddSimpleWithWarehouse = () => {
+    if (!simpleWarehouseRow || !simpleWhCartKey) return;
+
+    const stock = stockForSimpleWarehouse;
+
+    // ✅ cantidad por línea (por almacén)
+    const qtyInThatLine = getQuantityInCart(simpleWhCartKey);
+    if (qtyInThatLine >= stock) return;
+
+    onAdd({
+      ...product,
+
+      // ✅ línea única por almacén
+      cart_key: simpleWhCartKey,
+      id: simpleWhCartKey,
+
+      product_id: Number(baseId),
+      variant_id: null,
+
+      warehouse_id: Number(simpleWarehouseRow.warehouse_id),
+      warehouse_name: simpleWarehouseRow.warehouse_name,
+
+      display_name: `${product?.name} — ${simpleWarehouseRow.warehouse_name}`,
+      name: product?.name,
+
+      original_price: Number(product?.price ?? 0),
+      price_original: Number(product?.price ?? 0),
+      price: Number(priceFinalProduct),
+
+      quantity: 1,
+      has_variants: false,
+
+      // ✅ opcional: ayuda al hook a validar stock por línea
+      stock_available: Number(stockForSimpleWarehouse) || 0,
+    });
+
+    setOpenSimpleWh(false);
+  };
+
+  // =========================================================
   // MODAL VARIANTES (catálogo)
-  // ===========================
+  // =========================================================
   const variants = useMemo(() => {
     const arr = Array.isArray(product?.variants) ? product.variants : [];
     return arr.filter((v) => v?.is_active !== false);
@@ -172,14 +280,13 @@ export default function ProductCard({
 
   const selectedVariantAttrs = useMemo(() => {
     return normalizeAttrs(selectedVariant?.variant_attributes || selectedVariant?.attributes);
-
   }, [selectedVariant]);
 
-  // ✅ ADENTRO (modal): imagen de variante para diferenciar
+  // ✅ ADENTRO (modal): imagen de variante
   const variantImage = useMemo(() => {
     const vimg = selectedVariant?.image_url || selectedVariant?.image || null;
     if (vimg && typeof vimg === "string") return vimg;
-    return productImg; // fallback
+    return productImg;
   }, [selectedVariant, productImg]);
 
   const variantWarehouses = useMemo(() => {
@@ -196,18 +303,20 @@ export default function ProductCard({
       .sort((a, b) => (b.stock || 0) - (a.stock || 0));
   }, [selectedVariant]);
 
+  // ✅ Precio efectivo: SI ES VARIANTE -> usar precio variante
   const effectiveUnitPrice = useMemo(() => {
     const p = selectedVariant?.price ?? product?.price ?? 0;
     const d = Number(product?.discount) || 0;
     return d > 0 ? Number(discountedPrice(p, d)) : Number(p);
   }, [selectedVariant, product]);
 
-  const compositeId = useMemo(() => {
+  // ✅ cart_key variante consistente
+  const variantCartKey = useMemo(() => {
     if (!selectedVariantId) return null;
     return `${baseId}-v${selectedVariantId}`;
   }, [baseId, selectedVariantId]);
 
-  const qtyInCartVariant = compositeId ? getQuantityInCart(compositeId) : 0;
+  const qtyInCartVariant = variantCartKey ? getQuantityInCart(variantCartKey) : 0;
 
   const variantTotalStock = useMemo(() => {
     if (useWh && variantWarehouses.length) {
@@ -234,14 +343,17 @@ export default function ProductCard({
   const canAddVariant = Boolean(selectedVariantId) && (!useWh || Boolean(selectedWarehouseId));
 
   const addVariantOne = () => {
-    if (!canAddVariant) return;
+    if (!canAddVariant || !selectedVariant || !variantCartKey) return;
 
     const stock = useWh ? stockForSelectedWarehouse : variantTotalStock;
     if (qtyInCartVariant >= stock) return;
 
     onAdd({
-      ...product,
-      id: compositeId,
+      // NO mandes ...product completo para no arrastrar cosas raras al carrito
+      cart_key: variantCartKey,
+      id: variantCartKey,
+
+      product_id: Number(baseId),
 
       variant: selectedVariant,
       variant_id: Number(selectedVariantId),
@@ -249,16 +361,20 @@ export default function ProductCard({
       warehouse_id: useWh ? Number(selectedWarehouseId) : null,
       warehouse_name: useWh ? selectedWarehouseRow?.warehouse_name : null,
 
-      price_original: selectedVariant?.price ?? product?.price,
-      price: Number(
-        (Number(selectedVariant?.price ?? product?.price ?? 0) *
-          (1 - Number(product?.discount ?? 0) / 100)).toFixed(2)
-      ),
+      // ✅ precio ORIGINAL y FINAL basado en la variante
+      original_price: Number(selectedVariant?.price ?? product?.price ?? 0),
+      price_original: Number(selectedVariant?.price ?? product?.price ?? 0),
+      price: Number(effectiveUnitPrice),
 
       display_name: `${product?.name} — ${variantLabel}`,
+      name: product?.name,
       variant_attributes: selectedVariantAttrs,
 
-      quantity: qtyInCartVariant + 1,
+      quantity: 1,
+      has_variants: true,
+
+      // ✅ opcional: ayuda al hook a validar stock por línea
+      stock_available: Number(stock) || 0,
     });
   };
 
@@ -286,8 +402,8 @@ export default function ProductCard({
           else if (canClickCardToAdd) addSimpleOne();
         }}
         sx={{
-          width: "100%",          // ✅ no “encoge” raro
-          alignSelf: "stretch",   // ✅ estira solo dentro del grid, sin deformar contenido
+          width: "100%",
+          alignSelf: "stretch",
           p: 1.5,
           borderRadius: 4,
           overflow: "hidden",
@@ -304,12 +420,11 @@ export default function ProductCard({
                 ? "0 14px 38px rgba(0,0,0,0.10)"
                 : "0 10px 30px rgba(0,0,0,0.06)",
           },
-
-          // ✅ MISMO ALTO SIEMPRE (no depende de si hay 1 o 100 cards)
           height: "100%",
-          minHeight: { xs: 270, md: 300 },
+          minHeight: { xs: 278, md: 305 },
           display: "flex",
           flexDirection: "column",
+          minWidth: 0,
         }}
       >
         {/* Badge */}
@@ -332,14 +447,14 @@ export default function ProductCard({
               size="small"
               sx={{
                 fontWeight: 900,
-                bgcolor: alpha(theme.palette.primary.main, 0.10),
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
                 border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
               }}
             />
           ) : null}
         </Box>
 
-        {/* ✅ Imagen AFUERA: SIEMPRE producto (y SIEMPRE MISMO RECUADRO) */}
+        {/* Imagen */}
         <Box
           sx={{
             height: { xs: 104, md: 120 },
@@ -349,6 +464,7 @@ export default function ProductCard({
             overflow: "hidden",
             mb: 1.25,
             position: "relative",
+            minWidth: 0,
           }}
         >
           {productImg ? (
@@ -374,39 +490,69 @@ export default function ProductCard({
             sx={{
               position: "absolute",
               inset: 0,
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.00) 40%, rgba(0,0,0,0.18) 100%)",
+              background: "linear-gradient(180deg, rgba(0,0,0,0.00) 40%, rgba(0,0,0,0.18) 100%)",
               pointerEvents: "none",
             }}
           />
         </Box>
 
-        <Typography sx={{ fontWeight: 950, lineHeight: 1.2, mb: 0.6 }}>
+        {/* Nombre clamp */}
+        <Typography
+          sx={{
+            fontWeight: 950,
+            lineHeight: 1.15,
+            mb: 0.6,
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+            wordBreak: "break-word",
+            minHeight: "2.3em",
+          }}
+        >
           {product?.name}
         </Typography>
 
         {product?.sku ? (
-          <Typography sx={{ fontSize: 12, color: "text.secondary", mb: 0.8 }}>
+          <Typography sx={{ fontSize: 12, color: "text.secondary", mb: 0.8 }} noWrap>
             SKU: {product.sku}
           </Typography>
         ) : (
           <Box sx={{ height: 18 }} />
         )}
 
-        <Stack direction="row" alignItems="flex-end" justifyContent="space-between" spacing={1}>
-          <Box>
-            {hasDiscount ? (
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          alignItems={{ xs: "flex-start", sm: "flex-end" }}
+          justifyContent="space-between"
+          spacing={{ xs: 0.75, sm: 1 }}
+          sx={{ minWidth: 0 }}
+        >
+          <Box sx={{ minWidth: 0, width: "100%" }}>
+            {hasVariants ? (
               <>
-                <Typography sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}>
+                <Typography sx={{ fontSize: 12, color: "text.secondary", fontWeight: 900 }}>
+                  Precio
+                </Typography>
+                <Typography sx={{ fontSize: { xs: 14, sm: 16 }, fontWeight: 950, lineHeight: 1.05 }}>
+                  Según variante
+                </Typography>
+              </>
+            ) : hasDiscount ? (
+              <>
+                <Typography
+                  sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}
+                  noWrap
+                >
                   ${money(product?.price)}
                 </Typography>
-                <Typography sx={{ fontSize: 18, fontWeight: 950 }}>
-                  ${priceFinal}
+                <Typography sx={{ fontSize: 18, fontWeight: 950 }} noWrap>
+                  ${priceFinalProduct}
                 </Typography>
               </>
             ) : (
-              <Typography sx={{ fontSize: 18, fontWeight: 950 }}>
-                ${priceFinal}
+              <Typography sx={{ fontSize: 18, fontWeight: 950 }} noWrap>
+                ${priceFinalProduct}
               </Typography>
             )}
           </Box>
@@ -417,16 +563,19 @@ export default function ProductCard({
             label={`Stock: ${hasVariants ? "ver" : globalStock}`}
             sx={{
               fontWeight: 900,
-              bgcolor: alpha("#10b981", 0.10),
+              bgcolor: alpha("#10b981", 0.1),
               border: `1px solid ${alpha("#10b981", 0.18)}`,
+              flex: "0 0 auto",
+              alignSelf: { xs: "flex-start", sm: "flex-end" },
+              maxWidth: "100%",
             }}
           />
         </Stack>
 
         {useWh && (
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
-            <WarehouseRoundedIcon sx={{ fontSize: 16, opacity: 0.7 }} />
-            <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1, minWidth: 0 }}>
+            <WarehouseRoundedIcon sx={{ fontSize: 16, opacity: 0.7, flex: "0 0 auto" }} />
+            <Typography sx={{ fontSize: 12, color: "text.secondary" }} noWrap>
               {stockHint || "Almacenes"}
             </Typography>
           </Stack>
@@ -443,7 +592,14 @@ export default function ProductCard({
               e.stopPropagation();
               openDetails();
             }}
-            sx={{ textTransform: "none", fontWeight: 950, borderRadius: 3 }}
+            sx={{
+              textTransform: "none",
+              fontWeight: 950,
+              borderRadius: 3,
+              py: 1.05,
+              whiteSpace: "nowrap",
+              fontSize: { xs: 13, sm: 14 },
+            }}
           >
             Ver catálogo
           </Button>
@@ -464,7 +620,111 @@ export default function ProductCard({
         )}
       </Paper>
 
-      {/* MODAL */}
+      {/* MODAL ALMACÉN (producto simple multi) */}
+      <Dialog
+        open={openSimpleWh}
+        onClose={() => setOpenSimpleWh(false)}
+        fullWidth
+        maxWidth="sm"
+        PaperProps={{ sx: { borderRadius: 4, overflow: "hidden" } }}
+      >
+        <DialogTitle sx={{ p: 2 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontWeight: 950, fontSize: 16, lineHeight: 1.2 }} noWrap>
+                {product?.name}
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: "text.secondary" }} noWrap>
+                Selecciona el almacén para vender
+              </Typography>
+            </Box>
+            <IconButton onClick={() => setOpenSimpleWh(false)}>
+              <CloseRoundedIcon />
+            </IconButton>
+          </Stack>
+        </DialogTitle>
+
+        <Divider />
+
+        <DialogContent sx={{ p: 2 }}>
+          <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 4 }}>
+            <Typography sx={{ fontWeight: 950, mb: 1 }}>
+              ¿De qué almacén se venderá?
+            </Typography>
+
+            <TextField
+              select
+              fullWidth
+              size="small"
+              label="Almacén"
+              value={selectedSimpleWarehouseId}
+              onChange={(e) => setSelectedSimpleWarehouseId(e.target.value)}
+            >
+              {productWarehouseRows.length ? (
+                productWarehouseRows.map((w) => (
+                  <MenuItem
+                    key={w.warehouse_id}
+                    value={String(w.warehouse_id)}
+                    disabled={(Number(w.qty) || 0) <= 0}
+                  >
+                    {w.warehouse_name} — Stock: {Number(w.qty) || 0}
+                    {w.location_bin ? ` — Bin: ${w.location_bin}` : ""}
+                  </MenuItem>
+                ))
+              ) : (
+                <MenuItem disabled value="">
+                  Sin almacenes configurados
+                </MenuItem>
+              )}
+            </TextField>
+
+            <Typography sx={{ mt: 1, fontSize: 12, color: "text.secondary" }}>
+              Stock disponible en almacén seleccionado:{" "}
+              <b>{selectedSimpleWarehouseId ? stockForSimpleWarehouse : "-"}</b>
+            </Typography>
+          </Paper>
+
+          <Paper
+            sx={{
+              mt: 2,
+              p: 1.5,
+              borderRadius: 4,
+              bgcolor: alpha("#111827", 0.02),
+              border: `1px solid ${alpha("#111827", 0.08)}`,
+            }}
+          >
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="stretch">
+              <Button
+                fullWidth
+                variant="contained"
+                startIcon={<ShoppingCartRoundedIcon />}
+                disabled={!selectedSimpleWarehouseId || stockForSimpleWarehouse <= 0}
+                onClick={confirmAddSimpleWithWarehouse}
+                sx={{ textTransform: "none", fontWeight: 950, borderRadius: 3 }}
+              >
+                Agregar al carrito
+              </Button>
+
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={() => setOpenSimpleWh(false)}
+                sx={{ textTransform: "none", fontWeight: 900, borderRadius: 3 }}
+              >
+                Cancelar
+              </Button>
+            </Stack>
+
+            {!selectedSimpleWarehouseId && (
+              <Typography sx={{ mt: 1, fontSize: 12, color: "error.main" }}>
+                Selecciona un almacén para poder agregar.
+              </Typography>
+            )}
+          </Paper>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL VARIANTES */}
       <Dialog
         open={openVariants}
         onClose={closeDetails}
@@ -474,11 +734,11 @@ export default function ProductCard({
       >
         <DialogTitle sx={{ p: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 16, lineHeight: 1.2 }}>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontWeight: 950, fontSize: 16, lineHeight: 1.2 }} noWrap>
                 {product?.name}
               </Typography>
-              <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
+              <Typography sx={{ fontSize: 12, color: "text.secondary" }} noWrap>
                 {product?.sku ? `SKU: ${product.sku}` : "Producto con variantes"}
               </Typography>
             </Box>
@@ -533,22 +793,20 @@ export default function ProductCard({
                             cursor: "pointer",
                             borderColor: selected
                               ? alpha(theme.palette.primary.main, 0.55)
-                              : alpha("#111827", 0.10),
-                            bgcolor: selected
-                              ? alpha(theme.palette.primary.main, 0.06)
-                              : "#fff",
+                              : alpha("#111827", 0.1),
+                            bgcolor: selected ? alpha(theme.palette.primary.main, 0.06) : "#fff",
                             transition: "transform .12s ease",
                             "&:hover": { transform: "translateY(-1px)" },
                           }}
                         >
-                          <Stack direction="row" spacing={1.25} alignItems="center">
+                          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
                             <Box
                               sx={{
                                 width: 58,
                                 height: 58,
                                 borderRadius: 2.5,
                                 overflow: "hidden",
-                                border: `1px solid ${alpha("#111827", 0.10)}`,
+                                border: `1px solid ${alpha("#111827", 0.1)}`,
                                 bgcolor: alpha("#111827", 0.03),
                                 flex: "0 0 auto",
                               }}
@@ -572,14 +830,19 @@ export default function ProductCard({
                                 {pickVariantLabel(v)}
                               </Typography>
 
-                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.25 }}>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="center"
+                                sx={{ mt: 0.25, flexWrap: "wrap" }}
+                              >
                                 <Chip
                                   size="small"
                                   label={`Stock: ${stockTotal}`}
                                   sx={{
                                     height: 22,
                                     fontWeight: 900,
-                                    bgcolor: alpha("#10b981", 0.10),
+                                    bgcolor: alpha("#10b981", 0.1),
                                     border: `1px solid ${alpha("#10b981", 0.18)}`,
                                   }}
                                 />
@@ -591,7 +854,7 @@ export default function ProductCard({
                                     sx={{
                                       height: 22,
                                       fontWeight: 900,
-                                      bgcolor: alpha("#6366f1", 0.10),
+                                      bgcolor: alpha("#6366f1", 0.1),
                                       border: `1px solid ${alpha("#6366f1", 0.18)}`,
                                     }}
                                   />
@@ -642,7 +905,7 @@ export default function ProductCard({
                       height: 320,
                       borderRadius: 4,
                       overflow: "hidden",
-                      border: `1px solid ${alpha("#111827", 0.10)}`,
+                      border: `1px solid ${alpha("#111827", 0.1)}`,
                       bgcolor: alpha("#111827", 0.03),
                       position: "relative",
                     }}
@@ -663,8 +926,7 @@ export default function ProductCard({
                       sx={{
                         position: "absolute",
                         inset: 0,
-                        background:
-                          "linear-gradient(180deg, rgba(0,0,0,0.00) 45%, rgba(0,0,0,0.25) 100%)",
+                        background: "linear-gradient(180deg, rgba(0,0,0,0.00) 45%, rgba(0,0,0,0.25) 100%)",
                         pointerEvents: "none",
                       }}
                     />
@@ -681,7 +943,7 @@ export default function ProductCard({
                     }}
                   >
                     <Typography sx={{ fontWeight: 950, fontSize: 14 }}>
-                      Precio unitario
+                      Precio unitario (variante)
                     </Typography>
                     <Typography sx={{ fontSize: 26, fontWeight: 950, lineHeight: 1 }}>
                       ${money(effectiveUnitPrice)}
@@ -775,7 +1037,7 @@ export default function ProductCard({
                           !canAddVariant ||
                           (useWh ? stockForSelectedWarehouse <= 0 : variantTotalStock <= 0)
                         }
-                        onClick={() => addVariantOne()}
+                        onClick={addVariantOne}
                         sx={{ textTransform: "none", fontWeight: 950, borderRadius: 3 }}
                       >
                         Agregar al carrito

@@ -123,7 +123,7 @@ export default function POS({ posName, cambiarVista }) {
       (async () => {
         try {
           const resp = await axiosClient.get(
-            `/sales/${ticketData.id}/ticket.pdf`,
+            `/v2/sales/${ticketData.id}/ticket.pdf`,
             { responseType: "arraybuffer" },
           );
           const blob = new Blob([resp.data], { type: "application/pdf" });
@@ -549,7 +549,7 @@ export default function POS({ posName, cambiarVista }) {
               gridTemplateColumns: {
                 xs: "repeat(2, minmax(0, 1fr))",
                 sm: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(4, minmax(0, 1fr))", // ✅ 4 columnas fijas en desktop
+                md: "repeat(3, minmax(0, 1fr))", // ✅ 4 columnas fijas en desktop
                 // lg: "repeat(5, minmax(0, 1fr))", // ✅ opcional
                 // xl: "repeat(6, minmax(0, 1fr))", // ✅ opcional
               },

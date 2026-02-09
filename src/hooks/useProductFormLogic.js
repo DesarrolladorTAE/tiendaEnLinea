@@ -144,7 +144,6 @@ export function mapBackendVariantsToForm(backendVariants = []) {
           value: String(a?.value || ""),
         }))
         .filter((a) => a.name.trim() && a.value.trim());
-
       attrsArray = arr.length ? arr : [{ name: "", value: "" }];
     } else if (v?.attributes && typeof v.attributes === "object") {
       // si algún endpoint aún manda attributes como objeto {Color:"Rojo"}
@@ -154,10 +153,8 @@ export function mapBackendVariantsToForm(backendVariants = []) {
           value: String(value || ""),
         }))
         .filter((a) => a.name.trim() && a.value.trim());
-
       attrsArray = arr.length ? arr : [{ name: "", value: "" }];
     }
-
 
     // ✅ warehouse_stocks (tabla real)
     const warehouseStocks = Array.isArray(v?.warehouse_stocks)

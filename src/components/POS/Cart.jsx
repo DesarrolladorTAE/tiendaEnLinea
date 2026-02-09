@@ -40,6 +40,29 @@ const toNumber = (v) => {
   return Number.isFinite(n) ? n : NaN;
 };
 
+// ✅ Clave única por línea de carrito (variante/almacén/lo-que-sea)
+const getCartKey = (item) =>
+  String(
+    item?.cart_key ??
+      item?.cartKey ??
+      item?.line_id ??
+      item?.lineId ??
+      item?.id,
+  );
+
+// ✅ ID real del producto (si viene "123-v5" o "123-w9" regresa 123)
+const getBaseProductId = (item) => {
+  const raw = String(
+    item?.product_id ?? item?.base_id ?? item?.baseId ?? item?.id ?? "",
+  );
+  const m = raw.match(/^(\d+)(?:-(?:v|w)\d+)?$/);
+  return m ? Number(m[1]) : Number(raw) || null;
+};
+
+const getVariantId = (item) =>
+  item?.variant_id ?? item?.variation_id ?? item?.variant?.id ?? null;
+
+
 export default function CartSidebar({
   cart,
   onRemove,
@@ -49,7 +72,6 @@ export default function CartSidebar({
   setCart,
   variant = "desktop", // ✅ "desktop" | "mobile"
 }) {
-  // ✅ Mobile flag
   const isMobile = variant === "mobile";
 
   // ✅ Tap-to-edit: en móvil, inputs readonly hasta tocar
@@ -59,9 +81,7 @@ export default function CartSidebar({
     InputProps: {
       readOnly: isMobile && activeField !== fieldKey,
     },
-    inputProps: {
-      inputMode,
-    },
+    inputProps: { inputMode },
     onClick: (e) => {
       if (!isMobile) return;
       if (activeField !== fieldKey) {
@@ -99,9 +119,9 @@ export default function CartSidebar({
       cart.reduce(
         (sum, item) =>
           sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
-        0
+        0,
       ),
-    [cart]
+    [cart],
   );
 
   const setDetail = (k, patch) =>
@@ -115,7 +135,7 @@ export default function CartSidebar({
         const n = toNumber(details[m].amount);
         return acc + (Number.isFinite(n) ? n : 0);
       }, 0),
-    [selected, details]
+    [selected, details],
   );
 
   // Cambios visuales
@@ -145,23 +165,34 @@ export default function CartSidebar({
     });
   };
 
+  // ✅ Payload robusto: product_id real, variante, almacén
   const buildItemsPayload = () =>
-    cart.map((item) => ({
-      product_id: item.id,
-      variation_size_id: item.variation_id || null,
-      quantity: parseFloat(item.quantity),
-      unit_price: parseFloat(item.price),
-      original_price:
-        parseFloat(
-          item.original_price ||
-            item.base_price ||
-            item.precio_base ||
-            item.precio_sin_descuento ||
-            item.original ||
-            item.originalPrice
-        ) || parseFloat(item.price),
-      discount_percent: parseFloat(item.discount || 0),
-    }));
+    cart.map((item) => {
+      const baseId = getBaseProductId(item);
+      const variantId = getVariantId(item);
+
+      const original = toNumber(
+        item.original_price ??
+          item.price_original ??
+          item.base_price ??
+          item.precio_base ??
+          item.precio_sin_descuento ??
+          item.original ??
+          item.originalPrice,
+      );
+
+      return {
+        product_id: baseId,
+        variant_id: variantId || null, // ✅ V2
+        quantity: parseFloat(item.quantity),
+        unit_price: parseFloat(item.price),
+        original_price: Number.isFinite(original)
+          ? +original
+          : parseFloat(item.price),
+        discount_percent: parseFloat(item.discount || 0),
+        warehouse_id: item.warehouse_id ?? null,
+      };
+    });
 
   const handleConfirm = () => {
     if (cart.length === 0) return;
@@ -239,8 +270,8 @@ export default function CartSidebar({
       if (sumaValida + 0.00001 < total) {
         showError(
           `Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(
-            2
-          )}.`
+            2,
+          )}.`,
         );
         return;
       }
@@ -285,22 +316,25 @@ export default function CartSidebar({
     setActiveField(null);
   };
 
+  // ✅ aplica cambios por línea (cartKey) para no romper variantes/almacenes
   const aplicarCambioProducto = (nuevoProducto) => {
-    const actualizado = cart.map((item) => {
-      const mismaVariacion =
-        item.id === nuevoProducto.id &&
-        item.size === nuevoProducto.size &&
-        item.variation?.color === nuevoProducto.variation?.color;
+    const newKey = getCartKey(nuevoProducto);
 
-      if (mismaVariacion) {
-        return {
-          ...item,
-          price: nuevoProducto.price,
-          discount: nuevoProducto.discount,
-          original_price: nuevoProducto.original_price,
-        };
-      }
-      return item;
+    const actualizado = cart.map((item) => {
+      const itemKey = getCartKey(item);
+      if (itemKey !== newKey) return item;
+
+      return {
+        ...item,
+        price: nuevoProducto.price,
+        discount: nuevoProducto.discount,
+        original_price:
+          nuevoProducto.original_price ??
+          nuevoProducto.price_original ??
+          item.original_price ??
+          item.price_original ??
+          item.original_price,
+      };
     });
 
     setCart(actualizado);
@@ -371,154 +405,178 @@ export default function CartSidebar({
         ) : (
           <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0 }}>
             {/* Items */}
-            {cart.map((item) => (
-              <Box
-                key={`${item.id}-${item.variation_id || "nv"}-${item.size || "ns"}`}
-                component="li"
-                sx={{
-                  py: 1.2,
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
-                }}
-              >
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="flex-start"
-                  spacing={1}
+            {cart.map((item) => {
+              const cartKey = getCartKey(item);
+
+              return (
+                <Box
+                  key={cartKey}
+                  component="li"
+                  sx={{
+                    py: 1.2,
+                    borderBottom: "1px solid",
+                    borderColor: "divider",
+                  }}
                 >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: 700 }}
-                      noWrap
-                    >
-                      {item.name}{" "}
-                      {item.variation?.color ? `· ${item.variation.color}` : ""}{" "}
-                      {item.size ? `· ${item.size}` : ""}
-                    </Typography>
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="flex-start"
+                    spacing={1}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 700 }}
+                        noWrap
+                      >
+                        {item.display_name || item.name}
+                      </Typography>
 
-                    <Typography variant="caption" color="text.secondary">
-                      ${Number(item.price || 0).toFixed(2)} c/u · Subtotal: $
-                      {(item.price * item.quantity).toFixed(2)}
-                    </Typography>
+                      {!!item.warehouse_name && (
+                        <Typography variant="caption" color="text.secondary">
+                          Almacén: <b>{item.warehouse_name}</b>
+                        </Typography>
+                      )}
 
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      alignItems="center"
-                      sx={{ mt: 1 }}
-                    >
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          if (item.quantity > 1) {
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                      >
+                        ${Number(item.price || 0).toFixed(2)} c/u · Subtotal: $
+                        {(
+                          Number(item.price || 0) * Number(item.quantity || 0)
+                        ).toFixed(2)}
+                      </Typography>
+
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        sx={{ mt: 1 }}
+                      >
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            if (Number(item.quantity) > 1) {
+                              setCart((prev) =>
+                                prev.map((prod) =>
+                                  getCartKey(prod) === cartKey
+                                    ? {
+                                        ...prod,
+                                        quantity:
+                                          Math.floor(Number(prod.quantity)) - 1,
+                                      }
+                                    : prod,
+                                ),
+                              );
+                            } else {
+                              // ✅ si baja de 1, elimina línea
+                              onRemove(cartKey);
+                            }
+                          }}
+                        >
+                          <RemoveRoundedIcon fontSize="small" />
+                        </IconButton>
+
+                        <TextField
+                          value={item.inputValue ?? item.quantity}
+                          type="text"
+                          size="small"
+                          {...inputCommon}
+                          {...tapToEditProps(`qty-${cartKey}`, "decimal")}
+                          inputProps={{
+                            ...tapToEditProps(`qty-${cartKey}`, "decimal")
+                              .inputProps,
+                            style: { textAlign: "center", width: 72 },
+                            pattern: "[0-9]*[.,]?[0-9]*",
+                          }}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (/^\d*\.?\d*$/.test(val)) {
+                              setCart((prev) =>
+                                prev.map((prod) =>
+                                  getCartKey(prod) === cartKey
+                                    ? {
+                                        ...prod,
+                                        inputValue: val,
+                                        quantity:
+                                          val === "" || val === "."
+                                            ? 0
+                                            : parseFloat(val),
+                                      }
+                                    : prod,
+                                ),
+                              );
+                            }
+                          }}
+                          onBlurCapture={() => {
+                            setCart((prev) =>
+                              prev
+                                .map((prod) =>
+                                  getCartKey(prod) === cartKey
+                                    ? { ...prod, inputValue: undefined }
+                                    : prod,
+                                )
+                                // ✅ si quedó 0, elimina
+                                .filter((prod) => {
+                                  if (getCartKey(prod) !== cartKey) return true;
+                                  return Number(prod.quantity || 0) > 0;
+                                }),
+                            );
+                          }}
+                        />
+
+                        <IconButton
+                          size="small"
+                          onClick={() => {
                             setCart((prev) =>
                               prev.map((prod) =>
-                                prod.id === item.id
+                                getCartKey(prod) === cartKey
                                   ? {
                                       ...prod,
                                       quantity:
-                                        Math.floor(Number(prod.quantity)) - 1,
+                                        Math.floor(Number(prod.quantity)) + 1,
                                     }
-                                  : prod
-                              )
+                                  : prod,
+                              ),
                             );
-                          }
-                        }}
-                      >
-                        <RemoveRoundedIcon fontSize="small" />
-                      </IconButton>
+                          }}
+                        >
+                          <AddRoundedIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
+                    </Box>
 
-                      <TextField
-                        value={item.inputValue ?? item.quantity}
-                        type="text"
-                        size="small"
-                        {...inputCommon}
-                        {...tapToEditProps(`qty-${item.id}`, "decimal")}
-                        inputProps={{
-                          ...tapToEditProps(`qty-${item.id}`, "decimal").inputProps,
-                          style: { textAlign: "center", width: 72 },
-                          pattern: "[0-9]*[.,]?[0-9]*",
-                        }}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          if (/^\d*\.?\d*$/.test(val)) {
-                            setCart((prev) =>
-                              prev.map((prod) =>
-                                prod.id === item.id
-                                  ? {
-                                      ...prod,
-                                      inputValue: val,
-                                      quantity:
-                                        val === "" || val === "."
-                                          ? 0
-                                          : parseFloat(val),
-                                    }
-                                  : prod
-                              )
-                            );
-                          }
-                        }}
-                        onBlurCapture={() => {
-                          setCart((prev) =>
-                            prev.map((prod) =>
-                              prod.id === item.id
-                                ? { ...prod, inputValue: undefined }
-                                : prod
-                            )
-                          );
-                        }}
-                      />
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Tooltip title="Editar descuento">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => {
+                            setProductoEditar({ ...item, cart_key: cartKey });
+                            setModalDescuentoActivo?.(true);
+                          }}
+                        >
+                          <DiscountIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
 
-                      <IconButton
-                        size="small"
-                        onClick={() => {
-                          setCart((prev) =>
-                            prev.map((prod) =>
-                              prod.id === item.id
-                                ? {
-                                    ...prod,
-                                    quantity:
-                                      Math.floor(Number(prod.quantity)) + 1,
-                                  }
-                                : prod
-                            )
-                          );
-                        }}
-                      >
-                        <AddRoundedIcon fontSize="small" />
-                      </IconButton>
+                      <Tooltip title="Eliminar">
+                        <IconButton
+                          size="small"
+                          onClick={() => onRemove(cartKey)} // ✅ eliminar por línea
+                          color="error"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </Stack>
-                  </Box>
-
-                  <Stack direction="row" spacing={0.5} alignItems="center">
-                    <Tooltip title="Editar descuento">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => {
-                          setProductoEditar(item);
-                          setModalDescuentoActivo?.(true);
-                        }}
-                      >
-                        <DiscountIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-
-                    <Tooltip title="Eliminar">
-                      <IconButton
-                        size="small"
-                        onClick={() => onRemove(item.id)}
-                        color="error"
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
                   </Stack>
-                </Stack>
-              </Box>
-            ))}
+                </Box>
+              );
+            })}
 
             {/* ---- Sección de cobro ---- */}
             <Box sx={{ pt: 1.5 }}>
@@ -588,12 +646,12 @@ export default function CartSidebar({
                                     {...inputCommon}
                                     {...tapToEditProps(
                                       "cashReceived",
-                                      "decimal"
+                                      "decimal",
                                     )}
                                     inputProps={{
                                       ...tapToEditProps(
                                         "cashReceived",
-                                        "decimal"
+                                        "decimal",
                                       ).inputProps,
                                       pattern: "[0-9]*[.,]?[0-9]*",
                                     }}
@@ -643,7 +701,7 @@ export default function CartSidebar({
                                         onChange={(e) => {
                                           const v = e.target.value.replace(
                                             /\D/g,
-                                            ""
+                                            "",
                                           );
                                           if (v.length <= 4)
                                             setDetail(key, { ultimos4: v });
@@ -653,12 +711,12 @@ export default function CartSidebar({
                                         {...inputCommon}
                                         {...tapToEditProps(
                                           `ult4-${key}`,
-                                          "numeric"
+                                          "numeric",
                                         )}
                                         InputProps={{
                                           ...tapToEditProps(
                                             `ult4-${key}`,
-                                            "numeric"
+                                            "numeric",
                                           ).InputProps,
                                           startAdornment: (
                                             <Typography
@@ -686,19 +744,21 @@ export default function CartSidebar({
                                       type="text"
                                       value={d.amount}
                                       onChange={(e) =>
-                                        setDetail(key, { amount: e.target.value })
+                                        setDetail(key, {
+                                          amount: e.target.value,
+                                        })
                                       }
                                       fullWidth
                                       margin="dense"
                                       {...inputCommon}
                                       {...tapToEditProps(
                                         `amount-${key}`,
-                                        "decimal"
+                                        "decimal",
                                       )}
                                       inputProps={{
                                         ...tapToEditProps(
                                           `amount-${key}`,
-                                          "decimal"
+                                          "decimal",
                                         ).inputProps,
                                         pattern: "[0-9]*[.,]?[0-9]*",
                                       }}
@@ -722,7 +782,7 @@ export default function CartSidebar({
                                       onChange={(e) => {
                                         const v = e.target.value.replace(
                                           /\D/g,
-                                          ""
+                                          "",
                                         );
                                         if (v.length <= 4)
                                           setDetail(key, { ultimos4: v });
@@ -733,12 +793,12 @@ export default function CartSidebar({
                                       {...inputCommon}
                                       {...tapToEditProps(
                                         `ult4-${key}`,
-                                        "numeric"
+                                        "numeric",
                                       )}
                                       InputProps={{
                                         ...tapToEditProps(
                                           `ult4-${key}`,
-                                          "numeric"
+                                          "numeric",
                                         ).InputProps,
                                         startAdornment: (
                                           <Typography
@@ -767,12 +827,12 @@ export default function CartSidebar({
                                     {...inputCommon}
                                     {...tapToEditProps(
                                       `amount-${key}`,
-                                      "decimal"
+                                      "decimal",
                                     )}
                                     inputProps={{
                                       ...tapToEditProps(
                                         `amount-${key}`,
-                                        "decimal"
+                                        "decimal",
                                       ).inputProps,
                                       pattern: "[0-9]*[.,]?[0-9]*",
                                     }}
@@ -794,7 +854,10 @@ export default function CartSidebar({
                       Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
                     </Typography>
                     {cambioMulti > 0 && (
-                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ mt: 0.5, fontWeight: 900 }}
+                      >
                         Cambio: ${cambioMulti.toFixed(2)}
                       </Typography>
                     )}
