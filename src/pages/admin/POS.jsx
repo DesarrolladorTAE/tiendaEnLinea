@@ -43,7 +43,11 @@ import axiosClient from "../../config/axiosClient";
 import useLimitePOS from "../../hooks/useLimitePOS";
 import { useAdminUi } from "../../context/AdminUiContext";
 
-import { showConfirm, showSuccess, alertFromAxiosError } from "../../utils/alerts";
+import {
+  showConfirm,
+  showSuccess,
+  alertFromAxiosError,
+} from "../../utils/alerts";
 
 const COLORS = {
   accent: "#f9b233",
@@ -56,7 +60,8 @@ const floatIn = keyframes`
   to   { transform: translateY(0px); opacity: 1; }
 `;
 
-const generarCodigo = () => Math.floor(100000 + Math.random() * 900000).toString();
+const generarCodigo = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
 
 /**
  * ✅ Copiar a portapapeles (robusto)
@@ -169,12 +174,14 @@ export default function POS() {
 
       setLoading(true);
       try {
-        const { data } = await axiosClient.get(`/branches/${activeBranch.id}/pos`);
+        const { data } = await axiosClient.get(
+          `/branches/${activeBranch.id}/pos`,
+        );
         const list = Array.isArray(data?.list)
           ? data.list
           : Array.isArray(data?.data)
-          ? data.data
-          : [];
+            ? data.data
+            : [];
         setRows(list);
 
         if (!opts.silent) await showSuccess("Puntos de venta actualizados");
@@ -189,13 +196,16 @@ export default function POS() {
             const list = Array.isArray(data?.list)
               ? data.list
               : Array.isArray(data?.data)
-              ? data.data
-              : [];
+                ? data.data
+                : [];
             setRows(list);
 
             if (!opts.silent) await showSuccess("Puntos de venta actualizados");
           } catch (err2) {
-            alertFromAxiosError(err2, "No se pudieron cargar los puntos de venta");
+            alertFromAxiosError(
+              err2,
+              "No se pudieron cargar los puntos de venta",
+            );
             setRows([]);
           }
         } else {
@@ -206,7 +216,7 @@ export default function POS() {
         setLoading(false);
       }
     },
-    [activeBranch?.id]
+    [activeBranch?.id],
   );
 
   useEffect(() => {
@@ -223,13 +233,17 @@ export default function POS() {
   };
 
   const actualizarCampo = (id, campo, valor) => {
-    setRows((ps) => ps.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)));
+    setRows((ps) =>
+      ps.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)),
+    );
     setEditando((e) => ({ ...e, [id]: true }));
   };
 
   const handleGenerate = async (id) => {
     const nuevo = generarCodigo();
-    setRows((ps) => ps.map((p) => (p.id === id ? { ...p, access_code: nuevo } : p)));
+    setRows((ps) =>
+      ps.map((p) => (p.id === id ? { ...p, access_code: nuevo } : p)),
+    );
     setEditando((e) => ({ ...e, [id]: true }));
     await showSuccess("Código de acceso generado (recuerda guardar)");
   };
@@ -239,7 +253,7 @@ export default function POS() {
     if (!accessCode) {
       return alertFromAxiosError(
         { response: { data: { message: "Este POS no tiene contraseña." } } },
-        "Este POS no tiene contraseña."
+        "Este POS no tiene contraseña.",
       );
     }
 
@@ -252,8 +266,15 @@ export default function POS() {
     const ok = await copyToClipboard(msg);
     if (!ok) {
       return alertFromAxiosError(
-        { response: { data: { message: "No se pudo copiar al portapapeles. Intenta en HTTPS o en otro navegador." } } },
-        "No se pudo copiar al portapapeles."
+        {
+          response: {
+            data: {
+              message:
+                "No se pudo copiar al portapapeles. Intenta en HTTPS o en otro navegador.",
+            },
+          },
+        },
+        "No se pudo copiar al portapapeles.",
       );
     }
 
@@ -290,31 +311,39 @@ export default function POS() {
     });
   };
 
-  const agregarPunto = async () => {
-    if (rows.length >= limite) {
-      return alertFromAxiosError(
-        { response: { data: { message: `Solo se permiten hasta ${limite} puntos de venta.` } } },
-        `Solo se permiten hasta ${limite} puntos de venta.`
-      );
-    }
+const agregarPunto = async () => {
+  // ✅ Asegura número y fallback
+  const limiteNum = Number(limite) || 10;
 
-    const tempId = `new-${Date.now()}`;
-    setRows((ps) => [
-      ...ps,
-      {
-        id: tempId,
-        branch_id: activeBranch?.id,
-        name: "",
-        code: "",
-        access_code: generarCodigo(),
-      },
-    ]);
+  // ✅ Cuenta solo los reales (no temporales new-)
+  const reales = rows.filter((p) => !String(p.id).startsWith("new-")).length;
 
-    setEditando((e) => ({ ...e, [tempId]: true }));
-    setVisibles((v) => ({ ...v, [tempId]: true }));
-    setOpenEdit((o) => ({ ...o, [tempId]: true }));
-    await showSuccess("Nuevo POS agregado (completa el nombre y guarda)");
-  };
+  if (reales >= limiteNum) {
+    return alertFromAxiosError(
+      { response: { data: { message: `Solo se permiten hasta ${limiteNum} puntos de venta.` } } },
+      `Solo se permiten hasta ${limiteNum} puntos de venta.`
+    );
+  }
+
+  const tempId = `new-${Date.now()}`;
+  setRows((ps) => [
+    ...ps,
+    {
+      id: tempId,
+      branch_id: activeBranch?.id,
+      name: "",
+      code: "",
+      access_code: generarCodigo(),
+    },
+  ]);
+
+  setEditando((e) => ({ ...e, [tempId]: true }));
+  setVisibles((v) => ({ ...v, [tempId]: true }));
+  setOpenEdit((o) => ({ ...o, [tempId]: true }));
+
+  await showSuccess("Nuevo POS agregado (completa el nombre y guarda)");
+};
+
 
   const guardarCambios = async (id) => {
     const punto = rows.find((p) => p.id === id);
@@ -323,7 +352,7 @@ export default function POS() {
     if (!punto?.name?.trim()) {
       return alertFromAxiosError(
         { response: { data: { message: "El nombre es obligatorio." } } },
-        "El nombre es obligatorio."
+        "El nombre es obligatorio.",
       );
     }
 
@@ -331,10 +360,13 @@ export default function POS() {
       if (String(id).startsWith("new-")) {
         // crear por branch (ideal)
         try {
-          const { data } = await axiosClient.post(`/branches/${activeBranch.id}/pos`, {
-            name: punto.name,
-            access_code: punto.access_code,
-          });
+          const { data } = await axiosClient.post(
+            `/branches/${activeBranch.id}/pos`,
+            {
+              name: punto.name,
+              access_code: punto.access_code,
+            },
+          );
           const saved = data?.pos ?? data?.data ?? data;
           setRows((ps) => ps.map((x) => (x.id === id ? saved : x)));
         } catch (err) {
@@ -373,7 +405,7 @@ export default function POS() {
   const eliminarPunto = async (id) => {
     const ok = await showConfirm(
       "¿Estás seguro de eliminar este punto de venta?\n\nSe perderá la información relacionada (ventas, historial, cortes y cualquier registro asociado). Esta acción no se puede deshacer.",
-      "Sí, eliminar definitivamente"
+      "Sí, eliminar definitivamente",
     );
     if (!ok) return;
 
@@ -416,22 +448,28 @@ export default function POS() {
           </Box>
 
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: COLORS.black }}>
+            <Typography
+              variant="h5"
+              sx={{ fontWeight: 900, color: COLORS.black }}
+            >
               Puntos de venta (POS)
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {activeBranch?.name
                 ? `Sucursal: ${activeBranch.name}`
                 : activeBranch?.id
-                ? `Sucursal #${activeBranch.id}`
-                : "Selecciona una sucursal"}
+                  ? `Sucursal #${activeBranch.id}`
+                  : "Selecciona una sucursal"}
             </Typography>
           </Box>
 
           <Tooltip title="Cambiar sucursal">
             <IconButton
               onClick={() => navigate("/admin/sucursales")}
-              sx={{ borderRadius: 2, border: `1px solid ${alpha("#000", 0.08)}` }}
+              sx={{
+                borderRadius: 2,
+                border: `1px solid ${alpha("#000", 0.08)}`,
+              }}
             >
               <ArrowBackRoundedIcon />
             </IconButton>
@@ -465,7 +503,11 @@ export default function POS() {
             }}
           />
 
-          <Stack direction={isMobile ? "column" : "row"} spacing={1} sx={{ width: isMobile ? "100%" : "auto" }}>
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={1}
+            sx={{ width: isMobile ? "100%" : "auto" }}
+          >
             <Button
               onClick={() => fetchPOS({ silent: false })}
               variant="outlined"
@@ -517,7 +559,12 @@ export default function POS() {
           }}
         >
           <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: "wrap" }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mb: 1, flexWrap: "wrap" }}
+            >
               <Chip
                 icon={<StorefrontRoundedIcon />}
                 label={loading ? "Cargando…" : `${filtered.length} POS`}
@@ -531,13 +578,21 @@ export default function POS() {
               {activeBranch?.id ? (
                 <Chip
                   icon={<LocationOnRoundedIcon />}
-                  label={activeBranch?.name ? activeBranch.name : `Sucursal #${activeBranch.id}`}
+                  label={
+                    activeBranch?.name
+                      ? activeBranch.name
+                      : `Sucursal #${activeBranch.id}`
+                  }
                   variant="outlined"
                   sx={{ fontWeight: 700 }}
                 />
               ) : null}
 
-              <Chip label={`Límite: ${limite}`} variant="outlined" sx={{ fontWeight: 800 }} />
+              <Chip
+                label={`Límite: ${limite}`}
+                variant="outlined"
+                sx={{ fontWeight: 800 }}
+              />
             </Stack>
 
             <Divider sx={{ my: 1.5 }} />
@@ -569,7 +624,12 @@ export default function POS() {
                         <Skeleton variant="rounded" width={42} height={42} />
                         <Skeleton sx={{ mt: 1 }} width="70%" />
                         <Skeleton width="55%" />
-                        <Skeleton sx={{ mt: 1 }} variant="rounded" width="100%" height={36} />
+                        <Skeleton
+                          sx={{ mt: 1 }}
+                          variant="rounded"
+                          width="100%"
+                          height={36}
+                        />
                       </CardContent>
                     </Card>
                   </Grid>
@@ -577,7 +637,10 @@ export default function POS() {
               </Grid>
             ) : filtered.length === 0 ? (
               <Box sx={{ py: 6, textAlign: "center" }}>
-                <Typography variant="h6" sx={{ fontWeight: 900, color: COLORS.black }}>
+                <Typography
+                  variant="h6"
+                  sx={{ fontWeight: 900, color: COLORS.black }}
+                >
                   No hay puntos de venta
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 0.5 }}>
@@ -617,10 +680,11 @@ export default function POS() {
                           sx={{
                             height: "100%",
                             borderRadius: 3,
-                            border: `1px solid ${alpha("#000", 0.10)}`,
+                            border: `1px solid ${alpha("#000", 0.1)}`,
                             backgroundColor: "#fff",
                             overflow: "hidden",
-                            transition: "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
+                            transition:
+                              "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
                             "&:hover": {
                               transform: "translateY(-3px)",
                               boxShadow: `0 12px 30px ${alpha("#000", 0.12)}`,
@@ -631,25 +695,49 @@ export default function POS() {
                         >
                           <CardContent sx={{ p: 2 }}>
                             <Stack spacing={1.2}>
-                              <Stack direction="row" spacing={1} alignItems="center">
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="center"
+                              >
                                 <Typography
-                                  sx={{ fontWeight: 900, color: COLORS.black, fontSize: 18, flex: 1 }}
+                                  sx={{
+                                    fontWeight: 900,
+                                    color: COLORS.black,
+                                    fontSize: 18,
+                                    flex: 1,
+                                  }}
                                   noWrap
                                 >
-                                  {pos?.name?.trim() ? pos.name : "POS sin nombre"}
+                                  {pos?.name?.trim()
+                                    ? pos.name
+                                    : "POS sin nombre"}
                                 </Typography>
 
                                 <Tooltip title={isOpen ? "Cerrar" : "Editar"}>
                                   <IconButton
-                                    onClick={() => setOpenEdit((o) => ({ ...o, [pos.id]: !o[pos.id] }))}
+                                    onClick={() =>
+                                      setOpenEdit((o) => ({
+                                        ...o,
+                                        [pos.id]: !o[pos.id],
+                                      }))
+                                    }
                                     sx={{ borderRadius: 2 }}
                                   >
-                                    {isOpen ? <CloseRoundedIcon /> : <EditRoundedIcon />}
+                                    {isOpen ? (
+                                      <CloseRoundedIcon />
+                                    ) : (
+                                      <EditRoundedIcon />
+                                    )}
                                   </IconButton>
                                 </Tooltip>
                               </Stack>
 
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: -0.3 }}>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: -0.3 }}
+                              >
                                 <b>Usuario:</b> {pos?.code || "—"}
                               </Typography>
 
@@ -668,9 +756,22 @@ export default function POS() {
                                 InputProps={{
                                   endAdornment: (
                                     <InputAdornment position="end">
-                                      <Tooltip title={isVisible ? "Ocultar" : "Mostrar"}>
-                                        <IconButton onClick={() => toggleVisibilidad(pos.id)} size="small">
-                                          {isVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+                                      <Tooltip
+                                        title={
+                                          isVisible ? "Ocultar" : "Mostrar"
+                                        }
+                                      >
+                                        <IconButton
+                                          onClick={() =>
+                                            toggleVisibilidad(pos.id)
+                                          }
+                                          size="small"
+                                        >
+                                          {isVisible ? (
+                                            <VisibilityOffRoundedIcon />
+                                          ) : (
+                                            <VisibilityRoundedIcon />
+                                          )}
                                         </IconButton>
                                       </Tooltip>
                                     </InputAdornment>
@@ -688,7 +789,9 @@ export default function POS() {
                                   fontWeight: 900,
                                   borderColor: alpha("#000", 0.18),
                                   color: COLORS.black,
-                                  "&:hover": { bgcolor: alpha(COLORS.accent, 0.10) },
+                                  "&:hover": {
+                                    bgcolor: alpha(COLORS.accent, 0.1),
+                                  },
                                 }}
                               >
                                 Copiar accesos
@@ -709,7 +812,11 @@ export default function POS() {
                                 Iniciar sesión
                               </Button>
 
-                              <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                sx={{ mt: 0.5 }}
+                              >
                                 <Button
                                   onClick={() => eliminarPunto(pos.id)}
                                   variant="outlined"
@@ -721,7 +828,9 @@ export default function POS() {
                                     fontWeight: 900,
                                     borderColor: alpha(COLORS.danger, 0.35),
                                     color: COLORS.danger,
-                                    "&:hover": { bgcolor: alpha(COLORS.danger, 0.08) },
+                                    "&:hover": {
+                                      bgcolor: alpha(COLORS.danger, 0.08),
+                                    },
                                   }}
                                 >
                                   Eliminar
@@ -737,7 +846,13 @@ export default function POS() {
                                     size="small"
                                     label="Editar nombre"
                                     value={pos?.name ?? ""}
-                                    onChange={(e) => actualizarCampo(pos.id, "name", e.target.value)}
+                                    onChange={(e) =>
+                                      actualizarCampo(
+                                        pos.id,
+                                        "name",
+                                        e.target.value,
+                                      )
+                                    }
                                     fullWidth
                                     sx={{
                                       "& .MuiOutlinedInput-root": {
@@ -768,21 +883,28 @@ export default function POS() {
                                       onClick={() => guardarCambios(pos.id)}
                                       variant="contained"
                                       startIcon={<SaveRoundedIcon />}
-                                      disabled={!isEditing || !pos?.name?.trim()}
+                                      disabled={
+                                        !isEditing || !pos?.name?.trim()
+                                      }
                                       sx={{
                                         flex: 1,
                                         borderRadius: 2,
                                         textTransform: "none",
                                         fontWeight: 900,
                                         bgcolor: COLORS.black,
-                                        "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
+                                        "&:hover": {
+                                          bgcolor: alpha(COLORS.black, 0.85),
+                                        },
                                       }}
                                     >
                                       Guardar
                                     </Button>
                                   </Stack>
 
-                                  <Typography variant="caption" color="text.secondary">
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
                                     {isNew
                                       ? "Al guardar se crea el POS en la sucursal."
                                       : "Recuerda guardar si cambiaste el access code."}

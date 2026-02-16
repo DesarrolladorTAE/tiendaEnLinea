@@ -40,7 +40,6 @@ export function appendFormData(formData, key, value) {
 
 // helpers num seguros
 const toNumOrEmpty = (v) => (v === "" || v == null ? "" : Number(v));
-const toNumOrNull = (v) => (v === "" || v == null ? null : Number(v));
 const toStrTrimOrEmpty = (v) => String(v ?? "").trim();
 
 /**
@@ -86,15 +85,11 @@ export function normalizeVariantsForBackend(rawVariants = []) {
         name: v.name ? toStrTrimOrEmpty(v.name) : null,
         price: v.price === "" || v.price == null ? null : Number(v.price),
         purchase_cost:
-          v.purchase_cost === "" || v.purchase_cost == null
-            ? null
-            : Number(v.purchase_cost),
+          v.purchase_cost === "" || v.purchase_cost == null ? null : Number(v.purchase_cost),
         stock: Number.isFinite(stockNum) ? stockNum : 0,
 
         image: v.image instanceof File ? v.image : null,
-        image_existing: !(v.image instanceof File)
-          ? v.image_existing || v.image || null
-          : null,
+        image_existing: !(v.image instanceof File) ? v.image_existing || v.image || null : null,
 
         is_active: String(v.is_active) === "false" ? 0 : 1,
 
@@ -127,7 +122,6 @@ export function normalizeVariantsForBackend(rawVariants = []) {
  */
 export function mapBackendVariantsToForm(backendVariants = []) {
   return (backendVariants || []).map((v) => {
-    // ✅ attributes
     // ✅ attributes (acepta attributes o variant_attributes)
     let attrsArray = [{ name: "", value: "" }];
 
@@ -159,13 +153,13 @@ export function mapBackendVariantsToForm(backendVariants = []) {
     // ✅ warehouse_stocks (tabla real)
     const warehouseStocks = Array.isArray(v?.warehouse_stocks)
       ? v.warehouse_stocks.map((r) => ({
-        warehouse_id: String(r?.warehouse_id ?? "").trim(),
-        stock: r?.stock ?? "",
-        min_stock: r?.min_stock ?? "",
-        max_stock: r?.max_stock ?? "",
-        reorder_point: r?.reorder_point ?? "",
-        location_bin: r?.location_bin ?? "",
-      }))
+          warehouse_id: String(r?.warehouse_id ?? "").trim(),
+          stock: r?.stock ?? "",
+          min_stock: r?.min_stock ?? "",
+          max_stock: r?.max_stock ?? "",
+          reorder_point: r?.reorder_point ?? "",
+          location_bin: r?.location_bin ?? "",
+        }))
       : [];
 
     // ✅ conservar imagen existente
@@ -199,9 +193,7 @@ export function mapBackendVariantsToForm(backendVariants = []) {
 function deriveWarehouseInventoriesFromVariants(product) {
   const useWh = Boolean(product?.use_warehouse_inventory);
   const variants = Array.isArray(product?.variants) ? product.variants : [];
-  const base = Array.isArray(product?.warehouse_inventories)
-    ? product.warehouse_inventories
-    : [];
+  const base = Array.isArray(product?.warehouse_inventories) ? product.warehouse_inventories : [];
 
   if (!useWh) return base;
   if (base.length > 0) return base;
@@ -211,14 +203,14 @@ function deriveWarehouseInventoriesFromVariants(product) {
   variants.forEach((v) => {
     const rows = Array.isArray(v?.warehouse_stocks) ? v.warehouse_stocks : [];
     rows.forEach((r) => {
-      const id = r?.warehouse_id;
-      if (id !== null && id !== undefined && String(id).trim() !== "") {
-        ids.add(Number(id));
+      const wid = r?.warehouse_id;
+      if (wid !== null && wid !== undefined && String(wid).trim() !== "") {
+        ids.add(Number(wid));
       }
     });
   });
 
-  return Array.from(ids).map((id) => ({ warehouse_id: id }));
+  return Array.from(ids).map((wid) => ({ warehouse_id: wid }));
 }
 
 export default function useProductFormLogic({ reset, watch, setValue }) {
@@ -274,7 +266,6 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     setChildrenByParent(byParent);
 
     const options = [];
-
     parents
       .sort((a, b) => String(a.name).localeCompare(String(b.name)))
       .forEach((p) => {
@@ -358,7 +349,6 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     }
   };
 
-
   const fetchProduct = async (productId) => {
     const response = await axiosClient.get(`/admin/productos/${productId}`);
     const product = response.data;
@@ -370,9 +360,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     }
 
     const priceFromApi =
-      product.price !== null && product.price !== undefined
-        ? Number(product.price).toFixed(2)
-        : "";
+      product.price !== null && product.price !== undefined ? Number(product.price).toFixed(2) : "";
 
     const basePriceFromApi =
       product.base_price !== null && product.base_price !== undefined
@@ -437,12 +425,12 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
   // ===== INIT =====
   useEffect(() => {
-    fetchCategories().catch(() => { });
+    fetchCategories().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId]);
 
   useEffect(() => {
-    fetchWarehouses().catch(() => { });
+    fetchWarehouses().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [branchId]);
 
@@ -455,25 +443,16 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // ===== CÁLCULO base_price =====
+  // =========================================================
+  // ✅ CÁLCULO base_price (SIEMPRE) - SIN tocar "price"
+  // price lo controla el usuario, base_price es el calculado.
+  // =========================================================
   useEffect(() => {
-    if (!isEdit) {
-      const nuevoBase = (price / (1 + (iva || 0))).toFixed(2);
-      if (nuevoBase !== basePriceStr) setValue("base_price", nuevoBase);
-    }
-  }, [price, iva, isEdit, basePriceStr, setValue]);
+    const nuevoBase = (price / (1 + (iva || 0))).toFixed(2);
+    if (nuevoBase !== basePriceStr) setValue("base_price", nuevoBase);
+  }, [price, iva, basePriceStr, setValue]);
 
-  useEffect(() => {
-    if (!isEdit) return;
-    if (!productoCargado) return;
-    if (ivaOriginal === null) return;
-    if (iva === ivaOriginal) return;
-
-    const basePriceNum = parseFloat(basePriceStr) || 0;
-    const nuevoPrecio = (basePriceNum * (1 + iva)).toFixed(2);
-    if (nuevoPrecio !== priceStr) setValue("price", nuevoPrecio);
-  }, [isEdit, productoCargado, ivaOriginal, iva, basePriceStr, priceStr, setValue]);
-
+  // ✅ botón manual para recalcular base_price
   const handleRecalculateBase = () => {
     const currentPrice = parseFloat(watch("price") || "0");
     const ivaValue = watch("iva");
@@ -594,7 +573,11 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       if (data.iva === "null" || data.iva === "") formData.append("iva", "null");
       else formData.append("iva", data.iva);
 
-      // base_price
+      // =========================================================
+      // ✅ base_price: SIEMPRE derivado de (price / (1 + iva))
+      // En edición, recalcula si cambió price O cambió IVA.
+      // Nunca tocar "price" automáticamente.
+      // =========================================================
       const ivaNumber = data.iva === "null" || data.iva === "" ? 0 : parseFloat(data.iva) || 0;
       const priceNumber = parseFloat(data.price || "0");
 
@@ -605,11 +588,18 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       } else {
         const initialPriceFixed =
           initialPrice !== null && initialPrice !== undefined ? Number(initialPrice).toFixed(2) : null;
-        const currentPriceFixed = priceNumber.toFixed(2);
+
+        const currentPriceFixed = Number.isFinite(priceNumber) ? priceNumber.toFixed(2) : "0.00";
 
         const priceChanged = initialPriceFixed === null ? true : currentPriceFixed !== initialPriceFixed;
 
-        if (priceChanged) {
+        const ivaOriginalNum = ivaOriginal === null ? null : Number(ivaOriginal);
+        const ivaChanged =
+          ivaOriginalNum === null
+            ? !(data.iva === "null" || data.iva === "") // antes EXENTO y ya no
+            : Number(ivaNumber) !== ivaOriginalNum;
+
+        if (priceChanged || ivaChanged) {
           basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
         } else {
           basePriceToSend =
@@ -667,7 +657,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       if (useWh) {
         const rows = Array.isArray(data.warehouse_inventories) ? data.warehouse_inventories : [];
 
-        // ✅ SIN variantes → warehouse_product_stocks (qty/price/purchase_cost + opcionales min/max si los agregas)
+        // ✅ SIN variantes → warehouse_product_stocks (qty/price/purchase_cost + opcionales)
         // ✅ CON variantes → aquí solo mandamos warehouses activos (warehouse_id)
         const clean = rows
           .map((r) => {

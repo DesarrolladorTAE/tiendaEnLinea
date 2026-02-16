@@ -17,7 +17,7 @@ const DEFAULTS = {
   phone: "+52 55 1234 5678",
   email: "contacto@mitiendaenlineamx.com.mx",
   titulo_1: "¡Conócenos!",
-  descripcion: "Tu tienda en línea fácil, rápida y flexible."
+  descripcion: "Tu tienda en línea fácil, rápida y flexible.",
 };
 
 export default function HomeFashionSix() {
@@ -29,11 +29,21 @@ export default function HomeFashionSix() {
     let alive = true;
     setLoading(true);
     axios
-      .get(`https://mitiendaenlineamx.com.mx/api/public/tienda/${storeSlug}/sitio`)
-      .then(({ data }) => { if (alive) setResp(data); })
-      .catch(() => { if (alive) setResp(null); })
-      .finally(() => { if (alive) setLoading(false); });
-    return () => { alive = false; };
+      .get(
+        `https://mitiendaenlineamx.com.mx/api/public/tienda/${storeSlug}/sitio`,
+      )
+      .then(({ data }) => {
+        if (alive) setResp(data);
+      })
+      .catch(() => {
+        if (alive) setResp(null);
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
   }, [storeSlug]);
 
   if (loading) return <div style={{ padding: 16 }}>Cargando…</div>;
@@ -49,17 +59,17 @@ export default function HomeFashionSix() {
   // Hay datos reales si al menos uno de estos campos existe
   const hasConfig = Boolean(
     sitio &&
-    (sitio.logo || sitio.img_portada || sitio.titulo_1 || sitio.descripcion)
+    (sitio.logo || sitio.img_portada || sitio.titulo_1 || sitio.descripcion),
   );
 
   const coverImage = sitio?.img_portada || DEFAULTS.coverImage;
-  const logoImage  = sitio?.logo        || DEFAULTS.logoImage;
-  const storeName  = store?.name        || DEFAULTS.storeName;
-  const phone      = store?.phone       || DEFAULTS.phone;
-  const email      = store?.email       || DEFAULTS.email;
+  const logoImage = sitio?.logo || DEFAULTS.logoImage;
+  const storeName = store?.name || DEFAULTS.storeName;
+  const phone = store?.phone || DEFAULTS.phone;
+  const email = store?.email || DEFAULTS.email;
 
-  const titulo1    = sitio?.titulo_1    || DEFAULTS.titulo_1;
-  const descripcion= sitio?.descripcion || DEFAULTS.descripcion;
+  const titulo1 = sitio?.titulo_1 || DEFAULTS.titulo_1;
+  const descripcion = sitio?.descripcion || DEFAULTS.descripcion;
 
   return (
     <Fragment>
@@ -76,11 +86,14 @@ export default function HomeFashionSix() {
       />
 
       {/* Siempre muestra el catálogo */}
-      <Catalogo key={storeSlug} />
+      <Catalogo
+        key={storeSlug}
+        storeSlug={storeSlug}
+        storeName={storeName}
+        storePhone={phone}
+      />
 
-
-      <BlogFeatured
-              />
+      <BlogFeatured />
     </Fragment>
   );
 }

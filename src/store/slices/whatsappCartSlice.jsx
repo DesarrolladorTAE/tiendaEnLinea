@@ -2,7 +2,7 @@
 import { createSlice, createSelector } from "@reduxjs/toolkit";
 
 const initialState = {
-  items: [] // { id, name, price, qty }
+  items: [] // { cart_key, product_id, variant_id, warehouse_id, name, display_name, price, qty, meta }
 };
 
 const whatsappCartSlice = createSlice({
@@ -10,31 +10,52 @@ const whatsappCartSlice = createSlice({
   initialState,
   reducers: {
     addToWhatsappCart: (state, action) => {
-      const { id, name, price, qty = 1 } = action.payload || {};
-      if (!id) return;
+      const {
+        cart_key,
+        product_id,
+        variant_id = null,
+        warehouse_id = null,
+        warehouse_name = null,
+        name,
+        display_name,
+        price,
+        qty = 1,
+        meta = {}
+      } = action.payload || {};
 
-      const idx = state.items.findIndex((it) => it.id === id);
+      if (!cart_key) return;
+
+      const idx = state.items.findIndex((it) => it.cart_key === cart_key);
+
       if (idx >= 0) {
         state.items[idx].qty += Number(qty) || 1;
       } else {
         state.items.push({
-          id,
+          cart_key,
+          product_id: Number(product_id),
+          variant_id: variant_id != null ? Number(variant_id) : null,
+          warehouse_id: warehouse_id != null ? Number(warehouse_id) : null,
+          warehouse_name: warehouse_name ?? null,
+
           name: String(name ?? "Producto"),
+          display_name: String(display_name ?? name ?? "Producto"),
           price: Number(price ?? 0),
-          qty: Number(qty) || 1
+          qty: Number(qty) || 1,
+
+          meta: meta || {}
         });
       }
     },
 
     incrementItemQty: (state, action) => {
-      const { id, step = 1 } = action.payload || {};
-      const idx = state.items.findIndex((it) => it.id === id);
+      const { cart_key, step = 1 } = action.payload || {};
+      const idx = state.items.findIndex((it) => it.cart_key === cart_key);
       if (idx >= 0) state.items[idx].qty += Number(step) || 1;
     },
 
     decrementItemQty: (state, action) => {
-      const { id, step = 1 } = action.payload || {};
-      const idx = state.items.findIndex((it) => it.id === id);
+      const { cart_key, step = 1 } = action.payload || {};
+      const idx = state.items.findIndex((it) => it.cart_key === cart_key);
       if (idx >= 0) {
         state.items[idx].qty -= Number(step) || 1;
         if (state.items[idx].qty <= 0) state.items.splice(idx, 1);
@@ -42,8 +63,8 @@ const whatsappCartSlice = createSlice({
     },
 
     setItemQty: (state, action) => {
-      const { id, qty } = action.payload || {};
-      const idx = state.items.findIndex((it) => it.id === id);
+      const { cart_key, qty } = action.payload || {};
+      const idx = state.items.findIndex((it) => it.cart_key === cart_key);
       if (idx >= 0) {
         const q = Number(qty) || 0;
         if (q <= 0) state.items.splice(idx, 1);
@@ -52,8 +73,8 @@ const whatsappCartSlice = createSlice({
     },
 
     removeFromWhatsappCart: (state, action) => {
-      const id = action.payload?.id ?? action.payload;
-      state.items = state.items.filter((item) => item.id !== id);
+      const key = action.payload?.cart_key ?? action.payload;
+      state.items = state.items.filter((item) => item.cart_key !== key);
     },
 
     clearWhatsappCart: (state) => {
@@ -73,7 +94,7 @@ export const {
 
 export default whatsappCartSlice.reducer;
 
-// Selectores útiles
+// Selectores
 export const selectWhatsappCartItems = (state) => state.whatsappCart.items;
 
 export const selectWhatsappCartCount = createSelector(
@@ -83,10 +104,5 @@ export const selectWhatsappCartCount = createSelector(
 
 export const selectWhatsappCartTotal = createSelector(
   selectWhatsappCartItems,
-  (items) =>
-    items.reduce(
-      (sum, it) =>
-        sum + (Number(it.price) || 0) * (Number(it.qty ?? 1) || 1),
-      0
-    )
+  (items) => items.reduce((sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty) || 1), 0)
 );

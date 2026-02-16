@@ -30,6 +30,7 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 
 import { useNavigate } from "react-router-dom";
 
@@ -40,6 +41,9 @@ import { useAdminUi } from "../../context/AdminUiContext";
 
 import BranchFormModal from "../../components/branches/BranchFormModal";
 import BranchDetailsModal from "../../components/branches/BranchDetailsModal";
+
+// ✅ NUEVO: modal de confirmación de pagos offline
+import OfflinePaymentsModal from "../../components/offline/OfflinePaymentsModal";
 
 const COLORS = {
   accent: "#f9b233",
@@ -86,6 +90,9 @@ export default function Sucursales() {
   // ✅ opcional (si quieres seguir teniendo modal de detalles)
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selected, setSelected] = useState(null);
+
+  // ✅ NUEVO: modal pagos offline
+  const [offlineOpen, setOfflineOpen] = useState(false);
 
   // ✅ ocultar layout al entrar a sucursales
   useEffect(() => {
@@ -209,7 +216,12 @@ export default function Sucursales() {
         </Box>
       </Stack>
 
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ width: isMobile ? "100%" : "auto" }}>
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        spacing={1}
+        alignItems="center"
+        sx={{ width: isMobile ? "100%" : "auto" }}
+      >
         <TextField
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -231,6 +243,29 @@ export default function Sucursales() {
             ),
           }}
         />
+
+        {/* ✅ NUEVO: acceso a Pagos offline */}
+        <Tooltip title="Ver solicitudes de pago offline (transferencia/depósito/OXXO)">
+          <span>
+            <Button
+              onClick={() => setOfflineOpen(true)}
+              variant="outlined"
+              startIcon={<ReceiptLongRoundedIcon />}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 900,
+                minWidth: 170,
+                borderColor: alpha(COLORS.black, 0.25),
+                color: COLORS.black,
+                bgcolor: alpha(COLORS.black, 0.02),
+                "&:hover": { bgcolor: alpha(COLORS.black, 0.05) },
+              }}
+            >
+              Pagos offline
+            </Button>
+          </span>
+        </Tooltip>
 
         <Tooltip title={canCreate ? "Crear sucursal" : "Límite de sucursales alcanzado"}>
           <span>
@@ -421,7 +456,11 @@ export default function Sucursales() {
                               </Typography>
 
                               {b?.code ? (
-                                <Chip size="small" label={b.code} sx={{ fontWeight: 800, bgcolor: alpha(COLORS.black, 0.06) }} />
+                                <Chip
+                                  size="small"
+                                  label={b.code}
+                                  sx={{ fontWeight: 800, bgcolor: alpha(COLORS.black, 0.06) }}
+                                />
                               ) : null}
 
                               {b?.is_active === false ? (
@@ -441,7 +480,6 @@ export default function Sucursales() {
                           </Box>
 
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: "auto" }}>
-                            {/* ✅ CLICK PRINCIPAL: seleccionar y mandar a productos */}
                             <Tooltip title="Seleccionar sucursal (ir a productos)">
                               <IconButton
                                 onClick={() => handleSelectBranch(b)}
@@ -450,18 +488,6 @@ export default function Sucursales() {
                                 <VisibilityRoundedIcon />
                               </IconButton>
                             </Tooltip>
-
-                            {/* ✅ opcional: si quieres botón para abrir modal de detalles */}
-                            {/* 
-                            <Tooltip title="Ver detalles">
-                              <IconButton
-                                onClick={() => handleOpenDetailsModal(b)}
-                                sx={{ borderRadius: 2, border: `1px solid ${alpha("#000", 0.08)}` }}
-                              >
-                                <WarehouseRoundedIcon />
-                              </IconButton>
-                            </Tooltip>
-                            */}
 
                             <Tooltip title="Editar">
                               <IconButton
@@ -519,12 +545,17 @@ export default function Sucursales() {
           }}
         />
 
-        {/* ✅ opcional: modal de detalles si lo sigues usando */}
         <BranchDetailsModal
           open={detailsOpen}
           branchId={selected?.id}
           onClose={() => setDetailsOpen(false)}
           onChanged={() => fetchBranches()}
+        />
+
+        {/* ✅ NUEVO: Modal de Pagos Offline */}
+        <OfflinePaymentsModal
+          open={offlineOpen}
+          onClose={() => setOfflineOpen(false)}
         />
       </Container>
     </Box>
