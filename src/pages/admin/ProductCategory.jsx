@@ -40,17 +40,28 @@ import FolderIcon from "@mui/icons-material/Folder";
 import SubdirectoryArrowRightIcon from "@mui/icons-material/SubdirectoryArrowRight";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import CloseIcon from "@mui/icons-material/Close";
+import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import { useNavigate } from "react-router-dom";
 
 // ✅ Hook de gating (el que ya hiciste)
 import useCategoriaPadreGate from "../../hooks/useCategoriaPadreGate";
 
+// ✅ Sucursal activa (igual que POS)
+import { useAdminUi } from "../../context/AdminUiContext";
+
 const Category = () => {
+  const navigate = useNavigate();
+
   // ✅ Gate por plan
   const { planId, isPlanSoloSueltas, reasonHierarchy, openPlanesModal } =
     useCategoriaPadreGate();
+
+  // ✅ Sucursal activa
+  const { selectedBranch } = useAdminUi();
+  const activeBranchId = selectedBranch?.id ? Number(selectedBranch.id) : null;
 
   // Data
   const [parentsTree, setParentsTree] = useState([]); // tree (padres con hijas)
@@ -88,13 +99,29 @@ const Category = () => {
     setSnackbar({ open: true, message, severity });
   };
 
-  // Initial load only
+  // ✅ Si no hay sucursal, manda a seleccionar
+  useEffect(() => {
+    if (!activeBranchId) {
+      showSnackbar("Selecciona una sucursal para administrar categorías", "warning");
+      navigate("/admin/sucursales");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranchId]);
+
+  // Initial load only (pero depende de branch)
   const fetchAll = async () => {
+    if (!activeBranchId) return;
+
     try {
       setLoading(true);
+
       const [treeRes, flatRes] = await Promise.all([
-        axiosClient.get("admin/categories?mode=tree"),
-        axiosClient.get("admin/categories"),
+        axiosClient.get("admin/categories", {
+          params: { mode: "tree", branch_id: activeBranchId },
+        }),
+        axiosClient.get("admin/categories", {
+          params: { branch_id: activeBranchId },
+        }),
       ]);
 
       const tParents = treeRes.data.parents ?? [];
@@ -111,17 +138,16 @@ const Category = () => {
   };
 
   useEffect(() => {
+    if (!activeBranchId) return;
     fetchAll();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBranchId]);
 
   // Helpers
   const parentOptions = useMemo(() => {
     return flat.filter((c) => c.parent_id == null);
   }, [flat]);
 
-  // Build an easy view:
-  // - Padres: categorías con hijas (según tree)
-  // - Sueltas: categorías sin parent_id y sin hijas
   const parentIdsWithChildren = useMemo(() => {
     const s = new Set();
     for (const p of parentsTree) s.add(p.id);
@@ -129,7 +155,6 @@ const Category = () => {
   }, [parentsTree]);
 
   const singles = useMemo(() => {
-    // sueltas = parent_id null y NO aparece como padre en el tree (sin hijas)
     return flat
       .filter((c) => c.parent_id == null && !parentIdsWithChildren.has(c.id))
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -150,15 +175,17 @@ const Category = () => {
   const resetForm = () => setForm({ name: "", parent_id: "", editingId: null });
 
   const openCreate = () => {
+    if (!activeBranchId) {
+      showSnackbar("Selecciona una sucursal primero", "warning");
+      navigate("/admin/sucursales");
+      return;
+    }
     resetForm();
     setFormOpen(true);
   };
 
   const openEdit = (cat) => {
-    // Si es plan solo sueltas y la categoría es hija, no debería pasar,
-    // pero si existe por data vieja, al editar lo forzamos a suelta para no romper.
-    const parentValue =
-      isPlanSoloSueltas ? "" : cat.parent_id ?? "";
+    const parentValue = isPlanSoloSueltas ? "" : cat.parent_id ?? "";
 
     setForm({
       name: cat.name ?? "",
@@ -174,7 +201,7 @@ const Category = () => {
     resetForm();
   };
 
-  // ===== Optimistic local updates (NO refresh) =====
+  // ===== Optimistic local updates =====
   const upsertFlat = (cat) => {
     setFlat((prev) => {
       const idx = prev.findIndex((x) => x.id === cat.id);
@@ -192,10 +219,10 @@ const Category = () => {
   };
 
   const rebuildTreeFromFlat = () => {
-    // Rebuild tree purely from flat: group by parent_id, and only show parents with children.
     setParentsTree(() => {
       const parents = flat.filter((c) => c.parent_id == null);
       const childrenByParent = new Map();
+
       for (const c of flat) {
         if (c.parent_id != null) {
           const arr = childrenByParent.get(c.parent_id) ?? [];
@@ -218,7 +245,6 @@ const Category = () => {
     });
   };
 
-  // whenever flat changes, rebuild tree
   useEffect(() => {
     rebuildTreeFromFlat();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -229,14 +255,21 @@ const Category = () => {
     e.preventDefault();
     if (!form.name.trim()) return;
 
+    if (!activeBranchId) {
+      showSnackbar("Selecciona una sucursal antes de guardar", "warning");
+      navigate("/admin/sucursales");
+      return;
+    }
+
     setFormLoading(true);
     try {
       const payload = {
         name: form.name.trim(),
         parent_id: form.parent_id === "" ? null : Number(form.parent_id),
+        branch_id: Number(activeBranchId), // ✅ IMPORTANTÍSIMO
       };
 
-      // ✅ Regla: Plan 2 SOLO SUELTAS => si intenta crear HIJA, bloquear.
+      // ✅ Plan 2 SOLO SUELTAS => si intenta crear HIJA, bloquear.
       if (isPlanSoloSueltas && payload.parent_id !== null) {
         showSnackbar(
           reasonHierarchy ||
@@ -247,36 +280,28 @@ const Category = () => {
       }
 
       if (form.editingId) {
-        const res = await axiosClient.post(
-          `admin/categories/${form.editingId}`,
-          {
-            ...payload,
-            _method: "PATCH",
-          }
-        );
+        const res = await axiosClient.post(`admin/categories/${form.editingId}`, {
+          ...payload,
+          _method: "PATCH",
+        });
 
         const updated =
-          res?.data?.category ??
-          res?.data ??
-          { id: form.editingId, ...payload };
+          res?.data?.category ?? res?.data ?? { id: form.editingId, ...payload };
 
         upsertFlat(updated);
         showSnackbar("✅ Categoría actualizada");
       } else {
         const res = await axiosClient.post("admin/categories", payload);
         const created = res?.data?.category ?? res?.data;
-        if (created?.id) upsertFlat(created);
 
+        if (created?.id) upsertFlat(created);
         showSnackbar("✅ Categoría creada");
       }
 
       closeForm();
     } catch (error) {
       console.error(error);
-      showSnackbar(
-        error?.response?.data?.message ?? "❌ Error al guardar",
-        "error"
-      );
+      showSnackbar(error?.response?.data?.message ?? "❌ Error al guardar", "error");
     } finally {
       setFormLoading(false);
     }
@@ -288,6 +313,7 @@ const Category = () => {
 
   const handleDeleteConfirm = async () => {
     if (!deleteDialog.id) return;
+
     setFormLoading(true);
     try {
       await axiosClient.delete(`admin/categories/${deleteDialog.id}`);
@@ -338,13 +364,30 @@ const Category = () => {
             <Typography variant="h5" fontWeight={900}>
               📁 Categorías
             </Typography>
+
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               🗂️ Padre = Carpeta. 👶 Hija = Va dentro. 📄 Suelta = No está dentro
               de nadie.
             </Typography>
 
+            {/* ✅ Branch visible */}
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1, flexWrap: "wrap" }}>
+              <Chip
+                icon={<LocationOnRoundedIcon />}
+                label={
+                  selectedBranch?.name
+                    ? `Sucursal: ${selectedBranch.name}`
+                    : activeBranchId
+                    ? `Sucursal #${activeBranchId}`
+                    : "Sin sucursal"
+                }
+                variant="outlined"
+                sx={{ fontWeight: 800 }}
+              />
+            </Stack>
+
             {Boolean(planId) && (
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
                 Plan actual: <b>{planId}</b>{" "}
                 {isPlanSoloSueltas
                   ? "· Solo SUELTAS ✅ (jerarquía bloqueada 🔒)"
@@ -360,21 +403,9 @@ const Category = () => {
             justifyContent={{ xs: "center", md: "flex-end" }}
             flexWrap="wrap"
           >
-            <Chip
-              icon={<FolderIcon />}
-              label={`Padres: ${totalPadres}`}
-              variant="outlined"
-            />
-            <Chip
-              icon={<SubdirectoryArrowRightIcon />}
-              label={`Hijas: ${totalHijas}`}
-              variant="outlined"
-            />
-            <Chip
-              icon={<LocalOfferIcon />}
-              label={`Sueltas: ${totalSueltas}`}
-              variant="outlined"
-            />
+            <Chip icon={<FolderIcon />} label={`Padres: ${totalPadres}`} variant="outlined" />
+            <Chip icon={<SubdirectoryArrowRightIcon />} label={`Hijas: ${totalHijas}`} variant="outlined" />
+            <Chip icon={<LocalOfferIcon />} label={`Sueltas: ${totalSueltas}`} variant="outlined" />
 
             <Tooltip title="¿Cómo funciona?">
               <IconButton onClick={() => setHelpOpen(true)}>
@@ -387,6 +418,7 @@ const Category = () => {
               startIcon={<AddIcon />}
               onClick={openCreate}
               sx={{ borderRadius: 2, textTransform: "none" }}
+              disabled={!activeBranchId}
             >
               Nueva categoría
             </Button>
@@ -397,12 +429,8 @@ const Category = () => {
       </Paper>
 
       {/* CONTENT */}
-      <Stack
-        direction={{ xs: "column", md: "row" }}
-        gap={2}
-        alignItems="flex-start"
-      >
-        {/* LEFT: Padres + Hijas */}
+      <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems="flex-start">
+        {/* LEFT */}
         <Box sx={{ flex: 1, width: "100%" }}>
           <Typography variant="h6" fontWeight={900} sx={{ mb: 1 }}>
             🗂️ Padres (con hijas)
@@ -417,9 +445,7 @@ const Category = () => {
                 border: (t) => `1px dashed ${t.palette.divider}`,
               }}
             >
-              <Typography fontWeight={900}>
-                No hay padres con hijas todavía 💤
-              </Typography>
+              <Typography fontWeight={900}>No hay padres con hijas todavía 💤</Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                 Crea categorías. Si tu plan permite jerarquía, podrás hacer hijas.
               </Typography>
@@ -427,11 +453,7 @@ const Category = () => {
           ) : (
             <Stack gap={2}>
               {parentsTree.map((p) => (
-                <Card
-                  key={p.id}
-                  variant="outlined"
-                  sx={{ borderRadius: 3, boxShadow: 2, overflow: "hidden" }}
-                >
+                <Card key={p.id} variant="outlined" sx={{ borderRadius: 3, boxShadow: 2, overflow: "hidden" }}>
                   <Box
                     sx={{
                       px: 2,
@@ -444,12 +466,7 @@ const Category = () => {
                       gap: 2,
                     }}
                   >
-                    <Stack
-                      direction="row"
-                      alignItems="center"
-                      gap={1}
-                      flexWrap="wrap"
-                    >
+                    <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
                       <FolderIcon />
                       <Typography fontWeight={900}>{p.name}</Typography>
                       <Chip size="small" label="Padre" variant="outlined" />
@@ -463,20 +480,12 @@ const Category = () => {
 
                     <Box>
                       <Tooltip title="Editar">
-                        <IconButton
-                          onClick={() => openEdit(p)}
-                          disabled={formLoading}
-                          sx={{ mr: 1 }}
-                        >
+                        <IconButton onClick={() => openEdit(p)} disabled={formLoading} sx={{ mr: 1 }}>
                           <EditIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Eliminar">
-                        <IconButton
-                          color="error"
-                          onClick={() => askDelete(p)}
-                          disabled={formLoading}
-                        >
+                        <IconButton color="error" onClick={() => askDelete(p)} disabled={formLoading}>
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -497,20 +506,12 @@ const Category = () => {
                             secondaryAction={
                               <Box>
                                 <Tooltip title="Editar">
-                                  <IconButton
-                                    onClick={() => openEdit(c)}
-                                    sx={{ mr: 1 }}
-                                    disabled={formLoading}
-                                  >
+                                  <IconButton onClick={() => openEdit(c)} sx={{ mr: 1 }} disabled={formLoading}>
                                     <EditIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
                                 <Tooltip title="Eliminar">
-                                  <IconButton
-                                    color="error"
-                                    onClick={() => askDelete(c)}
-                                    disabled={formLoading}
-                                  >
+                                  <IconButton color="error" onClick={() => askDelete(c)} disabled={formLoading}>
                                     <DeleteIcon fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
@@ -542,15 +543,11 @@ const Category = () => {
           )}
         </Box>
 
-        {/* RIGHT: Sueltas */}
+        {/* RIGHT */}
         <Box sx={{ width: { xs: "100%", md: 380 } }}>
           <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: 2 }}>
             <CardContent sx={{ p: 2.5 }}>
-              <Stack
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-              >
+              <Stack direction="row" alignItems="center" justifyContent="space-between">
                 <Typography variant="h6" fontWeight={900}>
                   📄 Sueltas
                 </Typography>
@@ -596,20 +593,12 @@ const Category = () => {
                         secondaryAction={
                           <Box>
                             <Tooltip title="Editar">
-                              <IconButton
-                                onClick={() => openEdit(c)}
-                                sx={{ mr: 1 }}
-                                disabled={formLoading}
-                              >
+                              <IconButton onClick={() => openEdit(c)} sx={{ mr: 1 }} disabled={formLoading}>
                                 <EditIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
                             <Tooltip title="Eliminar">
-                              <IconButton
-                                color="error"
-                                onClick={() => askDelete(c)}
-                                disabled={formLoading}
-                              >
+                              <IconButton color="error" onClick={() => askDelete(c)} disabled={formLoading}>
                                 <DeleteIcon fontSize="small" />
                               </IconButton>
                             </Tooltip>
@@ -634,6 +623,7 @@ const Category = () => {
                 onClick={openCreate}
                 fullWidth
                 sx={{ borderRadius: 2, textTransform: "none" }}
+                disabled={!activeBranchId}
               >
                 Crear nueva
               </Button>
@@ -691,7 +681,6 @@ const Category = () => {
             📄 Suelta = no eliges padre. 👶 Hija = eliges un padre.
           </Typography>
 
-          {/* ✅ Aviso: Plan 2 solo sueltas */}
           {isPlanSoloSueltas && (
             <Alert
               severity="info"
@@ -718,9 +707,7 @@ const Category = () => {
                 label="Nombre"
                 variant="filled"
                 value={form.name}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, name: e.target.value }))
-                }
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
                 required
                 disabled={formLoading}
                 placeholder="Ej: Refacciones, Filtros…"
@@ -736,7 +723,6 @@ const Category = () => {
                   onChange={(e) => {
                     const v = e.target.value;
 
-                    // 🚫 Plan 2: bloquear selección de padre (solo sueltas)
                     if (isPlanSoloSueltas && v !== "") {
                       showSnackbar(
                         reasonHierarchy ||
@@ -773,11 +759,7 @@ const Category = () => {
                   {parentOptions
                     .filter((p) => p.id !== form.editingId)
                     .map((p) => (
-                      <MenuItem
-                        key={p.id}
-                        value={p.id}
-                        disabled={isPlanSoloSueltas}
-                      >
+                      <MenuItem key={p.id} value={p.id} disabled={isPlanSoloSueltas}>
                         🗂️ {p.name} {isPlanSoloSueltas ? "🔒" : ""}
                       </MenuItem>
                     ))}
@@ -800,11 +782,7 @@ const Category = () => {
                 )}
               </Box>
 
-              <Stack
-                direction="row"
-                gap={1}
-                sx={{ justifyContent: "flex-end", flexWrap: "wrap" }}
-              >
+              <Stack direction="row" gap={1} sx={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
                 <Button
                   type="button"
                   variant="outlined"
@@ -840,12 +818,7 @@ const Category = () => {
       </Dialog>
 
       {/* HELP MODAL */}
-      <Dialog
-        open={helpOpen}
-        onClose={() => setHelpOpen(false)}
-        maxWidth="sm"
-        fullWidth
-      >
+      <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ fontWeight: 900 }}>🧠 ¿Cómo funciona esto?</DialogTitle>
         <DialogContent dividers>
           <Typography sx={{ mb: 1 }}>Versión para humano sin dolor:</Typography>
@@ -903,35 +876,19 @@ const Category = () => {
       </Dialog>
 
       {/* DELETE DIALOG */}
-      <Dialog
-        open={deleteDialog.open}
-        onClose={() => setDeleteDialog({ open: false, id: null, name: "" })}
-      >
+      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, name: "" })}>
         <DialogTitle sx={{ fontWeight: 900 }}>🗑️ Eliminar</DialogTitle>
         <DialogContent>
           Vas a borrar: <b>{deleteDialog.name}</b>
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            sx={{ display: "block", mt: 1 }}
-          >
-            Si borras un padre con hijas, el backend puede “soltarlas” (parent_id =
-            null). En ese caso refrescamos una vez.
+          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
+            Si borras un padre con hijas, el backend puede “soltarlas” (parent_id = null). En ese caso refrescamos una vez.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button
-            onClick={() => setDeleteDialog({ open: false, id: null, name: "" })}
-            disabled={formLoading}
-          >
+          <Button onClick={() => setDeleteDialog({ open: false, id: null, name: "" })} disabled={formLoading}>
             Cancelar
           </Button>
-          <Button
-            onClick={handleDeleteConfirm}
-            color="error"
-            variant="contained"
-            disabled={formLoading}
-          >
+          <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={formLoading}>
             Eliminar 🧨
           </Button>
         </DialogActions>
