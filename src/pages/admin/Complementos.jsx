@@ -25,6 +25,8 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import axiosClient from "../../config/axiosClient";
 import complementosLocal from "../../utils/complementos";
 import PaypalModal from "../../components/gateways/PaypalForm"; // 👈 modal nuevo
+import OfflineAccountsModal from "../../components/gateways/OfflineAccountsModal";
+
 
 // Helper moneda
 const moneyMX = (n) =>
@@ -49,6 +51,8 @@ export default function ComplementosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [paypalOpen, setPaypalOpen] = useState(false);
+  const [offlineOpen, setOfflineOpen] = useState(false);
+
 
   const gatewayRef = useRef(null);
 
@@ -220,8 +224,8 @@ export default function ComplementosPage() {
               const secondary = c.descripcion?.trim()
                 ? c.descripcion
                 : c.precio != null
-                ? moneyMX(c.precio)
-                : "Sin descripción.";
+                  ? moneyMX(c.precio)
+                  : "Sin descripción.";
 
               return (
                 <React.Fragment key={c.id || c.slug || idx}>
@@ -234,15 +238,18 @@ export default function ComplementosPage() {
                     }}
                     secondaryAction={
                       adquirido && esPasarela ? (
-                        <Button
-                          onClick={() => setPaypalOpen(true)}
-                          variant="contained"
-                          size="small"
-                        >
-                          Configurar pasarela
-                        </Button>
+                        <Stack direction="row" spacing={1}>
+                          <Button onClick={() => setPaypalOpen(true)} variant="contained" size="small">
+                            Configurar PayPal
+                          </Button>
+
+                          <Button onClick={() => setOfflineOpen(true)} variant="contained" size="small">
+                            Configurar cuentas
+                          </Button>
+                        </Stack>
                       ) : null
                     }
+
                   >
                     <ListItemAvatar>
                       <Avatar
@@ -302,6 +309,8 @@ export default function ComplementosPage() {
 
       {/* Modal PayPal */}
       <PaypalModal open={paypalOpen} onClose={() => setPaypalOpen(false)} />
+      <OfflineAccountsModal open={offlineOpen} onClose={() => setOfflineOpen(false)} />
+
     </Box>
   );
 }

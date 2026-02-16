@@ -327,8 +327,9 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
       const payments = checkoutPayloadFromCart.payments || [];
       const eff = payments.find((p) => p?.method === "efectivo");
+
       const rawCashReceived =
-        eff?.cash_received ?? eff?.efectivo_recibido ?? eff?.recibido ?? eff?.amount ?? null;
+        eff?.cash_received ?? eff?.efectivo_recibido ?? eff?.recibido ?? null;
 
       const totalAmount = +checkoutPayloadFromCart.total_amount.toFixed(2);
 
@@ -337,15 +338,18 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           ? +Number(rawCashReceived).toFixed(2)
           : null;
 
-      const change = cashReceived != null ? Math.max(0, +(cashReceived - totalAmount).toFixed(2)) : 0;
+      // ✅ Si hay efectivo y capturaste recibido, ese debe ser el amount real del pago en efectivo
+      const normalizedPayments = payments.map((p) => {
+        if (p?.method !== "efectivo") return p;
+        return cashReceived != null ? { ...p, amount: cashReceived } : p;
+      });
 
       const payload = {
         total_amount: totalAmount,
         items,
-        payments,
-        ...(cashReceived != null ? { cash_received: cashReceived, efectivo_recibido: cashReceived } : {}),
-        change,
+        payments: normalizedPayments,
       };
+
 
       try {
         const saleResponse = await axiosClient.post("/v2/sales", payload);
