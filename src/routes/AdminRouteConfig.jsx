@@ -26,6 +26,7 @@ const Complementos = lazy(() => import("../pages/admin/Complementos.jsx"));
 const Sucursales = lazy(() => import("../pages/admin/Sucursales.jsx"));
 const Almacenes = lazy(() => import("../pages/admin/Almacenes.jsx"));
 const SolicitudesPago = lazy(() => import("../pages/admin/SolicitudesPago.jsx"));
+const InventoryByWarehouse = lazy(() => import("../pages/admin/InventoryByWarehouse.jsx"));
 
 
 
@@ -46,7 +47,7 @@ export const adminRouteConfig = [
   { path: "categorias", element: <Categorias /> },
   { path: "mi-sitio", element: <SitioWeb /> },
   { path: "etiquetas", element: <Etiquetas /> },
-  { path: "inventario", element: <Inventario /> },
+  { path: "inventario", element: <InventoryByWarehouse /> },
   { path: "pos", element: <POS /> },
   { path: "ventas", element: <Ventas /> },
   { path: "compra", element: <Entradas /> },
@@ -60,6 +61,7 @@ export const adminRouteConfig = [
   { path: "reportes/inventario", element: <ReporteInventario /> },
   { path: "complementos", element: <Complementos /> },
   // { patch: "solicitudes-pago", element: <SolicitudesPago/> },
+
 ];
 
 

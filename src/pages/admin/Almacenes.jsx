@@ -15,7 +15,6 @@ import {
   Chip,
   Tooltip,
   Alert,
-  Fade,
   Grow,
   useMediaQuery,
 } from "@mui/material";
@@ -29,6 +28,7 @@ import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 
 import axiosClient from "../../config/axiosClient";
 import { showConfirm, showSuccess, alertFromAxiosError } from "../../utils/alerts";
@@ -79,17 +79,14 @@ export default function Warehouses() {
     return null;
   }, [branchFromNav, selectedBranch, branchIdFromUrl]);
 
-  // en esta vista si quieres layout visible:
   useEffect(() => {
     setHideLayout(false);
   }, [setHideLayout]);
 
-  // persist branch si vienes por state
   useEffect(() => {
     if (branchFromNav?.id) setSelectedBranch(branchFromNav);
   }, [branchFromNav, setSelectedBranch]);
 
-  // si no hay sucursal, manda a seleccionar
   useEffect(() => {
     if (!activeBranch?.id) navigate("/admin/sucursales");
   }, [activeBranch?.id, navigate]);
@@ -146,8 +143,8 @@ export default function Warehouses() {
 
   const handleDelete = async (w) => {
     const ok = await showConfirm(
-      "¿Estás seguro de eliminar este almacén? Se eliminará toda la información habida y por haber.",
-      "Sí, eliminar"
+      "¿Está seguro de eliminar este almacén? Se eliminará toda la información asociada.",
+      "Sí, eliminar",
     );
     if (!ok) return;
 
@@ -160,106 +157,130 @@ export default function Warehouses() {
     }
   };
 
-  const header = (
-    <Stack
-      direction={isMobile ? "column" : "row"}
-      alignItems={isMobile ? "flex-start" : "center"}
-      justifyContent="space-between"
-      spacing={2}
-      sx={{ mb: 2 }}
-    >
-      <Stack spacing={0.6} sx={{ width: "100%" }}>
-        <Stack direction="row" spacing={1.2} alignItems="center">
-          <Box
-            sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 2,
-              bgcolor: alpha(COLORS.accent, 0.22),
-              border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            <WarehouseRoundedIcon sx={{ color: COLORS.black }} />
-          </Box>
+  const goInventoryGlobal = () =>
+    navigate("/admin/inventario", {
+      state: { branch: activeBranch, scope: "global" },
+    });
 
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: COLORS.black }}>
-              Almacenes
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {activeBranch?.name
-                ? `Sucursal: ${activeBranch.name}`
-                : activeBranch?.id
-                ? `Sucursal #${activeBranch.id}`
-                : "Selecciona una sucursal"}
-            </Typography>
-          </Box>
-
-          <Tooltip title="Cambiar sucursal">
-            <IconButton
-              onClick={() => navigate("/admin/sucursales")}
-              sx={{ borderRadius: 2, border: `1px solid ${alpha("#000", 0.08)}` }}
-            >
-              <ArrowBackRoundedIcon />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-
-        <Stack
-          direction={isMobile ? "column" : "row"}
-          spacing={1}
-          alignItems="center"
-          sx={{ width: "100%", mt: 1 }}
-        >
-          <TextField
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar (nombre, código, ciudad)…"
-            size="small"
-            fullWidth
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "#fff",
-                borderRadius: 2,
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <Button
-            onClick={handleOpenCreate}
-            variant="contained"
-            startIcon={<AddRoundedIcon />}
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 900,
-              bgcolor: COLORS.black,
-              "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
-              minWidth: isMobile ? "100%" : 180,
-            }}
-          >
-            Nuevo almacén
-          </Button>
-        </Stack>
-      </Stack>
-    </Stack>
-  );
+  const goBranches = () => navigate("/admin/sucursales");
 
   return (
     <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: 3 }}>
       <Container maxWidth="lg">
-        {header}
+        {/* =======================
+            1) ENCABEZADO (qué es qué)
+           ======================= */}
+        <Stack spacing={1.5} sx={{ mb: 2.25 }}>
+          <Stack direction="row" spacing={1.2} alignItems="center">
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 2,
+                bgcolor: alpha(COLORS.accent, 0.22),
+                border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <WarehouseRoundedIcon sx={{ color: COLORS.black }} />
+            </Box>
 
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="h5" sx={{ fontWeight: 900, color: COLORS.black }}>
+                Almacenes 
+              </Typography>
+
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.6 }}>
+                {activeBranch?.name
+                  ? `Sucursal activa: ${activeBranch.name}`
+                  : activeBranch?.id
+                    ? `Sucursal activa: #${activeBranch.id}`
+                    : "Seleccione una sucursal"}
+              </Typography>
+            </Box>
+
+            <Tooltip title="Cambiar sucursal">
+              <IconButton
+                onClick={goBranches}
+                sx={{
+                  borderRadius: 2,
+                  border: `1px solid ${alpha("#000", 0.08)}`,
+                }}
+              >
+                <ArrowBackRoundedIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+
+          {/* =======================
+              2) ACCIONES (buscar + botones)
+             ======================= */}
+          <Stack
+            direction={isMobile ? "column" : "row"}
+            spacing={1}
+            alignItems="stretch"
+            sx={{ width: "100%" }}
+          >
+            <TextField
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar almacén (nombre, código o ciudad)…"
+              size="small"
+              fullWidth
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "#fff",
+                  borderRadius: 2,
+                },
+              }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchRoundedIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+
+            <Stack direction={isMobile ? "column" : "row"} spacing={1} alignItems="stretch">
+              <Button
+                onClick={goInventoryGlobal}
+                variant="outlined"
+                startIcon={<Inventory2RoundedIcon />}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Inventario Sin Almacen
+              </Button>
+
+              <Button
+                onClick={handleOpenCreate}
+                variant="contained"
+                startIcon={<AddRoundedIcon />}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 900,
+                  bgcolor: COLORS.black,
+                  "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
+                  minWidth: isMobile ? "100%" : 190,
+                }}
+              >
+                Nuevo almacén
+              </Button>
+            </Stack>
+          </Stack>
+        </Stack>
+
+        {/* =======================
+            3) CONTENIDO (resumen + lista)
+           ======================= */}
         <Card
           elevation={0}
           sx={{
@@ -269,7 +290,8 @@ export default function Warehouses() {
           }}
         >
           <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+            {/* Resumen (chips) */}
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
               <Chip
                 icon={<WarehouseRoundedIcon />}
                 label={loading ? "Cargando…" : `${filtered.length} almacén(es)`}
@@ -288,6 +310,12 @@ export default function Warehouses() {
                   sx={{ fontWeight: 700 }}
                 />
               ) : null}
+
+              <Chip
+                label="Tip: entra a un almacén para ver su inventario específico"
+                variant="outlined"
+                sx={{ fontWeight: 700, bgcolor: alpha("#000", 0.02) }}
+              />
             </Stack>
 
             <Divider sx={{ my: 1.5 }} />
@@ -301,7 +329,7 @@ export default function Warehouses() {
                   border: `1px solid ${alpha("#000", 0.08)}`,
                 }}
               >
-                Primero selecciona una sucursal para ver sus almacenes.
+                Primero seleccione una sucursal para ver sus almacenes.
               </Alert>
             ) : loading ? (
               <Stack spacing={1.2}>
@@ -322,7 +350,7 @@ export default function Warehouses() {
                   No hay almacenes
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                  Crea tu primer almacén para manejar stock por sucursal.
+                  Cree su primer almacén para manejar stock por ubicación dentro de la sucursal.
                 </Typography>
 
                 <Button
@@ -347,7 +375,7 @@ export default function Warehouses() {
                   const addr = buildAddress(w);
                   const meta = [
                     w?.type ? `Tipo: ${w.type}` : "Tipo: (sin definir)",
-                    w?.use_branch_address ? "Usa dirección sucursal" : "Dirección propia",
+                    w?.use_branch_address ? "Usa dirección de sucursal" : "Dirección propia",
                   ].join(" • ");
 
                   return (
@@ -360,7 +388,7 @@ export default function Warehouses() {
                           transition: "transform 150ms ease, box-shadow 150ms ease",
                           "&:hover": {
                             transform: "translateY(-1px)",
-                            boxShadow: `0 8px 28px ${alpha("#000", 0.10)}`,
+                            boxShadow: `0 8px 28px ${alpha("#000", 0.1)}`,
                           },
                           animation: `${floatIn} 250ms ease`,
                         }}
@@ -403,7 +431,9 @@ export default function Warehouses() {
                                 />
                               ) : null}
 
-                              {w?.code ? <Chip size="small" label={w.code} variant="outlined" /> : null}
+                              {w?.code ? (
+                                <Chip size="small" label={w.code} variant="outlined" />
+                              ) : null}
 
                               {w?.is_active === false ? (
                                 <Chip size="small" label="Inactivo" color="default" />
@@ -416,12 +446,32 @@ export default function Warehouses() {
                               {meta}
                             </Typography>
 
-                            <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ display: "block", mt: 0.5 }}
+                            >
                               {addr || "Sin dirección configurada"}
                             </Typography>
                           </Box>
 
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: "auto" }}>
+                            <Tooltip title="Ver inventario de este almacén">
+                              <IconButton
+                                onClick={() =>
+                                  navigate("/admin/inventario", {
+                                    state: { branch: activeBranch, warehouse: w },
+                                  })
+                                }
+                                sx={{
+                                  borderRadius: 2,
+                                  border: `1px solid ${alpha("#000", 0.08)}`,
+                                }}
+                              >
+                                <Inventory2RoundedIcon />
+                              </IconButton>
+                            </Tooltip>
+
                             <Tooltip title="Editar">
                               <IconButton
                                 onClick={() => handleOpenEdit(w)}
