@@ -163,9 +163,9 @@ const LandingNavbar = () => {
           }}
         >
           <img
-            src="/assets/img/logo1.png"
+            src="/assets/img/logo3.png"
             alt="TeLoRecargo Logo"
-            style={{ width: "120px", maxHeight: "60px", objectFit: "contain" }}
+            style={{ width: "120px", maxHeight: "120px", objectFit: "contain" }}
           />
         </Box>
 

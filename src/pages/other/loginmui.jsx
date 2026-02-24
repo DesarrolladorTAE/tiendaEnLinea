@@ -110,7 +110,7 @@ const LoginOverlayResponsiveMUI = () => {
           {/* Logo */}
           <Box
             component="img"
-            src="/assets/img/logo1.png"
+            src="/assets/img/logo3.png"
             alt="Logo TeLoRecargo"
             sx={{ width: 180, height: "auto", mb: 1, mt: 2 }}
           />

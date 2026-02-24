@@ -50,7 +50,7 @@ const LandingFeaturesSection = () => {
       <Box sx={{ textAlign: "center", mb: 4 }}>
         <Box
           component="img"
-          src="/assets/img/logo1.png"
+          src="/assets/img/logo3.png"
           alt="Telorecargo logo"
           sx={{ maxWidth: 280, width: "100%" }}
         />

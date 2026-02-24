@@ -161,11 +161,17 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
         <TextField
           label="Número"
           fullWidth
+          autoComplete="off"
           value={numero}
           onChange={(e) =>
             setNumero(e.target.value.replace(/\D/g, "").slice(0, 10))
           }
           sx={{ mb: 2 }}
+          inputProps={{
+            inputMode: "numeric",
+            pattern: "[0-9]*",
+            autoComplete: "off",
+          }}
           InputProps={{
             startAdornment: <LocalPhoneIcon sx={{ mr: 1 }} />,
           }}
@@ -175,6 +181,7 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
           label="Confirmar número"
           type="password"
           fullWidth
+          autoComplete="new-password"
           value={confirmacion}
           onChange={(e) =>
             setConfirmacion(e.target.value.replace(/\D/g, "").slice(0, 10))
@@ -182,6 +189,11 @@ const RecargaModal = ({ open, onClose, producto, carrier }) => {
           sx={{ mb: 1 }}
           error={!numeroCoincide}
           helperText={!numeroCoincide && "Los números no coinciden"}
+          inputProps={{
+            inputMode: "numeric",
+            pattern: "[0-9]*",
+            autoComplete: "new-password",
+          }}
         />
 
         {productoSeleccionado && (

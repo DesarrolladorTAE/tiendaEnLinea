@@ -43,7 +43,7 @@ root.render(
   <Provider store={store}>
     <PersistProvider>
           {/* 🎄 Botón y nieve global */}
-      <NavidadToggle />
+      {/* <NavidadToggle /> */}
       <CssBaseline />
       <App />
     </PersistProvider>

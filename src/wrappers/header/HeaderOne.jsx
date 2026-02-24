@@ -10,10 +10,13 @@ import {
   Typography,
   Grid,
 } from "@mui/material";
+
 import Logo from "../../components/header/Logo";
 import NavMenu from "../../components/header/NavMenu";
 import IconGroup from "../../components/header/IconGroup";
 import HeaderTop from "../../components/header/HeaderTop";
+
+const HEADER_HEIGHT = 78; // ✅ ajusta 72–84 si quieres
 
 const HeaderOne = ({
   layout,
@@ -27,16 +30,12 @@ const HeaderOne = ({
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setElevate(window.scrollY > 100);
-    };
+    const handleScroll = () => setElevate(window.scrollY > 100);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const toggleDrawer = () => {
-    setDrawerOpen(!drawerOpen);
-  };
+  const toggleDrawer = () => setDrawerOpen((s) => !s);
 
   return (
     <Box component="header">
@@ -44,8 +43,7 @@ const HeaderOne = ({
         <Box
           sx={{
             width: "100%",
-            borderBottom:
-              borderStyle === "fluid-border" ? "none" : "1px solid #ddd",
+            borderBottom: borderStyle === "fluid-border" ? "none" : "1px solid #ddd",
             backgroundColor: { xs: "#00bfff", md: "transparent" },
           }}
         >
@@ -53,40 +51,66 @@ const HeaderOne = ({
         </Box>
       )}
 
+      {/* HEADER DESKTOP */}
       <AppBar
         position="sticky"
         elevation={elevate ? 4 : 0}
         color="default"
         sx={{
-          py: 1,
           backgroundColor: headerBgClass || "#00bfff",
           display: { xs: "none", md: "block" },
+          borderBottom: "1px solid rgba(255,255,255,0.18)",
         }}
       >
         <Container maxWidth={layout === "container-fluid" ? false : "lg"}>
-          <Toolbar disableGutters sx={{ justifyContent: "space-between" }}>
+          <Toolbar
+            disableGutters
+            sx={{
+              height: HEADER_HEIGHT,
+              minHeight: HEADER_HEIGHT,
+              px: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 2,
+            }}
+          >
+            {/* LOGO */}
             <Box
               sx={{
                 display: { xs: "none", md: "flex" },
                 alignItems: "center",
-                height: 60, // asegúrate de dar altura suficiente
+                height: HEADER_HEIGHT,
+                flexShrink: 0, // ✅ que no se aplaste
               }}
             >
-              <Logo imageUrl="/assets/img/logo.png" />
+              <Logo
+                imageUrl="/assets/img/logo4.png"
+                height={HEADER_HEIGHT}
+                maxLogoHeight={120} // ✅ ajusta 54–64
+              />
             </Box>
 
+            {/* MENÚ */}
             <Box
               sx={{
                 display: { xs: "none", md: "flex" },
                 flexGrow: 1,
+                minWidth: 0, // ✅ evita que rompa layout
                 justifyContent: "center",
+                alignItems: "center",
               }}
             >
               <NavMenu menuWhiteClass="" />
             </Box>
 
+            {/* ICONOS */}
             <Box
-              sx={{ display: { xs: "none", md: "flex" }, alignItems: "center" }}
+              sx={{
+                display: { xs: "none", md: "flex" },
+                alignItems: "center",
+                flexShrink: 0,
+              }}
             >
               <IconGroup isMobile={false} />
             </Box>
@@ -94,6 +118,7 @@ const HeaderOne = ({
         </Container>
       </AppBar>
 
+      {/* DRAWER MOBILE */}
       <Drawer
         anchor="left"
         open={drawerOpen}
@@ -113,6 +138,7 @@ const HeaderOne = ({
           },
         }}
       >
+        {/* Logo del Drawer */}
         <Box
           sx={{
             px: 2,
@@ -124,9 +150,13 @@ const HeaderOne = ({
           }}
         >
           <img
-            src="/assets/img/logo.png"
+            src="/assets/img/logo3.png"
             alt="TeLoRecargo Logo"
-            style={{ width: "120px", maxHeight: "60px", objectFit: "contain" }}
+            style={{
+              width: "160px",
+              maxHeight: "120px",
+              objectFit: "contain",
+            }}
           />
         </Box>
 

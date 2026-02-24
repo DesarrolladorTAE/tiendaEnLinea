@@ -57,43 +57,124 @@ $border-thickness: 30px;
   max-width: calc(100% - #{$border-thickness * 2});
   box-sizing: border-box;
 }
-
+/* CARD */
 .carrier-card {
+  width: 100%;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  border-radius: 18px;
+  padding: 12px;
+  cursor: pointer;
+
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  height: 180px;
-  padding: 15px 10px;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  text-align: center;
 
-  // Efecto zoom + elevación
-  &:hover {
-    transform: scale(1.06);
-    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+  /* ✅ altura consistente para que el logo pueda centrarse */
+  min-height: 160px;
+
+  box-shadow: 0 14px 34px rgba(2, 6, 23, 0.06);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+
+.carrier-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.10);
+  border-color: rgba(0, 123, 255, 0.24);
+}
+
+.carrier-card:active {
+  transform: translateY(0) scale(0.99);
+}
+
+.carrier-card.is-loading {
+  opacity: 0.85;
+  cursor: wait;
+}
+
+/* ✅ ÁREA DEL LOGO: ocupa el espacio y centra REAL */
+.carrier-logo-area {
+  flex: 1; /* ✅ hace que el logo quede al centro del card */
+  width: 100%;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.02);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+
+  display: grid;
+  place-items: center; /* ✅ centro vertical + horizontal */
+  overflow: hidden;
+
+  /* ✅ altura mínima para que el logo no quede arriba */
+  min-height: 92px;
+
+  padding: 10px;
+}
+
+/* ✅ LOGO: completo, centrado, sin recorte */
+.carrier-logo {
+  width: 100%;
+  height: 100%;
+  max-width: 92%;
+  max-height: 70px;
+
+  object-fit: contain;
+  object-position: center;
+
+  display: block;
+  margin: auto; /* ✅ fuerza centrado aunque haya “espacio transparente” */
+}
+
+/* NOMBRE (fijo abajo) */
+.carrier-name{
+  width: 100%;
+  text-align: center;
+  margin: 10px 0 0;
+  font-weight: 900;
+  font-size: 13px;
+  color: rgba(11, 18, 32, 0.86);
+
+  /* ✅ 2 líneas máximo */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+
+  /* ✅ altura fija para que todas las cards queden parejas */
+  min-height: 36px;  /* 2 líneas aprox */
+  line-height: 1.15;
+}
+
+/* CARGANDO */
+.carrier-loading {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(11, 18, 32, 0.62);
+}
+
+/* ✅ MÓVIL (2 columnas): más compacto pero centrado */
+@media (max-width: 576px) {
+  .carrier-card {
+    min-height: 150px;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .carrier-logo-area {
+    min-height: 86px;
+    padding: 8px;
   }
 
   .carrier-logo {
-    max-height: 100px;
-    max-width: 100%;
-    object-fit: contain;
-    margin-bottom: 10px;
+    max-height: 58px; /* ✅ evita que se vaya arriba por quedar pequeño */
+    max-width: 94%;
   }
 
   .carrier-name {
-    font-size: 14px;
-    font-weight: 600;
-    color: #2c3e50;
-    margin: 0;
-    min-height: 20px; // asegura que todos los nombres ocupen el mismo espacio visual
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
+    font-size: 12.5px;
+    margin-top: 8px;
   }
 }

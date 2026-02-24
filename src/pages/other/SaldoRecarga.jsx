@@ -7,13 +7,15 @@ import LayoutOne from "../../layouts/LayoutOne";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import SEO from "../../components/seo";
 import { motion } from "framer-motion";
-import { Container, Box } from "@mui/material";
+import { Container, Box, Typography } from "@mui/material";
 import Swal from "sweetalert2";
 
-// IMPORTA LOS COMPONENTES CREADOS
+// COMPONENTES
 import RecargaDepositInfo from "../../components/saldorecarga/RecargaDepositInfo";
 import RecargaForm from "../../components/saldorecarga/RecargaForm";
 import RecargaHistory from "../../components/saldorecarga/RecargaHistory";
+
+
 
 const SolicitarRecarga = () => {
   const { pathname } = useLocation();
@@ -37,9 +39,9 @@ const SolicitarRecarga = () => {
     },
   ];
 
-
   useEffect(() => {
     fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchHistory = async () => {
@@ -65,6 +67,7 @@ const SolicitarRecarga = () => {
       await axios.post("/recargar-saldo", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
+
       Swal.fire({
         icon: "success",
         title: "🚀 Solicitud enviada",
@@ -104,46 +107,101 @@ const SolicitarRecarga = () => {
           { label: "Recarga", path: pathname },
         ]}
       />
-      <Container sx={{ mt: 4, mb: 4, px: { xs: 2, md: 0 } }}>
+
+      {/* FONDO BLANCO premium */}
+      <Box
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          py: { xs: 3, md: 5 },
+          background: "#fff",
+        }}
+      >
+        {/* blobs sutiles */}
         <Box
           sx={{
-            display: "flex",
-            flexDirection: { xs: "column", md: "row" },
-            gap: 4,
-            alignItems: "stretch",
-            mb: 4,
+            position: "absolute",
+            inset: 0,
+            pointerEvents: "none",
+            background:
+              "radial-gradient(700px 340px at 10% 15%, rgba(25,118,210,0.10), transparent 60%)," +
+              "radial-gradient(640px 320px at 90% 25%, rgba(156,39,176,0.08), transparent 60%)," +
+              "radial-gradient(720px 360px at 50% 95%, rgba(0,229,255,0.07), transparent 65%)",
           }}
-        >
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{ flex: 1 }}
-          >
-            <RecargaDepositInfo bancos={bancos} referencia={referencia} />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
-            style={{ flex: 1 }}
-          >
-            <RecargaForm
-              submitting={submitting}
-              onSubmit={onSubmit}
-              receiptFile={receiptFile}
-              setReceiptFile={setReceiptFile}
-            />
-          </motion.div>
-        </Box>
-        <RecargaHistory
-          historyFiltrada={historyFiltrada}
-          loading={loading}
-          filtroEstado={filtroEstado}
-          setFiltroEstado={setFiltroEstado}
-          fetchHistory={fetchHistory} // <-- ¡Esta es la línea clave!
         />
-      </Container>
+
+        <Container sx={{ position: "relative", zIndex: 1, px: { xs: 2, md: 0 } }}>
+          {/* Header */}
+          <Box sx={{ mb: 3 }}>
+            <Typography
+              sx={{
+                color: "#0b1220",
+                fontWeight: 900,
+                letterSpacing: "-0.02em",
+                fontSize: { xs: 22, sm: 28, md: 32 },
+              }}
+            >
+              Recargar saldo
+            </Typography>
+            <Typography sx={{ color: "rgba(11,18,32,0.68)", mt: 0.5 }}>
+              Deposita/Transfiere y manda tu solicitud con comprobante.
+            </Typography>
+          </Box>
+
+          {/* Grid de Cards */}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 3,
+              alignItems: "stretch",
+              mb: 3,
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45 }}
+              style={{ height: "100%" }}
+            >
+              <RecargaDepositInfo bancos={bancos} referencia={referencia} />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, delay: 0.06 }}
+              style={{ height: "100%" }}
+            >
+              <RecargaForm
+                submitting={submitting}
+                onSubmit={onSubmit}
+                receiptFile={receiptFile}
+                setReceiptFile={setReceiptFile}
+              />
+            </motion.div>
+          </Box>
+
+          {/* Historial dentro de card */}
+          <Box
+            sx={{
+              borderRadius: 3,
+              overflow: "hidden",
+              background: "#fff",
+              border: "1px solid rgba(15,23,42,0.10)",
+              boxShadow: "0 18px 45px rgba(2, 6, 23, 0.08)",
+            }}
+          >
+            <RecargaHistory
+              historyFiltrada={historyFiltrada}
+              loading={loading}
+              filtroEstado={filtroEstado}
+              setFiltroEstado={setFiltroEstado}
+              fetchHistory={fetchHistory}
+            />
+          </Box>
+        </Container>
+      </Box>
     </LayoutOne>
   );
 };

@@ -25,7 +25,7 @@ const LandingFooterSection = () => {
           <Grid item xs={12} md={4} textAlign={{ xs: "center", md: "left" }}>
             <Box mb={2}>
               <img
-                src="/assets/img/logo1.png"
+                src="/assets/img/logo3.png"
                 alt="TeLoRecargo Logo"
                 style={{ width: 160, height: "auto" }}
               />
