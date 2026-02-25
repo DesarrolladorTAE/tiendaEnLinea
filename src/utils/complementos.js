@@ -49,6 +49,12 @@ const complementos = [
     nombre: "Renovación de Dominio y hosting anual grupointercomp.com",
     precio: 1700,
     tipo: "anual",
+  },
+  {
+    complemento_id: 9,
+    nombre: "MataDatos en Marca Blanca",
+    precio: 1000,
+    tipo: "unico",
   }
 ];
 

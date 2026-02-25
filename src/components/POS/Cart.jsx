@@ -1,5 +1,5 @@
 // src/components/POS/Cart.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Box,
   Typography,
@@ -62,7 +62,6 @@ const getBaseProductId = (item) => {
 const getVariantId = (item) =>
   item?.variant_id ?? item?.variation_id ?? item?.variant?.id ?? null;
 
-
 export default function CartSidebar({
   cart,
   onRemove,
@@ -77,22 +76,141 @@ export default function CartSidebar({
   // ✅ Tap-to-edit: en móvil, inputs readonly hasta tocar
   const [activeField, setActiveField] = useState(null);
 
-  const tapToEditProps = (fieldKey, inputMode = "text") => ({
-    InputProps: {
-      readOnly: isMobile && activeField !== fieldKey,
-    },
-    inputProps: { inputMode },
+  // ✅ Scroll container real
+  const paperRef = useRef(null);
+
+  // ✅ alto del teclado estimado (visualViewport)
+  const [kb, setKb] = useState(0);
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const compute = () => {
+      const raw = window.innerHeight - vv.height - (vv.offsetTop || 0);
+      setKb(raw > 0 ? Math.round(raw) : 0);
+    };
+
+    compute();
+    vv.addEventListener("resize", compute);
+    vv.addEventListener("scroll", compute);
+    window.addEventListener("orientationchange", compute);
+
+    return () => {
+      vv.removeEventListener("resize", compute);
+      vv.removeEventListener("scroll", compute);
+      window.removeEventListener("orientationchange", compute);
+    };
+  }, [isMobile]);
+
+  // ✅ asegurar visibilidad scrolleando el Paper (no window)
+  const ensureVisible = (nodeOrInput) => {
+    if (!isMobile) return;
+    const scroller = paperRef.current;
+    if (!scroller) return;
+
+    const input =
+      nodeOrInput?.tagName === "INPUT"
+        ? nodeOrInput
+        : nodeOrInput?.querySelector?.("input") ||
+          nodeOrInput?.closest?.(".MuiFormControl-root")?.querySelector?.("input") ||
+          null;
+
+    const target = input || nodeOrInput;
+    if (!target) return;
+
+    const doScroll = () => {
+      try {
+        const sRect = scroller.getBoundingClientRect();
+        const tRect = target.getBoundingClientRect();
+
+        const topPad = 16;
+        const bottomPad = 24;
+
+        const keyboard = kb || 0;
+
+        const visibleTop = sRect.top + topPad;
+        const visibleBottom = sRect.bottom - keyboard - bottomPad;
+
+        if (tRect.bottom > visibleBottom) {
+          scroller.scrollTo({
+            top: scroller.scrollTop + (tRect.bottom - visibleBottom),
+            behavior: "smooth",
+          });
+        } else if (tRect.top < visibleTop) {
+          scroller.scrollTo({
+            top: Math.max(0, scroller.scrollTop - (visibleTop - tRect.top)),
+            behavior: "smooth",
+          });
+        }
+      } catch {}
+    };
+
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 250);
+  };
+
+  // ✅ iOS/Android: focus + scroll universal (evita que solo “Últimos 4” funcione)
+  const focusAndScroll = (inputEl) => {
+    if (!isMobile || !inputEl) return;
+
+    // focus sin scroll automático loco (iOS)
+    try {
+      inputEl.focus({ preventScroll: true });
+    } catch {
+      inputEl.focus?.();
+    }
+
+    const run = () => {
+      try {
+        inputEl.scrollIntoView({ block: "center", inline: "nearest" });
+      } catch {}
+      ensureVisible(inputEl);
+    };
+
+    requestAnimationFrame(run);
+    setTimeout(run, 300);
+  };
+
+  // ✅ iOS: rescate cuando Safari ignora handlers del wrapper
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const onFocusIn = (e) => {
+      const el = e.target;
+      if (!el) return;
+
+      const tag = (el.tagName || "").toLowerCase();
+      if (tag !== "input" && tag !== "textarea" && !el.isContentEditable) return;
+
+      focusAndScroll(el);
+    };
+
+    document.addEventListener("focusin", onFocusIn);
+    return () => document.removeEventListener("focusin", onFocusIn);
+  }, [isMobile, kb]);
+
+  // ✅ Tap-to-edit SIN inputMode numeric (teclado normal)
+  const tapToEditProps = (fieldKey) => ({
+    InputProps: { readOnly: isMobile && activeField !== fieldKey },
     onClick: (e) => {
       if (!isMobile) return;
+
+      const input = e.currentTarget.querySelector("input");
       if (activeField !== fieldKey) {
         e.preventDefault();
         e.stopPropagation();
         setActiveField(fieldKey);
-        requestAnimationFrame(() => {
-          const input = e.currentTarget.querySelector("input");
-          input?.focus();
-        });
       }
+
+      requestAnimationFrame(() => focusAndScroll(input));
+    },
+    onFocus: (e) => {
+      if (!isMobile) return;
+      const input = e.currentTarget.querySelector("input");
+      focusAndScroll(input);
     },
     onBlur: () => {
       if (!isMobile) return;
@@ -183,7 +301,7 @@ export default function CartSidebar({
 
       return {
         product_id: baseId,
-        variant_id: variantId || null, // ✅ V2
+        variant_id: variantId || null,
         quantity: parseFloat(item.quantity),
         unit_price: parseFloat(item.price),
         original_price: Number.isFinite(original)
@@ -346,6 +464,20 @@ export default function CartSidebar({
     background: "#fff",
     borderColor: "divider",
     boxShadow: variant === "desktop" ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
+
+    // ✅ UNIVERSAL (iOS/Android): un solo scroll container + dvh + hacks iOS
+    ...(isMobile
+      ? {
+          height: "100dvh",
+          maxHeight: "calc(100dvh - 110px)",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+          transform: "translateZ(0)",
+          willChange: "transform",
+          paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
+        }
+      : {}),
   };
 
   const rootSx = {
@@ -356,7 +488,16 @@ export default function CartSidebar({
   };
 
   const inputCommon = {
-    onFocus: () => setScannerEnabled?.(false),
+    onFocus: (e) => {
+      setScannerEnabled?.(false);
+      if (isMobile) {
+        const input =
+          e.currentTarget?.tagName === "INPUT"
+            ? e.currentTarget
+            : e.currentTarget.querySelector?.("input");
+        focusAndScroll(input);
+      }
+    },
     onBlur: () => setScannerEnabled?.(true),
   };
 
@@ -387,7 +528,7 @@ export default function CartSidebar({
         <Stack direction="row" spacing={1} alignItems="center">
           <ShoppingCartRoundedIcon fontSize="small" />
           <Typography variant="h6" sx={{ fontWeight: 900 }}>
-            Carrito
+            Carrito!
           </Typography>
           <Chip
             size="small"
@@ -399,7 +540,7 @@ export default function CartSidebar({
         <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
       </Box>
 
-      <Paper variant="outlined" sx={paperSx}>
+      <Paper ref={paperRef} variant="outlined" sx={paperSx}>
         {cart.length === 0 ? (
           <Typography color="text.secondary">Sin artículos</Typography>
         ) : (
@@ -425,11 +566,7 @@ export default function CartSidebar({
                     spacing={1}
                   >
                     <Box sx={{ minWidth: 0 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 700 }}
-                        noWrap
-                      >
+                      <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
                         {item.display_name || item.name}
                       </Typography>
 
@@ -472,7 +609,6 @@ export default function CartSidebar({
                                 ),
                               );
                             } else {
-                              // ✅ si baja de 1, elimina línea
                               onRemove(cartKey);
                             }
                           }}
@@ -482,13 +618,11 @@ export default function CartSidebar({
 
                         <TextField
                           value={item.inputValue ?? item.quantity}
-                          type="text"
+                          type="text" // ✅ teclado normal
                           size="small"
                           {...inputCommon}
-                          {...tapToEditProps(`qty-${cartKey}`, "decimal")}
+                          {...tapToEditProps(`qty-${cartKey}`)}
                           inputProps={{
-                            ...tapToEditProps(`qty-${cartKey}`, "decimal")
-                              .inputProps,
                             style: { textAlign: "center", width: 72 },
                             pattern: "[0-9]*[.,]?[0-9]*",
                           }}
@@ -519,7 +653,6 @@ export default function CartSidebar({
                                     ? { ...prod, inputValue: undefined }
                                     : prod,
                                 )
-                                // ✅ si quedó 0, elimina
                                 .filter((prod) => {
                                   if (getCartKey(prod) !== cartKey) return true;
                                   return Number(prod.quantity || 0) > 0;
@@ -566,7 +699,7 @@ export default function CartSidebar({
                       <Tooltip title="Eliminar">
                         <IconButton
                           size="small"
-                          onClick={() => onRemove(cartKey)} // ✅ eliminar por línea
+                          onClick={() => onRemove(cartKey)}
                           color="error"
                         >
                           <DeleteIcon fontSize="small" />
@@ -636,7 +769,7 @@ export default function CartSidebar({
                                 <>
                                   <TextField
                                     label="Efectivo recibido"
-                                    type="text"
+                                    type="text" // ✅ teclado normal
                                     fullWidth
                                     margin="dense"
                                     value={cashReceived}
@@ -644,15 +777,8 @@ export default function CartSidebar({
                                       setCashReceived(e.target.value)
                                     }
                                     {...inputCommon}
-                                    {...tapToEditProps(
-                                      "cashReceived",
-                                      "decimal",
-                                    )}
+                                    {...tapToEditProps("cashReceived")}
                                     inputProps={{
-                                      ...tapToEditProps(
-                                        "cashReceived",
-                                        "decimal",
-                                      ).inputProps,
                                       pattern: "[0-9]*[.,]?[0-9]*",
                                     }}
                                   />
@@ -691,11 +817,13 @@ export default function CartSidebar({
                                         })
                                       }
                                       {...inputCommon}
-                                      {...tapToEditProps(`ref-${key}`, "text")}
+                                      {...tapToEditProps(`ref-${key}`)}
                                     />
+
                                     {CARDLIKE.includes(key) && (
                                       <TextField
                                         label="Últimos 4"
+                                        type="text" // ✅ teclado normal
                                         margin="dense"
                                         value={d.ultimos4}
                                         onChange={(e) => {
@@ -709,15 +837,8 @@ export default function CartSidebar({
                                         placeholder="2541"
                                         sx={{ width: { xs: "100%", sm: 170 } }}
                                         {...inputCommon}
-                                        {...tapToEditProps(
-                                          `ult4-${key}`,
-                                          "numeric",
-                                        )}
+                                        {...tapToEditProps(`ult4-${key}`)}
                                         InputProps={{
-                                          ...tapToEditProps(
-                                            `ult4-${key}`,
-                                            "numeric",
-                                          ).InputProps,
                                           startAdornment: (
                                             <Typography
                                               sx={{
@@ -741,7 +862,7 @@ export default function CartSidebar({
                                   <Stack spacing={1}>
                                     <TextField
                                       label="Monto"
-                                      type="text"
+                                      type="text" // ✅ teclado normal
                                       value={d.amount}
                                       onChange={(e) =>
                                         setDetail(key, {
@@ -751,15 +872,8 @@ export default function CartSidebar({
                                       fullWidth
                                       margin="dense"
                                       {...inputCommon}
-                                      {...tapToEditProps(
-                                        `amount-${key}`,
-                                        "decimal",
-                                      )}
+                                      {...tapToEditProps(`amount-${key}`)}
                                       inputProps={{
-                                        ...tapToEditProps(
-                                          `amount-${key}`,
-                                          "decimal",
-                                        ).inputProps,
                                         pattern: "[0-9]*[.,]?[0-9]*",
                                       }}
                                     />
@@ -774,10 +888,11 @@ export default function CartSidebar({
                                       fullWidth
                                       margin="dense"
                                       {...inputCommon}
-                                      {...tapToEditProps(`ref-${key}`, "text")}
+                                      {...tapToEditProps(`ref-${key}`)}
                                     />
                                     <TextField
                                       label="Últimos 4"
+                                      type="text" // ✅ teclado normal
                                       value={d.ultimos4}
                                       onChange={(e) => {
                                         const v = e.target.value.replace(
@@ -791,15 +906,8 @@ export default function CartSidebar({
                                       fullWidth
                                       margin="dense"
                                       {...inputCommon}
-                                      {...tapToEditProps(
-                                        `ult4-${key}`,
-                                        "numeric",
-                                      )}
+                                      {...tapToEditProps(`ult4-${key}`)}
                                       InputProps={{
-                                        ...tapToEditProps(
-                                          `ult4-${key}`,
-                                          "numeric",
-                                        ).InputProps,
                                         startAdornment: (
                                           <Typography
                                             sx={{
@@ -817,7 +925,7 @@ export default function CartSidebar({
                                 ) : (
                                   <TextField
                                     label="Monto"
-                                    type="text"
+                                    type="text" // ✅ teclado normal
                                     value={d.amount}
                                     onChange={(e) =>
                                       setDetail(key, { amount: e.target.value })
@@ -825,15 +933,8 @@ export default function CartSidebar({
                                     fullWidth
                                     margin="dense"
                                     {...inputCommon}
-                                    {...tapToEditProps(
-                                      `amount-${key}`,
-                                      "decimal",
-                                    )}
+                                    {...tapToEditProps(`amount-${key}`)}
                                     inputProps={{
-                                      ...tapToEditProps(
-                                        `amount-${key}`,
-                                        "decimal",
-                                      ).inputProps,
                                       pattern: "[0-9]*[.,]?[0-9]*",
                                     }}
                                   />
