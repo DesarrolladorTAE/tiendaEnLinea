@@ -1,5 +1,5 @@
 // src/components/POS/Cart.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -42,19 +42,11 @@ const toNumber = (v) => {
 
 // ✅ Clave única por línea de carrito (variante/almacén/lo-que-sea)
 const getCartKey = (item) =>
-  String(
-    item?.cart_key ??
-      item?.cartKey ??
-      item?.line_id ??
-      item?.lineId ??
-      item?.id,
-  );
+  String(item?.cart_key ?? item?.cartKey ?? item?.line_id ?? item?.lineId ?? item?.id);
 
 // ✅ ID real del producto (si viene "123-v5" o "123-w9" regresa 123)
 const getBaseProductId = (item) => {
-  const raw = String(
-    item?.product_id ?? item?.base_id ?? item?.baseId ?? item?.id ?? "",
-  );
+  const raw = String(item?.product_id ?? item?.base_id ?? item?.baseId ?? item?.id ?? "");
   const m = raw.match(/^(\d+)(?:-(?:v|w)\d+)?$/);
   return m ? Number(m[1]) : Number(raw) || null;
 };
@@ -69,12 +61,9 @@ export default function CartSidebar({
   setScannerEnabled,
   setModalDescuentoActivo,
   setCart,
-  variant = "desktop", // ✅ "desktop" | "mobile"
+  variant = "desktop", // "desktop" | "mobile"
 }) {
   const isMobile = variant === "mobile";
-
-  // ✅ Tap-to-edit: en móvil, inputs readonly hasta tocar
-  const [activeField, setActiveField] = useState(null);
 
   // ✅ Scroll container real
   const paperRef = useRef(null);
@@ -89,6 +78,7 @@ export default function CartSidebar({
     if (!vv) return;
 
     const compute = () => {
+      // kb aproximado: diferencia entre innerHeight y viewport visible
       const raw = window.innerHeight - vv.height - (vv.offsetTop || 0);
       setKb(raw > 0 ? Math.round(raw) : 0);
     };
@@ -105,76 +95,46 @@ export default function CartSidebar({
     };
   }, [isMobile]);
 
-  // ✅ asegurar visibilidad scrolleando el Paper (no window)
-  const ensureVisible = (nodeOrInput) => {
-    if (!isMobile) return;
-    const scroller = paperRef.current;
-    if (!scroller) return;
+  // ✅ Scroll suave para que el input quede visible dentro del Paper
+  const ensureVisible = useCallback(
+    (inputEl) => {
+      if (!isMobile) return;
+      const scroller = paperRef.current;
+      if (!scroller || !inputEl) return;
 
-    const input =
-      nodeOrInput?.tagName === "INPUT"
-        ? nodeOrInput
-        : nodeOrInput?.querySelector?.("input") ||
-          nodeOrInput?.closest?.(".MuiFormControl-root")?.querySelector?.("input") ||
-          null;
+      const doScroll = () => {
+        try {
+          const sRect = scroller.getBoundingClientRect();
+          const tRect = inputEl.getBoundingClientRect();
 
-    const target = input || nodeOrInput;
-    if (!target) return;
+          const topPad = 16;
+          const bottomPad = 24;
+          const keyboard = kb || 0;
 
-    const doScroll = () => {
-      try {
-        const sRect = scroller.getBoundingClientRect();
-        const tRect = target.getBoundingClientRect();
+          const visibleTop = sRect.top + topPad;
+          const visibleBottom = sRect.bottom - keyboard - bottomPad;
 
-        const topPad = 16;
-        const bottomPad = 24;
+          if (tRect.bottom > visibleBottom) {
+            scroller.scrollTo({
+              top: scroller.scrollTop + (tRect.bottom - visibleBottom),
+              behavior: "smooth",
+            });
+          } else if (tRect.top < visibleTop) {
+            scroller.scrollTo({
+              top: Math.max(0, scroller.scrollTop - (visibleTop - tRect.top)),
+              behavior: "smooth",
+            });
+          }
+        } catch {}
+      };
 
-        const keyboard = kb || 0;
+      requestAnimationFrame(doScroll);
+      setTimeout(doScroll, 250);
+    },
+    [isMobile, kb],
+  );
 
-        const visibleTop = sRect.top + topPad;
-        const visibleBottom = sRect.bottom - keyboard - bottomPad;
-
-        if (tRect.bottom > visibleBottom) {
-          scroller.scrollTo({
-            top: scroller.scrollTop + (tRect.bottom - visibleBottom),
-            behavior: "smooth",
-          });
-        } else if (tRect.top < visibleTop) {
-          scroller.scrollTo({
-            top: Math.max(0, scroller.scrollTop - (visibleTop - tRect.top)),
-            behavior: "smooth",
-          });
-        }
-      } catch {}
-    };
-
-    requestAnimationFrame(doScroll);
-    setTimeout(doScroll, 250);
-  };
-
-  // ✅ iOS/Android: focus + scroll universal (evita que solo “Últimos 4” funcione)
-  const focusAndScroll = (inputEl) => {
-    if (!isMobile || !inputEl) return;
-
-    // focus sin scroll automático loco (iOS)
-    try {
-      inputEl.focus({ preventScroll: true });
-    } catch {
-      inputEl.focus?.();
-    }
-
-    const run = () => {
-      try {
-        inputEl.scrollIntoView({ block: "center", inline: "nearest" });
-      } catch {}
-      ensureVisible(inputEl);
-    };
-
-    requestAnimationFrame(run);
-    setTimeout(run, 300);
-  };
-
-  // ✅ iOS: rescate cuando Safari ignora handlers del wrapper
+  // ✅ iOS/Android: cuando se enfoque cualquier input, lo centramos
   useEffect(() => {
     if (!isMobile) return;
 
@@ -185,44 +145,22 @@ export default function CartSidebar({
       const tag = (el.tagName || "").toLowerCase();
       if (tag !== "input" && tag !== "textarea" && !el.isContentEditable) return;
 
-      focusAndScroll(el);
+      // scrollIntoView ayuda en Safari
+      try {
+        el.scrollIntoView({ block: "center", inline: "nearest" });
+      } catch {}
+      ensureVisible(el);
     };
 
     document.addEventListener("focusin", onFocusIn);
     return () => document.removeEventListener("focusin", onFocusIn);
-  }, [isMobile, kb]);
+  }, [isMobile, ensureVisible]);
 
-  // ✅ Tap-to-edit SIN inputMode numeric (teclado normal)
-  const tapToEditProps = (fieldKey) => ({
-    InputProps: { readOnly: isMobile && activeField !== fieldKey },
-    onClick: (e) => {
-      if (!isMobile) return;
-
-      const input = e.currentTarget.querySelector("input");
-      if (activeField !== fieldKey) {
-        e.preventDefault();
-        e.stopPropagation();
-        setActiveField(fieldKey);
-      }
-
-      requestAnimationFrame(() => focusAndScroll(input));
-    },
-    onFocus: (e) => {
-      if (!isMobile) return;
-      const input = e.currentTarget.querySelector("input");
-      focusAndScroll(input);
-    },
-    onBlur: () => {
-      if (!isMobile) return;
-      setActiveField(null);
-    },
-  });
-
-  // Selección (1 a 3)
+  // ✅ Selección (1 a 3)
   const [selected, setSelected] = useState(["efectivo"]);
 
   // Estados por método
-  const [cashReceived, setCashReceived] = useState(""); // solo si 1 método = efectivo
+  const [cashReceived, setCashReceived] = useState("");
   const [details, setDetails] = useState({
     efectivo: { amount: "", referencia: "", ultimos4: "" },
     td: { amount: "", referencia: "", ultimos4: "" },
@@ -235,8 +173,7 @@ export default function CartSidebar({
   const total = useMemo(
     () =>
       cart.reduce(
-        (sum, item) =>
-          sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+        (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
         0,
       ),
     [cart],
@@ -256,7 +193,7 @@ export default function CartSidebar({
     [selected, details],
   );
 
-  // Cambios visuales
+  // Cambio visual
   const cambioUnico =
     selectedCount === 1 && selected[0] === "efectivo"
       ? Math.max(0, (toNumber(cashReceived) || 0) - total)
@@ -269,21 +206,19 @@ export default function CartSidebar({
       ? +(sumSelected - total).toFixed(2)
       : 0;
 
-  // Manejo de selección (máx. 3)
   const toggleMethod = (m) => {
     setCashReceived("");
     setSelected((prev) => {
       const exists = prev.includes(m);
       if (exists) {
         const next = prev.filter((x) => x !== m);
-        return next.length ? next : ["efectivo"]; // siempre uno
+        return next.length ? next : ["efectivo"];
       }
-      if (prev.length >= 3) return prev; // tope 3
+      if (prev.length >= 3) return prev;
       return [...prev, m];
     });
   };
 
-  // ✅ Payload robusto: product_id real, variante, almacén
   const buildItemsPayload = () =>
     cart.map((item) => {
       const baseId = getBaseProductId(item);
@@ -304,9 +239,7 @@ export default function CartSidebar({
         variant_id: variantId || null,
         quantity: parseFloat(item.quantity),
         unit_price: parseFloat(item.price),
-        original_price: Number.isFinite(original)
-          ? +original
-          : parseFloat(item.price),
+        original_price: Number.isFinite(original) ? +original : parseFloat(item.price),
         discount_percent: parseFloat(item.discount || 0),
         warehouse_id: item.warehouse_id ?? null,
       };
@@ -317,20 +250,13 @@ export default function CartSidebar({
 
     let payments = [];
 
-    // Caso A: solo 1 método
     if (selectedCount === 1) {
       const m = selected[0];
 
       if (m === "efectivo") {
         const recibido = toNumber(cashReceived);
-        if (!Number.isFinite(recibido)) {
-          showError("Ingresa un monto de efectivo válido.");
-          return;
-        }
-        if (recibido + 0.00001 < total) {
-          showError("El efectivo recibido no cubre el total.");
-          return;
-        }
+        if (!Number.isFinite(recibido)) return showError("Ingresa un monto de efectivo válido.");
+        if (recibido + 0.00001 < total) return showError("El efectivo recibido no cubre el total.");
 
         const aplicado = Math.min(recibido, total);
         const r = +recibido.toFixed(2);
@@ -346,13 +272,10 @@ export default function CartSidebar({
         ];
       } else {
         const { referencia, ultimos4 } = details[m];
-        if (
-          !referencia?.trim() ||
-          (CARDLIKE.includes(m) && (ultimos4 || "").length !== 4)
-        ) {
-          showError("Completa referencia y últimos 4.");
-          return;
+        if (!referencia?.trim() || (CARDLIKE.includes(m) && (ultimos4 || "").length !== 4)) {
+          return showError("Completa referencia y últimos 4.");
         }
+
         payments = [
           {
             method: m,
@@ -363,20 +286,16 @@ export default function CartSidebar({
         ];
       }
     } else {
-      // Caso B: 2 o 3 métodos
       for (const m of selected) {
         const { amount, referencia, ultimos4 } = details[m];
         const val = toNumber(amount);
 
-        if (!Number.isFinite(val) || val <= 0) {
-          showError("Todos los montos deben ser mayores que 0.");
-          return;
-        }
+        if (!Number.isFinite(val) || val <= 0) return showError("Todos los montos deben ser mayores que 0.");
+
         if (CARDLIKE.includes(m)) {
           if (!referencia?.trim() || (ultimos4 || "").length !== 4) {
             const label = METHODS.find((x) => x.key === m)?.label || m;
-            showError(`Completa referencia y últimos 4 para ${label}.`);
-            return;
+            return showError(`Completa referencia y últimos 4 para ${label}.`);
           }
         }
       }
@@ -386,17 +305,13 @@ export default function CartSidebar({
         .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 
       if (sumaValida + 0.00001 < total) {
-        showError(
-          `Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(
-            2,
-          )}.`,
-        );
-        return;
+        return showError(`Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(2)}.`);
       }
 
       payments = selected.map((m) => {
         const { amount, referencia, ultimos4 } = details[m];
         const val = toNumber(amount);
+
         const p = { method: m, amount: +val.toFixed(2) };
 
         if (CARDLIKE.includes(m)) {
@@ -423,7 +338,6 @@ export default function CartSidebar({
 
     onCheckout(data);
 
-    // reset capturas
     setCashReceived("");
     setDetails({
       efectivo: { amount: "", referencia: "", ultimos4: "" },
@@ -431,10 +345,8 @@ export default function CartSidebar({
       tc: { amount: "", referencia: "", ultimos4: "" },
       transferencia: { amount: "", referencia: "", ultimos4: "" },
     });
-    setActiveField(null);
   };
 
-  // ✅ aplica cambios por línea (cartKey) para no romper variantes/almacenes
   const aplicarCambioProducto = (nuevoProducto) => {
     const newKey = getCartKey(nuevoProducto);
 
@@ -458,23 +370,20 @@ export default function CartSidebar({
     setCart(actualizado);
   };
 
+  // ✅ Un solo contenedor scrolleable (Paper)
   const paperSx = {
     p: { xs: 1.5, md: 2 },
     borderRadius: 3,
     background: "#fff",
     borderColor: "divider",
     boxShadow: variant === "desktop" ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
-
-    // ✅ UNIVERSAL (iOS/Android): un solo scroll container + dvh + hacks iOS
     ...(isMobile
       ? {
-          height: "100dvh",
-          maxHeight: "calc(100dvh - 110px)",
+          height: "100%",
+          maxHeight: "100%",
           overflowY: "auto",
           WebkitOverflowScrolling: "touch",
           overscrollBehavior: "contain",
-          transform: "translateZ(0)",
-          willChange: "transform",
           paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
         }
       : {}),
@@ -495,7 +404,7 @@ export default function CartSidebar({
           e.currentTarget?.tagName === "INPUT"
             ? e.currentTarget
             : e.currentTarget.querySelector?.("input");
-        focusAndScroll(input);
+        ensureVisible(input);
       }
     },
     onBlur: () => setScannerEnabled?.(true),
@@ -505,8 +414,7 @@ export default function CartSidebar({
     cart.length === 0 ||
     (selectedCount === 1 &&
       selected[0] === "efectivo" &&
-      (!Number.isFinite(toNumber(cashReceived)) ||
-        toNumber(cashReceived) + 0.00001 < total)) ||
+      (!Number.isFinite(toNumber(cashReceived)) || toNumber(cashReceived) + 0.00001 < total)) ||
     (selectedCount >= 2 &&
       selected
         .map((m) => toNumber(details[m].amount))
@@ -517,24 +425,13 @@ export default function CartSidebar({
   return (
     <Box sx={rootSx}>
       {/* Header */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          mb: 1,
-        }}
-      >
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <ShoppingCartRoundedIcon fontSize="small" />
           <Typography variant="h6" sx={{ fontWeight: 900 }}>
             Carrito!
           </Typography>
-          <Chip
-            size="small"
-            label={`${cart.length} item${cart.length === 1 ? "" : "s"}`}
-            sx={{ ml: 0.5 }}
-          />
+          <Chip size="small" label={`${cart.length} item${cart.length === 1 ? "" : "s"}`} sx={{ ml: 0.5 }} />
         </Stack>
 
         <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
@@ -553,18 +450,9 @@ export default function CartSidebar({
                 <Box
                   key={cartKey}
                   component="li"
-                  sx={{
-                    py: 1.2,
-                    borderBottom: "1px solid",
-                    borderColor: "divider",
-                  }}
+                  sx={{ py: 1.2, borderBottom: "1px solid", borderColor: "divider" }}
                 >
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="flex-start"
-                    spacing={1}
-                  >
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
                     <Box sx={{ minWidth: 0 }}>
                       <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
                         {item.display_name || item.name}
@@ -576,23 +464,12 @@ export default function CartSidebar({
                         </Typography>
                       )}
 
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        display="block"
-                      >
+                      <Typography variant="caption" color="text.secondary" display="block">
                         ${Number(item.price || 0).toFixed(2)} c/u · Subtotal: $
-                        {(
-                          Number(item.price || 0) * Number(item.quantity || 0)
-                        ).toFixed(2)}
+                        {(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
                       </Typography>
 
-                      <Stack
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                        sx={{ mt: 1 }}
-                      >
+                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
                         <IconButton
                           size="small"
                           onClick={() => {
@@ -600,11 +477,7 @@ export default function CartSidebar({
                               setCart((prev) =>
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
-                                    ? {
-                                        ...prod,
-                                        quantity:
-                                          Math.floor(Number(prod.quantity)) - 1,
-                                      }
+                                    ? { ...prod, quantity: Math.floor(Number(prod.quantity)) - 1 }
                                     : prod,
                                 ),
                               );
@@ -618,12 +491,12 @@ export default function CartSidebar({
 
                         <TextField
                           value={item.inputValue ?? item.quantity}
-                          type="text" // ✅ teclado normal
+                          type="text"
                           size="small"
                           {...inputCommon}
-                          {...tapToEditProps(`qty-${cartKey}`)}
                           inputProps={{
                             style: { textAlign: "center", width: 72 },
+                            inputMode: "decimal",
                             pattern: "[0-9]*[.,]?[0-9]*",
                           }}
                           onChange={(e) => {
@@ -635,10 +508,7 @@ export default function CartSidebar({
                                     ? {
                                         ...prod,
                                         inputValue: val,
-                                        quantity:
-                                          val === "" || val === "."
-                                            ? 0
-                                            : parseFloat(val),
+                                        quantity: val === "" || val === "." ? 0 : parseFloat(val),
                                       }
                                     : prod,
                                 ),
@@ -649,9 +519,7 @@ export default function CartSidebar({
                             setCart((prev) =>
                               prev
                                 .map((prod) =>
-                                  getCartKey(prod) === cartKey
-                                    ? { ...prod, inputValue: undefined }
-                                    : prod,
+                                  getCartKey(prod) === cartKey ? { ...prod, inputValue: undefined } : prod,
                                 )
                                 .filter((prod) => {
                                   if (getCartKey(prod) !== cartKey) return true;
@@ -667,11 +535,7 @@ export default function CartSidebar({
                             setCart((prev) =>
                               prev.map((prod) =>
                                 getCartKey(prod) === cartKey
-                                  ? {
-                                      ...prod,
-                                      quantity:
-                                        Math.floor(Number(prod.quantity)) + 1,
-                                    }
+                                  ? { ...prod, quantity: Math.floor(Number(prod.quantity)) + 1 }
                                   : prod,
                               ),
                             );
@@ -697,11 +561,7 @@ export default function CartSidebar({
                       </Tooltip>
 
                       <Tooltip title="Eliminar">
-                        <IconButton
-                          size="small"
-                          onClick={() => onRemove(cartKey)}
-                          color="error"
-                        >
+                        <IconButton size="small" onClick={() => onRemove(cartKey)} color="error">
                           <DeleteIcon fontSize="small" />
                         </IconButton>
                       </Tooltip>
@@ -718,11 +578,7 @@ export default function CartSidebar({
               </Typography>
 
               <Box sx={{ mt: 1.5 }}>
-                <Typography
-                  variant="subtitle2"
-                  sx={{ fontWeight: 800 }}
-                  gutterBottom
-                >
+                <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
                   Método(s) de pago (máx. 3)
                 </Typography>
 
@@ -739,26 +595,14 @@ export default function CartSidebar({
                           border: "1px solid",
                           borderColor: isChecked ? "primary.main" : "divider",
                           borderRadius: 2,
-                          background: isChecked
-                            ? "rgba(25,118,210,0.04)"
-                            : "#fff",
+                          background: isChecked ? "rgba(25,118,210,0.04)" : "#fff",
                           transition: "all 120ms ease",
                         }}
                       >
                         <FormGroup>
                           <FormControlLabel
-                            control={
-                              <Checkbox
-                                checked={isChecked}
-                                onChange={() => toggleMethod(key)}
-                                size="small"
-                              />
-                            }
-                            label={
-                              <Typography sx={{ fontWeight: 700 }}>
-                                {label}
-                              </Typography>
-                            }
+                            control={<Checkbox checked={isChecked} onChange={() => toggleMethod(key)} size="small" />}
+                            label={<Typography sx={{ fontWeight: 700 }}>{label}</Typography>}
                           />
                         </FormGroup>
 
@@ -769,84 +613,53 @@ export default function CartSidebar({
                                 <>
                                   <TextField
                                     label="Efectivo recibido"
-                                    type="text" // ✅ teclado normal
+                                    type="text"
                                     fullWidth
                                     margin="dense"
                                     value={cashReceived}
-                                    onChange={(e) =>
-                                      setCashReceived(e.target.value)
-                                    }
+                                    onChange={(e) => setCashReceived(e.target.value)}
                                     {...inputCommon}
-                                    {...tapToEditProps("cashReceived")}
-                                    inputProps={{
-                                      pattern: "[0-9]*[.,]?[0-9]*",
-                                    }}
+                                    inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                   />
                                   {cambioUnico > 0 && (
-                                    <Typography
-                                      variant="body2"
-                                      sx={{ mt: 0.5, fontWeight: 900 }}
-                                    >
+                                    <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
                                       Cambio: ${cambioUnico.toFixed(2)}
                                     </Typography>
                                   )}
                                 </>
                               ) : (
                                 <>
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{ mb: 1 }}
-                                  >
-                                    Se cobrará el total con{" "}
-                                    <strong>{label}</strong>.
+                                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                    Se cobrará el total con <strong>{label}</strong>.
                                   </Typography>
 
-                                  <Stack
-                                    direction={{ xs: "column", sm: "row" }}
-                                    spacing={1}
-                                  >
+                                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
                                     <TextField
                                       label="Referencia"
                                       fullWidth
                                       margin="dense"
                                       value={d.referencia}
-                                      onChange={(e) =>
-                                        setDetail(key, {
-                                          referencia: e.target.value,
-                                        })
-                                      }
+                                      onChange={(e) => setDetail(key, { referencia: e.target.value })}
                                       {...inputCommon}
-                                      {...tapToEditProps(`ref-${key}`)}
                                     />
 
                                     {CARDLIKE.includes(key) && (
                                       <TextField
                                         label="Últimos 4"
-                                        type="text" // ✅ teclado normal
+                                        type="tel"
                                         margin="dense"
                                         value={d.ultimos4}
                                         onChange={(e) => {
-                                          const v = e.target.value.replace(
-                                            /\D/g,
-                                            "",
-                                          );
-                                          if (v.length <= 4)
-                                            setDetail(key, { ultimos4: v });
+                                          const v = e.target.value.replace(/\D/g, "");
+                                          if (v.length <= 4) setDetail(key, { ultimos4: v });
                                         }}
                                         placeholder="2541"
                                         sx={{ width: { xs: "100%", sm: 170 } }}
                                         {...inputCommon}
-                                        {...tapToEditProps(`ult4-${key}`)}
+                                        inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                                         InputProps={{
                                           startAdornment: (
-                                            <Typography
-                                              sx={{
-                                                mr: 1,
-                                                whiteSpace: "nowrap",
-                                                color: "text.secondary",
-                                              }}
-                                            >
+                                            <Typography sx={{ mr: 1, whiteSpace: "nowrap", color: "text.secondary" }}>
                                               **** **** ****
                                             </Typography>
                                           ),
@@ -862,60 +675,38 @@ export default function CartSidebar({
                                   <Stack spacing={1}>
                                     <TextField
                                       label="Monto"
-                                      type="text" // ✅ teclado normal
+                                      type="text"
                                       value={d.amount}
-                                      onChange={(e) =>
-                                        setDetail(key, {
-                                          amount: e.target.value,
-                                        })
-                                      }
+                                      onChange={(e) => setDetail(key, { amount: e.target.value })}
                                       fullWidth
                                       margin="dense"
                                       {...inputCommon}
-                                      {...tapToEditProps(`amount-${key}`)}
-                                      inputProps={{
-                                        pattern: "[0-9]*[.,]?[0-9]*",
-                                      }}
+                                      inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                     />
                                     <TextField
                                       label="Referencia"
                                       value={d.referencia}
-                                      onChange={(e) =>
-                                        setDetail(key, {
-                                          referencia: e.target.value,
-                                        })
-                                      }
+                                      onChange={(e) => setDetail(key, { referencia: e.target.value })}
                                       fullWidth
                                       margin="dense"
                                       {...inputCommon}
-                                      {...tapToEditProps(`ref-${key}`)}
                                     />
                                     <TextField
                                       label="Últimos 4"
-                                      type="text" // ✅ teclado normal
+                                      type="tel"
                                       value={d.ultimos4}
                                       onChange={(e) => {
-                                        const v = e.target.value.replace(
-                                          /\D/g,
-                                          "",
-                                        );
-                                        if (v.length <= 4)
-                                          setDetail(key, { ultimos4: v });
+                                        const v = e.target.value.replace(/\D/g, "");
+                                        if (v.length <= 4) setDetail(key, { ultimos4: v });
                                       }}
                                       placeholder="2541"
                                       fullWidth
                                       margin="dense"
                                       {...inputCommon}
-                                      {...tapToEditProps(`ult4-${key}`)}
+                                      inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                                       InputProps={{
                                         startAdornment: (
-                                          <Typography
-                                            sx={{
-                                              mr: 1,
-                                              whiteSpace: "nowrap",
-                                              color: "text.secondary",
-                                            }}
-                                          >
+                                          <Typography sx={{ mr: 1, whiteSpace: "nowrap", color: "text.secondary" }}>
                                             ****
                                           </Typography>
                                         ),
@@ -925,18 +716,13 @@ export default function CartSidebar({
                                 ) : (
                                   <TextField
                                     label="Monto"
-                                    type="text" // ✅ teclado normal
+                                    type="text"
                                     value={d.amount}
-                                    onChange={(e) =>
-                                      setDetail(key, { amount: e.target.value })
-                                    }
+                                    onChange={(e) => setDetail(key, { amount: e.target.value })}
                                     fullWidth
                                     margin="dense"
                                     {...inputCommon}
-                                    {...tapToEditProps(`amount-${key}`)}
-                                    inputProps={{
-                                      pattern: "[0-9]*[.,]?[0-9]*",
-                                    }}
+                                    inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                   />
                                 )}
                               </>
@@ -955,10 +741,7 @@ export default function CartSidebar({
                       Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
                     </Typography>
                     {cambioMulti > 0 && (
-                      <Typography
-                        variant="body2"
-                        sx={{ mt: 0.5, fontWeight: 900 }}
-                      >
+                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
                         Cambio: ${cambioMulti.toFixed(2)}
                       </Typography>
                     )}
@@ -971,13 +754,7 @@ export default function CartSidebar({
                   disabled={disableConfirm}
                   onClick={handleConfirm}
                   fullWidth
-                  sx={{
-                    mt: 2,
-                    py: 1.2,
-                    borderRadius: 2,
-                    fontWeight: 900,
-                    textTransform: "none",
-                  }}
+                  sx={{ mt: 2, py: 1.2, borderRadius: 2, fontWeight: 900, textTransform: "none" }}
                 >
                   Confirmar pago
                 </Button>

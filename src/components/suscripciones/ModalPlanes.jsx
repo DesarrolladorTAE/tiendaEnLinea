@@ -67,7 +67,7 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
 
   // Conekta
   const [loadingConekta, setLoadingConekta] = useState(false);
-  const [conektaLoaded, setConektaLoaded] = useState(false); // solo para UI/selector
+  const [conektaLoaded, setConektaLoaded] = useState(false);
   const [modalConektaVisible, setModalConektaVisible] = useState(false);
   const [checkoutId, setCheckoutId] = useState("");
 
@@ -80,13 +80,12 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
   // Selector método
   const [modalMetodoPago, setModalMetodoPago] = useState(false);
   const [pendingPayment, setPendingPayment] = useState(null);
-  // pendingPayment: { concepto, monto, onFinish }
+  // pendingPayment: { concepto, monto, onFinish, title, kind, mesesPagados, mesesObtenidos, planName }
 
   // ✅ TEMPORIZADOR (bloquea salida)
-  const [activationOpen, setActivationOpen] = useState(false);
-  const [activationLeft, setActivationLeft] = useState(60);
-
   const ACTIVATION_SECONDS = 60;
+  const [activationOpen, setActivationOpen] = useState(false);
+  const [activationLeft, setActivationLeft] = useState(ACTIVATION_SECONDS);
 
   const activationDone = activationLeft <= 0;
   const activationProgress = useMemo(() => {
@@ -102,21 +101,19 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
 
   useEffect(() => {
     if (!activationOpen) return;
-
-    const t = setInterval(() => {
-      setActivationLeft((p) => Math.max(0, p - 1));
-    }, 1000);
-
+    const t = setInterval(() => setActivationLeft((p) => Math.max(0, p - 1)), 1000);
     return () => clearInterval(t);
   }, [activationOpen]);
 
-  const handleActivationDone = async () => {
-    if (!activationDone) return; // 🔒 safety
+  const handleActivationDone = useCallback(async () => {
+    if (!activationDone) return;
     setActivationOpen(false);
 
-    // aquí ya dejas que se cierre el modal general / refresque UI
-    if (pendingPayment?.onFinish) await pendingPayment.onFinish();
-  };
+    // ✅ Ejecutar finish real (cierra modal principal / refresca lo que quieras)
+    const fn = pendingPayment?.onFinish;
+    setPendingPayment(null);
+    if (fn) await fn();
+  }, [activationDone, pendingPayment]);
 
   // meses a pagar por plan
   const [mesesSeleccionados, setMesesSeleccionados] = useState({});
@@ -131,7 +128,7 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
   const handleNext = (setIndex, total) => setIndex((p) => (p + 1) % total);
 
   /* ======================
-     Cargar script CONEKTA (solo para habilitar el selector)
+     Cargar script CONEKTA
   ====================== */
   useEffect(() => {
     const src = "https://pay.conekta.com/v1.0/js/conekta-checkout.min.js";
@@ -148,7 +145,7 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
   }, []);
 
   /* ======================
-     PayPal: obtener config desde BACKEND
+     PayPal config
   ====================== */
   useEffect(() => {
     let mounted = true;
@@ -174,38 +171,56 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
   }, []);
 
   /* ======================
-     Loader robusto PayPal SDK (ES_MX / MXN / MX)
+     ✅ Loader PayPal SDK ROBUSTO (no se cuelga)
   ====================== */
-  const loadPayPalSdk = useCallback(() => {
-    return new Promise((resolve, reject) => {
+const loadPayPalSdk = useCallback(() => {
+  return new Promise((resolve, reject) => {
+    try {
+      // Ya está listo
       if (window.paypal?.Buttons) return resolve(true);
       if (!paypalClientId) return reject(new Error("paypalClientId vacío"));
 
+      const src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
+        paypalClientId
+      )}&currency=MXN&intent=capture&components=buttons&locale=es_MX`;
+
       const existing = document.querySelector('script[data-paypal-sdk="true"]');
+
+      const waitUntilReady = (maxMs = 12000) => {
+        const start = Date.now();
+        const timer = setInterval(() => {
+          if (window.paypal?.Buttons) {
+            clearInterval(timer);
+            resolve(true);
+          } else if (Date.now() - start > maxMs) {
+            clearInterval(timer);
+            reject(new Error("Timeout: PayPal SDK no inicializó"));
+          }
+        }, 150);
+      };
+
+      // Si ya existe, solo espera a que window.paypal aparezca
       if (existing) {
-        existing.addEventListener("load", () => resolve(true));
-        existing.addEventListener("error", () =>
-          reject(new Error("PayPal SDK error"))
-        );
-        setTimeout(() => {
-          if (window.paypal?.Buttons) resolve(true);
-        }, 600);
+        waitUntilReady();
         return;
       }
 
+      // Crear script correctamente
       const script = document.createElement("script");
       script.setAttribute("data-paypal-sdk", "true");
       script.async = true;
+      script.src = src;
 
-      script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
-        paypalClientId
-      )}&currency=MXN&intent=capture&components=buttons&locale=es_MX&buyer-country=MX`;
+      script.onload = () => waitUntilReady();
+      script.onerror = () =>
+        reject(new Error("No se pudo cargar PayPal SDK (script error)"));
 
-      script.onload = () => resolve(true);
-      script.onerror = () => reject(new Error("No se pudo cargar PayPal SDK"));
       document.body.appendChild(script);
-    });
-  }, [paypalClientId]);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}, [paypalClientId]);
 
   useEffect(() => {
     if (!paypalClientId) return;
@@ -235,14 +250,13 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
         concepto,
         monto: finalToCharge,
       });
-
       const { checkoutRequestId } = res.data || {};
       if (!checkoutRequestId) throw new Error("checkoutRequestId vacío");
 
       setCheckoutId(checkoutRequestId);
       setModalConektaVisible(true);
 
-      // guardamos callback para cuando termine
+      // conservar onFinish (y todo lo demás) sin perder datos del plan
       setPendingPayment((prev) => ({ ...(prev || {}), onFinish }));
     } finally {
       setLoadingConekta(false);
@@ -250,10 +264,10 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
   };
 
   /* ======================
-     Selector método
+     Selector método (NO pierde title/meses)
   ====================== */
-  const abrirSelectorPago = ({ concepto, monto, onFinish }) => {
-    setPendingPayment({ concepto, monto, onFinish });
+  const abrirSelectorPago = (payload) => {
+    setPendingPayment(payload);
     setModalMetodoPago(true);
   };
 
@@ -280,23 +294,39 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
     const mesesPagados = Number(mesesSeleccionados[plan.plan_id] ?? 1);
     const montoBase = Number(plan.precio_mensual) * mesesPagados;
 
+    const mesesTotales = mesesObtenidos(plan, mesesPagados);
+    const planName = plan.display_name || plan.nombre || plan.name || `Plan #${plan.plan_id}`;
+    const title = `${planName} - ${mesesTotales} mes${mesesTotales === 1 ? "" : "es"}`;
+
     abrirSelectorPago({
-      concepto: `PLAN:${plan.plan_id}:${mesesPagados}`,
+      kind: "plan",
+      planName,
+      mesesPagados,
+      mesesObtenidos: mesesTotales,
+      title, // ✅ visible para el usuario
+      concepto: `PLAN:${plan.plan_id}:${mesesPagados}`, // técnico backend
       monto: montoBase,
       onFinish: async () => {
         setCheckoutId("");
-        onClose();
+        setModalPayPalVisible(false);
+        setModalConektaVisible(false);
+        onClose?.();
       },
     });
   };
 
   const handleCompraComplemento = (comp) => {
+    const title = `${comp.nombre}`;
     abrirSelectorPago({
+      kind: "complemento",
+      title,
       concepto: `COM:${comp.complemento_id}`,
       monto: comp.precio,
       onFinish: async () => {
         setCheckoutId("");
-        onClose();
+        setModalPayPalVisible(false);
+        setModalConektaVisible(false);
+        onClose?.();
       },
     });
   };
@@ -313,12 +343,18 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
     setModalPayPalVisible(false);
   };
 
+  // Evitar que cierren el modal principal mientras hay timer (opcional)
+  const safeCloseMain = () => {
+    if (activationOpen) return; // bloquea cierre
+    onClose?.();
+  };
+
   return (
     <>
       {/* ================== MODAL PRINCIPAL ================== */}
       <Dialog
         open={open}
-        onClose={onClose}
+        onClose={safeCloseMain}
         fullWidth
         maxWidth="md"
         fullScreen={isXs}
@@ -346,10 +382,14 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
             zIndex: 2,
           }}
         >
-          <Typography component="span" variant={isSm ? "h6" : "h5"} fontWeight={800}>
+          <Typography
+            component="span"
+            variant={isSm ? "h6" : "h5"}
+            fontWeight={800}
+          >
             📦 Planes y Complementos
           </Typography>
-          <IconButton onClick={onClose} sx={{ color: "white" }}>
+          <IconButton onClick={safeCloseMain} sx={{ color: "white" }}>
             <CloseIcon />
           </IconButton>
         </DialogTitle>
@@ -385,38 +425,76 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
           {/* ================== PLANES ================== */}
           {tab === 0 && (
             <>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-                <IconButton onClick={() => handlePrev(setIndexPlanes, planesDecorados.length)}>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={1}
+              >
+                <IconButton
+                  onClick={() =>
+                    handlePrev(setIndexPlanes, planesDecorados.length)
+                  }
+                >
                   <ArrowBack />
                 </IconButton>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
                   Plan {indexPlanes + 1}/{planesDecorados.length}
                 </Typography>
-                <IconButton onClick={() => handleNext(setIndexPlanes, planesDecorados.length)}>
+                <IconButton
+                  onClick={() =>
+                    handleNext(setIndexPlanes, planesDecorados.length)
+                  }
+                >
                   <ArrowForward />
                 </IconButton>
               </Stack>
 
-              <SwipeableViews index={indexPlanes} onChangeIndex={setIndexPlanes} enableMouseEvents>
+              <SwipeableViews
+                index={indexPlanes}
+                onChangeIndex={setIndexPlanes}
+                enableMouseEvents
+              >
                 {planesDecorados.map((plan, i) => {
-                  const mesesPagados = Number(mesesSeleccionados[plan.plan_id] ?? 1);
+                  const mesesPagados = Number(
+                    mesesSeleccionados[plan.plan_id] ?? 1
+                  );
                   const mesesTotales = mesesObtenidos(plan, mesesPagados);
 
                   const mensualBase = Number(plan.precio_mensual);
-                  const mensualConRef = Number(plan.precio_con_ref ?? plan.precio_mensual);
+                  const mensualConRef = Number(
+                    plan.precio_con_ref ?? plan.precio_mensual
+                  );
 
                   const subtotalBase = plan.demo ? 0 : mensualBase * mesesPagados;
-                  const subtotalConRef = plan.demo ? 0 : mensualConRef * mesesPagados;
-                  const descuentoEstimado = Math.max(0, subtotalBase - subtotalConRef);
+                  const subtotalConRef = plan.demo
+                    ? 0
+                    : mensualConRef * mesesPagados;
+                  const descuentoEstimado = Math.max(
+                    0,
+                    subtotalBase - subtotalConRef
+                  );
 
                   return (
                     <Box key={i} px={{ xs: 0.25, md: 0.5 }}>
                       <Card sx={{ borderRadius: 3, boxShadow: 4 }}>
                         <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
-                          <Grid container spacing={{ xs: 1.5, md: 2 }} alignItems="flex-start">
+                          <Grid
+                            container
+                            spacing={{ xs: 1.5, md: 2 }}
+                            alignItems="flex-start"
+                          >
                             <Grid item xs={12} md={7}>
-                              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                                <Typography variant={isSm ? "h6" : "h5"} fontWeight={800}>
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                alignItems="center"
+                                flexWrap="wrap"
+                              >
+                                <Typography
+                                  variant={isSm ? "h6" : "h5"}
+                                  fontWeight={800}
+                                >
                                   {plan.nombre}
                                 </Typography>
                                 {Array.isArray(plan.etiquetas) &&
@@ -437,7 +515,9 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                 gutterBottom
                                 sx={{ mt: 0.25, fontWeight: 800 }}
                               >
-                                {plan.demo ? "GRATIS" : `${money(mensualConRef)}/mes`}
+                                {plan.demo
+                                  ? "GRATIS"
+                                  : `${money(mensualConRef)}/mes`}
                               </Typography>
 
                               {plan.showChipRef && (
@@ -450,14 +530,26 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                 />
                               )}
 
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mb: 1 }}
+                              >
                                 {plan.descripcion}
                               </Typography>
 
                               <Stack spacing={0.5}>
                                 {plan.beneficios?.map((b, idx) => (
-                                  <Stack key={idx} direction="row" spacing={0.75} alignItems="center">
-                                    <CheckCircleRounded fontSize="small" color="success" />
+                                  <Stack
+                                    key={idx}
+                                    direction="row"
+                                    spacing={0.75}
+                                    alignItems="center"
+                                  >
+                                    <CheckCircleRounded
+                                      fontSize="small"
+                                      color="success"
+                                    />
                                     <Typography variant="body2">{b}</Typography>
                                   </Stack>
                                 ))}
@@ -478,12 +570,19 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                 }}
                               >
                                 {plan.demo ? (
-                                  <Typography variant="body2" color="text.secondary">
-                                    Este plan es de prueba gratuita por {plan.duracion_dias ?? 14} días.
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                  >
+                                    Este plan es de prueba gratuita por{" "}
+                                    {plan.duracion_dias ?? 14} días.
                                   </Typography>
                                 ) : (
                                   <>
-                                    <Typography variant="subtitle2" sx={{ mb: 0.75 }}>
+                                    <Typography
+                                      variant="subtitle2"
+                                      sx={{ mb: 0.75 }}
+                                    >
                                       Elige meses a pagar:
                                     </Typography>
 
@@ -492,7 +591,10 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                       orientation={isXs ? "vertical" : "horizontal"}
                                       sx={{
                                         width: "100%",
-                                        "& .MuiButton-root": { flex: 1, minWidth: 0 },
+                                        "& .MuiButton-root": {
+                                          flex: 1,
+                                          minWidth: 0,
+                                        },
                                       }}
                                     >
                                       {[1, 5, 10].map((m) => (
@@ -502,7 +604,10 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                           disableTouchRipple
                                           onClick={() => setMesesPlan(plan.plan_id, m)}
                                           color={mesesPagados === m ? "primary" : "inherit"}
-                                          sx={{ fontWeight: 700, py: { xs: 1, md: 1 } }}
+                                          sx={{
+                                            fontWeight: 700,
+                                            py: { xs: 1, md: 1 },
+                                          }}
                                         >
                                           {m} {m === 1 ? "mes" : "meses"}
                                         </Button>
@@ -521,7 +626,12 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                       }}
                                     >
                                       <Stack spacing={0.75}>
-                                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                        <Stack
+                                          direction="row"
+                                          spacing={1}
+                                          alignItems="center"
+                                          flexWrap="wrap"
+                                        >
                                           <Chip
                                             size="small"
                                             label={`Pagas: ${mesesPagados}`}
@@ -538,20 +648,41 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                           )}
                                         </Stack>
 
-                                        <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            justifyContent: "flex-end",
+                                          }}
+                                        >
                                           <Tooltip title="Precio mensual por los meses que pagas (sin promos).">
-                                            <Typography variant="body2" sx={{ fontWeight: 700, whiteSpace: "nowrap" }}>
+                                            <Typography
+                                              variant="body2"
+                                              sx={{
+                                                fontWeight: 700,
+                                                whiteSpace: "nowrap",
+                                              }}
+                                            >
                                               Subtotal (base): {money(subtotalBase)}
                                             </Typography>
                                           </Tooltip>
                                         </Box>
 
                                         {eligibleRef && percentRef > 0 && (
-                                          <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                            <Typography variant="caption" color="success.main">
+                                          <Stack
+                                            direction="row"
+                                            justifyContent="space-between"
+                                            alignItems="center"
+                                          >
+                                            <Typography
+                                              variant="caption"
+                                              color="success.main"
+                                            >
                                               Descuento referidos (-{percentRef}%)
                                             </Typography>
-                                            <Typography variant="caption" color="success.main">
+                                            <Typography
+                                              variant="caption"
+                                              color="success.main"
+                                            >
                                               -{money(descuentoEstimado)}
                                             </Typography>
                                           </Stack>
@@ -559,11 +690,22 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
 
                                         <Divider />
 
-                                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                          <Typography variant="subtitle2" fontWeight={800}>
+                                        <Stack
+                                          direction="row"
+                                          justifyContent="space-between"
+                                          alignItems="center"
+                                        >
+                                          <Typography
+                                            variant="subtitle2"
+                                            fontWeight={800}
+                                          >
                                             Total a pagar
                                           </Typography>
-                                          <Typography variant="h6" fontWeight={900} color="primary">
+                                          <Typography
+                                            variant="h6"
+                                            fontWeight={900}
+                                            color="primary"
+                                          >
                                             {money(subtotalConRef)}
                                           </Typography>
                                         </Stack>
@@ -574,11 +716,18 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                       variant="contained"
                                       color="success"
                                       fullWidth
-                                      sx={{ mt: 1.5, py: 1, fontWeight: 800, borderRadius: 2 }}
+                                      sx={{
+                                        mt: 1.5,
+                                        py: 1,
+                                        fontWeight: 800,
+                                        borderRadius: 2,
+                                      }}
                                       disabled={loadingConekta || loadingPayPal}
                                       onClick={() => handleCompraPlan(plan)}
                                     >
-                                      {loadingConekta || loadingPayPal ? "Procesando..." : "COMPRAR PLAN"}
+                                      {loadingConekta || loadingPayPal
+                                        ? "Procesando..."
+                                        : "COMPRAR PLAN"}
                                     </Button>
                                   </>
                                 )}
@@ -597,19 +746,32 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
           {/* ================== COMPLEMENTOS ================== */}
           {tab === 1 && (
             <>
-              <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-                <IconButton onClick={() => handlePrev(setIndexComp, complementos.length)}>
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={1}
+              >
+                <IconButton
+                  onClick={() => handlePrev(setIndexComp, complementos.length)}
+                >
                   <ArrowBack />
                 </IconButton>
                 <Typography variant="caption" sx={{ opacity: 0.8 }}>
                   Complemento {indexComp + 1}/{complementos.length}
                 </Typography>
-                <IconButton onClick={() => handleNext(setIndexComp, complementos.length)}>
+                <IconButton
+                  onClick={() => handleNext(setIndexComp, complementos.length)}
+                >
                   <ArrowForward />
                 </IconButton>
               </Stack>
 
-              <SwipeableViews index={indexComp} onChangeIndex={setIndexComp} enableMouseEvents>
+              <SwipeableViews
+                index={indexComp}
+                onChangeIndex={setIndexComp}
+                enableMouseEvents
+              >
                 {complementos.map((comp, i) => (
                   <Box key={i} px={{ xs: 0.25, md: 0.5 }}>
                     <Card sx={{ borderRadius: 3, boxShadow: 4 }}>
@@ -631,7 +793,11 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                               {money(comp.precio)}
                             </Typography>
                             {comp.nota && (
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                                sx={{ mt: 0.75 }}
+                              >
                                 📝 {comp.nota}
                               </Typography>
                             )}
@@ -650,10 +816,24 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                 minWidth: 0,
                               }}
                             >
-                              <Stack direction="row" spacing={1} flexWrap="wrap" mb={0.75}>
-                                <Chip label={comp.tipo} size="small" variant="outlined" />
+                              <Stack
+                                direction="row"
+                                spacing={1}
+                                flexWrap="wrap"
+                                mb={0.75}
+                              >
+                                <Chip
+                                  label={comp.tipo}
+                                  size="small"
+                                  variant="outlined"
+                                />
                                 {comp.desde && (
-                                  <Chip label="Desde" color="info" size="small" variant="outlined" />
+                                  <Chip
+                                    label="Desde"
+                                    color="info"
+                                    size="small"
+                                    variant="outlined"
+                                  />
                                 )}
                               </Stack>
 
@@ -661,11 +841,18 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
                                 variant="contained"
                                 color="success"
                                 fullWidth
-                                sx={{ mt: 1, py: 1, fontWeight: 800, borderRadius: 2 }}
+                                sx={{
+                                  mt: 1,
+                                  py: 1,
+                                  fontWeight: 800,
+                                  borderRadius: 2,
+                                }}
                                 disabled={loadingConekta || loadingPayPal}
                                 onClick={() => handleCompraComplemento(comp)}
                               >
-                                {loadingConekta || loadingPayPal ? "Procesando..." : "COMPRAR COMPLEMENTO"}
+                                {loadingConekta || loadingPayPal
+                                  ? "Procesando..."
+                                  : "COMPRAR COMPLEMENTO"}
                               </Button>
                             </Box>
                           </Grid>
@@ -685,7 +872,7 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
         open={modalMetodoPago}
         onClose={() => setModalMetodoPago(false)}
         isXs={isXs}
-        pendingPayment={pendingPayment}
+        pendingPayment={pendingPayment} // ✅ trae title/meses/planName
         paypalLoaded={paypalLoaded}
         conektaLoaded={conektaLoaded}
         onPick={async (method) => {
@@ -705,10 +892,9 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
         checkoutId={checkoutId}
         publicKey={import.meta.env.VITE_CONEKTA_PUBLIC_KEY}
         onFinish={async () => {
-          // ✅ al terminar pago, NO cerramos todo aún.
           setModalConektaVisible(false);
           setCheckoutId("");
-          startActivationTimer(); // 🔒 abre temporizador
+          startActivationTimer(); // ✅ temporizador
         }}
         onErrorPayment={() => {
           setModalConektaVisible(false);
@@ -730,20 +916,17 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
         setPaypalLoaded={setPaypalLoaded}
         loadingPayPal={loadingPayPal}
         setLoadingPayPal={setLoadingPayPal}
-        pendingPayment={pendingPayment}
+        pendingPayment={pendingPayment} // ✅ trae title/meses/planName
         onFinish={async () => {
-          // ✅ al terminar pago, NO cerramos todo aún.
           setModalPayPalVisible(false);
-          startActivationTimer(); // 🔒 abre temporizador
+          startActivationTimer(); // ✅ temporizador
         }}
       />
 
-      {/* ================== MODAL BLOQUEADO TEMPORIZADOR ==================
-          🔒 No se puede cerrar hasta que acabe y el usuario le dé click.
-      */}
+      {/* ================== MODAL BLOQUEADO TEMPORIZADOR ================== */}
       <Dialog
         open={activationOpen}
-        onClose={() => {}}
+        onClose={() => { }}
         disableEscapeKeyDown
         fullWidth
         maxWidth="xs"
@@ -769,7 +952,8 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
 
         <DialogContent sx={{ px: 2.5, pb: 2.5 }}>
           <Typography sx={{ fontWeight: 700 }}>
-            Estamos activando tu plan. Espera <b>1 minuto</b> y luego podrás continuar.
+            Estamos activando tu plan. Espera <b>1 minuto</b> y luego podrás
+            continuar.
           </Typography>
 
           <Box sx={{ mt: 2 }}>
@@ -794,8 +978,11 @@ const ModalPlanesComplementos = ({ open, onClose }) => {
             Continuar
           </Button>
 
-          <Typography variant="caption" sx={{ display: "block", mt: 1, opacity: 0.7 }}>
-            *Cuando termine el contador, dale click en “Continuar” para regresar.*
+          <Typography
+            variant="caption"
+            sx={{ display: "block", mt: 1, opacity: 0.7 }}
+          >
+            *Cuando termine el contador, dale click en “Continuar”.*
           </Typography>
         </DialogContent>
       </Dialog>

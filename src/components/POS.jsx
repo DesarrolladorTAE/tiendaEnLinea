@@ -34,6 +34,7 @@ import { showError, showSuccess } from "../utils/alerts";
 export default function POS({ posName, cambiarVista }) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
+  const isMobile = !isMdUp;
 
   const [ticketData, setTicketData] = useState(null);
   const [showTicket, setShowTicket] = useState(false);
@@ -48,7 +49,7 @@ export default function POS({ posName, cambiarVista }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
-  // ✅ Drawer carrito (móvil + desktop)
+  // ✅ Drawer carrito
   const [cartOpen, setCartOpen] = useState(false);
 
   // ✅ Categorías
@@ -56,7 +57,7 @@ export default function POS({ posName, cambiarVista }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // ✅ Detectar touch device (móvil/tablet)
+  // ✅ Detectar touch device
   const isTouchDevice =
     typeof window !== "undefined" &&
     ("ontouchstart" in window || navigator.maxTouchPoints > 0);
@@ -64,22 +65,18 @@ export default function POS({ posName, cambiarVista }) {
   // ✅ En móvil/tablet: NO activar auto-scanner
   const [scannerEnabled, setScannerEnabled] = useState(() => !isTouchDevice);
 
-  // ✅ POS LOCATION ID como STATE (para que el useEffect se ejecute cuando cambie)
+  // ✅ POS LOCATION ID como STATE
   const [posLocationId, setPosLocationId] = useState(
     Number(localStorage.getItem("POS_LOCATION_ID")) || null,
   );
 
-  // ✅ Sincronizar cambios de POS_LOCATION_ID
   useEffect(() => {
     const sync = () => {
       const next = Number(localStorage.getItem("POS_LOCATION_ID")) || null;
       setPosLocationId(next);
     };
 
-    // Cambios desde otra pestaña
     window.addEventListener("storage", sync);
-
-    // Cambios desde esta misma pestaña (cuando tú lo dispares)
     window.addEventListener("pos:changed", sync);
 
     return () => {
@@ -161,24 +158,16 @@ export default function POS({ posName, cambiarVista }) {
 
     tryFocus();
     return () => clearTimeout(focusTimeout);
-  }, [
-    scannerEnabled,
-    showTicket,
-    modalDescuentoActivo,
-    isTouchDevice,
-    cartOpen,
-  ]);
+  }, [scannerEnabled, showTicket, modalDescuentoActivo, isTouchDevice, cartOpen]);
 
   useEffect(() => setCurrentPage(1), [search, selectedCategoryId]);
 
-  // ✅ Traer categorías por POS (deduce branch en backend)
+  // ✅ Traer categorías por POS
   useEffect(() => {
     let alive = true;
 
     const fetchCategories = async () => {
       try {
-        console.log("🔄 fetchCategories posLocationId:", posLocationId);
-
         if (!posLocationId) {
           if (alive) setCategories([]);
           return;
@@ -186,7 +175,6 @@ export default function POS({ posName, cambiarVista }) {
 
         setLoadingCategories(true);
 
-        // ✅ IMPORTANTE: sin "/" inicial para respetar baseURL
         const resp = await axiosClient.get("categories/by-pos", {
           params: { mode: "flat", pos_location_id: posLocationId },
         });
@@ -206,7 +194,6 @@ export default function POS({ posName, cambiarVista }) {
     };
 
     fetchCategories();
-
     return () => {
       alive = false;
     };
@@ -218,9 +205,7 @@ export default function POS({ posName, cambiarVista }) {
 
   const handleSendTicket = async (phone) => {
     try {
-      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, {
-        phone,
-      });
+      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, { phone });
       showSuccess("✅ Ticket enviado por WhatsApp");
     } catch (e) {
       console.error("Error enviando WhatsApp:", e);
@@ -255,7 +240,7 @@ export default function POS({ posName, cambiarVista }) {
 
     await refetchProducts();
 
-    // ✅ cerrar drawer al cobrar (en ambos)
+    // ✅ cerrar drawer al cobrar
     setCartOpen(false);
 
     if (!isTouchDevice) {
@@ -274,7 +259,6 @@ export default function POS({ posName, cambiarVista }) {
     );
   }
 
-  // ✅ helper robusto para leer category_id
   const productCategoryId = (p) => {
     if (!p) return null;
     if (p.category_id) return Number(p.category_id);
@@ -289,12 +273,10 @@ export default function POS({ posName, cambiarVista }) {
         const term = (search || "").toLowerCase();
 
         const bySearch =
-          p.name?.toLowerCase().includes(term) ||
-          p.sku?.toLowerCase().includes(term);
+          p.name?.toLowerCase().includes(term) || p.sku?.toLowerCase().includes(term);
 
         const byCategory =
-          !selectedCategoryId ||
-          productCategoryId(p) === Number(selectedCategoryId);
+          !selectedCategoryId || productCategoryId(p) === Number(selectedCategoryId);
 
         return bySearch && byCategory;
       })
@@ -322,6 +304,8 @@ export default function POS({ posName, cambiarVista }) {
       if (e.key && e.key.length === 1) setBarcode((prev) => prev + e.key);
     }
   };
+
+  const toggleCart = () => setCartOpen((v) => !v);
 
   return (
     <Box
@@ -354,11 +338,7 @@ export default function POS({ posName, cambiarVista }) {
           <Stack
             direction={{ xs: "column", md: "row" }}
             spacing={1}
-            sx={{
-              width: { xs: "100%", md: "auto" },
-              justifyContent: "center",
-              alignItems: "center",
-            }}
+            sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "center", alignItems: "center" }}
           >
             <Button
               fullWidth={!isMdUp}
@@ -436,9 +416,7 @@ export default function POS({ posName, cambiarVista }) {
             if (!isTouchDevice) setScannerEnabled(true);
             if (!isMdUp) setSearchEditable(false);
           }}
-          InputProps={{
-            readOnly: !isMdUp && !searchEditable,
-          }}
+          InputProps={{ readOnly: !isMdUp && !searchEditable }}
           inputProps={{ inputMode: "search" }}
           onClick={(e) => {
             if (isMdUp) return;
@@ -453,7 +431,7 @@ export default function POS({ posName, cambiarVista }) {
         />
       </Paper>
 
-      {/* ✅ Categorías (móvil: chips; desktop: rail) */}
+      {/* Categorías móvil */}
       {!isMdUp && (
         <CategoriesRail
           categories={categories}
@@ -502,20 +480,13 @@ export default function POS({ posName, cambiarVista }) {
 
         {/* Productos */}
         <Box>
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            mb={1.25}
-          >
+          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.25}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>
                 Productos
               </Typography>
               <Typography variant="body2" sx={{ color: "#6b7280" }}>
-                {loadingCategories
-                  ? "Cargando categorías..."
-                  : `${filteredProducts.length} encontrados`}
+                {loadingCategories ? "Cargando categorías..." : `${filteredProducts.length} encontrados`}
               </Typography>
             </Box>
 
@@ -532,10 +503,7 @@ export default function POS({ posName, cambiarVista }) {
               >
                 <Typography sx={{ fontSize: 12, fontWeight: 900 }}>
                   {selectedCategoryId
-                    ? `Categoría: ${
-                        categories.find((c) => c.id === selectedCategoryId)
-                          ?.name || "Seleccionada"
-                      }`
+                    ? `Categoría: ${categories.find((c) => c.id === selectedCategoryId)?.name || "Seleccionada"}`
                     : "Todas las categorías"}
                 </Typography>
               </Paper>
@@ -549,9 +517,7 @@ export default function POS({ posName, cambiarVista }) {
               gridTemplateColumns: {
                 xs: "repeat(2, minmax(0, 1fr))",
                 sm: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(3, minmax(0, 1fr))", // ✅ 4 columnas fijas en desktop
-                // lg: "repeat(5, minmax(0, 1fr))", // ✅ opcional
-                // xl: "repeat(6, minmax(0, 1fr))", // ✅ opcional
+                md: "repeat(3, minmax(0, 1fr))",
               },
               alignItems: "stretch",
             }}
@@ -588,17 +554,8 @@ export default function POS({ posName, cambiarVista }) {
               borderColor: "divider",
             }}
           >
-            <Box
-              display="flex"
-              justifyContent="center"
-              gap={2}
-              alignItems="center"
-            >
-              <Button
-                variant="outlined"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-              >
+            <Box display="flex" justifyContent="center" gap={2} alignItems="center">
+              <Button variant="outlined" disabled={currentPage === 1} onClick={() => setCurrentPage((p) => p - 1)}>
                 Anterior
               </Button>
               <Typography fontWeight={900}>
@@ -626,32 +583,36 @@ export default function POS({ posName, cambiarVista }) {
         />
       </Box>
 
-      {/* ✅ Burbuja flotante carrito (MÓVIL + DESKTOP) */}
+      {/* ✅ Burbuja flotante carrito (toggle: abre/cierra) */}
       <Box sx={{ position: "fixed", right: 20, bottom: 96, zIndex: 1500 }}>
         <Badge badgeContent={cartCount} color="error">
           <IconButton
-            onClick={() => setCartOpen(true)}
+            onClick={toggleCart}
             sx={{
               width: 64,
               height: 64,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #f59e0b, #fbbf24)",
-              color: "#111827",
+              background: cartOpen
+                ? "linear-gradient(135deg, #111827, #374151)"
+                : "linear-gradient(135deg, #f59e0b, #fbbf24)",
+              color: cartOpen ? "#fff" : "#111827",
               boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
-              border: `1px solid ${alpha("#f59e0b", 0.35)}`,
+              border: `1px solid ${alpha("#000", 0.12)}`,
               "&:active": { transform: "scale(0.98)" },
             }}
           >
-            <ShoppingCartRoundedIcon />
+            {cartOpen ? <CloseRoundedIcon /> : <ShoppingCartRoundedIcon />}
           </IconButton>
         </Badge>
       </Box>
 
-      {/* ✅ Drawer carrito (mobile bottom / desktop right) */}
+      {/* ✅ Drawer carrito: móvil full + scroll interno */}
       <Drawer
         anchor={isMdUp ? "right" : "bottom"}
         open={cartOpen}
         onClose={() => setCartOpen(false)}
+        disableScrollLock // ✅ iOS: evita glitches de teclado/scroll
+        ModalProps={{ keepMounted: true }} // ✅ iOS: más estable
         PaperProps={{
           sx: isMdUp
             ? {
@@ -660,17 +621,24 @@ export default function POS({ posName, cambiarVista }) {
                 background: "#fff",
                 borderLeft: "1px solid",
                 borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
               }
             : {
-                height: "86vh",
+                height: "100dvh", // ✅ pantalla completa real en móviles modernos
+                maxHeight: "100dvh",
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
                 background: "#fff",
                 border: "1px solid",
                 borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
+                overscrollBehavior: "contain",
               },
         }}
       >
+        {/* Header fijo */}
         <Box
           sx={{
             p: 1.25,
@@ -679,6 +647,10 @@ export default function POS({ posName, cambiarVista }) {
             justifyContent: "space-between",
             borderBottom: "1px solid",
             borderColor: "divider",
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            background: "#fff",
           }}
         >
           <Box>
@@ -695,7 +667,17 @@ export default function POS({ posName, cambiarVista }) {
           </IconButton>
         </Box>
 
-        <Box sx={{ p: 1.25, overflow: "auto", height: "100%" }}>
+        {/* ✅ Solo esto scrollea (carrito completo visible) */}
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+            p: 1.25,
+            pb: 2,
+          }}
+        >
           <Cart
             cart={cart}
             setCart={setCart}

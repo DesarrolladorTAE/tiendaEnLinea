@@ -14,8 +14,6 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
-import SellRoundedIcon from "@mui/icons-material/SellRounded";
 
 const paypalImg = "/assets/images/paypal.jpg";
 const conektaImg = "/assets/images/conekta.jpg";
@@ -25,27 +23,18 @@ function money(n) {
   return `$${v.toLocaleString()} MXN`;
 }
 
-function monthsLabel(m) {
-  const v = Number(m || 0);
-  if (!v) return null;
-  return `${v} mes${v === 1 ? "" : "es"}`;
-}
-
 const PaymentMethodModal = ({
   open,
   onClose,
   isXs,
-  pendingPayment, // { concepto, monto, summaryName, planName, meses }
+  pendingPayment,
   paypalLoaded,
   conektaLoaded,
   onPick,
 }) => {
-  const planText = pendingPayment
-    ? pendingPayment.summaryName ||
-      `${pendingPayment.planName || "Plan"}${
-        pendingPayment.meses ? ` · ${monthsLabel(pendingPayment.meses)}` : ""
-      }`
-    : null;
+  const title = pendingPayment?.title || "Resumen del pago";
+  const isPlan = pendingPayment?.kind === "plan";
+  const isComp = pendingPayment?.kind === "complemento";
 
   return (
     <Dialog
@@ -102,9 +91,7 @@ const PaymentMethodModal = ({
                 />
                 <Typography fontWeight={900}>PayPal</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {paypalLoaded
-                    ? "Paga con cuenta o tarjeta"
-                    : "Cargando PayPal…"}
+                  {paypalLoaded ? "Paga con cuenta o tarjeta" : "Cargando PayPal…"}
                 </Typography>
               </CardContent>
             </Card>
@@ -135,21 +122,18 @@ const PaymentMethodModal = ({
                 />
                 <Typography fontWeight={900}>Conekta</Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {conektaLoaded
-                    ? "Tarjeta o transferencia"
-                    : "Cargando Conekta…"}
+                  {conektaLoaded ? "Tarjeta o transferencia" : "Cargando Conekta…"}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
         </Grid>
 
-        {/* ✅ Resumen PRO (nombre del plan + meses) */}
         {pendingPayment && (
           <Box
             sx={{
               mt: 2,
-              p: 1.75,
+              p: 1.5,
               borderRadius: 2,
               bgcolor: "action.hover",
               border: "1px dashed",
@@ -160,45 +144,41 @@ const PaymentMethodModal = ({
               Resumen
             </Typography>
 
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{ mt: 1, flexWrap: "wrap", rowGap: 1 }}
-            >
-              <Chip
-                icon={<SellRoundedIcon />}
-                label={pendingPayment.planName || "Plan"}
-                sx={{ fontWeight: 800 }}
-              />
+            <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 0.75 }}>
+              {isPlan && (
+                <>
+                  <Chip size="small" label="PLAN" color="primary" variant="outlined" />
+                  <Chip
+                    size="small"
+                    label={`Pagas: ${pendingPayment.mesesPagados ?? "-"} mes(es)`}
+                    variant="outlined"
+                  />
+                  <Chip
+                    size="small"
+                    label={`Recibes: ${pendingPayment.mesesObtenidos ?? "-"} mes(es)`}
+                    color="success"
+                    variant="outlined"
+                  />
+                </>
+              )}
 
-              {pendingPayment.meses ? (
-                <Chip
-                  icon={<CalendarMonthRoundedIcon />}
-                  label={monthsLabel(pendingPayment.meses)}
-                  sx={{ fontWeight: 800 }}
-                />
-              ) : null}
+              {isComp && (
+                <Chip size="small" label="COMPLEMENTO" color="secondary" variant="outlined" />
+              )}
             </Stack>
 
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {planText ? (
-                <>
-                  Selección: <b>{planText}</b>
-                </>
-              ) : null}
+              Producto: <b>{title}</b>
             </Typography>
 
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.25 }}>
               Monto: <b>{money(pendingPayment.monto)}</b>
             </Typography>
 
-            {/* (Opcional) dejar el concepto técnico en mini para debug */}
-            {/* 
-            <Typography variant="caption" sx={{ display: "block", mt: 0.75, opacity: 0.6 }}>
-              Ref: {pendingPayment.concepto}
-            </Typography>
-            */}
+            {/* Si quieres debug, lo dejas comentado */}
+            {/* <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              concepto: {pendingPayment.concepto}
+            </Typography> */}
           </Box>
         )}
       </DialogContent>
