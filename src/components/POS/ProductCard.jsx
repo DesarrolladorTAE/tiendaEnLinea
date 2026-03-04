@@ -495,6 +495,20 @@ export default function ProductCard({
             }}
           />
         </Box>
+        {product?.inventory_scope === "warehouse" && product?.warehouse_tag?.name ? (
+          <Chip
+            size="small"
+            icon={<WarehouseRoundedIcon />}
+            label={product.warehouse_tag.name}
+            sx={{ fontWeight: 900, bgcolor: alpha("#6366f1", 0.12), border: `1px solid ${alpha("#6366f1", 0.2)}` }}
+          />
+        ) : (
+          <Chip
+            size="small"
+            label="General"
+            sx={{ fontWeight: 900, bgcolor: alpha("#111827", 0.05), border: `1px solid ${alpha("#111827", 0.12)}` }}
+          />
+        )}
 
         {/* Nombre clamp */}
         <Typography

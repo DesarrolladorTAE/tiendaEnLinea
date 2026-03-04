@@ -5,7 +5,10 @@ import { showError, showSuccess } from "../../utils/alerts";
 
 export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [search, setSearch] = useState("");
-  const [products, setProducts] = useState(null);
+  const [products, setProducts] = useState([]);
+
+  const [meta, setMeta] = useState({ page: 1, per_page: 12, total: 0, last_page: 1 });
+  const [page, setPage] = useState(1);
 
   const [selectedVariation, setSelectedVariation] = useState({});
   const [selectedSize, setSelectedSize] = useState({});
@@ -42,32 +45,46 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     [selectedVariation]
   );
 
-  const refetchProducts = useCallback(async () => {
+  // ✅ paginado + search + category
+const refetchProducts = useCallback(
+  async ({ nextPage = 1, perPage = 12, categoryId = null } = {}) => {
     try {
       if (!posLocationId) {
         setProducts([]);
+        setMeta({ page: 1, per_page: perPage, total: 0, last_page: 1 });
+        setPage(1);
         return;
       }
 
-      const { data } = await axiosClient.get("my-products-by-pos", {
-        params: { pos_location_id: posLocationId },
+      const { data } = await axiosClient.get("my-products-by-pos1", {
+        params: {
+          pos_location_id: posLocationId,
+          page: nextPage,
+          per_page: perPage,
+          q: search || "",
+          category_id: categoryId || undefined,
+        },
       });
 
-      const list = Array.isArray(data?.products) ? data.products : [];
-      setProducts(list);
+      setProducts(Array.isArray(data?.products) ? data.products : []);
+      setMeta(data?.meta || { page: nextPage, per_page: perPage, total: 0, last_page: 1 });
+      setPage(nextPage);
     } catch (e) {
       console.error("Error cargando productos POS:", e);
       setProducts([]);
+      setMeta({ page: 1, per_page: perPage, total: 0, last_page: 1 });
+      setPage(1);
     }
-  }, [posLocationId]);
-
+  },
+  [posLocationId, search]
+);
   useEffect(() => {
-    refetchProducts();
-  }, [refetchProducts]);
+    refetchProducts({ nextPage: 1 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posLocationId]);
 
   const isVariantProduct = (product) => !!product?.has_variants;
 
-  // ✅ SOLO imagen del PRODUCTO (card)
   const getProductImage = (product) => {
     if (Array.isArray(product?.image) && product.image.length > 0) {
       return product.image[0];
@@ -75,7 +92,6 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     return null;
   };
 
-  // ✅ Imagen para MODAL (variante)
   const getVariantImage = (product, variant) => {
     if (variant?.image_url) return variant.image_url;
     if (variant?.image) return variant.image;
@@ -100,19 +116,15 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
       if (!useWh) return Number(product.stock) || 0;
 
-      const rows = Array.isArray(product.warehouse_inventories)
-        ? product.warehouse_inventories
-        : [];
+      const rows = Array.isArray(product.warehouse_inventories) ? product.warehouse_inventories : [];
       return rows.reduce((acc, r) => acc + (Number(r.qty) || 0), 0);
     },
     [getSelectedVariant]
   );
 
-  // ✅ cantidad por cart_key (no por id base)
   const getQuantityInCart = (cartKey) =>
     cart.find((item) => String(item.cart_key ?? item.id) === String(cartKey))?.quantity || 0;
 
-  // ✅ clave unica estable
   const getCartKey = useCallback(
     (product) => {
       if (!product) return null;
@@ -120,12 +132,11 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
       const v = getSelectedVariant(product);
       if (!v) return String(product.id);
-      return `${product.id}-v${v.id}`; // ✅ consistente con tu ProductCard
+      return `${product.id}-v${v.id}`;
     },
     [getSelectedVariant]
   );
 
-  // ✅ precio unitario basado en selectedVariation (solo para escáner/enter)
   const getUnitPrice = useCallback(
     (product) => {
       if (!product) return 0;
@@ -144,13 +155,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     [getSelectedVariant]
   );
 
-  /**
-   * ✅ handleAdd ahora soporta:
-   * A) Producto "crudo" (scanner): recibe product con has_variants y usa selectedVariation
-   * B) Item armado desde ProductCard: recibe objeto con cart_key / variant_id / price / display_name / warehouse_id
-   */
   const handleAdd = (payload) => {
-    // Caso B: ya viene armado desde ProductCard (modal)
     const isCartItem =
       payload &&
       (payload.cart_key || typeof payload.id === "string" || payload.variant_id != null || payload.warehouse_id != null) &&
@@ -165,7 +170,6 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         const idx = prev.findIndex((x) => String(x.cart_key ?? x.id) === key);
         const currentQty = idx >= 0 ? Number(prev[idx].quantity || 0) : 0;
 
-        // stock check (si te mandan stock en el item, úsalo; si no, no bloquees aquí)
         const stockDisponible = Number(item.stock_available ?? item.stockDisponible ?? item.available_stock ?? Infinity);
         const nextQty = currentQty + 1;
 
@@ -179,10 +183,9 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
             ...prev,
             {
               ...item,
-              id: key,         // por compatibilidad con Cart viejo
-              cart_key: key,   // ✅ llave real
+              id: key,
+              cart_key: key,
               quantity: item.quantity ? Number(item.quantity) : 1,
-              // normaliza nombres:
               display_name: item.display_name || item.name,
               original_price: item.original_price ?? item.price_original ?? item.original ?? item.price,
               price: Number(item.price || 0),
@@ -193,7 +196,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         const copy = [...prev];
         copy[idx] = {
           ...copy[idx],
-          ...item, // ✅ actualiza nombre/variante/almacén/precio por si cambió
+          ...item,
           id: key,
           cart_key: key,
           quantity: nextQty,
@@ -208,7 +211,6 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       return;
     }
 
-    // Caso A: viene producto (scanner/enter/click simple)
     const product = payload;
 
     setCart((prevCart) => {
@@ -240,19 +242,14 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           cart_key: key,
           product_id: Number(product.id),
           variant_id: v ? Number(v.id) : null,
-
-          // ✅ para mostrar bonito
           name: product.name,
           display_name: v ? `${product.name} - ${v.name ?? v.sku ?? v.id}` : product.name,
-
           price_original: Number(v?.price ?? product.price ?? unitPrice),
           original_price: Number(v?.price ?? product.price ?? unitPrice),
-
           discount: Number(product.discount ?? 0),
           price: Number(unitPrice),
           quantity: 1,
           has_variants: !!product.has_variants,
-
           warehouse_id: null,
           warehouse_name: null,
         },
@@ -261,14 +258,14 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   };
 
   const handleSetQuantity = (payloadOrProduct, nuevaCantidad) => {
-    // soporta recibir item o product
     const key =
       payloadOrProduct?.cart_key ||
-      (payloadOrProduct?.product_id != null ? String(payloadOrProduct.id ?? payloadOrProduct.cart_key) : getCartKey(payloadOrProduct));
+      (payloadOrProduct?.product_id != null
+        ? String(payloadOrProduct.id ?? payloadOrProduct.cart_key)
+        : getCartKey(payloadOrProduct));
 
     if (!key) return;
 
-    // si es producto, valida stock con getAvailableStock; si es item armado, no forzar aquí
     const isProduct = payloadOrProduct && payloadOrProduct.id != null && payloadOrProduct.product_id == null;
     const stockDisponible = isProduct ? Number(getAvailableStock(payloadOrProduct)) || 0 : Infinity;
 
@@ -338,7 +335,6 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           ? +Number(rawCashReceived).toFixed(2)
           : null;
 
-      // ✅ Si hay efectivo y capturaste recibido, ese debe ser el amount real del pago en efectivo
       const normalizedPayments = payments.map((p) => {
         if (p?.method !== "efectivo") return p;
         return cashReceived != null ? { ...p, amount: cashReceived } : p;
@@ -350,13 +346,12 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         payments: normalizedPayments,
       };
 
-
       try {
         const saleResponse = await axiosClient.post("/v2/sales", payload);
         const { sale, message } = saleResponse.data;
 
         setCart([]);
-        await refetchProducts();
+        await refetchProducts({ nextPage: 1 });
 
         setTicketData(sale);
         showSuccess(`✅ ${message}`);
@@ -380,6 +375,10 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     search,
     setSearch,
     products,
+    meta,
+    page,
+    setPage,
+
     cart,
     selectedVariation,
     selectedSize,

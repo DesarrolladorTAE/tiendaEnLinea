@@ -17,6 +17,7 @@ import {
   Alert,
   Grow,
   useMediaQuery,
+  Collapse,
 } from "@mui/material";
 import { useTheme, alpha, keyframes } from "@mui/material/styles";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -29,12 +30,16 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import PointOfSaleRoundedIcon from "@mui/icons-material/PointOfSaleRounded";
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
+import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
 
 import axiosClient from "../../config/axiosClient";
 import { showConfirm, showSuccess, alertFromAxiosError } from "../../utils/alerts";
 import { useAdminUi } from "../../context/AdminUiContext";
 
 import WarehouseFormModal from "../../components/warehouses/WarehouseFormModal";
+import WarehouseAssignPosModal from "../../components/warehouses/WarehouseAssignPosModal";
 
 const COLORS = {
   accent: "#f9b233",
@@ -59,6 +64,8 @@ const buildAddress = (w) => {
   ].filter(Boolean);
   return parts.join(", ");
 };
+
+const safeArr = (v) => (Array.isArray(v) ? v : []);
 
 export default function Warehouses() {
   const theme = useTheme();
@@ -99,6 +106,16 @@ export default function Warehouses() {
   const [editOpen, setEditOpen] = useState(false);
   const [selected, setSelected] = useState(null);
 
+  // ✅ Modal asignación POS
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignWarehouse, setAssignWarehouse] = useState(null);
+
+  // ✅ UI: expandir lista de POS por almacén
+  const [expanded, setExpanded] = useState({}); // { [warehouseId]: true/false }
+
+  const toggleExpanded = (warehouseId) =>
+    setExpanded((prev) => ({ ...prev, [warehouseId]: !prev[warehouseId] }));
+
   const filtered = useMemo(() => {
     const s = (q || "").trim().toLowerCase();
     if (!s) return rows;
@@ -107,7 +124,17 @@ export default function Warehouses() {
       const name = (w?.name || "").toLowerCase();
       const code = (w?.code || "").toLowerCase();
       const city = (w?.city || "").toLowerCase();
-      return name.includes(s) || code.includes(s) || city.includes(s);
+
+      const posNames = safeArr(w?.pos_locations)
+        .map((p) => (p?.name || "").toLowerCase())
+        .join(" ");
+
+      return (
+        name.includes(s) ||
+        code.includes(s) ||
+        city.includes(s) ||
+        posNames.includes(s)
+      );
     });
   }, [rows, q]);
 
@@ -116,6 +143,7 @@ export default function Warehouses() {
 
     setLoading(true);
     try {
+      // ✅ Debe venir con pos_locations_count y pos_locations (id, name)
       const { data } = await axiosClient.get(`/branches/${activeBranch.id}/warehouses`);
       setRows(Array.isArray(data?.data) ? data.data : []);
     } catch (err) {
@@ -144,7 +172,7 @@ export default function Warehouses() {
   const handleDelete = async (w) => {
     const ok = await showConfirm(
       "¿Está seguro de eliminar este almacén? Se eliminará toda la información asociada.",
-      "Sí, eliminar",
+      "Sí, eliminar"
     );
     if (!ok) return;
 
@@ -164,11 +192,29 @@ export default function Warehouses() {
 
   const goBranches = () => navigate("/admin/sucursales");
 
+  // ✅ Helpers UI
+  const posLabel = (w) => {
+    const posCount = Number(w?.pos_locations_count ?? safeArr(w?.pos_locations).length ?? 0);
+    if (!posCount) return "Sin POS";
+    if (posCount === 1) return "1 POS";
+    return `${posCount} POS`;
+  };
+
+  const posPreviewNames = (w, max = 3) => {
+    const pos = safeArr(w?.pos_locations);
+    const names = pos.map((p) => p?.name).filter(Boolean);
+    return {
+      names: names.slice(0, max),
+      extra: Math.max(0, names.length - max),
+      total: names.length,
+    };
+  };
+
   return (
     <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: 3 }}>
       <Container maxWidth="lg">
         {/* =======================
-            1) ENCABEZADO (qué es qué)
+            1) ENCABEZADO
            ======================= */}
         <Stack spacing={1.5} sx={{ mb: 2.25 }}>
           <Stack direction="row" spacing={1.2} alignItems="center">
@@ -189,15 +235,15 @@ export default function Warehouses() {
 
             <Box sx={{ flex: 1 }}>
               <Typography variant="h5" sx={{ fontWeight: 900, color: COLORS.black }}>
-                Almacenes 
+                Almacenes
               </Typography>
 
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.6 }}>
                 {activeBranch?.name
                   ? `Sucursal activa: ${activeBranch.name}`
                   : activeBranch?.id
-                    ? `Sucursal activa: #${activeBranch.id}`
-                    : "Seleccione una sucursal"}
+                  ? `Sucursal activa: #${activeBranch.id}`
+                  : "Seleccione una sucursal"}
               </Typography>
             </Box>
 
@@ -215,7 +261,7 @@ export default function Warehouses() {
           </Stack>
 
           {/* =======================
-              2) ACCIONES (buscar + botones)
+              2) ACCIONES
              ======================= */}
           <Stack
             direction={isMobile ? "column" : "row"}
@@ -226,7 +272,7 @@ export default function Warehouses() {
             <TextField
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Buscar almacén (nombre, código o ciudad)…"
+              placeholder="Buscar almacén (nombre, código, ciudad o POS)…"
               size="small"
               fullWidth
               sx={{
@@ -256,7 +302,7 @@ export default function Warehouses() {
                   whiteSpace: "nowrap",
                 }}
               >
-                Inventario Sin Almacen
+                Inventario Sin Almacén
               </Button>
 
               <Button
@@ -279,7 +325,7 @@ export default function Warehouses() {
         </Stack>
 
         {/* =======================
-            3) CONTENIDO (resumen + lista)
+            3) CONTENIDO
            ======================= */}
         <Card
           elevation={0}
@@ -290,7 +336,7 @@ export default function Warehouses() {
           }}
         >
           <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-            {/* Resumen (chips) */}
+            {/* Resumen */}
             <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
               <Chip
                 icon={<WarehouseRoundedIcon />}
@@ -312,7 +358,7 @@ export default function Warehouses() {
               ) : null}
 
               <Chip
-                label="Tip: entra a un almacén para ver su inventario específico"
+                label="Tip: Asigna puntos de venta para que el POS use el inventario del almacén"
                 variant="outlined"
                 sx={{ fontWeight: 700, bgcolor: alpha("#000", 0.02) }}
               />
@@ -378,6 +424,12 @@ export default function Warehouses() {
                     w?.use_branch_address ? "Usa dirección de sucursal" : "Dirección propia",
                   ].join(" • ");
 
+                  const pos = safeArr(w?.pos_locations);
+                  const posCount = Number(w?.pos_locations_count ?? pos.length ?? 0);
+                  const isOpen = !!expanded[w.id];
+
+                  const preview = posPreviewNames(w, 3);
+
                   return (
                     <Grow in key={w.id} timeout={200 + idx * 40}>
                       <Card
@@ -418,6 +470,7 @@ export default function Warehouses() {
                           </Box>
 
                           <Box sx={{ flex: 1, minWidth: 240 }}>
+                            {/* Título + chips */}
                             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                               <Typography sx={{ fontWeight: 900, color: COLORS.black }}>
                                 {w?.name || "Almacén sin nombre"}
@@ -431,14 +484,45 @@ export default function Warehouses() {
                                 />
                               ) : null}
 
-                              {w?.code ? (
-                                <Chip size="small" label={w.code} variant="outlined" />
-                              ) : null}
+                              {w?.code ? <Chip size="small" label={w.code} variant="outlined" /> : null}
 
                               {w?.is_active === false ? (
                                 <Chip size="small" label="Inactivo" color="default" />
                               ) : (
                                 <Chip size="small" label="Activo" sx={{ bgcolor: alpha("#2e7d32", 0.12) }} />
+                              )}
+
+                              {/* ✅ POS resumen */}
+                              <Chip
+                                size="small"
+                                icon={<PointOfSaleRoundedIcon />}
+                                label={posLabel(w)}
+                                variant="outlined"
+                                sx={{ fontWeight: 900 }}
+                              />
+
+                              {/* ✅ preview nombres */}
+                              {posCount > 0 ? (
+                                <>
+                                  {preview.names.map((name, i) => (
+                                    <Chip
+                                      key={`${w.id}-pos-${i}`}
+                                      size="small"
+                                      label={name}
+                                      sx={{ fontWeight: 800, bgcolor: alpha("#000", 0.03) }}
+                                    />
+                                  ))}
+
+                                  {preview.extra > 0 ? (
+                                    <Chip
+                                      size="small"
+                                      label={`+${preview.extra} más`}
+                                      variant="outlined"
+                                    />
+                                  ) : null}
+                                </>
+                              ) : (
+                                <Chip size="small" label="Sin asignación" variant="outlined" />
                               )}
                             </Stack>
 
@@ -453,9 +537,64 @@ export default function Warehouses() {
                             >
                               {addr || "Sin dirección configurada"}
                             </Typography>
+
+                            {/* ✅ expandible para mostrar TODOS los POS */}
+                            <Collapse in={isOpen} timeout={200} unmountOnExit>
+                              <Box sx={{ mt: 1 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 900, color: COLORS.black }}>
+                                  Puntos de venta asignados:
+                                </Typography>
+
+                                <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ mt: 0.75 }}>
+                                  {pos.map((p) => (
+                                    <Chip
+                                      key={p.id}
+                                      size="small"
+                                      label={p.name}
+                                      sx={{
+                                        fontWeight: 800,
+                                        bgcolor: alpha(COLORS.accent, 0.14),
+                                        border: `1px solid ${alpha(COLORS.accent, 0.22)}`,
+                                      }}
+                                    />
+                                  ))}
+                                </Stack>
+                              </Box>
+                            </Collapse>
                           </Box>
 
+                          {/* ✅ acciones */}
                           <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: "auto" }}>
+                            {/* Expandir POS */}
+                            <Tooltip title={isOpen ? "Ocultar POS" : "Ver POS asignados"}>
+                              <IconButton
+                                onClick={() => toggleExpanded(w.id)}
+                                disabled={posCount === 0}
+                                sx={{
+                                  borderRadius: 2,
+                                  border: `1px solid ${alpha("#000", 0.08)}`,
+                                  opacity: posCount === 0 ? 0.4 : 1,
+                                }}
+                              >
+                                {isOpen ? <ExpandLessRoundedIcon /> : <ExpandMoreRoundedIcon />}
+                              </IconButton>
+                            </Tooltip>
+
+                            <Tooltip title="Asignar puntos de venta a este almacén">
+                              <IconButton
+                                onClick={() => {
+                                  setAssignWarehouse(w);
+                                  setAssignOpen(true);
+                                }}
+                                sx={{
+                                  borderRadius: 2,
+                                  border: `1px solid ${alpha("#000", 0.08)}`,
+                                }}
+                              >
+                                <PointOfSaleRoundedIcon />
+                              </IconButton>
+                            </Tooltip>
+
                             <Tooltip title="Ver inventario de este almacén">
                               <IconButton
                                 onClick={() =>
@@ -528,6 +667,18 @@ export default function Warehouses() {
           onClose={() => setEditOpen(false)}
           onSaved={() => {
             setEditOpen(false);
+            fetchWarehouses();
+          }}
+        />
+
+        <WarehouseAssignPosModal
+          open={assignOpen}
+          onClose={() => setAssignOpen(false)}
+          branchId={activeBranch?.id}
+          warehouse={assignWarehouse}
+          onSaved={() => {
+            setAssignOpen(false);
+            // ✅ como ya viene pos_locations en /warehouses, recargamos almacenes y se ve el cambio inmediato
             fetchWarehouses();
           }}
         />
