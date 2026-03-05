@@ -14,7 +14,6 @@ import {
   Badge,
   Paper,
   alpha,
-  Divider,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
@@ -122,9 +121,10 @@ export default function POS({ posName, cambiarVista }) {
     if (showTicket && ticketData) {
       (async () => {
         try {
-          const resp = await axiosClient.get(`/v2/sales/${ticketData.id}/ticket.pdf`, {
-            responseType: "arraybuffer",
-          });
+          const resp = await axiosClient.get(
+            `/v2/sales/${ticketData.id}/ticket.pdf`,
+            { responseType: "arraybuffer" }
+          );
           const blob = new Blob([resp.data], { type: "application/pdf" });
           if (ticketBlobUrl) URL.revokeObjectURL(ticketBlobUrl);
           setTicketBlobUrl(URL.createObjectURL(blob));
@@ -164,7 +164,9 @@ export default function POS({ posName, cambiarVista }) {
 
   // ✅ cuando cambia search o categoría: reset a page 1 y pedir al backend
 useEffect(() => {
-  refetchProducts({ nextPage: 1, categoryId: selectedCategoryId });
+  const next = 1;
+  setPage(next);
+  refetchProducts({ nextPage: next, categoryId: selectedCategoryId });
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [search, selectedCategoryId]);
 
@@ -185,7 +187,9 @@ useEffect(() => {
           params: { mode: "flat", pos_location_id: posLocationId },
         });
 
-        const cats = Array.isArray(resp?.data?.categories) ? resp.data.categories : [];
+        const cats = Array.isArray(resp?.data?.categories)
+          ? resp.data.categories
+          : [];
         if (alive) setCategories(cats);
       } catch (e) {
         console.error("Error cargando categorías:", e);
@@ -224,7 +228,9 @@ useEffect(() => {
       setTicketBlobUrl("");
     }
     if (!isTouchDevice) {
-      requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+      requestAnimationFrame(() =>
+        inputRef.current?.focus({ preventScroll: true })
+      );
     }
   };
 
@@ -238,14 +244,15 @@ useEffect(() => {
     setSelectedSize({});
     setBarcode("");
 
-    // ✅ reset page real
     setPage(1);
     await refetchProducts({ nextPage: 1, categoryId: null });
 
     setCartOpen(false);
 
     if (!isTouchDevice) {
-      requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
+      requestAnimationFrame(() =>
+        inputRef.current?.focus({ preventScroll: true })
+      );
     }
   };
 
@@ -280,23 +287,91 @@ useEffect(() => {
   const toggleCart = () => setCartOpen((v) => !v);
 
   return (
-    <Box sx={{ minHeight: "100vh", background: "#fff", px: { xs: 1.25, md: 5 }, py: 2, pb: { xs: 12, md: 4 } }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        background: "#fff",
+        px: { xs: 1.25, md: 5 },
+        py: 2,
+        pb: { xs: 12, md: 4 },
+      }}
+    >
       {/* Header */}
-      <Paper sx={{ mb: 2, p: { xs: 1.25, md: 2 }, borderRadius: 3, background: "#fff", border: "1px solid", borderColor: "divider", boxShadow: "0 10px 30px rgba(0,0,0,0.06)" }}>
-        <Stack direction="column" spacing={{ xs: 1, md: 0 }} alignItems="center" justifyContent="center">
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ width: { xs: "100%", md: "auto" }, justifyContent: "center", alignItems: "center" }}>
-            <Button fullWidth={!isMdUp} variant="contained" startIcon={<HistoryIcon />} onClick={() => cambiarVista("historial")}
-              sx={{ px: 2, borderRadius: 3, background: "#f59e0b", "&:hover": { background: "#fbbf24" }, textTransform: "none", fontWeight: 800, minWidth: { md: 160 } }}>
+      <Paper
+        sx={{
+          mb: 2,
+          p: { xs: 1.25, md: 2 },
+          borderRadius: 3,
+          background: "#fff",
+          border: "1px solid",
+          borderColor: "divider",
+          boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
+        }}
+      >
+        <Stack
+          direction="column"
+          spacing={{ xs: 1, md: 0 }}
+          alignItems="center"
+          justifyContent="center"
+        >
+          <Stack
+            direction={{ xs: "column", md: "row" }}
+            spacing={1}
+            sx={{
+              width: { xs: "100%", md: "auto" },
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Button
+              fullWidth={!isMdUp}
+              variant="contained"
+              startIcon={<HistoryIcon />}
+              onClick={() => cambiarVista("historial")}
+              sx={{
+                px: 2,
+                borderRadius: 3,
+                background: "#f59e0b",
+                "&:hover": { background: "#fbbf24" },
+                textTransform: "none",
+                fontWeight: 800,
+                minWidth: { md: 160 },
+              }}
+            >
               Historial
             </Button>
 
-            <Button fullWidth={!isMdUp} variant="contained" startIcon={<ReceiptLongIcon />} onClick={() => cambiarVista("facturas")}
-              sx={{ px: 2, borderRadius: 3, background: "#ef4444", "&:hover": { background: "#ff3f36" }, textTransform: "none", fontWeight: 800, minWidth: { md: 160 } }}>
+            <Button
+              fullWidth={!isMdUp}
+              variant="contained"
+              startIcon={<ReceiptLongIcon />}
+              onClick={() => cambiarVista("facturas")}
+              sx={{
+                px: 2,
+                borderRadius: 3,
+                background: "#ef4444",
+                "&:hover": { background: "#ff3f36" },
+                textTransform: "none",
+                fontWeight: 800,
+                minWidth: { md: 160 },
+              }}
+            >
               Facturas
             </Button>
 
-            <Button fullWidth={!isMdUp} variant="outlined" startIcon={<DashboardIcon />} onClick={() => cambiarVista("menu")}
-              sx={{ px: 2, borderRadius: 3, textTransform: "none", fontWeight: 800, minWidth: { md: 160 } }}>
+            <Button
+              fullWidth={!isMdUp}
+              variant="outlined"
+              startIcon={<DashboardIcon />}
+              onClick={() => cambiarVista("menu")}
+              sx={{
+                px: 2,
+                borderRadius: 3,
+                textTransform: "none",
+                fontWeight: 800,
+                minWidth: { md: 160 },
+              }}
+            >
               Panel
             </Button>
           </Stack>
@@ -304,7 +379,16 @@ useEffect(() => {
       </Paper>
 
       {/* Buscador */}
-      <Paper sx={{ p: 1.25, mb: 2, borderRadius: 3, background: "#fff", border: "1px solid", borderColor: "divider" }}>
+      <Paper
+        sx={{
+          p: 1.25,
+          mb: 2,
+          borderRadius: 3,
+          background: "#fff",
+          border: "1px solid",
+          borderColor: "divider",
+        }}
+      >
         <TextField
           label="Buscar producto (nombre o SKU)"
           fullWidth
@@ -321,7 +405,9 @@ useEffect(() => {
             if (isMdUp) return;
             if (!searchEditable) {
               setSearchEditable(true);
-              requestAnimationFrame(() => e.currentTarget.querySelector("input")?.focus());
+              requestAnimationFrame(() =>
+                e.currentTarget.querySelector("input")?.focus()
+              );
             }
           }}
         />
@@ -342,37 +428,70 @@ useEffect(() => {
         value={barcode}
         onKeyDown={handleScan}
         onChange={() => {}}
-        style={{ position: "fixed", top: "-1000px", left: "-1000px", opacity: 0, pointerEvents: "none" }}
+        style={{
+          position: "fixed",
+          top: "-1000px",
+          left: "-1000px",
+          opacity: 0,
+          pointerEvents: "none",
+        }}
       />
 
-      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "260px 1fr" }, gap: 2, alignItems: "start" }}>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "260px 1fr" },
+          gap: 2,
+          alignItems: "start",
+        }}
+      >
         {isMdUp ? (
           <Box>
-            <CategoriesRail
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              onSelect={(id) => setSelectedCategoryId(id)}
-              onClear={() => setSelectedCategoryId(null)}
-            />
+<CategoriesRail
+  categories={categories}
+  selectedCategoryId={selectedCategoryId}
+  onSelect={(id) => setSelectedCategoryId(id == null ? null : Number(id))}
+  onClear={() => setSelectedCategoryId(null)}
+/>
           </Box>
         ) : null}
 
         <Box>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.25}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            mb={1.25}
+          >
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>
                 Productos
               </Typography>
               <Typography variant="body2" sx={{ color: "#6b7280" }}>
-                {loadingCategories ? "Cargando categorías..." : `${meta?.total ?? products.length} encontrados`}
+                {loadingCategories
+                  ? "Cargando categorías..."
+                  : `${meta?.total ?? products.length} encontrados`}
               </Typography>
             </Box>
 
             {isMdUp && (
-              <Paper sx={{ px: 1.25, py: 0.75, borderRadius: 3, border: "1px solid", borderColor: "divider", background: alpha("#111827", 0.02) }}>
+              <Paper
+                sx={{
+                  px: 1.25,
+                  py: 0.75,
+                  borderRadius: 3,
+                  border: "1px solid",
+                  borderColor: "divider",
+                  background: alpha("#111827", 0.02),
+                }}
+              >
                 <Typography sx={{ fontSize: 12, fontWeight: 900 }}>
                   {selectedCategoryId
-                    ? `Categoría: ${categories.find((c) => String(c.id) === String(selectedCategoryId))?.name || "Seleccionada"}`
+                    ? `Categoría: ${
+                        categories.find(
+                          (c) => String(c.id) === String(selectedCategoryId)
+                        )?.name || "Seleccionada"
+                      }`
                     : "Todas las categorías"}
                 </Typography>
               </Paper>
@@ -383,7 +502,11 @@ useEffect(() => {
             sx={{
               display: "grid",
               gap: { xs: 1.25, md: 2 },
-              gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(3, minmax(0, 1fr))" },
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(3, minmax(0, 1fr))",
+              },
               alignItems: "stretch",
             }}
           >
@@ -409,7 +532,16 @@ useEffect(() => {
           </Box>
 
           {/* Paginación real (backend) */}
-          <Paper sx={{ mt: 2, p: 1.25, borderRadius: 3, background: "#fff", border: "1px solid", borderColor: "divider" }}>
+          <Paper
+            sx={{
+              mt: 2,
+              p: 1.25,
+              borderRadius: 3,
+              background: "#fff",
+              border: "1px solid",
+              borderColor: "divider",
+            }}
+          >
             <Box display="flex" justifyContent="center" gap={2} alignItems="center">
               <Button
                 variant="outlined"
@@ -484,11 +616,43 @@ useEffect(() => {
         ModalProps={{ keepMounted: true }}
         PaperProps={{
           sx: isMdUp
-            ? { width: 420, height: "100vh", background: "#fff", borderLeft: "1px solid", borderColor: "divider", display: "flex", flexDirection: "column" }
-            : { height: "100dvh", maxHeight: "100dvh", borderTopLeftRadius: 24, borderTopRightRadius: 24, background: "#fff", border: "1px solid", borderColor: "divider", display: "flex", flexDirection: "column", overscrollBehavior: "contain" },
+            ? {
+                width: 420,
+                height: "100vh",
+                background: "#fff",
+                borderLeft: "1px solid",
+                borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
+              }
+            : {
+                height: "100dvh",
+                maxHeight: "100dvh",
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                background: "#fff",
+                border: "1px solid",
+                borderColor: "divider",
+                display: "flex",
+                flexDirection: "column",
+                overscrollBehavior: "contain",
+              },
         }}
       >
-        <Box sx={{ p: 1.25, display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid", borderColor: "divider", position: "sticky", top: 0, zIndex: 2, background: "#fff" }}>
+        <Box
+          sx={{
+            p: 1.25,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            borderBottom: "1px solid",
+            borderColor: "divider",
+            position: "sticky",
+            top: 0,
+            zIndex: 2,
+            background: "#fff",
+          }}
+        >
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
               Tu orden
@@ -503,7 +667,16 @@ useEffect(() => {
           </IconButton>
         </Box>
 
-        <Box sx={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", p: 1.25, pb: 2 }}>
+        <Box
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            WebkitOverflowScrolling: "touch",
+            p: 1.25,
+            pb: 2,
+          }}
+        >
           <Cart
             cart={cart}
             setCart={setCart}

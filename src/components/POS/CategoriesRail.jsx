@@ -51,7 +51,7 @@ export default function CategoriesRail({
               label={c.name}
               clickable
               onClick={() => onSelect?.(c.id)}
-              color={selected === c.id ? "primary" : "default"}
+              color={String(selected) === String(c.id) ? "primary" : "default"}
               sx={{ fontWeight: 800 }}
             />
           ))}

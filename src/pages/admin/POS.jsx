@@ -32,12 +32,12 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VpnKeyRoundedIcon from "@mui/icons-material/VpnKeyRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
-import LoginRoundedIcon from "@mui/icons-material/LoginRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
 
 import axiosClient from "../../config/axiosClient";
 import useLimitePOS from "../../hooks/useLimitePOS";
@@ -48,6 +48,8 @@ import {
   showSuccess,
   alertFromAxiosError,
 } from "../../utils/alerts";
+
+import AssignWarehousesDialog from "./modals/AssignWarehousesDialog";
 
 const COLORS = {
   accent: "#f9b233",
@@ -65,8 +67,6 @@ const generarCodigo = () =>
 
 /**
  * ✅ Copiar a portapapeles (robusto)
- * - Clipboard API si contexto seguro
- * - Fallback con textarea + execCommand
  */
 const copyToClipboard = async (text) => {
   if (!text) return false;
@@ -156,6 +156,16 @@ export default function POS() {
   const [editando, setEditando] = useState({});
   const [openEdit, setOpenEdit] = useState({});
 
+  // ✅ almacenes para selector
+  const [warehouses, setWarehouses] = useState([]);
+
+  // ✅ modal asignaciones
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignPos, setAssignPos] = useState(null);
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignWarehouseIds, setAssignWarehouseIds] = useState([]);
+  const [assignShowUnassigned, setAssignShowUnassigned] = useState(true);
+
   const filtered = useMemo(() => {
     const s = (q || "").trim().toLowerCase();
     if (!s) return rows;
@@ -174,9 +184,7 @@ export default function POS() {
 
       setLoading(true);
       try {
-        const { data } = await axiosClient.get(
-          `/branches/${activeBranch.id}/pos`,
-        );
+        const { data } = await axiosClient.get(`/branches/${activeBranch.id}/pos`);
         const list = Array.isArray(data?.list)
           ? data.list
           : Array.isArray(data?.data)
@@ -219,10 +227,35 @@ export default function POS() {
     [activeBranch?.id],
   );
 
+  const fetchWarehouses = useCallback(async () => {
+    if (!activeBranch?.id) return;
+    try {
+      const { data } = await axiosClient.get(
+        `/branches/${activeBranch.id}/warehouses`,
+      );
+
+      const list = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.list)
+          ? data.list
+          : [];
+
+      setWarehouses(
+        list.map((w) => ({
+          id: Number(w.id),
+          name: w?.name?.trim() ? w.name : `Almacén #${w.id}`,
+        })),
+      );
+    } catch (_) {
+      setWarehouses([]);
+    }
+  }, [activeBranch?.id]);
+
   useEffect(() => {
     if (!activeBranch?.id) return;
     fetchPOS({ silent: true });
-  }, [activeBranch?.id, fetchPOS]);
+    fetchWarehouses();
+  }, [activeBranch?.id, fetchPOS, fetchWarehouses]);
 
   const iniciarSesionPOS = (pos) => {
     navigate("/admin/prueba/pos", { state: { pos } });
@@ -233,17 +266,13 @@ export default function POS() {
   };
 
   const actualizarCampo = (id, campo, valor) => {
-    setRows((ps) =>
-      ps.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)),
-    );
+    setRows((ps) => ps.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)));
     setEditando((e) => ({ ...e, [id]: true }));
   };
 
   const handleGenerate = async (id) => {
     const nuevo = generarCodigo();
-    setRows((ps) =>
-      ps.map((p) => (p.id === id ? { ...p, access_code: nuevo } : p)),
-    );
+    setRows((ps) => ps.map((p) => (p.id === id ? { ...p, access_code: nuevo } : p)));
     setEditando((e) => ({ ...e, [id]: true }));
     await showSuccess("Código de acceso generado (recuerda guardar)");
   };
@@ -278,72 +307,44 @@ export default function POS() {
       );
     }
 
-    await showSuccess(undefined, {
-      html: `
-        <div style="text-align:left; line-height:1.55">
-          <p style="margin:0 0 8px 0; font-size:16px">
-            🛒 <b>¡Tu nuevo Punto de Venta está listo para vender!</b>
-          </p>
-
-          <p style="margin:0">
-            🏪 <b>Sucursal:</b> ${activeBranch?.name || "Sucursal"}<br/>
-            👤 <b>Usuario:</b> ${pos?.code || "POS"}<br/>
-            🔐 <b>Contraseña:</b> ${accessCode}
-          </p>
-
-          <p style="margin:10px 0 0 0">
-            📍 <b>Plataforma:</b> MiTiendaEnLineaMX.com.mx<br/>
-            🔗 <b>Accede desde:</b><br/>
-            <a href="https://mitiendaenlineamx.com.mx/prueba/pos" target="_blank">
-              https://mitiendaenlineamx.com.mx/prueba/pos
-            </a>
-          </p>
-
-          <p style="margin:12px 0 0 0">
-            ✅ <b>Accesos copiados al portapapeles.</b> Pégalo en WhatsApp.
-          </p>
-
-          <p style="margin:8px 0 0 0; font-weight:700">
-            #MiTiendaEnLineaMX 🚀
-          </p>
-        </div>
-      `,
-    });
+    await showSuccess("Accesos copiados al portapapeles");
   };
 
-const agregarPunto = async () => {
-  // ✅ Asegura número y fallback
-  const limiteNum = Number(limite) || 10;
+  const agregarPunto = async () => {
+    const limiteNum = Number(limite) || 10;
+    const reales = rows.filter((p) => !String(p.id).startsWith("new-")).length;
 
-  // ✅ Cuenta solo los reales (no temporales new-)
-  const reales = rows.filter((p) => !String(p.id).startsWith("new-")).length;
+    if (reales >= limiteNum) {
+      return alertFromAxiosError(
+        { response: { data: { message: `Solo se permiten hasta ${limiteNum} puntos de venta.` } } },
+        `Solo se permiten hasta ${limiteNum} puntos de venta.`,
+      );
+    }
 
-  if (reales >= limiteNum) {
-    return alertFromAxiosError(
-      { response: { data: { message: `Solo se permiten hasta ${limiteNum} puntos de venta.` } } },
-      `Solo se permiten hasta ${limiteNum} puntos de venta.`
-    );
-  }
+    const tempId = `new-${Date.now()}`;
+    setRows((ps) => [
+      ...ps,
+      {
+        id: tempId,
+        branch_id: activeBranch?.id,
+        name: "",
+        code: "",
+        access_code: generarCodigo(),
 
-  const tempId = `new-${Date.now()}`;
-  setRows((ps) => [
-    ...ps,
-    {
-      id: tempId,
-      branch_id: activeBranch?.id,
-      name: "",
-      code: "",
-      access_code: generarCodigo(),
-    },
-  ]);
+        // ✅ defaults visuales en frontend
+        show_unassigned_products: true,
+        warehouse_ids: [],
+        warehouses_count: 0,
+        warehouses: [],
+      },
+    ]);
 
-  setEditando((e) => ({ ...e, [tempId]: true }));
-  setVisibles((v) => ({ ...v, [tempId]: true }));
-  setOpenEdit((o) => ({ ...o, [tempId]: true }));
+    setEditando((e) => ({ ...e, [tempId]: true }));
+    setVisibles((v) => ({ ...v, [tempId]: true }));
+    setOpenEdit((o) => ({ ...o, [tempId]: true }));
 
-  await showSuccess("Nuevo POS agregado (completa el nombre y guarda)");
-};
-
+    await showSuccess("Nuevo POS agregado (completa el nombre y guarda)");
+  };
 
   const guardarCambios = async (id) => {
     const punto = rows.find((p) => p.id === id);
@@ -358,15 +359,11 @@ const agregarPunto = async () => {
 
     try {
       if (String(id).startsWith("new-")) {
-        // crear por branch (ideal)
         try {
-          const { data } = await axiosClient.post(
-            `/branches/${activeBranch.id}/pos`,
-            {
-              name: punto.name,
-              access_code: punto.access_code,
-            },
-          );
+          const { data } = await axiosClient.post(`/branches/${activeBranch.id}/pos`, {
+            name: punto.name,
+            access_code: punto.access_code,
+          });
           const saved = data?.pos ?? data?.data ?? data;
           setRows((ps) => ps.map((x) => (x.id === id ? saved : x)));
         } catch (err) {
@@ -422,6 +419,64 @@ const agregarPunto = async () => {
     fetchPOS({ silent: true });
   };
 
+  // ---------------- Asignaciones (modal) ----------------
+
+  const openAssignDialog = (pos) => {
+    if (!pos || String(pos.id).startsWith("new-")) {
+      return alertFromAxiosError(
+        { response: { data: { message: "Primero guarda el POS para poder asignar almacenes." } } },
+        "Primero guarda el POS para poder asignar almacenes.",
+      );
+    }
+
+    setAssignPos(pos);
+    setAssignWarehouseIds(Array.isArray(pos?.warehouse_ids) ? pos.warehouse_ids.map(Number) : []);
+    setAssignShowUnassigned(!!pos?.show_unassigned_products);
+    setAssignOpen(true);
+  };
+
+  const closeAssignDialog = () => {
+    setAssignOpen(false);
+    setAssignPos(null);
+  };
+
+  const saveAssignments = async () => {
+    if (!assignPos?.id) return;
+
+    setAssignLoading(true);
+    try {
+      await axiosClient.put(`/pos-locations/${assignPos.id}/assign-warehouses`, {
+        warehouse_ids: assignWarehouseIds,
+        show_unassigned_products: assignShowUnassigned,
+      });
+
+      const selected = warehouses
+        .filter((w) => assignWarehouseIds.includes(Number(w.id)))
+        .map((w) => ({ id: Number(w.id), name: w.name }));
+
+      setRows((ps) =>
+        ps.map((p) =>
+          p.id === assignPos.id
+            ? {
+                ...p,
+                warehouse_ids: assignWarehouseIds,
+                warehouses_count: assignWarehouseIds.length,
+                warehouses: selected,
+                show_unassigned_products: assignShowUnassigned,
+              }
+            : p,
+        ),
+      );
+
+      await showSuccess("Asignaciones guardadas");
+      closeAssignDialog();
+    } catch (err) {
+      alertFromAxiosError(err, "No se pudieron guardar asignaciones");
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
   const header = (
     <Stack
       direction={isMobile ? "column" : "row"}
@@ -448,10 +503,7 @@ const agregarPunto = async () => {
           </Box>
 
           <Box sx={{ flex: 1 }}>
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 900, color: COLORS.black }}
-            >
+            <Typography variant="h5" sx={{ fontWeight: 900, color: COLORS.black }}>
               Puntos de venta (POS)
             </Typography>
             <Typography variant="body2" color="text.secondary">
@@ -559,12 +611,7 @@ const agregarPunto = async () => {
           }}
         >
           <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{ mb: 1, flexWrap: "wrap" }}
-            >
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: "wrap" }}>
               <Chip
                 icon={<StorefrontRoundedIcon />}
                 label={loading ? "Cargando…" : `${filtered.length} POS`}
@@ -578,21 +625,13 @@ const agregarPunto = async () => {
               {activeBranch?.id ? (
                 <Chip
                   icon={<LocationOnRoundedIcon />}
-                  label={
-                    activeBranch?.name
-                      ? activeBranch.name
-                      : `Sucursal #${activeBranch.id}`
-                  }
+                  label={activeBranch?.name ? activeBranch.name : `Sucursal #${activeBranch.id}`}
                   variant="outlined"
                   sx={{ fontWeight: 700 }}
                 />
               ) : null}
 
-              <Chip
-                label={`Límite: ${limite}`}
-                variant="outlined"
-                sx={{ fontWeight: 800 }}
-              />
+              <Chip label={`Límite: ${limite}`} variant="outlined" sx={{ fontWeight: 800 }} />
             </Stack>
 
             <Divider sx={{ my: 1.5 }} />
@@ -624,12 +663,7 @@ const agregarPunto = async () => {
                         <Skeleton variant="rounded" width={42} height={42} />
                         <Skeleton sx={{ mt: 1 }} width="70%" />
                         <Skeleton width="55%" />
-                        <Skeleton
-                          sx={{ mt: 1 }}
-                          variant="rounded"
-                          width="100%"
-                          height={36}
-                        />
+                        <Skeleton sx={{ mt: 1 }} variant="rounded" width="100%" height={36} />
                       </CardContent>
                     </Card>
                   </Grid>
@@ -637,10 +671,7 @@ const agregarPunto = async () => {
               </Grid>
             ) : filtered.length === 0 ? (
               <Box sx={{ py: 6, textAlign: "center" }}>
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 900, color: COLORS.black }}
-                >
+                <Typography variant="h6" sx={{ fontWeight: 900, color: COLORS.black }}>
                   No hay puntos de venta
                 </Typography>
                 <Typography color="text.secondary" sx={{ mt: 0.5 }}>
@@ -671,10 +702,21 @@ const agregarPunto = async () => {
                   const isVisible = !!visibles[pos.id];
                   const isOpen = !!openEdit[pos.id];
 
+                  const whCount =
+                    typeof pos?.warehouses_count === "number"
+                      ? pos.warehouses_count
+                      : Array.isArray(pos?.warehouse_ids)
+                        ? pos.warehouse_ids.length
+                        : 0;
+
+                  const whNames =
+                    Array.isArray(pos?.warehouses) && pos.warehouses.length > 0
+                      ? pos.warehouses.map((w) => w.name).join(", ")
+                      : "";
+
                   return (
                     <Grid key={pos.id} item xs={6} sm={6} md={4} lg={3}>
                       <Grow in timeout={180 + idx * 35}>
-                        {/* ✅ SOLO la tarjeta con estilo */}
                         <Card
                           elevation={0}
                           sx={{
@@ -695,11 +737,7 @@ const agregarPunto = async () => {
                         >
                           <CardContent sx={{ p: 2 }}>
                             <Stack spacing={1.2}>
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                alignItems="center"
-                              >
+                              <Stack direction="row" spacing={1} alignItems="center">
                                 <Typography
                                   sx={{
                                     fontWeight: 900,
@@ -709,37 +747,76 @@ const agregarPunto = async () => {
                                   }}
                                   noWrap
                                 >
-                                  {pos?.name?.trim()
-                                    ? pos.name
-                                    : "POS sin nombre"}
+                                  {pos?.name?.trim() ? pos.name : "POS sin nombre"}
                                 </Typography>
 
                                 <Tooltip title={isOpen ? "Cerrar" : "Editar"}>
                                   <IconButton
                                     onClick={() =>
-                                      setOpenEdit((o) => ({
-                                        ...o,
-                                        [pos.id]: !o[pos.id],
-                                      }))
+                                      setOpenEdit((o) => ({ ...o, [pos.id]: !o[pos.id] }))
                                     }
                                     sx={{ borderRadius: 2 }}
                                   >
-                                    {isOpen ? (
-                                      <CloseRoundedIcon />
-                                    ) : (
-                                      <EditRoundedIcon />
-                                    )}
+                                    {isOpen ? <CloseRoundedIcon /> : <EditRoundedIcon />}
                                   </IconButton>
                                 </Tooltip>
                               </Stack>
 
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mt: -0.3 }}
-                              >
+                              <Typography variant="body2" color="text.secondary" sx={{ mt: -0.3 }}>
                                 <b>Usuario:</b> {pos?.code || "—"}
                               </Typography>
+
+                              {/* ✅ Chips de asignación */}
+                              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                                <Chip
+                                  size="small"
+                                  icon={<WarehouseRoundedIcon />}
+                                  label={`Almacenes: ${whCount}`}
+                                  variant="outlined"
+                                  sx={{ fontWeight: 800 }}
+                                />
+
+                                <Chip
+                                  size="small"
+                                  label={`Sin almacén: ${
+                                    pos?.show_unassigned_products ? "ON" : "OFF"
+                                  }`}
+                                  sx={{
+                                    fontWeight: 900,
+                                    bgcolor: pos?.show_unassigned_products
+                                      ? alpha("#2e7d32", 0.12)
+                                      : alpha(COLORS.danger, 0.1),
+                                    border: `1px solid ${
+                                      pos?.show_unassigned_products
+                                        ? alpha("#2e7d32", 0.28)
+                                        : alpha(COLORS.danger, 0.25)
+                                    }`,
+                                  }}
+                                />
+                              </Stack>
+
+                              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.25 }}>
+                                <b>Asignados:</b>{" "}
+                                {whNames ? whNames : "ninguno"}
+                              </Typography>
+
+                              <Button
+                                onClick={() => openAssignDialog(pos)}
+                                variant="outlined"
+                                startIcon={<WarehouseRoundedIcon />}
+                                sx={{
+                                  borderRadius: 2,
+                                  textTransform: "none",
+                                  fontWeight: 900,
+                                  borderColor: alpha("#000", 0.18),
+                                  color: COLORS.black,
+                                  "&:hover": {
+                                    bgcolor: alpha(COLORS.accent, 0.1),
+                                  },
+                                }}
+                              >
+                                Asignar almacenes
+                              </Button>
 
                               <TextField
                                 size="small"
@@ -756,15 +833,9 @@ const agregarPunto = async () => {
                                 InputProps={{
                                   endAdornment: (
                                     <InputAdornment position="end">
-                                      <Tooltip
-                                        title={
-                                          isVisible ? "Ocultar" : "Mostrar"
-                                        }
-                                      >
+                                      <Tooltip title={isVisible ? "Ocultar" : "Mostrar"}>
                                         <IconButton
-                                          onClick={() =>
-                                            toggleVisibilidad(pos.id)
-                                          }
+                                          onClick={() => toggleVisibilidad(pos.id)}
                                           size="small"
                                         >
                                           {isVisible ? (
@@ -812,11 +883,7 @@ const agregarPunto = async () => {
                                 Iniciar sesión
                               </Button>
 
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                sx={{ mt: 0.5 }}
-                              >
+                              <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
                                 <Button
                                   onClick={() => eliminarPunto(pos.id)}
                                   variant="outlined"
@@ -847,11 +914,7 @@ const agregarPunto = async () => {
                                     label="Editar nombre"
                                     value={pos?.name ?? ""}
                                     onChange={(e) =>
-                                      actualizarCampo(
-                                        pos.id,
-                                        "name",
-                                        e.target.value,
-                                      )
+                                      actualizarCampo(pos.id, "name", e.target.value)
                                     }
                                     fullWidth
                                     sx={{
@@ -883,9 +946,7 @@ const agregarPunto = async () => {
                                       onClick={() => guardarCambios(pos.id)}
                                       variant="contained"
                                       startIcon={<SaveRoundedIcon />}
-                                      disabled={
-                                        !isEditing || !pos?.name?.trim()
-                                      }
+                                      disabled={!isEditing || !pos?.name?.trim()}
                                       sx={{
                                         flex: 1,
                                         borderRadius: 2,
@@ -901,10 +962,7 @@ const agregarPunto = async () => {
                                     </Button>
                                   </Stack>
 
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                  >
+                                  <Typography variant="caption" color="text.secondary">
                                     {isNew
                                       ? "Al guardar se crea el POS en la sucursal."
                                       : "Recuerda guardar si cambiaste el access code."}
@@ -922,6 +980,21 @@ const agregarPunto = async () => {
             )}
           </CardContent>
         </Card>
+
+        {/* ✅ Modal de asignación */}
+        <AssignWarehousesDialog
+          open={assignOpen}
+          onClose={closeAssignDialog}
+          isMobile={isMobile}
+          pos={assignPos}
+          warehouses={warehouses}
+          warehouseIds={assignWarehouseIds}
+          setWarehouseIds={setAssignWarehouseIds}
+          showUnassigned={assignShowUnassigned}
+          setShowUnassigned={setAssignShowUnassigned}
+          loading={assignLoading}
+          onSave={saveAssignments}
+        />
       </Container>
     </Box>
   );

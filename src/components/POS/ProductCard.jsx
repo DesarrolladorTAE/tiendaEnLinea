@@ -1,5 +1,5 @@
 // src/components/POS/ProductCard.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Paper,
   Box,
@@ -73,16 +73,16 @@ export default function ProductCard({
 
   const [openVariants, setOpenVariants] = useState(false);
 
-  // ✅ AFUERA: SIEMPRE imagen del PRODUCTO
+  // ✅ imagen del producto
   const productImg = getProductImage(product);
 
-  // ====== Precio producto (solo para simple) ======
   const hasDiscount = Number(product?.discount) > 0;
   const priceFinalProduct = hasDiscount
     ? discountedPrice(product?.price, product?.discount)
     : money(product?.price);
 
-  // ====== Warehouses (producto sin variantes) ======
+  // ✅ Warehouses (producto simple multi-almacén)
+  // IMPORTANTE: con tu backend nuevo, aquí ya debe venir SOLO 1 almacén (el del POS)
   const productWarehouseRows = useMemo(() => {
     const rows = Array.isArray(product?.warehouse_inventories)
       ? product.warehouse_inventories
@@ -97,68 +97,30 @@ export default function ProductCard({
       .sort((a, b) => (Number(b.qty) || 0) - (Number(a.qty) || 0));
   }, [product]);
 
-  // ====== Stock global (para el chip) ======
+  // ✅ Stock global (según backend; si ya filtraste por almacén, será el del POS)
   const globalStock = useMemo(() => {
     const st = getAvailableStock(product);
     return Number.isFinite(Number(st)) ? Number(st) : 0;
   }, [product, getAvailableStock]);
 
-  // ====== Hint de almacenes ======
+  // ✅ Hint almacén
   const stockHint = useMemo(() => {
     if (!useWh) return null;
+    const withStock = productWarehouseRows.filter((r) => (Number(r.qty) || 0) > 0);
+    if (!withStock.length) return "Sin stock";
+    const top = withStock.slice(0, 1).map((r) => `${r.warehouse_name}: ${Number(r.qty) || 0}`);
+    return top.join(" • ");
+  }, [useWh, productWarehouseRows]);
 
-    // sin variantes
-    if (!hasVariants) {
-      const withStock = productWarehouseRows.filter((r) => (Number(r.qty) || 0) > 0);
-      if (!withStock.length) return "Sin stock en almacenes";
-      const top = withStock
-        .slice(0, 2)
-        .map((r) => `${r.warehouse_name}: ${Number(r.qty) || 0}`);
-      return withStock.length > 2
-        ? `${top.join(" • ")} • +${withStock.length - 2}`
-        : top.join(" • ");
-    }
-
-    // con variantes: resumen almacenes
-    const vars = Array.isArray(product?.variants) ? product.variants : [];
-    const mapWh = new Map();
-    vars.forEach((v) => {
-      const rows = Array.isArray(v?.warehouse_stocks) ? v.warehouse_stocks : [];
-      rows.forEach((r) => {
-        const wname = r.warehouse_name || `Almacén ${r.warehouse_id}`;
-        const key = String(r.warehouse_id);
-        const prev = mapWh.get(key) || {
-          warehouse_id: r.warehouse_id,
-          warehouse_name: wname,
-          stock: 0,
-        };
-        prev.stock += Number(r.stock) || 0;
-        mapWh.set(key, prev);
-      });
-    });
-
-    const arr = Array.from(mapWh.values()).sort((a, b) => (b.stock || 0) - (a.stock || 0));
-    const withStock = arr.filter((r) => (Number(r.stock) || 0) > 0);
-    if (!withStock.length) return "Sin stock en almacenes";
-    const top = withStock.slice(0, 2).map((r) => `${r.warehouse_name}`);
-    return withStock.length > 2
-      ? `${top.join(" • ")} • +${withStock.length - 2}`
-      : top.join(" • ");
-  }, [useWh, hasVariants, productWarehouseRows, product]);
-
-  // =========================================================
-  // PRODUCTO SIMPLE (sin variantes)
-  // =========================================================
-
-  // ✅ qty simple (sin almacén): key base
+  // ====== producto simple ======
   const simpleCartKey = String(baseId);
   const qtyInCartSimple = getQuantityInCart(simpleCartKey);
   const canAddSimple = !hasVariants;
 
-  // ✅ si es multi-almacén, NO permitir click directo para agregar
+  // ✅ si es multi-almacén, NO click directo (solo botón)
   const canClickCardToAdd = isMdUp && canAddSimple && !useWh;
 
-  // ---- Modal selección almacén (producto simple multi-almacén) ----
+  // ---- Modal selección almacén (solo si realmente hay 2+ almacenes en data) ----
   const [openSimpleWh, setOpenSimpleWh] = useState(false);
   const [selectedSimpleWarehouseId, setSelectedSimpleWarehouseId] = useState("");
 
@@ -177,92 +139,104 @@ export default function ProductCard({
     return Number(simpleWarehouseRow.qty) || 0;
   }, [useWh, globalStock, simpleWarehouseRow]);
 
-  // ✅ helper: cart_key para simple multi-almacén (para no mezclar almacenes)
   const simpleWhCartKey = useMemo(() => {
     if (!selectedSimpleWarehouseId) return null;
     return `${baseId}-w${selectedSimpleWarehouseId}`;
   }, [baseId, selectedSimpleWarehouseId]);
 
+  const addSimpleDirectWarehouse = (row) => {
+    if (!row) return;
+    const cartKey = `${baseId}-w${row.warehouse_id}`;
+    const stock = Number(row.qty) || 0;
+    const qtyLine = getQuantityInCart(cartKey);
+    if (qtyLine >= stock) return;
+
+    onAdd({
+      cart_key: cartKey,
+      id: cartKey,
+      product_id: Number(baseId),
+      variant_id: null,
+      warehouse_id: Number(row.warehouse_id),
+      warehouse_name: row.warehouse_name,
+      display_name: `${product?.name} — ${row.warehouse_name}`,
+      name: product?.name,
+      original_price: Number(product?.price ?? 0),
+      price_original: Number(product?.price ?? 0),
+      price: Number(priceFinalProduct),
+      quantity: 1,
+      has_variants: false,
+      stock_available: stock,
+    });
+  };
+
   const addSimpleOne = () => {
-    // ✅ si es multi-almacén -> pedir almacén
+    // ✅ si es multi-almacén:
     if (useWh) {
+      const withStock = productWarehouseRows.filter((r) => (Number(r.qty) || 0) > 0);
+
+      // ✅ si SOLO hay 1 almacén (lo normal con backend filtrado por POS) => NO modal
+      if (withStock.length === 1) {
+        addSimpleDirectWarehouse(withStock[0]);
+        return;
+      }
+
+      // ✅ si hay 2+ (caso raro / data vieja) => modal
       setOpenSimpleWh(true);
-      const firstWithStock =
-        productWarehouseRows.find((r) => (Number(r.qty) || 0) > 0) || null;
-      setSelectedSimpleWarehouseId(firstWithStock ? String(firstWithStock.warehouse_id) : "");
+      const first = withStock[0] || null;
+      setSelectedSimpleWarehouseId(first ? String(first.warehouse_id) : "");
       return;
     }
 
-    const stock = globalStock;
-    const qty = qtyInCartSimple;
-    if (qty < stock) {
-      onAdd({
-        ...product,
+    // ✅ no almacenes: agrega normal
+    if (qtyInCartSimple >= globalStock) return;
 
-        // ✅ cart item armado
-        cart_key: String(baseId),
-        id: String(baseId),
-        product_id: Number(baseId),
-
-        variant_id: null,
-        warehouse_id: null,
-        warehouse_name: null,
-
-        display_name: product?.name,
-        name: product?.name,
-
-        original_price: Number(product?.price ?? 0),
-        price_original: Number(product?.price ?? 0),
-        price: Number(priceFinalProduct),
-
-        quantity: 1, // ✅ el hook sumará
-        has_variants: false,
-      });
-    }
+    onAdd({
+      ...product,
+      cart_key: String(baseId),
+      id: String(baseId),
+      product_id: Number(baseId),
+      variant_id: null,
+      warehouse_id: null,
+      warehouse_name: null,
+      display_name: product?.name,
+      name: product?.name,
+      original_price: Number(product?.price ?? 0),
+      price_original: Number(product?.price ?? 0),
+      price: Number(priceFinalProduct),
+      quantity: 1,
+      has_variants: false,
+      stock_available: Number(globalStock) || 0,
+    });
   };
 
   const confirmAddSimpleWithWarehouse = () => {
     if (!simpleWarehouseRow || !simpleWhCartKey) return;
 
     const stock = stockForSimpleWarehouse;
-
-    // ✅ cantidad por línea (por almacén)
     const qtyInThatLine = getQuantityInCart(simpleWhCartKey);
     if (qtyInThatLine >= stock) return;
 
     onAdd({
-      ...product,
-
-      // ✅ línea única por almacén
       cart_key: simpleWhCartKey,
       id: simpleWhCartKey,
-
       product_id: Number(baseId),
       variant_id: null,
-
       warehouse_id: Number(simpleWarehouseRow.warehouse_id),
       warehouse_name: simpleWarehouseRow.warehouse_name,
-
       display_name: `${product?.name} — ${simpleWarehouseRow.warehouse_name}`,
       name: product?.name,
-
       original_price: Number(product?.price ?? 0),
       price_original: Number(product?.price ?? 0),
       price: Number(priceFinalProduct),
-
       quantity: 1,
       has_variants: false,
-
-      // ✅ opcional: ayuda al hook a validar stock por línea
-      stock_available: Number(stockForSimpleWarehouse) || 0,
+      stock_available: Number(stock) || 0,
     });
 
     setOpenSimpleWh(false);
   };
 
-  // =========================================================
-  // MODAL VARIANTES (catálogo)
-  // =========================================================
+  // ====== variantes ======
   const variants = useMemo(() => {
     const arr = Array.isArray(product?.variants) ? product.variants : [];
     return arr.filter((v) => v?.is_active !== false);
@@ -282,13 +256,13 @@ export default function ProductCard({
     return normalizeAttrs(selectedVariant?.variant_attributes || selectedVariant?.attributes);
   }, [selectedVariant]);
 
-  // ✅ ADENTRO (modal): imagen de variante
   const variantImage = useMemo(() => {
     const vimg = selectedVariant?.image_url || selectedVariant?.image || null;
     if (vimg && typeof vimg === "string") return vimg;
     return productImg;
   }, [selectedVariant, productImg]);
 
+  // ✅ con backend filtrado por POS, aquí debería venir SOLO 1 warehouse (el del POS)
   const variantWarehouses = useMemo(() => {
     const rows = Array.isArray(selectedVariant?.warehouse_stocks)
       ? selectedVariant.warehouse_stocks
@@ -303,14 +277,37 @@ export default function ProductCard({
       .sort((a, b) => (b.stock || 0) - (a.stock || 0));
   }, [selectedVariant]);
 
-  // ✅ Precio efectivo: SI ES VARIANTE -> usar precio variante
+  // ✅ auto-seleccionar almacén si solo hay 1 (para que NO salga el modal de selección)
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+  useEffect(() => {
+    if (!useWh) return;
+    if (!openVariants) return;
+
+    const withStock = variantWarehouses.filter((r) => (Number(r.stock) || 0) > 0);
+
+    if (withStock.length === 1) {
+      setSelectedWarehouseId(String(withStock[0].warehouse_id));
+      return;
+    }
+
+    // si hay 0 o 2+, dejamos que el usuario elija (o quedará vacío)
+    setSelectedWarehouseId("");
+  }, [useWh, openVariants, selectedVariantId, variantWarehouses]);
+
+  const selectedWarehouseRow = useMemo(() => {
+    if (!selectedWarehouseId) return null;
+    return (
+      variantWarehouses.find((r) => String(r.warehouse_id) === String(selectedWarehouseId)) ||
+      null
+    );
+  }, [variantWarehouses, selectedWarehouseId]);
+
   const effectiveUnitPrice = useMemo(() => {
     const p = selectedVariant?.price ?? product?.price ?? 0;
     const d = Number(product?.discount) || 0;
     return d > 0 ? Number(discountedPrice(p, d)) : Number(p);
   }, [selectedVariant, product]);
 
-  // ✅ cart_key variante consistente
   const variantCartKey = useMemo(() => {
     if (!selectedVariantId) return null;
     return `${baseId}-v${selectedVariantId}`;
@@ -325,43 +322,49 @@ export default function ProductCard({
     return Number(selectedVariant?.stock) || 0;
   }, [useWh, variantWarehouses, selectedVariant]);
 
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
-  const selectedWarehouseRow = useMemo(() => {
-    if (!selectedWarehouseId) return null;
-    return (
-      variantWarehouses.find((r) => String(r.warehouse_id) === String(selectedWarehouseId)) ||
-      null
-    );
-  }, [variantWarehouses, selectedWarehouseId]);
-
   const stockForSelectedWarehouse = useMemo(() => {
     if (!useWh) return variantTotalStock;
     if (!selectedWarehouseRow) return 0;
     return Number(selectedWarehouseRow.stock) || 0;
   }, [useWh, selectedWarehouseRow, variantTotalStock]);
 
-  const canAddVariant = Boolean(selectedVariantId) && (!useWh || Boolean(selectedWarehouseId));
+  const canAddVariant =
+    Boolean(selectedVariantId) && (!useWh || Boolean(selectedWarehouseId) || variantWarehouses.length === 1);
 
   const addVariantOne = () => {
-    if (!canAddVariant || !selectedVariant || !variantCartKey) return;
+    if (!selectedVariant || !variantCartKey) return;
 
-    const stock = useWh ? stockForSelectedWarehouse : variantTotalStock;
+    const whId =
+      !useWh
+        ? null
+        : selectedWarehouseId
+        ? Number(selectedWarehouseId)
+        : variantWarehouses.length === 1
+        ? Number(variantWarehouses[0].warehouse_id)
+        : null;
+
+    const whRow =
+      !useWh
+        ? null
+        : selectedWarehouseRow ||
+          (variantWarehouses.length === 1 ? variantWarehouses[0] : null);
+
+    if (useWh && !whId) return;
+
+    const stock = useWh ? (Number(whRow?.stock) || 0) : variantTotalStock;
     if (qtyInCartVariant >= stock) return;
 
     onAdd({
-      // NO mandes ...product completo para no arrastrar cosas raras al carrito
       cart_key: variantCartKey,
       id: variantCartKey,
 
       product_id: Number(baseId),
-
       variant: selectedVariant,
       variant_id: Number(selectedVariantId),
 
-      warehouse_id: useWh ? Number(selectedWarehouseId) : null,
-      warehouse_name: useWh ? selectedWarehouseRow?.warehouse_name : null,
+      warehouse_id: useWh ? whId : null,
+      warehouse_name: useWh ? whRow?.warehouse_name : null,
 
-      // ✅ precio ORIGINAL y FINAL basado en la variante
       original_price: Number(selectedVariant?.price ?? product?.price ?? 0),
       price_original: Number(selectedVariant?.price ?? product?.price ?? 0),
       price: Number(effectiveUnitPrice),
@@ -372,8 +375,6 @@ export default function ProductCard({
 
       quantity: 1,
       has_variants: true,
-
-      // ✅ opcional: ayuda al hook a validar stock por línea
       stock_available: Number(stock) || 0,
     });
   };
@@ -384,7 +385,6 @@ export default function ProductCard({
 
     const first = variants[0] || null;
     setSelectedVariantId(first ? String(first.id) : "");
-    setSelectedWarehouseId("");
   };
 
   const closeDetails = () => {
@@ -394,7 +394,7 @@ export default function ProductCard({
 
   return (
     <>
-      {/* CARD (afuera) */}
+      {/* CARD */}
       <Paper
         variant="outlined"
         onClick={() => {
@@ -490,27 +490,14 @@ export default function ProductCard({
             sx={{
               position: "absolute",
               inset: 0,
-              background: "linear-gradient(180deg, rgba(0,0,0,0.00) 40%, rgba(0,0,0,0.18) 100%)",
+              background:
+                "linear-gradient(180deg, rgba(0,0,0,0.00) 40%, rgba(0,0,0,0.18) 100%)",
               pointerEvents: "none",
             }}
           />
         </Box>
-        {product?.inventory_scope === "warehouse" && product?.warehouse_tag?.name ? (
-          <Chip
-            size="small"
-            icon={<WarehouseRoundedIcon />}
-            label={product.warehouse_tag.name}
-            sx={{ fontWeight: 900, bgcolor: alpha("#6366f1", 0.12), border: `1px solid ${alpha("#6366f1", 0.2)}` }}
-          />
-        ) : (
-          <Chip
-            size="small"
-            label="General"
-            sx={{ fontWeight: 900, bgcolor: alpha("#111827", 0.05), border: `1px solid ${alpha("#111827", 0.12)}` }}
-          />
-        )}
 
-        {/* Nombre clamp */}
+        {/* Nombre */}
         <Typography
           sx={{
             fontWeight: 950,
@@ -590,7 +577,7 @@ export default function ProductCard({
           <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1, minWidth: 0 }}>
             <WarehouseRoundedIcon sx={{ fontSize: 16, opacity: 0.7, flex: "0 0 auto" }} />
             <Typography sx={{ fontSize: 12, color: "text.secondary" }} noWrap>
-              {stockHint || "Almacenes"}
+              {stockHint || "Almacén"}
             </Typography>
           </Stack>
         )}
@@ -634,7 +621,7 @@ export default function ProductCard({
         )}
       </Paper>
 
-      {/* MODAL ALMACÉN (producto simple multi) */}
+      {/* MODAL ALMACÉN (producto simple multi) — solo aparece si hay 2+ almacenes */}
       <Dialog
         open={openSimpleWh}
         onClose={() => setOpenSimpleWh(false)}
@@ -799,7 +786,6 @@ export default function ProductCard({
                           variant="outlined"
                           onClick={() => {
                             setSelectedVariantId(String(v.id));
-                            setSelectedWarehouseId("");
                           }}
                           sx={{
                             p: 1,
@@ -844,12 +830,7 @@ export default function ProductCard({
                                 {pickVariantLabel(v)}
                               </Typography>
 
-                              <Stack
-                                direction="row"
-                                spacing={1}
-                                alignItems="center"
-                                sx={{ mt: 0.25, flexWrap: "wrap" }}
-                              >
+                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.25, flexWrap: "wrap" }}>
                                 <Chip
                                   size="small"
                                   label={`Stock: ${stockTotal}`}
@@ -864,7 +845,7 @@ export default function ProductCard({
                                   <Chip
                                     size="small"
                                     icon={<WarehouseRoundedIcon />}
-                                    label="Multi"
+                                    label={variantWarehouses.length === 1 ? "Almacén" : "Multi"}
                                     sx={{
                                       height: 22,
                                       fontWeight: 900,
@@ -994,7 +975,8 @@ export default function ProductCard({
                     )}
                   </Paper>
 
-                  {useWh && (
+                  {/* ✅ Selector de almacén SOLO si realmente hay 2+ */}
+                  {useWh && variantWarehouses.filter((w) => (Number(w.stock) || 0) > 0).length > 1 && (
                     <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 4, mb: 2 }}>
                       <Typography sx={{ fontWeight: 950, mb: 1 }}>
                         ¿De qué almacén se venderá?
@@ -1022,14 +1004,13 @@ export default function ProductCard({
                           ))
                         ) : (
                           <MenuItem disabled value="">
-                            Sin almacenes configurados para esta variante
+                            Sin almacenes para esta variante
                           </MenuItem>
                         )}
                       </TextField>
 
                       <Typography sx={{ mt: 1, fontSize: 12, color: "text.secondary" }}>
-                        Stock disponible en almacén seleccionado:{" "}
-                        <b>{selectedWarehouseId ? stockForSelectedWarehouse : "-"}</b>
+                        Stock disponible: <b>{selectedWarehouseId ? stockForSelectedWarehouse : "-"}</b>
                       </Typography>
                     </Paper>
                   )}
@@ -1049,7 +1030,7 @@ export default function ProductCard({
                         startIcon={<ShoppingCartRoundedIcon />}
                         disabled={
                           !canAddVariant ||
-                          (useWh ? stockForSelectedWarehouse <= 0 : variantTotalStock <= 0)
+                          (useWh ? stockForSelectedWarehouse <= 0 && variantWarehouses.length !== 1 : variantTotalStock <= 0)
                         }
                         onClick={addVariantOne}
                         sx={{ textTransform: "none", fontWeight: 950, borderRadius: 3 }}
@@ -1070,7 +1051,7 @@ export default function ProductCard({
                     {!canAddVariant && (
                       <Typography sx={{ mt: 1, fontSize: 12, color: "error.main" }}>
                         {useWh
-                          ? "Selecciona variante y almacén para poder agregar."
+                          ? "Selecciona una variante (el almacén se elige solo si aplica)."
                           : "Selecciona una variante para poder agregar."}
                       </Typography>
                     )}

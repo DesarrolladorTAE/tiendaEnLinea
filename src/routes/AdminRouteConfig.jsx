@@ -27,6 +27,7 @@ const Sucursales = lazy(() => import("../pages/admin/Sucursales.jsx"));
 const Almacenes = lazy(() => import("../pages/admin/Almacenes.jsx"));
 const InventoryByWarehouse = lazy(() => import("../pages/admin/InventoryByWarehouse.jsx"));
 const Promos = lazy(() => import("../pages/admin/Promos.jsx"));
+const MarcaBlanca = lazy(() => import("../pages/admin/WhiteLabelSite.jsx"));
 
 
 
@@ -61,6 +62,7 @@ export const adminRouteConfig = [
   { path: "reportes/inventario", element: <ReporteInventario /> },
   { path: "complementos", element: <Complementos /> },
   { path: "promociones", element: <Promos /> },
+  { path: "marca-blanca", element: <MarcaBlanca/> },
   // { patch: "solicitudes-pago", element: <SolicitudesPago/> },
 
 ];
