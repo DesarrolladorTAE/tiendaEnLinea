@@ -13,12 +13,12 @@ import {
   Box,
   useMediaQuery,
   TextField,
-  Grid,
   InputAdornment,
   Chip,
   MenuItem,
   Alert,
   Paper,
+  IconButton,
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 
@@ -33,6 +33,7 @@ import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
 import TagRoundedIcon from "@mui/icons-material/TagRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 
 import axiosClient from "../../../config/axiosClient";
 import { showSuccess, alertFromAxiosError } from "../../../utils/alerts";
@@ -50,10 +51,79 @@ const COLORS = {
 const normalizeUrl = (url) => {
   const s = (url || "").trim();
   if (!s) return "";
-  return s.endsWith("/") ? s : s + "/";
+  return s.endsWith("/") ? s : `${s}/`;
 };
 
-// Tarjeta/sección bonita
+function ImagePreviewCard({ label, url, type = "logo" }) {
+  const hasImage = Boolean(url);
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        borderRadius: 2.5,
+        border: `1px solid ${alpha("#000", 0.08)}`,
+        bgcolor: "#fff",
+        p: 1.5,
+      }}
+    >
+      <Stack spacing={1}>
+        <Typography sx={{ fontWeight: 900, fontSize: 13 }}>
+          {label}
+        </Typography>
+
+        <Box
+          sx={{
+            minHeight: type === "favicon" ? 84 : 140,
+            borderRadius: 2,
+            border: `1px dashed ${alpha("#000", 0.15)}`,
+            bgcolor: alpha("#000", 0.02),
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            p: 1,
+          }}
+        >
+          {hasImage ? (
+            <Box
+              component="img"
+              src={url}
+              alt={label}
+              sx={{
+                maxWidth: "100%",
+                maxHeight: type === "favicon" ? 48 : 110,
+                objectFit: "contain",
+                display: "block",
+              }}
+            />
+          ) : (
+            <Stack spacing={0.7} alignItems="center">
+              <ImageRoundedIcon sx={{ color: alpha("#000", 0.35) }} />
+              <Typography variant="caption" color="text.secondary">
+                Sin imagen cargada
+              </Typography>
+            </Stack>
+          )}
+        </Box>
+
+        {hasImage ? (
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{
+              wordBreak: "break-all",
+              lineHeight: 1.3,
+            }}
+          >
+            {url}
+          </Typography>
+        ) : null}
+      </Stack>
+    </Paper>
+  );
+}
+
 function Section({ title, subtitle, children }) {
   return (
     <Paper
@@ -93,7 +163,7 @@ export default function WhiteLabelEditorDialog({
   siteId, // null => create
   onSaved,
   canUse = true,
-  onRequestUpgrade = () => {},
+  onRequestUpgrade = () => { },
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -103,11 +173,9 @@ export default function WhiteLabelEditorDialog({
   const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [site, setSite] = useState(null);
 
   const [form, setForm] = useState({
-    // básicos
     site_name: "",
     site_tagline: "",
     public_base_url: "",
@@ -115,15 +183,12 @@ export default function WhiteLabelEditorDialog({
     category_query_key: "cat",
     landing_mode: "default",
 
-    // imágenes (guardas path que te regresa el backend)
     site_logo_path: "",
     favicon_path: "",
 
-    // colores
     primary_color: "",
     secondary_color: "",
 
-    // contacto + redes
     contact_email: "",
     contact_phone: "",
     whatsapp_phone: "",
@@ -131,7 +196,6 @@ export default function WhiteLabelEditorDialog({
     instagram_url: "",
     tiktok_url: "",
 
-    // estado
     is_active: true,
   });
 
@@ -162,17 +226,36 @@ export default function WhiteLabelEditorDialog({
     });
   }, []);
 
+  const resetDialogState = useCallback(() => {
+    setSite(null);
+    setTab(0);
+    setLoading(false);
+    setSaving(false);
+    fillForm(null);
+  }, [fillForm]);
+
   const fetchSite = useCallback(async () => {
-    if (!branchId || !siteId) {
+    if (!branchId) {
       setSite(null);
       fillForm(null);
       return;
     }
+
+    if (!siteId) {
+      setSite(null);
+      fillForm(null);
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data } = await axiosClient.get(`/admin/white-label/site/${siteId}`, {
-        params: { branch_id: branchId },
+      const { data } = await axiosClient.get("/admin/white-label/site", {
+        params: {
+          branch_id: branchId,
+          id: siteId,
+        },
       });
+
       const s = data?.site ?? data?.data ?? null;
       setSite(s);
       fillForm(s);
@@ -191,13 +274,19 @@ export default function WhiteLabelEditorDialog({
     fetchSite();
   }, [open, fetchSite]);
 
+  useEffect(() => {
+    if (!open) {
+      resetDialogState();
+    }
+  }, [open, resetDialogState]);
+
   const onChange = (key) => (e) => {
     const value = e?.target?.value;
-    setForm((p) => ({ ...p, [key]: value }));
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const onChangeValue = (key) => (value) => {
-    setForm((p) => ({ ...p, [key]: value }));
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const derivedExample = useMemo(() => {
@@ -220,9 +309,16 @@ export default function WhiteLabelEditorDialog({
         "Falta información"
       );
     }
+
     if (!form.public_base_url.trim() || !form.storefront_url.trim()) {
       return alertFromAxiosError(
-        { response: { data: { message: "La URL pública y la URL de la tienda son obligatorias." } } },
+        {
+          response: {
+            data: {
+              message: "La URL pública y la URL de la tienda son obligatorias.",
+            },
+          },
+        },
         "Falta información"
       );
     }
@@ -240,8 +336,9 @@ export default function WhiteLabelEditorDialog({
     setSaving(true);
     try {
       let data;
+
       if (isCreate) {
-        ({ data } = await axiosClient.post("/admin/white-label/site", payload));
+        ({ data } = await axiosClient.post("/admin/white-label/sites", payload));
       } else {
         ({ data } = await axiosClient.put(`/admin/white-label/site/${siteId}`, payload));
       }
@@ -269,7 +366,13 @@ export default function WhiteLabelEditorDialog({
     const currentId = site?.id || siteId;
     if (!currentId) {
       return alertFromAxiosError(
-        { response: { data: { message: "Primero guarda el sitio para generar el ID, y luego sube la imagen." } } },
+        {
+          response: {
+            data: {
+              message: "Primero guarda el sitio para generar el ID, y luego sube la imagen.",
+            },
+          },
+        },
         "Primero guarda"
       );
     }
@@ -278,28 +381,41 @@ export default function WhiteLabelEditorDialog({
     try {
       const fd = new FormData();
       fd.append("branch_id", String(branchId));
+      fd.append("site_id", String(currentId));
       fd.append("file", file);
 
       const url =
         kind === "favicon"
-          ? `/admin/white-label/sites/${currentId}/upload-favicon`
-          : `/admin/white-label/sites/${currentId}/upload-logo`;
+          ? "/admin/white-label/upload/favicon"
+          : "/admin/white-label/upload/logo";
 
       const { data } = await axiosClient.post(url, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       const path = data?.path || data?.url || "";
+      const updatedSite = data?.site || null;
+
       if (!path) {
-        throw { response: { data: { message: "El servidor no regresó el path de la imagen." } } };
+        throw {
+          response: {
+            data: {
+              message: "El servidor no regresó el path de la imagen.",
+            },
+          },
+        };
+      }
+
+      if (updatedSite) {
+        setSite(updatedSite);
       }
 
       if (kind === "favicon") {
-        setForm((p) => ({ ...p, favicon_path: path }));
-        await showSuccess("Favicon subido ✅ (ahora dale Guardar)");
+        setForm((prev) => ({ ...prev, favicon_path: path }));
+        await showSuccess("Favicon subido ✅ ahora dale Guardar");
       } else {
-        setForm((p) => ({ ...p, site_logo_path: path }));
-        await showSuccess("Logo subido ✅ (ahora dale Guardar)");
+        setForm((prev) => ({ ...prev, site_logo_path: path }));
+        await showSuccess("Logo subido ✅ ahora dale Guardar");
       }
     } catch (err) {
       alertFromAxiosError(err, "No se pudo subir la imagen");
@@ -311,7 +427,7 @@ export default function WhiteLabelEditorDialog({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={saving ? undefined : onClose}
       fullWidth
       maxWidth="md"
       fullScreen={fullScreen}
@@ -319,24 +435,49 @@ export default function WhiteLabelEditorDialog({
         sx: {
           borderRadius: fullScreen ? 0 : 4,
           overflow: "hidden",
+          border: fullScreen ? "none" : `1px solid ${alpha("#000", 0.08)}`,
+          bgcolor: COLORS.paper,
         },
       }}
     >
       <DialogTitle
         sx={{
-          fontWeight: 1000,
-          pb: 1,
+          px: 3,
+          py: 2,
           bgcolor: COLORS.paper,
           borderBottom: `1px solid ${alpha("#000", 0.08)}`,
         }}
       >
-        <Stack spacing={0.4}>
-          <Typography sx={{ fontWeight: 1000, fontSize: 18 }}>
-            {isCreate ? "Crear sitio de Marca Blanca" : `Editar sitio: ${site?.site_name || `#${siteId}`}`}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Configura nombre, URLs, colores, logo y redes. Todo queda listo para QR / landing.
-          </Typography>
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Box
+            sx={{
+              width: 42,
+              height: 42,
+              borderRadius: 2,
+              bgcolor: alpha(COLORS.accent, 0.2),
+              border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
+              display: "grid",
+              placeItems: "center",
+              flexShrink: 0,
+            }}
+          >
+            <StorefrontRoundedIcon sx={{ color: COLORS.black }} />
+          </Box>
+
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontWeight: 1000, fontSize: 18, lineHeight: 1.1 }}>
+              {isCreate
+                ? "Crear sitio de Marca Blanca"
+                : `Editar sitio: ${site?.site_name || `#${siteId}`}`}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Configura nombre, URLs, colores, logo y redes del sitio.
+            </Typography>
+          </Box>
+
+          <IconButton onClick={onClose} disabled={saving}>
+            <CloseRoundedIcon />
+          </IconButton>
         </Stack>
       </DialogTitle>
 
@@ -357,7 +498,7 @@ export default function WhiteLabelEditorDialog({
               mb: 2,
             }}
           >
-            Esta función requiere tu plan/complemento de Marca Blanca.
+            Esta función requiere tu plan o complemento de Marca Blanca.
           </Alert>
         ) : null}
 
@@ -376,7 +517,16 @@ export default function WhiteLabelEditorDialog({
               border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
             }}
           />
+          {loading ? (
+            <Chip
+              label="Cargando..."
+              variant="outlined"
+              sx={{ fontWeight: 900, borderRadius: 2 }}
+            />
+          ) : null}
+
           <Box sx={{ flex: 1 }} />
+
           <Button
             onClick={fetchSite}
             startIcon={<RefreshRoundedIcon />}
@@ -389,7 +539,7 @@ export default function WhiteLabelEditorDialog({
               borderColor: alpha("#000", 0.15),
               color: COLORS.black,
               bgcolor: "#fff",
-              "&:hover": { bgcolor: alpha("#fff", 0.9) },
+              "&:hover": { bgcolor: alpha("#000", 0.03) },
             }}
           >
             Recargar
@@ -398,10 +548,15 @@ export default function WhiteLabelEditorDialog({
 
         <Tabs
           value={tab}
-          onChange={(_, v) => setTab(v)}
+          onChange={(_, value) => setTab(value)}
           sx={{
             mb: 1.5,
-            "& .MuiTab-root": { textTransform: "none", fontWeight: 950 },
+            minHeight: 44,
+            "& .MuiTab-root": {
+              textTransform: "none",
+              fontWeight: 950,
+              minHeight: 44,
+            },
           }}
         >
           <Tab label="Datos del sitio" />
@@ -416,7 +571,7 @@ export default function WhiteLabelEditorDialog({
                 value={form.site_name}
                 onChange={onChange("site_name")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="Ej: Catálogo Central"
                 InputProps={{
@@ -427,12 +582,13 @@ export default function WhiteLabelEditorDialog({
                   ),
                 }}
               />
+
               <TextField
                 label="Slogan (opcional)"
                 value={form.site_tagline}
                 onChange={onChange("site_tagline")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="Ej: Encuentra lo que necesitas"
               />
@@ -444,7 +600,7 @@ export default function WhiteLabelEditorDialog({
                 value={form.public_base_url}
                 onChange={onChange("public_base_url")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 placeholder="https://tusitio.com/"
                 sx={fieldSx}
                 InputProps={{
@@ -462,7 +618,7 @@ export default function WhiteLabelEditorDialog({
                 value={form.storefront_url}
                 onChange={onChange("storefront_url")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 placeholder="https://tusitio.com/tienda/"
                 sx={fieldSx}
                 InputProps={{
@@ -480,9 +636,9 @@ export default function WhiteLabelEditorDialog({
                 value={form.category_query_key}
                 onChange={onChange("category_query_key")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
-                helperText="Ej: cat → ?cat=accesorios"
+                helperText="Ejemplo: cat → ?cat=accesorios"
               />
 
               <TextField
@@ -491,7 +647,7 @@ export default function WhiteLabelEditorDialog({
                 onChange={onChange("landing_mode")}
                 select
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 helperText="Qué se muestra al abrir el catálogo"
               >
@@ -503,10 +659,15 @@ export default function WhiteLabelEditorDialog({
               <TextField
                 label="¿Sitio activo?"
                 value={form.is_active ? "1" : "0"}
-                onChange={(e) => setForm((p) => ({ ...p, is_active: e.target.value === "1" }))}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    is_active: e.target.value === "1",
+                  }))
+                }
                 select
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
               >
                 <MenuItem value="1">Sí (activo)</MenuItem>
@@ -527,115 +688,98 @@ export default function WhiteLabelEditorDialog({
                   }}
                 />
                 <Typography variant="caption" color="text.secondary">
-                  Si esto se ve bien, tu QR va a mandar a la categoría correcta.
+                  Si esto se ve bien, tu QR mandará a la categoría correcta.
                 </Typography>
               </Box>
             </Section>
 
             <Section title="Imágenes" subtitle="Sube logo y favicon. Luego dale Guardar para fijarlo.">
-              <TextField
-                label="Logo (path guardado)"
-                value={form.site_logo_path}
-                fullWidth
-                disabled
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                    bgcolor: alpha("#000", 0.03),
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <ImageRoundedIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
-              />
-
-              <Button
-                component="label"
-                disabled={!canUse || saving}
-                startIcon={<UploadRoundedIcon />}
-                variant="outlined"
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 900,
-                  borderColor: alpha("#000", 0.18),
-                  color: COLORS.black,
-                  bgcolor: "#fff",
-                  justifyContent: "flex-start",
-                  "&:hover": { bgcolor: alpha("#fff", 0.9) },
-                }}
-              >
-                Subir logo
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={(e) => uploadImage({ file: e.target.files?.[0] || null, kind: "logo" })}
+              <Stack spacing={1.5}>
+                <ImagePreviewCard
+                  label="Vista previa del logo"
+                  url={form.site_logo_path}
+                  type="logo"
                 />
-              </Button>
 
-              <Divider sx={{ my: 0.5 }} />
-
-              <TextField
-                label="Favicon (path guardado)"
-                value={form.favicon_path}
-                fullWidth
-                disabled
-                sx={{
-                  "& .MuiOutlinedInput-root": {
+                <Button
+                  component="label"
+                  disabled={!canUse || saving}
+                  startIcon={<UploadRoundedIcon />}
+                  variant="outlined"
+                  sx={{
                     borderRadius: 2,
-                    bgcolor: alpha("#000", 0.03),
-                  },
-                }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <ImageRoundedIcon fontSize="small" />
-                    </InputAdornment>
-                  ),
-                }}
-                helperText="Recomendado 16x16 o 32x32"
-              />
+                    textTransform: "none",
+                    fontWeight: 900,
+                    borderColor: alpha("#000", 0.18),
+                    color: COLORS.black,
+                    bgcolor: "#fff",
+                    justifyContent: "flex-start",
+                    "&:hover": { bgcolor: alpha("#000", 0.03) },
+                  }}
+                >
+                  Subir logo
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) =>
+                      uploadImage({
+                        file: e.target.files?.[0] || null,
+                        kind: "logo",
+                      })
+                    }
+                  />
+                </Button>
 
-              <Button
-                component="label"
-                disabled={!canUse || saving}
-                startIcon={<UploadRoundedIcon />}
-                variant="outlined"
-                sx={{
-                  borderRadius: 2,
-                  textTransform: "none",
-                  fontWeight: 900,
-                  borderColor: alpha("#000", 0.18),
-                  color: COLORS.black,
-                  bgcolor: "#fff",
-                  justifyContent: "flex-start",
-                  "&:hover": { bgcolor: alpha("#fff", 0.9) },
-                }}
-              >
-                Subir favicon
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={(e) => uploadImage({ file: e.target.files?.[0] || null, kind: "favicon" })}
+                <Divider sx={{ my: 0.5 }} />
+
+                <ImagePreviewCard
+                  label="Vista previa del favicon"
+                  url={form.favicon_path}
+                  type="favicon"
                 />
-              </Button>
 
-              <Alert
-                severity="info"
-                sx={{
-                  borderRadius: 2.5,
-                  bgcolor: alpha("#000", 0.03),
-                  border: `1px solid ${alpha("#000", 0.08)}`,
-                }}
-              >
-                Tip: sube la imagen y luego dale <b>Guardar</b> para que quede fija.
-              </Alert>
+                <Button
+                  component="label"
+                  disabled={!canUse || saving}
+                  startIcon={<UploadRoundedIcon />}
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: "none",
+                    fontWeight: 900,
+                    borderColor: alpha("#000", 0.18),
+                    color: COLORS.black,
+                    bgcolor: "#fff",
+                    justifyContent: "flex-start",
+                    "&:hover": { bgcolor: alpha("#000", 0.03) },
+                  }}
+                >
+                  Subir favicon
+                  <input
+                    type="file"
+                    hidden
+                    accept="image/*"
+                    onChange={(e) =>
+                      uploadImage({
+                        file: e.target.files?.[0] || null,
+                        kind: "favicon",
+                      })
+                    }
+                  />
+                </Button>
+
+                <Alert
+                  severity="info"
+                  sx={{
+                    borderRadius: 2.5,
+                    bgcolor: alpha("#000", 0.03),
+                    border: `1px solid ${alpha("#000", 0.08)}`,
+                  }}
+                >
+                  Tip: al subir una nueva imagen se mostrará aquí mismo como vista previa.
+                </Alert>
+              </Stack>
             </Section>
 
             <Section title="Colores" subtitle="Personaliza el estilo del catálogo.">
@@ -643,27 +787,28 @@ export default function WhiteLabelEditorDialog({
                 label="Color principal"
                 value={form.primary_color}
                 onChange={onChangeValue("primary_color")}
-                disabled={!canUse}
-                helperText="Botones / títulos principales"
+                disabled={!canUse || saving}
+                helperText="Botones y títulos principales"
                 startIcon={<PaletteRoundedIcon fontSize="small" />}
               />
+
               <ColorPickerField
                 label="Color secundario"
                 value={form.secondary_color}
                 onChange={onChangeValue("secondary_color")}
-                disabled={!canUse}
-                helperText="Detalles / resaltados"
+                disabled={!canUse || saving}
+                helperText="Detalles y resaltados"
                 startIcon={<PaletteRoundedIcon fontSize="small" />}
               />
             </Section>
 
-            <Section title="Contacto" subtitle="Datos para mostrarlos en el catálogo (si aplica).">
+            <Section title="Contacto" subtitle="Datos para mostrarlos en el catálogo.">
               <TextField
                 label="Correo de contacto"
                 value={form.contact_email}
                 onChange={onChange("contact_email")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="ventas@tusitio.com"
                 InputProps={{
@@ -680,7 +825,7 @@ export default function WhiteLabelEditorDialog({
                 value={form.contact_phone}
                 onChange={onChange("contact_phone")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="7441234567"
                 InputProps={{
@@ -697,10 +842,10 @@ export default function WhiteLabelEditorDialog({
                 value={form.whatsapp_phone}
                 onChange={onChange("whatsapp_phone")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="7441234567"
-                helperText="Solo número (sin espacios) o como lo uses en tu sistema"
+                helperText="Solo número o el formato que uses en tu sistema"
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -717,32 +862,38 @@ export default function WhiteLabelEditorDialog({
                 value={form.facebook_url}
                 onChange={onChange("facebook_url")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="https://facebook.com/..."
               />
+
               <TextField
                 label="Instagram URL"
                 value={form.instagram_url}
                 onChange={onChange("instagram_url")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="https://instagram.com/..."
               />
+
               <TextField
                 label="TikTok URL"
                 value={form.tiktok_url}
                 onChange={onChange("tiktok_url")}
                 fullWidth
-                disabled={!canUse}
+                disabled={!canUse || saving}
                 sx={fieldSx}
                 placeholder="https://tiktok.com/@..."
               />
             </Section>
           </Stack>
         ) : (
-          <WhiteLabelCategoryPicks branchId={branchId} canUse={canUse} onRequestUpgrade={onRequestUpgrade} />
+          <WhiteLabelCategoryPicks
+            branchId={branchId}
+            canUse={canUse}
+            onRequestUpgrade={onRequestUpgrade}
+          />
         )}
       </DialogContent>
 
@@ -756,9 +907,18 @@ export default function WhiteLabelEditorDialog({
       >
         <Button
           onClick={onClose}
+          disabled={saving}
           startIcon={<CloseRoundedIcon />}
-          variant="text"
-          sx={{ textTransform: "none", fontWeight: 900 }}
+          variant="outlined"
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 900,
+            borderColor: alpha("#000", 0.15),
+            color: COLORS.black,
+            bgcolor: "#fff",
+            "&:hover": { bgcolor: alpha("#000", 0.03) },
+          }}
         >
           Cerrar
         </Button>
@@ -779,7 +939,7 @@ export default function WhiteLabelEditorDialog({
             "&:hover": { bgcolor: alpha(COLORS.black, 0.88) },
           }}
         >
-          Guardar
+          {saving ? "Guardando..." : "Guardar"}
         </Button>
       </DialogActions>
     </Dialog>

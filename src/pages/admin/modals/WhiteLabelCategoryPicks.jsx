@@ -15,11 +15,18 @@ import {
   IconButton,
   Tooltip,
   InputAdornment,
+  useMediaQuery,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { useTheme, alpha } from "@mui/material/styles";
 
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import StarBorderRoundedIcon from "@mui/icons-material/StarBorderRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
@@ -41,6 +48,7 @@ const COLORS = {
 
 const copyToClipboard = async (text) => {
   if (!text) return false;
+
   try {
     const isSecure =
       window.isSecureContext ||
@@ -51,6 +59,7 @@ const copyToClipboard = async (text) => {
       return true;
     }
   } catch (_) {}
+
   try {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -70,35 +79,76 @@ const copyToClipboard = async (text) => {
   }
 };
 
-export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpgrade }) {
+const normalizeUrl = (url) => {
+  const s = (url || "").trim();
+  if (!s) return "";
+  return s.endsWith("/") ? s : `${s}/`;
+};
+
+export default function WhiteLabelCategoryPicks({
+  branchId,
+  canUse,
+  onRequestUpgrade,
+}) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const [categories, setCategories] = useState([]);
   const [picks, setPicks] = useState([]);
+  const [siteConfig, setSiteConfig] = useState(null);
 
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [asDefault, setAsDefault] = useState(true);
 
   const fetchAll = useCallback(async () => {
     if (!branchId) return;
     setLoading(true);
+
     try {
-      const [catsRes, picksRes] = await Promise.all([
-        axiosClient.get("/categories", { params: { branch_id: branchId, mode: "flat" } }),
-        axiosClient.get("/admin/white-label/category-picks", { params: { branch_id: branchId } }),
+      const [catsRes, picksRes, siteRes] = await Promise.all([
+        axiosClient.get("/admin/categories", {
+          params: { branch_id: branchId, mode: "flat" },
+        }),
+        axiosClient.get("/admin/white-label/category-picks", {
+          params: { branch_id: branchId },
+        }),
+        axiosClient.get("/admin/white-label/site", {
+          params: { branch_id: branchId },
+        }),
       ]);
 
-      const cats = Array.isArray(catsRes?.data?.categories) ? catsRes.data.categories : [];
-      const p = Array.isArray(picksRes?.data?.picks) ? picksRes.data.picks : [];
+      const cats = Array.isArray(catsRes?.data?.categories)
+        ? catsRes.data.categories
+        : Array.isArray(catsRes?.data?.data)
+        ? catsRes.data.data
+        : Array.isArray(catsRes?.data)
+        ? catsRes.data
+        : [];
 
-      // Importante: categorías deben traer slug (ya lo ajustaste en controller)
+      const picksData = Array.isArray(picksRes?.data?.picks)
+        ? picksRes.data.picks
+        : Array.isArray(picksRes?.data?.data)
+        ? picksRes.data.data
+        : Array.isArray(picksRes?.data)
+        ? picksRes.data
+        : [];
+
+      const site = siteRes?.data?.site ?? siteRes?.data?.data ?? null;
+
       setCategories(cats);
-      setPicks(p);
+      setPicks(picksData);
+      setSiteConfig(site);
+
+      const currentDefault = picksData.find((x) => !!x.is_default) || picksData[0] || null;
+      setSelectedCategoryId(currentDefault ? String(currentDefault.category_id) : "");
     } catch (err) {
       alertFromAxiosError(err, "No se pudo cargar configuración de categorías");
       setCategories([]);
       setPicks([]);
+      setSiteConfig(null);
+      setSelectedCategoryId("");
     } finally {
       setLoading(false);
     }
@@ -109,109 +159,101 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
     fetchAll();
   }, [branchId, fetchAll]);
 
-  const pickedIds = useMemo(() => new Set(picks.map((x) => Number(x.category_id))), [picks]);
+  const currentDefaultPick = useMemo(() => {
+    return picks.find((x) => !!x.is_default) || picks[0] || null;
+  }, [picks]);
 
-  const availableCategories = useMemo(() => {
-    // puedes permitir repetir si quieres, pero normalmente no
-    return categories.filter((c) => !pickedIds.has(Number(c.id)));
-  }, [categories, pickedIds]);
+  const currentDefaultCategoryId = currentDefaultPick
+    ? Number(currentDefaultPick.category_id)
+    : null;
 
-  const maxReached = picks.length >= 3;
+  const categoryQueryKey = (siteConfig?.category_query_key || "cat").trim() || "cat";
+  const storefrontUrl = normalizeUrl(siteConfig?.storefront_url || "");
 
-  const addPick = async () => {
+  const buildCategoryUrl = useCallback(
+    (category) => {
+      if (!storefrontUrl || !category?.slug) return "";
+      return `${storefrontUrl}?${categoryQueryKey}=${category.slug}`;
+    },
+    [storefrontUrl, categoryQueryKey]
+  );
+
+  const categoriesWithUrl = useMemo(() => {
+    return (categories || []).map((cat) => ({
+      ...cat,
+      built_url: buildCategoryUrl(cat),
+      is_default: Number(cat.id) === Number(currentDefaultCategoryId),
+    }));
+  }, [categories, buildCategoryUrl, currentDefaultCategoryId]);
+
+  const saveDefaultCategory = async () => {
     if (!canUse) {
       const ok = await showConfirm(
-        "Tu plan/complemento no permite Marca Blanca.\n\nNecesitas Plan 4 (Avanzado) + complemento de Plantilla.",
+        "Tu plan o complemento no permite Marca Blanca.\n\nNecesitas Plan 4 (Avanzado) + complemento de Plantilla.",
         "Ver planes / complementos"
       );
       if (ok) onRequestUpgrade?.();
       return;
     }
 
-    if (maxReached) {
-      return alertFromAxiosError(
-        { response: { data: { message: "Máximo 3 categorías." } } },
-        "Máximo 3 categorías"
-      );
-    }
-
     const cid = Number(selectedCategoryId || 0);
     if (!cid) {
       return alertFromAxiosError(
-        { response: { data: { message: "Selecciona una categoría." } } },
+        { response: { data: { message: "Selecciona una categoría default." } } },
         "Falta categoría"
       );
     }
 
-    setSaving(true);
-    try {
-      const { data } = await axiosClient.post("/admin/white-label/category-picks", {
-        branch_id: branchId,
-        category_id: cid,
-        is_default: !!asDefault,
-      });
-
-      const pick = data?.pick;
-      if (pick) {
-        setPicks((p) => {
-          // si marcaste default, backend ya apagó los demás, pero reflejamos:
-          const next = !!pick.is_default
-            ? p.map((x) => ({ ...x, is_default: false }))
-            : p.slice();
-          return [...next, pick].sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0));
-        });
-        setSelectedCategoryId("");
-        await showSuccess("Categoría agregada");
-      } else {
-        await fetchAll();
-      }
-    } catch (err) {
-      alertFromAxiosError(err, "No se pudo agregar");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const setDefault = async (pick) => {
-    if (!canUse) return;
-
-    setSaving(true);
-    try {
-      await axiosClient.put(`/admin/white-label/category-picks/${pick.id}`, {
-        branch_id: branchId,
-        is_default: true,
-      });
-
-      // refresh local
-      setPicks((p) =>
-        p.map((x) => ({ ...x, is_default: x.id === pick.id }))
+    const selected = categories.find((c) => Number(c.id) === cid);
+    if (!selected?.slug) {
+      return alertFromAxiosError(
+        { response: { data: { message: "La categoría seleccionada no tiene slug." } } },
+        "Categoría inválida"
       );
-
-      await showSuccess("Categoría por defecto actualizada");
-    } catch (err) {
-      alertFromAxiosError(err, "No se pudo actualizar default");
-    } finally {
-      setSaving(false);
     }
-  };
 
-  const removePick = async (pick) => {
+    if (!storefrontUrl) {
+      return alertFromAxiosError(
+        { response: { data: { message: "Primero guarda la URL de la tienda en Datos del sitio." } } },
+        "Falta URL de tienda"
+      );
+    }
+
     const ok = await showConfirm(
-      "¿Eliminar esta categoría de Marca Blanca?\n\nYa no aparecerá como opción de QR / landing.",
-      "Sí, eliminar"
+      "Se reemplazará la categoría default actual por la nueva selección.",
+      "Guardar default"
     );
     if (!ok) return;
 
     setSaving(true);
     try {
-      await axiosClient.delete(`/admin/white-label/category-picks/${pick.id}`, {
-        params: { branch_id: branchId },
+      if (Array.isArray(picks) && picks.length > 0) {
+        await Promise.all(
+          picks.map((pick) =>
+            axiosClient.delete(`/admin/white-label/category-picks/${pick.id}`, {
+              params: { branch_id: branchId },
+            })
+          )
+        );
+      }
+
+      const { data } = await axiosClient.post("/admin/white-label/category-picks", {
+        branch_id: branchId,
+        category_id: cid,
+        is_default: true,
       });
 
-      setPicks((p) => p.filter((x) => x.id !== pick.id));
-      await showSuccess("Categoría eliminada");
+      const createdPick = data?.pick ?? null;
+
+      if (createdPick) {
+        setPicks([createdPick]);
+      } else {
+        await fetchAll();
+      }
+
+      await showSuccess("Categoría default guardada");
     } catch (err) {
-      alertFromAxiosError(err, "No se pudo eliminar");
+      alertFromAxiosError(err, "No se pudo guardar la categoría default");
     } finally {
       setSaving(false);
     }
@@ -240,19 +282,22 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
             mb: 2,
           }}
         >
-          Para configurar categorías de Marca Blanca necesitas <b>Plan 4 (Avanzado)</b> y el complemento <b>💎 Plantilla premium de catálogo</b>.
+          Para configurar categoría default de Marca Blanca necesitas{" "}
+          <b>Plan 4 (Avanzado)</b> y el complemento{" "}
+          <b>💎 Plantilla premium de catálogo</b>.
         </Alert>
       ) : null}
 
       <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap" }}>
         <Chip
-          label={`Seleccionadas: ${picks.length}/3`}
+          label={currentDefaultPick ? "Default configurada" : "Sin default"}
           sx={{
             fontWeight: 900,
             bgcolor: alpha(COLORS.accent, 0.22),
             border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
           }}
         />
+
         <Button
           onClick={fetchAll}
           startIcon={<RefreshRoundedIcon />}
@@ -276,76 +321,60 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
           border: `1px solid ${alpha("#000", 0.08)}`,
           overflow: "hidden",
           mb: 2,
+          bgcolor: "#fff",
         }}
       >
-        <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+        <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
           <Typography sx={{ fontWeight: 900, color: COLORS.black, mb: 0.5 }}>
-            Agregar categoría (máx 3)
+            Categoría default
           </Typography>
+
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Estas categorías se usan para construir URLs por slug y generar códigos QR.
+            Aquí solo se guarda una categoría default. Esa será la usada para tu landing o QR principal.
           </Typography>
 
-          <Grid container spacing={1.2} alignItems="center">
-            <Grid item xs={12} md={7}>
-              <TextField
-                label="Categoría"
-                value={selectedCategoryId}
-                onChange={(e) => setSelectedCategoryId(e.target.value)}
-                select
-                fullWidth
-                disabled={loading || saving || !canUse || maxReached}
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "#fff" } }}
-              >
-                <MenuItem value="">
-                  {maxReached ? "Máximo alcanzado" : "Selecciona…"}
+          <Stack spacing={1.3}>
+            <TextField
+              label="Selecciona la categoría default"
+              value={selectedCategoryId}
+              onChange={(e) => setSelectedCategoryId(e.target.value)}
+              select
+              fullWidth
+              disabled={loading || saving || !canUse}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  bgcolor: "#fff",
+                },
+              }}
+            >
+              <MenuItem value="">Selecciona una categoría</MenuItem>
+
+              {categories.map((c) => (
+                <MenuItem key={c.id} value={String(c.id)}>
+                  {c.name} {c.slug ? `(${c.slug})` : ""}
                 </MenuItem>
-                {availableCategories.map((c) => (
-                  <MenuItem key={c.id} value={String(c.id)}>
-                    {c.name} {c.slug ? `(${c.slug})` : ""}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Grid>
+              ))}
+            </TextField>
 
-            <Grid item xs={12} md={5}>
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-                <Button
-                  onClick={() => setAsDefault((v) => !v)}
-                  variant="outlined"
-                  disabled={!canUse || loading || saving}
-                  startIcon={asDefault ? <StarRoundedIcon /> : <StarBorderRoundedIcon />}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 900,
-                    borderColor: alpha("#000", 0.18),
-                    color: COLORS.black,
-                    minWidth: 220,
-                  }}
-                >
-                  {asDefault ? "Será default" : "No default"}
-                </Button>
-
-                <Button
-                  onClick={addPick}
-                  disabled={!canUse || loading || saving || maxReached}
-                  variant="contained"
-                  startIcon={<AddRoundedIcon />}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 900,
-                    bgcolor: COLORS.black,
-                    "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
-                    minWidth: 170,
-                  }}
-                >
-                  Agregar
-                </Button>
-              </Stack>
-            </Grid>
-          </Grid>
+            <Button
+              onClick={saveDefaultCategory}
+              disabled={!canUse || loading || saving}
+              variant="contained"
+              startIcon={<SaveRoundedIcon />}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 900,
+                bgcolor: COLORS.black,
+                px: 2,
+                py: 1.2,
+                "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
+              }}
+            >
+              Guardar categoría default
+            </Button>
+          </Stack>
 
           {!canUse ? (
             <Button
@@ -368,6 +397,20 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
 
       <Divider sx={{ my: 1.5 }} />
 
+      {!storefrontUrl ? (
+        <Alert
+          severity="warning"
+          sx={{
+            borderRadius: 2,
+            mb: 2,
+            bgcolor: alpha(COLORS.accent, 0.10),
+            border: `1px solid ${alpha(COLORS.accent, 0.25)}`,
+          }}
+        >
+          Primero guarda la <b>URL de la tienda</b> en “Datos del sitio” para poder armar las URLs de categorías.
+        </Alert>
+      ) : null}
+
       {loading ? (
         <Alert
           severity="info"
@@ -379,7 +422,7 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
         >
           Cargando categorías…
         </Alert>
-      ) : picks.length === 0 ? (
+      ) : categoriesWithUrl.length === 0 ? (
         <Alert
           severity="info"
           sx={{
@@ -388,65 +431,64 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
             border: `1px solid ${alpha("#000", 0.08)}`,
           }}
         >
-          Aún no has seleccionado categorías. Agrega hasta 3.
+          No hay categorías registradas para esta sucursal.
         </Alert>
-      ) : (
-        <Grid container spacing={1.2}>
-          {picks.map((p) => (
-            <Grid item xs={12} md={6} key={p.id}>
-              <Card
-                elevation={0}
-                sx={{
-                  borderRadius: 3,
-                  border: `1px solid ${alpha("#000", 0.10)}`,
-                  overflow: "hidden",
-                  transition: "transform 160ms ease, box-shadow 160ms ease",
-                  "&:hover": {
-                    transform: "translateY(-2px)",
-                    boxShadow: `0 10px 26px ${alpha("#000", 0.10)}`,
-                    borderColor: alpha(COLORS.accent, 0.55),
-                  },
-                }}
-              >
-                <CardContent sx={{ p: 2 }}>
+      ) : isMobile ? (
+        <Stack spacing={1.2}>
+          <Typography sx={{ fontWeight: 900, color: COLORS.black }}>
+            Lista de categorías y URLs armadas
+          </Typography>
+
+          {categoriesWithUrl.map((cat) => (
+            <Card
+              key={cat.id}
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                border: `1px solid ${
+                  cat.is_default
+                    ? alpha(COLORS.accent, 0.55)
+                    : alpha("#000", 0.10)
+                }`,
+                overflow: "hidden",
+                bgcolor: cat.is_default ? alpha(COLORS.accent, 0.06) : "#fff",
+              }}
+            >
+              <CardContent sx={{ p: 2 }}>
+                <Stack spacing={1.2}>
                   <Stack direction="row" spacing={1} alignItems="center">
                     <Typography sx={{ fontWeight: 900, flex: 1 }}>
-                      {p.category_name || "Categoría"}
+                      {cat.name || "Categoría"}
                     </Typography>
 
                     <Chip
                       size="small"
-                      label={p.is_default ? "DEFAULT" : "OPCIONAL"}
-                      icon={p.is_default ? <StarRoundedIcon /> : <StarBorderRoundedIcon />}
+                      label={cat.is_default ? "DEFAULT" : "NORMAL"}
+                      icon={
+                        cat.is_default ? <StarRoundedIcon /> : <StarBorderRoundedIcon />
+                      }
                       sx={{
                         fontWeight: 900,
-                        bgcolor: p.is_default ? alpha(COLORS.accent, 0.22) : alpha("#000", 0.04),
+                        bgcolor: cat.is_default
+                          ? alpha(COLORS.accent, 0.22)
+                          : alpha("#000", 0.04),
                         border: `1px solid ${alpha("#000", 0.08)}`,
                       }}
                     />
-
-                    <Tooltip title="Eliminar">
-                      <IconButton
-                        onClick={() => removePick(p)}
-                        disabled={!canUse || saving}
-                        sx={{ borderRadius: 2 }}
-                      >
-                        <DeleteOutlineRoundedIcon />
-                      </IconButton>
-                    </Tooltip>
                   </Stack>
 
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.3 }}>
-                    <b>Slug:</b> {p.category_slug || "—"}
+                  <Typography variant="body2" color="text.secondary">
+                    <b>Slug:</b> {cat.slug || "—"}
                   </Typography>
 
                   <TextField
-                    label="URL (para QR)"
-                    value={p.category_url || ""}
+                    label="URL armada"
+                    value={cat.built_url || ""}
                     fullWidth
                     disabled
+                    multiline
+                    minRows={2}
                     sx={{
-                      mt: 1.2,
                       "& .MuiOutlinedInput-root": {
                         borderRadius: 2,
                         bgcolor: alpha("#000", 0.03),
@@ -458,37 +500,24 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
                           <LinkRoundedIcon fontSize="small" />
                         </InputAdornment>
                       ),
-                      endAdornment: (
+                      endAdornment: cat.built_url ? (
                         <InputAdornment position="end">
                           <Tooltip title="Copiar URL">
-                            <IconButton onClick={() => handleCopyUrl(p.category_url)} size="small">
+                            <IconButton
+                              onClick={() => handleCopyUrl(cat.built_url)}
+                              size="small"
+                            >
                               <ContentCopyRoundedIcon fontSize="small" />
                             </IconButton>
                           </Tooltip>
                         </InputAdornment>
-                      ),
+                      ) : null,
                     }}
                   />
 
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1.2 }}>
+                  {cat.built_url ? (
                     <Button
-                      onClick={() => setDefault(p)}
-                      disabled={!canUse || saving || p.is_default}
-                      variant="contained"
-                      startIcon={<StarRoundedIcon />}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 900,
-                        bgcolor: COLORS.black,
-                        "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
-                      }}
-                    >
-                      Hacer default
-                    </Button>
-
-                    <Button
-                      onClick={() => handleCopyUrl(p.category_url)}
+                      onClick={() => handleCopyUrl(cat.built_url)}
                       variant="outlined"
                       startIcon={<ContentCopyRoundedIcon />}
                       sx={{
@@ -501,12 +530,121 @@ export default function WhiteLabelCategoryPicks({ branchId, canUse, onRequestUpg
                     >
                       Copiar URL
                     </Button>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Grid>
+                  ) : null}
+                </Stack>
+              </CardContent>
+            </Card>
           ))}
-        </Grid>
+        </Stack>
+      ) : (
+        <Box>
+          <Typography sx={{ fontWeight: 900, color: COLORS.black, mb: 1.2 }}>
+            Lista de categorías y URLs armadas
+          </Typography>
+
+          <TableContainer
+            component={Paper}
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: `1px solid ${alpha("#000", 0.08)}`,
+              overflow: "hidden",
+            }}
+          >
+            <Table>
+              <TableHead
+                sx={{
+                  bgcolor: alpha("#000", 0.03),
+                }}
+              >
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 900 }}>Categoría</TableCell>
+                  <TableCell sx={{ fontWeight: 900 }}>Slug</TableCell>
+                  <TableCell sx={{ fontWeight: 900 }}>Estado</TableCell>
+                  <TableCell sx={{ fontWeight: 900 }}>URL armada</TableCell>
+                  <TableCell sx={{ fontWeight: 900, width: 160 }}>Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {categoriesWithUrl.map((cat) => (
+                  <TableRow
+                    key={cat.id}
+                    hover
+                    sx={{
+                      bgcolor: cat.is_default ? alpha(COLORS.accent, 0.05) : "transparent",
+                    }}
+                  >
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 900 }}>
+                        {cat.name || "Categoría"}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {cat.slug || "—"}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={cat.is_default ? "DEFAULT" : "NORMAL"}
+                        icon={
+                          cat.is_default ? <StarRoundedIcon /> : <StarBorderRoundedIcon />
+                        }
+                        sx={{
+                          fontWeight: 900,
+                          bgcolor: cat.is_default
+                            ? alpha(COLORS.accent, 0.22)
+                            : alpha("#000", 0.04),
+                          border: `1px solid ${alpha("#000", 0.08)}`,
+                        }}
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          wordBreak: "break-all",
+                          color: cat.built_url ? "text.primary" : "text.secondary",
+                        }}
+                      >
+                        {cat.built_url || "No se pudo armar la URL"}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      {cat.built_url ? (
+                        <Button
+                          onClick={() => handleCopyUrl(cat.built_url)}
+                          variant="outlined"
+                          size="small"
+                          startIcon={<ContentCopyRoundedIcon />}
+                          sx={{
+                            borderRadius: 2,
+                            textTransform: "none",
+                            fontWeight: 900,
+                            borderColor: alpha("#000", 0.18),
+                            color: COLORS.black,
+                          }}
+                        >
+                          Copiar
+                        </Button>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">
+                          —
+                        </Typography>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
       )}
     </Box>
   );
