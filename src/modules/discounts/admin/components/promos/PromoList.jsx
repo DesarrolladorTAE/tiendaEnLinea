@@ -1,8 +1,24 @@
 import React from "react";
 import {
-  Box, Paper, Typography, Divider, CircularProgress, Alert,
-  TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
-  Stack, Avatar, Chip, Tooltip, IconButton, Button, useMediaQuery
+  Box,
+  Paper,
+  Typography,
+  Divider,
+  CircularProgress,
+  Alert,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Stack,
+  Avatar,
+  Chip,
+  Tooltip,
+  IconButton,
+  Button,
+  useMediaQuery,
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 
@@ -21,18 +37,6 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
 
   const statusColor = (row) => (!row.is_active ? "default" : "success");
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 3, display: "flex", justifyContent: "center" }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (!rows?.length) {
-    return <Alert severity="info">No hay promociones aún.</Alert>;
-  }
-
   const valueTxt = (r) =>
     r.discount_type === "percentage"
       ? `${Number(r.discount_value || 0)}%`
@@ -42,62 +46,54 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
       ? fmtMoney(r.special_price)
       : "-";
 
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, display: "flex", justifyContent: "center" }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (!rows?.length) {
+    return (
+      <Alert
+        severity="info"
+        sx={{
+          borderRadius: 2,
+          bgcolor: alpha("#000", 0.03),
+          border: `1px solid ${alpha("#000", 0.08)}`,
+        }}
+      >
+        No hay promociones aún.
+      </Alert>
+    );
+  }
+
   if (isMobile) {
     return (
-      <Stack spacing={1.5}>
+      <Stack spacing={1.2}>
+        <Typography sx={{ fontWeight: 900, color: "#000" }}>
+          Lista de promociones
+        </Typography>
+
         {rows.map((r) => {
           const img = imageUrlMaybe(r.image);
+
           return (
-            <Paper
+            <CardLikeRow
               key={r.id}
-              variant="outlined"
-              sx={{ p: 1.5, borderRadius: 3, borderColor: alpha(theme.palette.divider, 0.9) }}
-            >
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <Avatar
-                  variant="rounded"
-                  src={img || undefined}
-                  sx={{ width: 52, height: 52, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.08) }}
-                >
-                  <ImageRoundedIcon />
-                </Avatar>
-
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography fontWeight={900} noWrap>{r.name}</Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.75 }} noWrap>/{r.slug}</Typography>
-
-                  <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
-                    <Chip size="small" label={discountTypeLabel(r.discount_type)} />
-                    <Chip
-                      size="small"
-                      color={statusColor(r)}
-                      label={r.is_active ? "Activa" : "Inactiva"}
-                      icon={r.is_active ? <DoneRoundedIcon /> : <CloseRoundedIcon />}
-                    />
-                    {!!r.stackable && <Chip size="small" color="success" label="Acumulable" />}
-                  </Stack>
-                </Box>
-
-                <Box sx={{ textAlign: "right" }}>
-                  <Typography fontWeight={900}>{valueTxt(r)}</Typography>
-                  <Typography variant="caption" sx={{ opacity: 0.75 }}>Valor</Typography>
-                </Box>
-              </Stack>
-
-              <Divider sx={{ my: 1.25 }} />
-
-              <Stack direction="row" spacing={1} justifyContent="flex-end">
-                <Button size="small" variant="outlined" startIcon={<RuleRoundedIcon />} onClick={() => onRules(r)}>
-                  Reglas
-                </Button>
-                <Button size="small" variant="outlined" startIcon={<EditRoundedIcon />} onClick={() => onEdit(r)}>
-                  Editar
-                </Button>
-                <Button size="small" color="error" variant="outlined" startIcon={<DeleteRoundedIcon />} onClick={() => onDelete(r)}>
-                  Eliminar
-                </Button>
-              </Stack>
-            </Paper>
+              title={r.name}
+              subtitle={`/${r.slug}`}
+              avatar={img}
+              statusColor={statusColor(r)}
+              statusLabel={r.is_active ? "Activa" : "Inactiva"}
+              value={valueTxt(r)}
+              typeLabel={discountTypeLabel(r.discount_type)}
+              stackable={!!r.stackable}
+              onRules={() => onRules(r)}
+              onEdit={() => onEdit(r)}
+              onDelete={() => onDelete(r)}
+            />
           );
         })}
       </Stack>
@@ -109,15 +105,15 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
       elevation={0}
       sx={{
         borderRadius: 3,
-        border: `1px solid ${alpha(theme.palette.divider, 0.7)}`,
+        border: `1px solid ${alpha("#000", 0.08)}`,
         overflow: "hidden",
         background: "#fff",
       }}
     >
       <Box sx={{ p: 2 }}>
-        <Typography fontWeight={800}>Listado</Typography>
+        <Typography fontWeight={900}>Listado de promociones</Typography>
         <Typography variant="body2" sx={{ opacity: 0.75 }}>
-          Tip: usa “Reglas” para aplicar por categorías, productos o atributos de variantes.
+          Usa “Reglas” para aplicar por categorías, productos o atributos de variantes.
         </Typography>
       </Box>
 
@@ -126,8 +122,15 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
       <TableContainer sx={{ maxHeight: "65vh" }}>
         <Table stickyHeader size="medium">
           <TableHead>
-            <TableRow>
-              <TableCell>Promo</TableCell>
+            <TableRow
+              sx={{
+                "& th": {
+                  fontWeight: 900,
+                  bgcolor: alpha("#000", 0.03),
+                },
+              }}
+            >
+              <TableCell>Promoción</TableCell>
               <TableCell>Tipo</TableCell>
               <TableCell align="right">Valor</TableCell>
               <TableCell>Estado</TableCell>
@@ -138,6 +141,7 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
           <TableBody>
             {rows.map((r) => {
               const img = imageUrlMaybe(r.image);
+
               return (
                 <TableRow key={r.id} hover>
                   <TableCell>
@@ -146,7 +150,9 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
                         variant="rounded"
                         src={img || undefined}
                         sx={{
-                          width: 44, height: 44, borderRadius: 2,
+                          width: 46,
+                          height: 46,
+                          borderRadius: 2,
                           bgcolor: alpha(theme.palette.primary.main, 0.08),
                         }}
                       >
@@ -163,7 +169,11 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
                   </TableCell>
 
                   <TableCell>
-                    <Chip size="small" label={discountTypeLabel(r.discount_type)} />
+                    <Chip
+                      size="small"
+                      label={discountTypeLabel(r.discount_type)}
+                      sx={{ fontWeight: 800 }}
+                    />
                   </TableCell>
 
                   <TableCell align="right">
@@ -181,25 +191,51 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
                       color={statusColor(r)}
                       label={r.is_active ? "Activa" : "Inactiva"}
                       icon={r.is_active ? <DoneRoundedIcon /> : <CloseRoundedIcon />}
+                      sx={{ fontWeight: 800 }}
                     />
                   </TableCell>
 
                   <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Stack direction="row" spacing={0.8} justifyContent="flex-end">
                       <Tooltip title="Reglas">
-                        <IconButton onClick={() => onRules(r)}>
+                        <IconButton
+                          onClick={() => onRules(r)}
+                          sx={{
+                            borderRadius: 2,
+                            border: `1px solid ${alpha("#000", 0.10)}`,
+                            bgcolor: "#fff",
+                            "&:hover": { bgcolor: alpha("#000", 0.03) },
+                          }}
+                        >
                           <RuleRoundedIcon />
                         </IconButton>
                       </Tooltip>
 
                       <Tooltip title="Editar">
-                        <IconButton onClick={() => onEdit(r)}>
+                        <IconButton
+                          onClick={() => onEdit(r)}
+                          sx={{
+                            borderRadius: 2,
+                            border: `1px solid ${alpha("#000", 0.10)}`,
+                            bgcolor: "#fff",
+                            "&:hover": { bgcolor: alpha("#000", 0.03) },
+                          }}
+                        >
                           <EditRoundedIcon />
                         </IconButton>
                       </Tooltip>
 
                       <Tooltip title="Eliminar">
-                        <IconButton onClick={() => onDelete(r)} color="error">
+                        <IconButton
+                          onClick={() => onDelete(r)}
+                          sx={{
+                            borderRadius: 2,
+                            border: `1px solid ${alpha("#d32f2f", 0.22)}`,
+                            color: "error.main",
+                            bgcolor: alpha("#d32f2f", 0.03),
+                            "&:hover": { bgcolor: alpha("#d32f2f", 0.06) },
+                          }}
+                        >
                           <DeleteRoundedIcon />
                         </IconButton>
                       </Tooltip>
@@ -211,6 +247,132 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
           </TableBody>
         </Table>
       </TableContainer>
+    </Paper>
+  );
+}
+
+function CardLikeRow({
+  title,
+  subtitle,
+  avatar,
+  statusColor,
+  statusLabel,
+  value,
+  typeLabel,
+  stackable,
+  onRules,
+  onEdit,
+  onDelete,
+}) {
+  const theme = useTheme();
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 1.5,
+        borderRadius: 3,
+        border: `1px solid ${alpha("#000", 0.08)}`,
+        bgcolor: "#fff",
+      }}
+    >
+      <Stack direction="row" spacing={1.5} alignItems="center">
+        <Avatar
+          variant="rounded"
+          src={avatar || undefined}
+          sx={{
+            width: 54,
+            height: 54,
+            borderRadius: 2,
+            bgcolor: alpha(theme.palette.primary.main, 0.08),
+          }}
+        >
+          <ImageRoundedIcon />
+        </Avatar>
+
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography fontWeight={900} noWrap>
+            {title}
+          </Typography>
+
+          <Typography variant="caption" sx={{ opacity: 0.75 }} noWrap>
+            {subtitle}
+          </Typography>
+
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+            <Chip size="small" label={typeLabel} sx={{ fontWeight: 800 }} />
+            <Chip
+              size="small"
+              color={statusColor}
+              label={statusLabel}
+              icon={statusLabel === "Activa" ? <DoneRoundedIcon /> : <CloseRoundedIcon />}
+              sx={{ fontWeight: 800 }}
+            />
+            {stackable ? (
+              <Chip
+                size="small"
+                color="success"
+                label="Acumulable"
+                sx={{ fontWeight: 800 }}
+              />
+            ) : null}
+          </Stack>
+        </Box>
+
+        <Box sx={{ textAlign: "right" }}>
+          <Typography fontWeight={900}>{value}</Typography>
+          <Typography variant="caption" sx={{ opacity: 0.75 }}>
+            Valor
+          </Typography>
+        </Box>
+      </Stack>
+
+      <Divider sx={{ my: 1.25 }} />
+
+      <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<RuleRoundedIcon />}
+          onClick={onRules}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 900,
+          }}
+        >
+          Reglas
+        </Button>
+
+        <Button
+          size="small"
+          variant="outlined"
+          startIcon={<EditRoundedIcon />}
+          onClick={onEdit}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 900,
+          }}
+        >
+          Editar
+        </Button>
+
+        <Button
+          size="small"
+          color="error"
+          variant="outlined"
+          startIcon={<DeleteRoundedIcon />}
+          onClick={onDelete}
+          sx={{
+            borderRadius: 2,
+            textTransform: "none",
+            fontWeight: 900,
+          }}
+        >
+          Eliminar
+        </Button>
+      </Stack>
     </Paper>
   );
 }

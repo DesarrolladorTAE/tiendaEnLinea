@@ -34,6 +34,7 @@ import TagRoundedIcon from "@mui/icons-material/TagRounded";
 import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
 import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
 
 import axiosClient from "../../../config/axiosClient";
 import { showSuccess, alertFromAxiosError } from "../../../utils/alerts";
@@ -157,13 +158,13 @@ const fieldSx = {
 };
 
 export default function WhiteLabelEditorDialog({
-  open,
-  onClose,
-  branchId,
-  siteId, // null => create
-  onSaved,
+  open = false,
+  onClose = () => {},
+  branchId = null,
+  siteId = null,
+  onSaved = () => {},
   canUse = true,
-  onRequestUpgrade = () => { },
+  onRequestUpgrade = () => {},
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -182,20 +183,16 @@ export default function WhiteLabelEditorDialog({
     storefront_url: "",
     category_query_key: "cat",
     landing_mode: "default",
-
     site_logo_path: "",
     favicon_path: "",
-
     primary_color: "",
     secondary_color: "",
-
     contact_email: "",
     contact_phone: "",
     whatsapp_phone: "",
     facebook_url: "",
     instagram_url: "",
     tiktok_url: "",
-
     is_active: true,
   });
 
@@ -208,20 +205,16 @@ export default function WhiteLabelEditorDialog({
       storefront_url: v.storefront_url || "",
       category_query_key: v.category_query_key || "cat",
       landing_mode: v.landing_mode || "default",
-
       site_logo_path: v.site_logo_path || "",
       favicon_path: v.favicon_path || "",
-
       primary_color: v.primary_color || "",
       secondary_color: v.secondary_color || "",
-
       contact_email: v.contact_email || "",
       contact_phone: v.contact_phone || "",
       whatsapp_phone: v.whatsapp_phone || "",
       facebook_url: v.facebook_url || "",
       instagram_url: v.instagram_url || "",
       tiktok_url: v.tiktok_url || "",
-
       is_active: typeof v.is_active === "boolean" ? v.is_active : true,
     });
   }, []);
@@ -235,13 +228,7 @@ export default function WhiteLabelEditorDialog({
   }, [fillForm]);
 
   const fetchSite = useCallback(async () => {
-    if (!branchId) {
-      setSite(null);
-      fillForm(null);
-      return;
-    }
-
-    if (!siteId) {
+    if (!branchId || !siteId) {
       setSite(null);
       fillForm(null);
       return;
@@ -295,11 +282,15 @@ export default function WhiteLabelEditorDialog({
     return storefront ? `${storefront}?${key}=accesorios` : "";
   }, [form.category_query_key, form.storefront_url]);
 
+  const handleRestricted = useCallback(() => {
+    onRequestUpgrade?.();
+  }, [onRequestUpgrade]);
+
   const handleSave = async () => {
     if (!branchId) return;
 
     if (!canUse) {
-      onRequestUpgrade?.();
+      handleRestricted();
       return;
     }
 
@@ -347,6 +338,7 @@ export default function WhiteLabelEditorDialog({
       setSite(s);
       fillForm(s);
       onSaved?.(s);
+
       await showSuccess(isCreate ? "Sitio creado" : "Sitio actualizado");
     } catch (err) {
       alertFromAxiosError(err, "No se pudo guardar");
@@ -359,7 +351,7 @@ export default function WhiteLabelEditorDialog({
     if (!file) return;
 
     if (!canUse) {
-      onRequestUpgrade?.();
+      handleRestricted();
       return;
     }
 
@@ -369,7 +361,7 @@ export default function WhiteLabelEditorDialog({
         {
           response: {
             data: {
-              message: "Primero guarda el sitio para generar el ID, y luego sube la imagen.",
+              message: "Primero guarda el sitio para generar el ID y luego sube la imagen.",
             },
           },
         },
@@ -400,7 +392,7 @@ export default function WhiteLabelEditorDialog({
         throw {
           response: {
             data: {
-              message: "El servidor no regresó el path de la imagen.",
+              message: "El servidor no regresó la ruta de la imagen.",
             },
           },
         };
@@ -412,10 +404,10 @@ export default function WhiteLabelEditorDialog({
 
       if (kind === "favicon") {
         setForm((prev) => ({ ...prev, favicon_path: path }));
-        await showSuccess("Favicon subido ✅ ahora dale Guardar");
+        await showSuccess("Favicon subido");
       } else {
         setForm((prev) => ({ ...prev, site_logo_path: path }));
-        await showSuccess("Logo subido ✅ ahora dale Guardar");
+        await showSuccess("Logo subido");
       }
     } catch (err) {
       alertFromAxiosError(err, "No se pudo subir la imagen");
@@ -426,7 +418,7 @@ export default function WhiteLabelEditorDialog({
 
   return (
     <Dialog
-      open={open}
+      open={Boolean(open)}
       onClose={saving ? undefined : onClose}
       fullWidth
       maxWidth="md"
@@ -491,12 +483,26 @@ export default function WhiteLabelEditorDialog({
         {!canUse ? (
           <Alert
             severity="warning"
+            icon={<LockRoundedIcon />}
             sx={{
               borderRadius: 3,
               bgcolor: alpha(COLORS.accent, 0.12),
               border: `1px solid ${alpha(COLORS.accent, 0.25)}`,
               mb: 2,
             }}
+            action={
+              <Button
+                size="small"
+                onClick={handleRestricted}
+                sx={{
+                  textTransform: "none",
+                  fontWeight: 900,
+                  color: COLORS.black,
+                }}
+              >
+                Ver planes
+              </Button>
+            }
           >
             Esta función requiere tu plan o complemento de Marca Blanca.
           </Alert>
@@ -565,7 +571,10 @@ export default function WhiteLabelEditorDialog({
 
         {tab === 0 ? (
           <Stack spacing={1.5}>
-            <Section title="Básicos" subtitle="Lo que verá tu cliente en el encabezado del catálogo.">
+            <Section
+              title="Básicos"
+              subtitle="Lo que verá tu cliente en el encabezado del catálogo."
+            >
               <TextField
                 label="Nombre visible del sitio"
                 value={form.site_name}
@@ -594,7 +603,10 @@ export default function WhiteLabelEditorDialog({
               />
             </Section>
 
-            <Section title="URLs" subtitle="De aquí salen los links del QR y el catálogo.">
+            <Section
+              title="URLs"
+              subtitle="De aquí salen los links del QR y el catálogo."
+            >
               <TextField
                 label="URL pública (donde vivirá el catálogo)"
                 value={form.public_base_url}
@@ -693,7 +705,10 @@ export default function WhiteLabelEditorDialog({
               </Box>
             </Section>
 
-            <Section title="Imágenes" subtitle="Sube logo y favicon. Luego dale Guardar para fijarlo.">
+            <Section
+              title="Imágenes"
+              subtitle="Sube logo y favicon. Luego dale Guardar para fijarlo."
+            >
               <Stack spacing={1.5}>
                 <ImagePreviewCard
                   label="Vista previa del logo"
@@ -782,7 +797,10 @@ export default function WhiteLabelEditorDialog({
               </Stack>
             </Section>
 
-            <Section title="Colores" subtitle="Personaliza el estilo del catálogo.">
+            <Section
+              title="Colores"
+              subtitle="Personaliza el estilo del catálogo."
+            >
               <ColorPickerField
                 label="Color principal"
                 value={form.primary_color}
@@ -802,7 +820,10 @@ export default function WhiteLabelEditorDialog({
               />
             </Section>
 
-            <Section title="Contacto" subtitle="Datos para mostrarlos en el catálogo.">
+            <Section
+              title="Contacto"
+              subtitle="Datos para mostrarlos en el catálogo."
+            >
               <TextField
                 label="Correo de contacto"
                 value={form.contact_email}
@@ -856,7 +877,10 @@ export default function WhiteLabelEditorDialog({
               />
             </Section>
 
-            <Section title="Redes" subtitle="Links para que el cliente te encuentre rápido.">
+            <Section
+              title="Redes"
+              subtitle="Links para que el cliente te encuentre rápido."
+            >
               <TextField
                 label="Facebook URL"
                 value={form.facebook_url}
@@ -922,6 +946,24 @@ export default function WhiteLabelEditorDialog({
         >
           Cerrar
         </Button>
+
+        {!canUse ? (
+          <Button
+            onClick={handleRestricted}
+            variant="outlined"
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 900,
+              borderColor: alpha(COLORS.accent, 0.35),
+              color: COLORS.black,
+              bgcolor: alpha(COLORS.accent, 0.08),
+              "&:hover": { bgcolor: alpha(COLORS.accent, 0.14) },
+            }}
+          >
+            Ver planes / complementos
+          </Button>
+        ) : null}
 
         <Box sx={{ flex: 1 }} />
 

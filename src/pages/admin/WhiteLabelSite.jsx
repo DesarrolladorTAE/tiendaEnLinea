@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Container,
@@ -31,11 +31,16 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
 
 import axiosClient from "../../config/axiosClient";
 import { useAdminUi } from "../../context/AdminUiContext";
 import { useTienda } from "../../context/TiendaContext";
-import { showConfirm, showSuccess, alertFromAxiosError } from "../../utils/alerts";
+import {
+  showConfirm,
+  showSuccess,
+  alertFromAxiosError,
+} from "../../utils/alerts";
 
 import WhiteLabelEditorDialog from "./modals/WhiteLabelEditorDialog";
 
@@ -45,17 +50,31 @@ const COLORS = {
   danger: "#e94e1b",
 };
 
+const PLAN_NAMES = {
+  1: "Plan Demo",
+  2: "Plan Negocio",
+  3: "Plan Profesional",
+  4: "Plan Avanzado",
+};
+
+const PLAN_DEMO_ID = 1;
+const PLAN_AVANZADO_ID = 4;
+const WHITE_LABEL_COMPLEMENT_ID = 3;
+
 const copyToClipboard = async (text) => {
   if (!text) return false;
+
   try {
     const isSecure =
       window.isSecureContext ||
       ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
     if (isSecure && navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(text);
       return true;
     }
   } catch (_) {}
+
   try {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -75,29 +94,108 @@ const copyToClipboard = async (text) => {
   }
 };
 
-export default function WhiteLabelPage() {
+export default function WhiteLabelSite() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
 
   const { selectedBranch } = useAdminUi();
-  const { tiendaLoading } = useTienda();
+  const { tiendaLoading, tienda } = useTienda();
+
   const branchId = selectedBranch?.id ? Number(selectedBranch.id) : null;
 
   const [loading, setLoading] = useState(true);
   const [sites, setSites] = useState([]);
-
-  // Dialog editor
   const [openEditor, setOpenEditor] = useState(false);
-  const [editingId, setEditingId] = useState(null); // null => create
+  const [editingId, setEditingId] = useState(null);
+  const [misComplementos, setMisComplementos] = useState([]);
+  const [loadingComplementos, setLoadingComplementos] = useState(true);
+
+  const planId = useMemo(() => {
+    return Number(
+      tienda?.plan_id ||
+        tienda?.subscription?.plan_id ||
+        tienda?.store_plan?.plan_id ||
+        0
+    );
+  }, [tienda]);
+
+  const nombrePlanActual = useMemo(() => {
+    return PLAN_NAMES[planId] || "Sin plan asignado";
+  }, [planId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchMisComplementos = async () => {
+      setLoadingComplementos(true);
+      try {
+        const { data } = await axiosClient.get("/mis-complementos");
+        const raw = data?.data ?? data ?? [];
+        const list = Array.isArray(raw) ? raw : [];
+
+        if (!cancelled) {
+          setMisComplementos(list);
+        }
+      } catch (_) {
+        if (!cancelled) {
+          setMisComplementos([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingComplementos(false);
+        }
+      }
+    };
+
+    fetchMisComplementos();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasWhiteLabelComplement = useMemo(() => {
+    return misComplementos.some((item) => {
+      const complementoId = Number(
+        item?.complemento_id ||
+          item?.id ||
+          item?.complemento?.id ||
+          item?.complemento?.complemento_id ||
+          0
+      );
+
+      return complementoId === WHITE_LABEL_COMPLEMENT_ID;
+    });
+  }, [misComplementos]);
+
+  const canUseWhiteLabel = useMemo(() => {
+    return (
+      planId === PLAN_DEMO_ID ||
+      (planId === PLAN_AVANZADO_ID && hasWhiteLabelComplement)
+    );
+  }, [planId, hasWhiteLabelComplement]);
+
+  const handleRequestUpgrade = useCallback(async () => {
+    const ok = await showConfirm(
+      `Tu plan actual es ${nombrePlanActual}.\n\nPara usar Marca Blanca necesitas:\n Plan Avanzado + complemento 💎 Plantilla premium de catálogo.`,
+      "Ver planes / complementos"
+    );
+
+    if (ok) {
+      navigate("/admin/membresia");
+    }
+  }, [navigate, nombrePlanActual]);
 
   const fetchSites = useCallback(
     async (opts = { silent: false }) => {
-      if (!branchId) return;
+      if (!branchId) {
+        setSites([]);
+        setLoading(false);
+        return;
+      }
 
-      // si quieres que en silent no parpadee, usa esto:
-      if (!opts.silent) setLoading(true);
-      else setLoading(true); // déjalo así si quieres skeleton siempre
+      setLoading(true);
 
       try {
         const { data } = await axiosClient.get("/admin/white-label/site", {
@@ -113,7 +211,10 @@ export default function WhiteLabelPage() {
           : [];
 
         setSites(list);
-        if (!opts.silent) await showSuccess("Sitios actualizados");
+
+        if (!opts.silent) {
+          await showSuccess("Sitios actualizados");
+        }
       } catch (err) {
         alertFromAxiosError(err, "No se pudieron cargar los sitios de Marca Blanca");
         setSites([]);
@@ -125,16 +226,31 @@ export default function WhiteLabelPage() {
   );
 
   useEffect(() => {
-    if (!branchId) return;
+    if (!branchId) {
+      setSites([]);
+      setLoading(false);
+      return;
+    }
+
     fetchSites({ silent: true });
   }, [branchId, fetchSites]);
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
+    if (!canUseWhiteLabel) {
+      await handleRequestUpgrade();
+      return;
+    }
+
     setEditingId(null);
     setOpenEditor(true);
   };
 
-  const handleEdit = (id) => {
+  const handleEdit = async (id) => {
+    if (!canUseWhiteLabel) {
+      await handleRequestUpgrade();
+      return;
+    }
+
     setEditingId(Number(id));
     setOpenEditor(true);
   };
@@ -147,9 +263,13 @@ export default function WhiteLabelPage() {
     if (!ok) return;
 
     try {
-      await axiosClient.delete(`/admin/white-label/site/${row.id}`, {
-        params: { branch_id: branchId },
+      await axiosClient.delete("/admin/white-label/site", {
+        params: {
+          id: row.id,
+          branch_id: branchId,
+        },
       });
+
       setSites((prev) => prev.filter((x) => Number(x.id) !== Number(row.id)));
       await showSuccess("Sitio eliminado");
     } catch (err) {
@@ -168,7 +288,6 @@ export default function WhiteLabelPage() {
     await showSuccess("Copiado");
   };
 
-  // estilos reutilizables (para que quede igual a tus dialogs)
   const sxBtnOutlined = {
     borderRadius: 2,
     textTransform: "none",
@@ -191,7 +310,6 @@ export default function WhiteLabelPage() {
   return (
     <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: { xs: 2, md: 3 } }}>
       <Container maxWidth="lg">
-        {/* Header tipo “card” como dialog */}
         <Card
           elevation={0}
           sx={{
@@ -233,7 +351,7 @@ export default function WhiteLabelPage() {
                       Marca Blanca
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Administra los sitios por sucursal y edita su info + categorías.
+                      Administra los sitios por sucursal y edita su información y categorías.
                     </Typography>
                   </Box>
 
@@ -257,6 +375,13 @@ export default function WhiteLabelPage() {
                     variant="outlined"
                     sx={{ fontWeight: 900, borderColor: alpha("#000", 0.15) }}
                   />
+
+                  <Chip
+                    label={`Plan actual: ${nombrePlanActual}`}
+                    variant="outlined"
+                    sx={{ fontWeight: 900, borderColor: alpha("#000", 0.15) }}
+                  />
+
                   <Chip
                     label={loading ? "Cargando…" : `${sites.length} sitio(s)`}
                     sx={{
@@ -265,9 +390,23 @@ export default function WhiteLabelPage() {
                       border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
                     }}
                   />
-                  {tiendaLoading ? (
+
+                  {!canUseWhiteLabel ? (
                     <Chip
-                      label="Cargando tienda…"
+                      icon={<LockRoundedIcon />}
+                      label="Acceso restringido"
+                      variant="outlined"
+                      sx={{
+                        fontWeight: 900,
+                        borderColor: alpha(COLORS.danger, 0.25),
+                        color: COLORS.danger,
+                      }}
+                    />
+                  ) : null}
+
+                  {tiendaLoading || loadingComplementos ? (
+                    <Chip
+                      label="Validando acceso…"
                       variant="outlined"
                       sx={{ fontWeight: 900, borderColor: alpha("#000", 0.15) }}
                     />
@@ -336,6 +475,25 @@ export default function WhiteLabelPage() {
                 </Stack>
               </Stack>
 
+              {!canUseWhiteLabel ? (
+                <Alert
+                  severity="warning"
+                  sx={{
+                    mb: 1.5,
+                    borderRadius: 2,
+                    bgcolor: alpha(COLORS.accent, 0.10),
+                    border: `1px solid ${alpha(COLORS.accent, 0.25)}`,
+                  }}
+                >
+                  Esta función no está disponible con tu plan actual.
+                  <br />
+                  <b>Tu plan actual:</b> {nombrePlanActual}
+                  <br />
+                  <b>Para usar Marca Blanca necesitas:</b>
+                  <br />• <b>Plan Avanzado</b> + <b>💎 Plantilla premium de catálogo</b>
+                </Alert>
+              ) : null}
+
               <Divider sx={{ my: 1.2 }} />
 
               {loading ? (
@@ -400,7 +558,9 @@ export default function WhiteLabelPage() {
                           </TableCell>
 
                           <TableCell>
-                            <Typography variant="body2">{row.public_base_url || "—"}</Typography>
+                            <Typography variant="body2">
+                              {row.public_base_url || "—"}
+                            </Typography>
                             {row.public_base_url ? (
                               <Button
                                 size="small"
@@ -419,7 +579,9 @@ export default function WhiteLabelPage() {
                           </TableCell>
 
                           <TableCell>
-                            <Typography variant="body2">{row.storefront_url || "—"}</Typography>
+                            <Typography variant="body2">
+                              {row.storefront_url || "—"}
+                            </Typography>
                             {row.storefront_url ? (
                               <Button
                                 size="small"
@@ -479,16 +641,16 @@ export default function WhiteLabelPage() {
           </Card>
         )}
 
-
-        {/* Editor (form + categorías) */}
         <WhiteLabelEditorDialog
-          open={openEditor}
+          open={Boolean(openEditor)}
           onClose={() => {
             setOpenEditor(false);
             setEditingId(null);
           }}
           branchId={branchId}
           siteId={editingId}
+          canUse={canUseWhiteLabel}
+          onRequestUpgrade={handleRequestUpgrade}
           onSaved={(savedSite) => {
             setSites((prev) => {
               const list = Array.isArray(prev) ? prev.slice() : [];
@@ -497,6 +659,7 @@ export default function WhiteLabelPage() {
               else list.unshift(savedSite);
               return list;
             });
+
             setOpenEditor(false);
             setEditingId(null);
           }}

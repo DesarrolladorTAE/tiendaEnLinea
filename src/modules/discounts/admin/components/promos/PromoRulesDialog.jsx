@@ -46,19 +46,13 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 
 import axiosClient from "../../../../../config/axiosClient";
 
 /* =========================
    helpers
 ========================= */
-const fmtMoney = (n) => `$${Number(n || 0).toFixed(2)}`;
-
-function imageUrlMaybe(path) {
-  if (!path) return "";
-  return String(path).startsWith("http") ? path : `/storage/${path}`;
-}
-
 function normalizeListResponse(res) {
   const d = res?.data;
   if (Array.isArray(d?.data)) return d.data;
@@ -89,12 +83,11 @@ function prettyScopeType(scopeType) {
 }
 
 /* =========================
-   Popper seguro (GLOBAL)
-   - NO se sale del modal
-   - MISMO ancho que el input
+   Popper seguro
 ========================= */
 const SafePopper = (props) => {
   const { anchorEl, style } = props;
+
   return (
     <Popper
       {...props}
@@ -105,8 +98,14 @@ const SafePopper = (props) => {
       }}
       modifiers={[
         { name: "offset", options: { offset: [0, 8] } },
-        { name: "preventOverflow", options: { boundary: "clippingParents", padding: 8 } },
-        { name: "flip", options: { fallbackPlacements: ["bottom-start", "top-start"] } },
+        {
+          name: "preventOverflow",
+          options: { boundary: "clippingParents", padding: 8 },
+        },
+        {
+          name: "flip",
+          options: { fallbackPlacements: ["bottom-start", "top-start"] },
+        },
       ]}
       sx={(theme) => ({ zIndex: theme.zIndex.modal + 2 })}
     />
@@ -117,9 +116,9 @@ const SafePopper = (props) => {
    Listbox con footer "Cargar más"
 ========================= */
 function makeLoadMoreListbox({ loading, hasMore, onLoadMore }) {
-  // eslint-disable-next-line react/display-name
   return forwardRef(function LoadMoreListbox(props, ref) {
     const { children, ...other } = props;
+
     return (
       <Box
         ref={ref}
@@ -134,6 +133,7 @@ function makeLoadMoreListbox({ loading, hasMore, onLoadMore }) {
         }}
       >
         {children}
+
         <Box component="li" sx={{ p: 1.25 }}>
           {hasMore ? (
             <Button
@@ -157,9 +157,19 @@ function makeLoadMoreListbox({ loading, hasMore, onLoadMore }) {
 }
 
 /* =========================
-   ProductPicker PRO
+   OptionPicker genérico para promociones
 ========================= */
-function ProductPicker({ apiBase, value, onChange, disabled }) {
+function PromotionOptionPicker({
+  apiBase,
+  endpoint,
+  label,
+  placeholder,
+  helperText,
+  value,
+  onChange,
+  disabled,
+  icon,
+}) {
   const theme = useTheme();
 
   const [open, setOpen] = useState(false);
@@ -172,13 +182,12 @@ function ProductPicker({ apiBase, value, onChange, disabled }) {
   const [hasMore, setHasMore] = useState(false);
 
   const lastKeyRef = useRef("");
-
-  const perPage = 18;
+  const perPage = 20;
   const minChars = 2;
 
-  const fetchProducts = useCallback(
+  const fetchOptions = useCallback(
     async ({ nextPage = 1, mode = "replace" } = {}) => {
-      if (!apiBase || disabled) return;
+      if (!apiBase || !endpoint || disabled) return;
 
       if (!q || q.length < minChars) {
         setItems([]);
@@ -187,21 +196,28 @@ function ProductPicker({ apiBase, value, onChange, disabled }) {
         return;
       }
 
-      const key = `${apiBase}/products|${q}|${nextPage}|${perPage}`;
+      const key = `${apiBase}${endpoint}|${q}|${nextPage}|${perPage}`;
       lastKeyRef.current = key;
 
       setLoading(true);
       try {
-        const res = await axiosClient.get(`${apiBase}/products`, {
+        const res = await axiosClient.get(`${apiBase}${endpoint}`, {
           params: { q, per_page: perPage, page: nextPage },
         });
 
         const list = normalizeListResponse(res);
         if (lastKeyRef.current !== key) return;
 
-        setItems((prev) => (mode === "append" ? [...prev, ...list] : list));
+        setItems((prev) => {
+          if (mode !== "append") return list;
 
-        const d = res?.data?.data;
+          const merged = [...prev, ...list];
+          const map = new Map();
+          merged.forEach((item) => map.set(Number(item.id), item));
+          return Array.from(map.values());
+        });
+
+        const d = res?.data;
         if (d?.current_page && d?.last_page) {
           setHasMore(Number(d.current_page) < Number(d.last_page));
         } else {
@@ -217,26 +233,26 @@ function ProductPicker({ apiBase, value, onChange, disabled }) {
         setLoading(false);
       }
     },
-    [apiBase, disabled, q]
+    [apiBase, endpoint, disabled, q]
   );
 
   useEffect(() => {
-    if (!open || disabled || !apiBase) return;
-    fetchProducts({ nextPage: 1, mode: "replace" });
-  }, [open, apiBase, disabled, q, fetchProducts]);
+    if (!open || disabled || !apiBase || !endpoint) return;
+    fetchOptions({ nextPage: 1, mode: "replace" });
+  }, [open, apiBase, endpoint, disabled, q, fetchOptions]);
 
   const ListboxComponent = useMemo(
     () =>
       makeLoadMoreListbox({
         loading,
         hasMore,
-        onLoadMore: () => fetchProducts({ nextPage: page + 1, mode: "append" }),
+        onLoadMore: () => fetchOptions({ nextPage: page + 1, mode: "append" }),
       }),
-    [loading, hasMore, page, fetchProducts]
+    [loading, hasMore, page, fetchOptions]
   );
 
   const noOptionsText = !apiBase
-    ? "Selecciona una sucursal para cargar productos."
+    ? "Falta apiBase."
     : !q
     ? `Escribe para buscar (${minChars}+ letras)…`
     : q.length < minChars
@@ -265,23 +281,16 @@ function ProductPicker({ apiBase, value, onChange, disabled }) {
         if (reason === "clear") setInput("");
       }}
       isOptionEqualToValue={(a, b) => Number(a?.id) === Number(b?.id)}
-      getOptionLabel={(opt) =>
-        opt?.name ? String(opt.name) : opt?.title ? String(opt.title) : `#${opt?.id || ""}`
-      }
+      getOptionLabel={(opt) => String(opt?.name || `#${opt?.id || ""}`)}
       noOptionsText={noOptionsText}
       sx={{
         "& .MuiOutlinedInput-root": { borderRadius: 3 },
-        "& .MuiAutocomplete-paper": {
-          borderRadius: 12,
-          overflow: "hidden",
-          border: "1px solid rgba(0,0,0,0.08)",
-        },
       }}
       renderInput={(params) => (
         <TextField
           {...params}
-          label="Producto"
-          placeholder="Ej: coca, 750ml, SKU…"
+          label={label}
+          placeholder={placeholder}
           InputProps={{
             ...params.InputProps,
             endAdornment: (
@@ -291,211 +300,20 @@ function ProductPicker({ apiBase, value, onChange, disabled }) {
               </>
             ),
           }}
-          helperText="Busca por nombre/SKU/código. No cargamos todo para que vaya rápido."
-        />
-      )}
-      renderOption={(props, opt) => {
-        const img = imageUrlMaybe(opt?.image || opt?.main_image || opt?.cover);
-        const sku = opt?.sku || opt?.code || opt?.barcode || "";
-        const price = opt?.price ?? opt?.sale_price ?? null;
-
-        return (
-          <Box
-            component="li"
-            {...props}
-            key={opt.id}
-            sx={{
-              py: 1,
-              px: 1.25,
-              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-            }}
-          >
-            <Stack direction="row" spacing={1.25} alignItems="center" sx={{ width: "100%" }}>
-              <Avatar
-                variant="rounded"
-                src={img || undefined}
-                sx={{
-                  width: 46,
-                  height: 46,
-                  borderRadius: 2,
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
-                  flexShrink: 0,
-                }}
-              >
-                <ImageRoundedIcon fontSize="small" />
-              </Avatar>
-
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography fontWeight={950} noWrap>
-                  {opt.name || opt.title || `Producto #${opt.id}`}
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.78 }} noWrap>
-                  {sku ? `SKU: ${sku} • ` : ""}ID: {opt.id}
-                  {price != null ? ` • ${fmtMoney(price)}` : ""}
-                </Typography>
-              </Box>
-            </Stack>
-          </Box>
-        );
-      }}
-    />
-  );
-}
-
-/* =========================
-   CategoryPicker (MISMO FLOW que Producto)
-   - carga flat una vez (por branch)
-   - búsqueda con mínimo 2 letras
-   - paginación LOCAL con "Cargar más"
-========================= */
-function CategoryPicker({ branchId, value, onChange, disabled }) {
-  const theme = useTheme();
-
-  const [open, setOpen] = useState(false);
-  const [input, setInput] = useState("");
-  const q = useDebouncedValue(input.trim(), 250);
-
-  const [loading, setLoading] = useState(false);
-  const [flat, setFlat] = useState([]);
-
-  // paginación local
-  const perPage = 22;
-  const minChars = 2;
-  const [limit, setLimit] = useState(perPage);
-
-  const catMap = useMemo(() => {
-    const m = new Map();
-    (flat || []).forEach((c) => m.set(Number(c.id), c));
-    return m;
-  }, [flat]);
-
-  const breadcrumb = useCallback(
-    (cat) => {
-      if (!cat) return "";
-      const names = [];
-      let cur = cat;
-      let guard = 0;
-      while (cur && guard < 12) {
-        names.unshift(cur.name || `#${cur.id}`);
-        const pid = cur.parent_id != null ? Number(cur.parent_id) : null;
-        cur = pid ? catMap.get(pid) : null;
-        guard++;
-      }
-      return names.join(" / ");
-    },
-    [catMap]
-  );
-
-  const fetchAllCats = useCallback(async () => {
-    if (!branchId) return;
-    setLoading(true);
-    try {
-      const res = await axiosClient.get("admin/categories", {
-        params: { branch_id: branchId },
-      });
-      const list = res?.data?.categories ?? res?.data ?? [];
-      setFlat(Array.isArray(list) ? list : []);
-    } catch (e) {
-      console.error(e);
-      setFlat([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [branchId]);
-
-  useEffect(() => {
-    if (!branchId || disabled) return;
-    fetchAllCats();
-  }, [branchId, disabled, fetchAllCats]);
-
-  // reset paginación cuando cambias búsqueda o abres
-  useEffect(() => {
-    setLimit(perPage);
-  }, [q, branchId, perPage]);
-
-  const filtered = useMemo(() => {
-    if (!q || q.length < minChars) return [];
-    const qq = q.toLowerCase();
-    // filtro rápido por nombre y breadcrumb (si quieres más agresivo)
-    const base = (flat || []).filter((c) => {
-      const n = String(c?.name || "").toLowerCase();
-      return n.includes(qq);
-    });
-    return base;
-  }, [flat, q]);
-
-  const sliced = useMemo(() => filtered.slice(0, limit), [filtered, limit]);
-  const hasMore = filtered.length > limit;
-
-  const ListboxComponent = useMemo(
-    () =>
-      makeLoadMoreListbox({
-        loading: false,
-        hasMore,
-        onLoadMore: () => setLimit((x) => x + perPage),
-      }),
-    [hasMore, perPage]
-  );
-
-  const noOptionsText = !branchId
-    ? "Selecciona una sucursal primero…"
-    : !q
-    ? `Escribe para buscar (${minChars}+ letras)…`
-    : q.length < minChars
-    ? `Escribe al menos ${minChars} letras…`
-    : loading
-    ? "Cargando categorías…"
-    : "Sin resultados.";
-
-  return (
-    <Autocomplete
-      disabled={disabled || !branchId}
-      open={open}
-      onOpen={() => setOpen(true)}
-      onClose={() => setOpen(false)}
-      disablePortal
-      PopperComponent={SafePopper}
-      ListboxComponent={ListboxComponent}
-      options={sliced}
-      value={value}
-      loading={loading}
-      filterOptions={(x) => x}
-      onChange={(_, v) => onChange(v)}
-      inputValue={input}
-      onInputChange={(_, v, reason) => {
-        if (reason === "input") setInput(v);
-        if (reason === "clear") setInput("");
-      }}
-      isOptionEqualToValue={(a, b) => Number(a?.id) === Number(b?.id)}
-      getOptionLabel={(opt) => breadcrumb(opt) || String(opt?.name || `#${opt?.id || ""}`)}
-      noOptionsText={noOptionsText}
-      sx={{
-        "& .MuiOutlinedInput-root": { borderRadius: 3 },
-        "& .MuiAutocomplete-paper": {
-          borderRadius: 12,
-          overflow: "hidden",
-          border: "1px solid rgba(0,0,0,0.08)",
-        },
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label="Categoría"
-          placeholder="Ej: bebidas, botanas, limpieza…"
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {loading ? <CircularProgress size={18} /> : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
-          }}
-          helperText="Escribe para buscar. Si hay muchas categorías, usa “Cargar más”."
+          helperText={helperText}
         />
       )}
       renderOption={(props, opt) => (
-        <Box component="li" {...props} key={opt.id} sx={{ py: 1, px: 1.25 }}>
+        <Box
+          component="li"
+          {...props}
+          key={opt.id}
+          sx={{
+            py: 1,
+            px: 1.25,
+            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+          }}
+        >
           <Stack direction="row" spacing={1.2} alignItems="center" sx={{ width: "100%" }}>
             <Avatar
               variant="rounded"
@@ -503,19 +321,20 @@ function CategoryPicker({ branchId, value, onChange, disabled }) {
                 width: 44,
                 height: 44,
                 borderRadius: 2,
-                bgcolor: alpha(theme.palette.secondary.main, 0.1),
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
                 flexShrink: 0,
               }}
             >
-              <CategoryRoundedIcon fontSize="small" />
+              {icon}
             </Avatar>
 
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography fontWeight={950} noWrap>
-                {opt.name || `Categoría #${opt.id}`}
+                {opt.name || `#${opt.id}`}
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.78 }} noWrap>
-                {breadcrumb(opt)} • ID: {opt.id}
+                ID: {opt.id}
+                {opt.parent_id ? ` • Padre: ${opt.parent_id}` : ""}
               </Typography>
             </Box>
           </Stack>
@@ -525,8 +344,47 @@ function CategoryPicker({ branchId, value, onChange, disabled }) {
   );
 }
 
+function ProductPicker(props) {
+  return (
+    <PromotionOptionPicker
+      {...props}
+      endpoint="/promotion-options/products"
+      label="Producto"
+      placeholder="Ej: coca, sabritas, leche…"
+      helperText="Busca productos de esta sucursal."
+      icon={<ImageRoundedIcon fontSize="small" />}
+    />
+  );
+}
+
+function CategoryPicker(props) {
+  return (
+    <PromotionOptionPicker
+      {...props}
+      endpoint="/promotion-options/categories"
+      label="Categoría"
+      placeholder="Ej: bebidas, botanas, limpieza…"
+      helperText="Busca categorías de esta sucursal."
+      icon={<CategoryRoundedIcon fontSize="small" />}
+    />
+  );
+}
+
+function VariantPicker(props) {
+  return (
+    <PromotionOptionPicker
+      {...props}
+      endpoint="/promotion-options/variants"
+      label="Variante"
+      placeholder="Ej: Coca 600 ml, Roja XL…"
+      helperText="Busca variantes registradas en esta sucursal."
+      icon={<Inventory2RoundedIcon fontSize="small" />}
+    />
+  );
+}
+
 /* =========================
-   Help dialog (guía)
+   Help dialog
 ========================= */
 function PromoRulesHelpDialog({ open, onClose }) {
   const theme = useTheme();
@@ -554,7 +412,7 @@ function PromoRulesHelpDialog({ open, onClose }) {
           >
             <Typography fontWeight={950}>¿Qué significa “Aplica a”?</Typography>
             <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>
-              Es donde <b>SÍ</b> entra la promoción.
+              Es donde <b>sí</b> entra la promoción.
               <br />
               Ejemplo: “Aplica a la <b>categoría Bebidas</b>”.
             </Typography>
@@ -570,9 +428,9 @@ function PromoRulesHelpDialog({ open, onClose }) {
           >
             <Typography fontWeight={950}>¿Qué significa “Excepto”?</Typography>
             <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>
-              Son excepciones que <b>bloquean</b> la promo aunque cumpla.
+              Son excepciones que <b>bloquean</b> la promoción.
               <br />
-              Ejemplo: “Aplica a Bebidas, <b>excepto Coca 600ml</b>”.
+              Ejemplo: “Aplica a Bebidas, <b>excepto Coca 600 ml</b>”.
             </Typography>
           </Paper>
 
@@ -580,16 +438,16 @@ function PromoRulesHelpDialog({ open, onClose }) {
             <Typography fontWeight={950}>Tipos de regla</Typography>
             <Stack spacing={1} sx={{ mt: 1 }}>
               <Typography variant="body2">
-                • <b>Producto</b>: busca por nombre/SKU y elige uno.
+                • <b>Producto</b>: elige un producto puntual.
               </Typography>
               <Typography variant="body2">
-                • <b>Categoría</b>: busca una categoría por nombre.
+                • <b>Categoría</b>: la promoción afecta una categoría.
               </Typography>
               <Typography variant="body2">
-                • <b>Variante</b>: por ID (temporal).
+                • <b>Variante</b>: aplica a una variante específica.
               </Typography>
               <Typography variant="body2">
-                • <b>Atributo</b>: por ejemplo “color = rojo” (si tu backend lo soporta).
+                • <b>Atributo</b>: por ejemplo <b>color = rojo</b>.
               </Typography>
             </Stack>
           </Paper>
@@ -597,9 +455,11 @@ function PromoRulesHelpDialog({ open, onClose }) {
           <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
             <Typography fontWeight={950}>Consejos</Typography>
             <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>
-              • Para tiendas grandes, escribe al menos <b>2 letras</b> y usa <b>Cargar más</b>.
+              • Escribe al menos <b>2 letras</b> para buscar.
               <br />
-              • Si no agregas reglas “Aplica a”, la promo puede quedar como <b>general</b> (según tu lógica).
+              • Usa <b>Cargar más</b> si no aparece de inmediato.
+              <br />
+              • Si no agregas reglas “Aplica a”, la promo puede quedar general, según tu lógica.
             </Typography>
           </Paper>
         </Stack>
@@ -615,7 +475,7 @@ function PromoRulesHelpDialog({ open, onClose }) {
 }
 
 /* =========================
-   MAIN (FORMULARIO: 1 campo por fila)
+   MAIN
 ========================= */
 export function PromoRulesDialog({
   open,
@@ -626,7 +486,6 @@ export function PromoRulesDialog({
   onAdd,
   onDelete,
   apiBase,
-  activeBranchId,
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -642,6 +501,7 @@ export function PromoRulesDialog({
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -652,6 +512,7 @@ export function PromoRulesDialog({
     setAttrValue("");
     setSelectedProduct(null);
     setSelectedCategory(null);
+    setSelectedVariant(null);
   }, [open]);
 
   const canSubmit =
@@ -661,6 +522,8 @@ export function PromoRulesDialog({
       ? !!selectedProduct?.id
       : scopeType === "category"
       ? !!selectedCategory?.id
+      : scopeType === "variant"
+      ? !!selectedVariant?.id
       : String(scopeId).trim() !== "";
 
   const resetInputs = () => {
@@ -669,9 +532,11 @@ export function PromoRulesDialog({
     setAttrValue("");
     setSelectedProduct(null);
     setSelectedCategory(null);
+    setSelectedVariant(null);
   };
 
   const scopeLabel = (r) => {
+    if (r?.scope_label) return r.scope_label;
     if (r.scope_type === "variant_attribute") return `${r.attr_name} = ${r.attr_value}`;
     return `${prettyScopeType(r.scope_type)} • ID: ${r.scope_id}`;
   };
@@ -681,8 +546,17 @@ export function PromoRulesDialog({
 
     const payload =
       scopeType === "variant_attribute"
-        ? { mode, scope_type: scopeType, attr_name: attrName.trim(), attr_value: attrValue.trim() }
-        : { mode, scope_type: scopeType, scope_id: Number(scopeId) };
+        ? {
+            mode,
+            scope_type: scopeType,
+            attr_name: attrName.trim(),
+            attr_value: attrValue.trim(),
+          }
+        : {
+            mode,
+            scope_type: scopeType,
+            scope_id: Number(scopeId),
+          };
 
     onAdd?.(payload);
     resetInputs();
@@ -730,7 +604,6 @@ export function PromoRulesDialog({
 
         <DialogContent dividers sx={{ px: { xs: 2, md: 3 }, py: 2 }}>
           <Grid container spacing={2}>
-            {/* FORM: 1 campo por fila */}
             <Grid item xs={12}>
               <Typography fontWeight={950} sx={{ mb: 0.75 }}>
                 1) Comportamiento de la regla
@@ -757,7 +630,7 @@ export function PromoRulesDialog({
               </ToggleButtonGroup>
 
               <Typography variant="caption" sx={{ display: "block", mt: 0.75, opacity: 0.8 }}>
-                Tip: “Excepto” se usa para <b>bloquear</b> casos específicos.
+                Tip: “Excepto” sirve para bloquear productos, categorías o variantes específicas.
               </Typography>
             </Grid>
 
@@ -778,7 +651,7 @@ export function PromoRulesDialog({
               >
                 <MenuItem value="product">Producto</MenuItem>
                 <MenuItem value="category">Categoría</MenuItem>
-                <MenuItem value="variant">Variante (por ID)</MenuItem>
+                <MenuItem value="variant">Variante</MenuItem>
                 <MenuItem value="variant_attribute">Atributo (color, talla, etc.)</MenuItem>
               </TextField>
             </Grid>
@@ -799,36 +672,25 @@ export function PromoRulesDialog({
                   disabled={!apiBase}
                 />
               ) : scopeType === "category" ? (
-                <>
-                  <CategoryPicker
-                    branchId={activeBranchId}
-                    value={selectedCategory}
-                    onChange={(c) => {
-                      setSelectedCategory(c);
-                      setScopeId(c?.id ? String(c.id) : "");
-                    }}
-                    disabled={!activeBranchId}
-                  />
-                  {!activeBranchId ? (
-                    <Typography variant="caption" sx={{ color: "warning.main", mt: 0.6, display: "block" }}>
-                      Te falta pasar <b>activeBranchId</b> desde el padre.
-                    </Typography>
-                  ) : null}
-                </>
-              ) : scopeType !== "variant_attribute" ? (
-                <>
-                  <TextField
-                    fullWidth
-                    label="ID (variante)"
-                    placeholder="Ej: 123"
-                    value={scopeId}
-                    onChange={(e) => setScopeId(e.target.value)}
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
-                  />
-                  <Typography variant="caption" sx={{ opacity: 0.75 }}>
-                    Por ahora <b>Variante</b> es por ID.
-                  </Typography>
-                </>
+                <CategoryPicker
+                  apiBase={apiBase}
+                  value={selectedCategory}
+                  onChange={(c) => {
+                    setSelectedCategory(c);
+                    setScopeId(c?.id ? String(c.id) : "");
+                  }}
+                  disabled={!apiBase}
+                />
+              ) : scopeType === "variant" ? (
+                <VariantPicker
+                  apiBase={apiBase}
+                  value={selectedVariant}
+                  onChange={(v) => {
+                    setSelectedVariant(v);
+                    setScopeId(v?.id ? String(v.id) : "");
+                  }}
+                  disabled={!apiBase}
+                />
               ) : (
                 <Stack spacing={2}>
                   <TextField
@@ -884,7 +746,11 @@ export function PromoRulesDialog({
               <Divider sx={{ my: 1 }} />
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
                 <Typography fontWeight={950}>Reglas actuales</Typography>
-                <Chip size="small" label={`${rules.length} regla${rules.length === 1 ? "" : "s"}`} sx={{ fontWeight: 900 }} />
+                <Chip
+                  size="small"
+                  label={`${rules.length} regla${rules.length === 1 ? "" : "s"}`}
+                  sx={{ fontWeight: 900 }}
+                />
               </Stack>
 
               {loading ? (

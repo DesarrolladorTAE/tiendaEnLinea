@@ -4,7 +4,6 @@ import {
   Typography,
   Stack,
   Button,
-  Grid,
   Card,
   CardContent,
   Divider,
@@ -141,7 +140,7 @@ export default function WhiteLabelCategoryPicks({
       setPicks(picksData);
       setSiteConfig(site);
 
-      const currentDefault = picksData.find((x) => !!x.is_default) || picksData[0] || null;
+      const currentDefault = picksData.find((x) => !!x.is_default) || null;
       setSelectedCategoryId(currentDefault ? String(currentDefault.category_id) : "");
     } catch (err) {
       alertFromAxiosError(err, "No se pudo cargar configuración de categorías");
@@ -160,7 +159,7 @@ export default function WhiteLabelCategoryPicks({
   }, [branchId, fetchAll]);
 
   const currentDefaultPick = useMemo(() => {
-    return picks.find((x) => !!x.is_default) || picks[0] || null;
+    return picks.find((x) => !!x.is_default) || null;
   }, [picks]);
 
   const currentDefaultCategoryId = currentDefaultPick
@@ -197,31 +196,25 @@ export default function WhiteLabelCategoryPicks({
     }
 
     const cid = Number(selectedCategoryId || 0);
-    if (!cid) {
-      return alertFromAxiosError(
-        { response: { data: { message: "Selecciona una categoría default." } } },
-        "Falta categoría"
-      );
-    }
-
-    const selected = categories.find((c) => Number(c.id) === cid);
-    if (!selected?.slug) {
-      return alertFromAxiosError(
-        { response: { data: { message: "La categoría seleccionada no tiene slug." } } },
-        "Categoría inválida"
-      );
-    }
 
     if (!storefrontUrl) {
       return alertFromAxiosError(
-        { response: { data: { message: "Primero guarda la URL de la tienda en Datos del sitio." } } },
+        {
+          response: {
+            data: {
+              message: "Primero guarda la URL de la tienda en Datos del sitio.",
+            },
+          },
+        },
         "Falta URL de tienda"
       );
     }
 
     const ok = await showConfirm(
-      "Se reemplazará la categoría default actual por la nueva selección.",
-      "Guardar default"
+      cid
+        ? "Se reemplazará la categoría default actual por la nueva selección."
+        : "Se quitará la categoría default y el sitio quedará sin categoría predeterminada.",
+      cid ? "Guardar default" : "Quitar default"
     );
     if (!ok) return;
 
@@ -237,21 +230,38 @@ export default function WhiteLabelCategoryPicks({
         );
       }
 
-      const { data } = await axiosClient.post("/admin/white-label/category-picks", {
-        branch_id: branchId,
-        category_id: cid,
-        is_default: true,
-      });
+      if (cid) {
+        const selected = categories.find((c) => Number(c.id) === cid);
 
-      const createdPick = data?.pick ?? null;
+        if (!selected?.slug) {
+          throw {
+            response: {
+              data: {
+                message: "La categoría seleccionada no tiene slug.",
+              },
+            },
+          };
+        }
 
-      if (createdPick) {
-        setPicks([createdPick]);
+        const { data } = await axiosClient.post("/admin/white-label/category-picks", {
+          branch_id: branchId,
+          category_id: cid,
+          is_default: true,
+        });
+
+        const createdPick = data?.pick ?? null;
+
+        if (createdPick) {
+          setPicks([createdPick]);
+        } else {
+          await fetchAll();
+        }
+
+        await showSuccess("Categoría default guardada");
       } else {
-        await fetchAll();
+        setPicks([]);
+        await showSuccess("Se quitó la categoría default");
       }
-
-      await showSuccess("Categoría default guardada");
     } catch (err) {
       alertFromAxiosError(err, "No se pudo guardar la categoría default");
     } finally {
@@ -330,7 +340,7 @@ export default function WhiteLabelCategoryPicks({
           </Typography>
 
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
-            Aquí solo se guarda una categoría default. Esa será la usada para tu landing o QR principal.
+            Aquí puedes dejar una sola categoría como default o quitarla por completo si no quieres ninguna.
           </Typography>
 
           <Stack spacing={1.3}>
@@ -348,7 +358,7 @@ export default function WhiteLabelCategoryPicks({
                 },
               }}
             >
-              <MenuItem value="">Selecciona una categoría</MenuItem>
+              <MenuItem value="">Sin categoría default</MenuItem>
 
               {categories.map((c) => (
                 <MenuItem key={c.id} value={String(c.id)}>
