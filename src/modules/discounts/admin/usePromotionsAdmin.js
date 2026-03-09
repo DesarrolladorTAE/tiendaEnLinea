@@ -124,7 +124,7 @@ export function usePromotionsAdmin({ apiBase }) {
           headers: { "Content-Type": "multipart/form-data" },
         });
 
-        showSuccess("Imagen subida.");
+        // showSuccess("Imagen subida.");
         return res.data?.data || res.data;
       } catch (e) {
         console.error(e);

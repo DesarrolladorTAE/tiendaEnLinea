@@ -77,7 +77,7 @@ const fieldSx = {
 
 export function PromoFormDialog({
   open = false,
-  onClose = () => {},
+  onClose = () => { },
   editing = false,
   form = {},
   setForm,
@@ -98,16 +98,16 @@ export function PromoFormDialog({
     discountType === "percentage"
       ? "Porcentaje"
       : discountType === "fixed"
-      ? "Monto fijo"
-      : discountType === "special_price"
-      ? "Precio especial"
-      : discountType === "bulk"
-      ? "Mayoreo"
-      : discountType === "bxgy"
-      ? "2x1 / 3x2"
-      : discountType === "combo"
-      ? "Combo"
-      : "Descuento";
+        ? "Monto fijo"
+        : discountType === "special_price"
+          ? "Precio especial"
+          : discountType === "bulk"
+            ? "Mayoreo"
+            : discountType === "bxgy"
+              ? "2x1 / 3x2"
+              : discountType === "combo"
+                ? "Combo"
+                : "Descuento";
 
   const isAdvancedType =
     discountType === "bulk" || discountType === "bxgy" || discountType === "combo";
@@ -560,7 +560,7 @@ export function PromoFormDialog({
                 <Box
                   sx={{
                     width: "100%",
-                    aspectRatio: "1 / 1",
+                    height: 260,
                     borderRadius: 3,
                     overflow: "hidden",
                     border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
@@ -568,6 +568,7 @@ export function PromoFormDialog({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    p: 1.5,
                   }}
                 >
                   {imgPreview ? (
@@ -576,9 +577,11 @@ export function PromoFormDialog({
                       src={imgPreview}
                       alt="Vista previa promoción"
                       sx={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
+                        maxWidth: "100%",
+                        maxHeight: "100%",
+                        width: "auto",
+                        height: "auto",
+                        objectFit: "contain",
                         display: "block",
                       }}
                     />

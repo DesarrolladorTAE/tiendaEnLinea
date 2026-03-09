@@ -13,7 +13,7 @@ import {
   TableCell,
   TableBody,
   Stack,
-  Avatar,
+  // Avatar,
   Chip,
   Tooltip,
   IconButton,
@@ -31,6 +31,8 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 import { discountTypeLabel, fmtMoney, imageUrlMaybe } from "../../helpers";
 
+
+
 export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -41,10 +43,10 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
     r.discount_type === "percentage"
       ? `${Number(r.discount_value || 0)}%`
       : r.discount_type === "fixed"
-      ? fmtMoney(r.discount_value)
-      : r.discount_type === "special_price"
-      ? fmtMoney(r.special_price)
-      : "-";
+        ? fmtMoney(r.discount_value)
+        : r.discount_type === "special_price"
+          ? fmtMoney(r.special_price)
+          : "-";
 
   if (loading) {
     return (
@@ -146,22 +148,42 @@ export function PromoList({ rows, loading, onEdit, onDelete, onRules }) {
                 <TableRow key={r.id} hover>
                   <TableCell>
                     <Stack direction="row" spacing={1.5} alignItems="center">
-                      <Avatar
-                        variant="rounded"
-                        src={img || undefined}
-                        sx={{
-                          width: 46,
-                          height: 46,
-                          borderRadius: 2,
-                          bgcolor: alpha(theme.palette.primary.main, 0.08),
-                        }}
-                      >
-                        <ImageRoundedIcon />
-                      </Avatar>
+<Box
+  sx={{
+    width: 46,
+    height: 46,
+    borderRadius: 2,
+    border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+    bgcolor: "#fff",
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  }}
+>
+  {img ? (
+    <Box
+      component="img"
+      src={img}
+      alt={r.name}
+      sx={{
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+        display: "block",
+      }}
+    />
+  ) : (
+    <ImageRoundedIcon sx={{ opacity: 0.55 }} />
+  )}
+</Box>
 
-                      <Box>
-                        <Typography fontWeight={900}>{r.name}</Typography>
-                        <Typography variant="caption" sx={{ opacity: 0.75 }}>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography fontWeight={900} noWrap>
+                          {r.name}
+                        </Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.75 }} noWrap>
                           /{r.slug}
                         </Typography>
                       </Box>
@@ -277,18 +299,36 @@ function CardLikeRow({
       }}
     >
       <Stack direction="row" spacing={1.5} alignItems="center">
-        <Avatar
-          variant="rounded"
-          src={avatar || undefined}
-          sx={{
-            width: 54,
-            height: 54,
-            borderRadius: 2,
-            bgcolor: alpha(theme.palette.primary.main, 0.08),
-          }}
-        >
-          <ImageRoundedIcon />
-        </Avatar>
+<Box
+  sx={{
+    width: 54,
+    height: 54,
+    borderRadius: 2,
+    border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+    bgcolor: "#fff",
+    overflow: "hidden",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  }}
+>
+  {avatar ? (
+    <Box
+      component="img"
+      src={avatar}
+      alt={title}
+      sx={{
+        width: "100%",
+        height: "100%",
+        objectFit: "contain",
+        display: "block",
+      }}
+    />
+  ) : (
+    <ImageRoundedIcon sx={{ opacity: 0.55 }} />
+  )}
+</Box>
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography fontWeight={900} noWrap>
@@ -299,7 +339,7 @@ function CardLikeRow({
             {subtitle}
           </Typography>
 
-          <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+          <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
             <Chip size="small" label={typeLabel} sx={{ fontWeight: 800 }} />
             <Chip
               size="small"
@@ -319,7 +359,7 @@ function CardLikeRow({
           </Stack>
         </Box>
 
-        <Box sx={{ textAlign: "right" }}>
+        <Box sx={{ textAlign: "right", flexShrink: 0 }}>
           <Typography fontWeight={900}>{value}</Typography>
           <Typography variant="caption" sx={{ opacity: 0.75 }}>
             Valor
@@ -329,7 +369,7 @@ function CardLikeRow({
 
       <Divider sx={{ my: 1.25 }} />
 
-      <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap">
+      <Stack direction="row" spacing={1} justifyContent="flex-end" flexWrap="wrap" useFlexGap>
         <Button
           size="small"
           variant="outlined"

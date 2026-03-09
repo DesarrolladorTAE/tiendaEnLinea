@@ -11,7 +11,6 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Grid,
   TextField,
   MenuItem,
   Button,
@@ -47,6 +46,7 @@ import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
 import axiosClient from "../../../../../config/axiosClient";
 
@@ -82,6 +82,10 @@ function prettyScopeType(scopeType) {
   return scopeType;
 }
 
+function getImageUrl(item) {
+  return item?.image || item?.product_image || null;
+}
+
 /* =========================
    Popper seguro
 ========================= */
@@ -100,14 +104,21 @@ const SafePopper = (props) => {
         { name: "offset", options: { offset: [0, 8] } },
         {
           name: "preventOverflow",
-          options: { boundary: "clippingParents", padding: 8 },
+          options: {
+            boundary: "viewport",
+            padding: 8,
+          },
         },
         {
           name: "flip",
-          options: { fallbackPlacements: ["bottom-start", "top-start"] },
+          options: {
+            fallbackPlacements: ["top-start", "bottom-start"],
+          },
         },
       ]}
-      sx={(theme) => ({ zIndex: theme.zIndex.modal + 2 })}
+      sx={(theme) => ({
+        zIndex: theme.zIndex.modal + 20,
+      })}
     />
   );
 };
@@ -128,17 +139,18 @@ function makeLoadMoreListbox({ loading, hasMore, onLoadMore }) {
           m: 0,
           p: 0,
           listStyle: "none",
-          maxHeight: 360,
-          overflow: "auto",
+          maxHeight: 320,
+          overflowY: "auto",
         }}
       >
         {children}
 
-        <Box component="li" sx={{ p: 1.25 }}>
+        <Box component="li" sx={{ p: 1.25, bgcolor: "background.paper" }}>
           {hasMore ? (
             <Button
               fullWidth
               variant="outlined"
+              onMouseDown={(e) => e.preventDefault()}
               onClick={onLoadMore}
               disabled={loading}
               sx={{ borderRadius: 3, fontWeight: 900 }}
@@ -157,7 +169,7 @@ function makeLoadMoreListbox({ loading, hasMore, onLoadMore }) {
 }
 
 /* =========================
-   OptionPicker genérico para promociones
+   OptionPicker genérico
 ========================= */
 function PromotionOptionPicker({
   apiBase,
@@ -169,6 +181,7 @@ function PromotionOptionPicker({
   onChange,
   disabled,
   icon,
+  getOptionLabelText,
 }) {
   const theme = useTheme();
 
@@ -213,7 +226,7 @@ function PromotionOptionPicker({
 
           const merged = [...prev, ...list];
           const map = new Map();
-          merged.forEach((item) => map.set(Number(item.id), item));
+          merged.forEach((item) => map.set(String(item.id), item));
           return Array.from(map.values());
         });
 
@@ -254,12 +267,12 @@ function PromotionOptionPicker({
   const noOptionsText = !apiBase
     ? "Falta apiBase."
     : !q
-    ? `Escribe para buscar (${minChars}+ letras)…`
-    : q.length < minChars
-    ? `Escribe al menos ${minChars} letras…`
-    : loading
-    ? "Buscando…"
-    : "Sin resultados.";
+      ? `Escribe para buscar (${minChars}+ letras)…`
+      : q.length < minChars
+        ? `Escribe al menos ${minChars} letras…`
+        : loading
+          ? "Buscando…"
+          : "Sin resultados.";
 
   return (
     <Autocomplete
@@ -267,7 +280,7 @@ function PromotionOptionPicker({
       open={open}
       onOpen={() => setOpen(true)}
       onClose={() => setOpen(false)}
-      disablePortal
+      disablePortal={false}
       PopperComponent={SafePopper}
       ListboxComponent={ListboxComponent}
       options={items}
@@ -280,8 +293,12 @@ function PromotionOptionPicker({
         if (reason === "input") setInput(v);
         if (reason === "clear") setInput("");
       }}
-      isOptionEqualToValue={(a, b) => Number(a?.id) === Number(b?.id)}
-      getOptionLabel={(opt) => String(opt?.name || `#${opt?.id || ""}`)}
+      isOptionEqualToValue={(a, b) => String(a?.id) === String(b?.id)}
+      getOptionLabel={(opt) =>
+        getOptionLabelText
+          ? getOptionLabelText(opt)
+          : String(opt?.name || `#${opt?.id || ""}`)
+      }
       noOptionsText={noOptionsText}
       sx={{
         "& .MuiOutlinedInput-root": { borderRadius: 3 },
@@ -289,8 +306,10 @@ function PromotionOptionPicker({
       renderInput={(params) => (
         <TextField
           {...params}
+          fullWidth
           label={label}
           placeholder={placeholder}
+          helperText={helperText}
           InputProps={{
             ...params.InputProps,
             endAdornment: (
@@ -300,46 +319,50 @@ function PromotionOptionPicker({
               </>
             ),
           }}
-          helperText={helperText}
         />
       )}
-      renderOption={(props, opt) => (
-        <Box
-          component="li"
-          {...props}
-          key={opt.id}
-          sx={{
-            py: 1,
-            px: 1.25,
-            borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
-          }}
-        >
-          <Stack direction="row" spacing={1.2} alignItems="center" sx={{ width: "100%" }}>
-            <Avatar
-              variant="rounded"
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: 2,
-                bgcolor: alpha(theme.palette.primary.main, 0.08),
-                flexShrink: 0,
-              }}
-            >
-              {icon}
-            </Avatar>
+      renderOption={(props, opt) => {
+        const image = getImageUrl(opt);
 
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography fontWeight={950} noWrap>
-                {opt.name || `#${opt.id}`}
-              </Typography>
-              <Typography variant="caption" sx={{ opacity: 0.78 }} noWrap>
-                ID: {opt.id}
-                {opt.parent_id ? ` • Padre: ${opt.parent_id}` : ""}
-              </Typography>
-            </Box>
-          </Stack>
-        </Box>
-      )}
+        return (
+          <Box
+            component="li"
+            {...props}
+            key={opt.id}
+            sx={{
+              py: 1,
+              px: 1.25,
+              borderBottom: `1px solid ${alpha(theme.palette.divider, 0.6)}`,
+            }}
+          >
+            <Stack direction="row" spacing={1.2} alignItems="center" sx={{ width: "100%" }}>
+              <Avatar
+                variant="rounded"
+                src={image || undefined}
+                sx={{
+                  width: 46,
+                  height: 46,
+                  borderRadius: 2,
+                  bgcolor: alpha(theme.palette.primary.main, 0.08),
+                  flexShrink: 0,
+                }}
+              >
+                {!image ? icon : null}
+              </Avatar>
+
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography fontWeight={950} noWrap>
+                  {getOptionLabelText ? getOptionLabelText(opt) : opt.name || `#${opt.id}`}
+                </Typography>
+
+                <Typography variant="caption" sx={{ opacity: 0.78 }} noWrap>
+                  {opt.meta || `ID: ${opt.id}`}
+                </Typography>
+              </Box>
+            </Stack>
+          </Box>
+        );
+      }}
     />
   );
 }
@@ -353,6 +376,7 @@ function ProductPicker(props) {
       placeholder="Ej: coca, sabritas, leche…"
       helperText="Busca productos de esta sucursal."
       icon={<ImageRoundedIcon fontSize="small" />}
+      getOptionLabelText={(opt) => String(opt?.name || `#${opt?.id || ""}`)}
     />
   );
 }
@@ -366,6 +390,7 @@ function CategoryPicker(props) {
       placeholder="Ej: bebidas, botanas, limpieza…"
       helperText="Busca categorías de esta sucursal."
       icon={<CategoryRoundedIcon fontSize="small" />}
+      getOptionLabelText={(opt) => String(opt?.name || `#${opt?.id || ""}`)}
     />
   );
 }
@@ -379,6 +404,25 @@ function VariantPicker(props) {
       placeholder="Ej: Coca 600 ml, Roja XL…"
       helperText="Busca variantes registradas en esta sucursal."
       icon={<Inventory2RoundedIcon fontSize="small" />}
+      getOptionLabelText={(opt) => String(opt?.name || `#${opt?.id || ""}`)}
+    />
+  );
+}
+
+function VariantAttributePicker(props) {
+  return (
+    <PromotionOptionPicker
+      {...props}
+      endpoint="/promotion-options/variant-attributes"
+      label="Atributo"
+      placeholder="Ej: color rojo, talla mediana…"
+      helperText="Busca atributos ya existentes en variantes."
+      icon={<TuneRoundedIcon fontSize="small" />}
+      getOptionLabelText={(opt) =>
+        opt?.name && opt?.value
+          ? `${opt.name}: ${opt.value}`
+          : String(opt?.label || `#${opt?.id || ""}`)
+      }
     />
   );
 }
@@ -451,17 +495,6 @@ function PromoRulesHelpDialog({ open, onClose }) {
               </Typography>
             </Stack>
           </Paper>
-
-          <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
-            <Typography fontWeight={950}>Consejos</Typography>
-            <Typography variant="body2" sx={{ opacity: 0.85, mt: 0.5 }}>
-              • Escribe al menos <b>2 letras</b> para buscar.
-              <br />
-              • Usa <b>Cargar más</b> si no aparece de inmediato.
-              <br />
-              • Si no agregas reglas “Aplica a”, la promo puede quedar general, según tu lógica.
-            </Typography>
-          </Paper>
         </Stack>
       </DialogContent>
 
@@ -502,6 +535,7 @@ export function PromoRulesDialog({
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [selectedAttribute, setSelectedAttribute] = useState(null);
 
   useEffect(() => {
     if (!open) return;
@@ -513,18 +547,19 @@ export function PromoRulesDialog({
     setSelectedProduct(null);
     setSelectedCategory(null);
     setSelectedVariant(null);
+    setSelectedAttribute(null);
   }, [open]);
 
   const canSubmit =
     scopeType === "variant_attribute"
       ? attrName.trim() && attrValue.trim()
       : scopeType === "product"
-      ? !!selectedProduct?.id
-      : scopeType === "category"
-      ? !!selectedCategory?.id
-      : scopeType === "variant"
-      ? !!selectedVariant?.id
-      : String(scopeId).trim() !== "";
+        ? !!selectedProduct?.id
+        : scopeType === "category"
+          ? !!selectedCategory?.id
+          : scopeType === "variant"
+            ? !!selectedVariant?.id
+            : String(scopeId).trim() !== "";
 
   const resetInputs = () => {
     setScopeId("");
@@ -533,6 +568,7 @@ export function PromoRulesDialog({
     setSelectedProduct(null);
     setSelectedCategory(null);
     setSelectedVariant(null);
+    setSelectedAttribute(null);
   };
 
   const scopeLabel = (r) => {
@@ -562,6 +598,52 @@ export function PromoRulesDialog({
     resetInputs();
   };
 
+  const previewData = useMemo(() => {
+    if (scopeType === "product" && selectedProduct) {
+      return {
+        title: selectedProduct.name || `Producto #${selectedProduct.id}`,
+        subtitle: selectedProduct.meta || `ID: ${selectedProduct.id}`,
+        image: selectedProduct.image || null,
+      };
+    }
+
+    if (scopeType === "category" && selectedCategory) {
+      return {
+        title: selectedCategory.name || `Categoría #${selectedCategory.id}`,
+        subtitle: selectedCategory.meta || `ID: ${selectedCategory.id}`,
+        image: null,
+      };
+    }
+
+    if (scopeType === "variant" && selectedVariant) {
+      return {
+        title: selectedVariant.name || `Variante #${selectedVariant.id}`,
+        subtitle: selectedVariant.meta || `ID: ${selectedVariant.id}`,
+        image: selectedVariant.image || selectedVariant.product_image || null,
+      };
+    }
+
+    if (scopeType === "variant_attribute" && (attrName.trim() || attrValue.trim())) {
+      return {
+        title:
+          attrName.trim() && attrValue.trim()
+            ? `${attrName.trim()}: ${attrValue.trim()}`
+            : "Atributo incompleto",
+        subtitle: "Se guardará como regla por atributo",
+        image: null,
+      };
+    }
+
+    return null;
+  }, [
+    scopeType,
+    selectedProduct,
+    selectedCategory,
+    selectedVariant,
+    attrName,
+    attrValue,
+  ]);
+
   return (
     <>
       <Dialog
@@ -570,8 +652,13 @@ export function PromoRulesDialog({
         fullWidth
         maxWidth="md"
         fullScreen={isMobile}
+        scroll="paper"
         PaperProps={{
-          sx: { borderRadius: { xs: 0, sm: 4 }, overflow: "hidden" },
+          sx: {
+            borderRadius: { xs: 0, sm: 4 },
+            overflow: "hidden",
+            minHeight: { xs: "100%", md: 620 },
+          },
         }}
       >
         <DialogTitle
@@ -602,9 +689,16 @@ export function PromoRulesDialog({
           </Tooltip>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ px: { xs: 2, md: 3 }, py: 2 }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12}>
+        <DialogContent
+          dividers
+          sx={{
+            px: { xs: 2, md: 3 },
+            py: 2,
+          }}
+        >
+          <Stack spacing={2.2}>
+            {/* 1) Comportamiento */}
+            <Box>
               <Typography fontWeight={950} sx={{ mb: 0.75 }}>
                 1) Comportamiento de la regla
               </Typography>
@@ -632,9 +726,10 @@ export function PromoRulesDialog({
               <Typography variant="caption" sx={{ display: "block", mt: 0.75, opacity: 0.8 }}>
                 Tip: “Excepto” sirve para bloquear productos, categorías o variantes específicas.
               </Typography>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            {/* 2) Tipo */}
+            <Box>
               <Typography fontWeight={950} sx={{ mb: 0.75 }}>
                 2) Tipo de regla
               </Typography>
@@ -654,9 +749,10 @@ export function PromoRulesDialog({
                 <MenuItem value="variant">Variante</MenuItem>
                 <MenuItem value="variant_attribute">Atributo (color, talla, etc.)</MenuItem>
               </TextField>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
+            {/* 3) Selección */}
+            <Box>
               <Typography fontWeight={950} sx={{ mb: 0.75 }}>
                 3) Selección
               </Typography>
@@ -693,17 +789,29 @@ export function PromoRulesDialog({
                 />
               ) : (
                 <Stack spacing={2}>
+                  <VariantAttributePicker
+                    apiBase={apiBase}
+                    value={selectedAttribute}
+                    onChange={(a) => {
+                      setSelectedAttribute(a);
+                      setAttrName(a?.name || "");
+                      setAttrValue(a?.value || "");
+                    }}
+                    disabled={!apiBase}
+                  />
+
                   <TextField
                     fullWidth
-                    label="Atributo"
+                    label="Nombre del atributo"
                     placeholder="Ej: color"
                     value={attrName}
                     onChange={(e) => setAttrName(e.target.value)}
                     sx={{ "& .MuiOutlinedInput-root": { borderRadius: 3 } }}
                   />
+
                   <TextField
                     fullWidth
-                    label="Valor"
+                    label="Valor del atributo"
                     placeholder="Ej: rojo"
                     value={attrValue}
                     onChange={(e) => setAttrValue(e.target.value)}
@@ -711,14 +819,100 @@ export function PromoRulesDialog({
                   />
                 </Stack>
               )}
-            </Grid>
 
-            <Grid item xs={12}>
+              {previewData ? (
+                <Chip
+                  sx={{ mt: 1.25, fontWeight: 900 }}
+                  color="primary"
+                  variant="outlined"
+                  label={`Seleccionado: ${previewData.title}`}
+                />
+              ) : null}
+            </Box>
+
+            {/* 4) Vista previa */}
+            <Box>
               <Typography fontWeight={950} sx={{ mb: 0.75 }}>
-                4) Acciones
+                4) Vista previa de la regla
               </Typography>
 
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 4,
+                  background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.05)}, transparent)`,
+                  borderColor: alpha(theme.palette.divider, 0.9),
+                }}
+              >
+                {!previewData ? (
+                  <Typography variant="body2" sx={{ opacity: 0.75 }}>
+                    Aún no has seleccionado un elemento. Elige un producto, categoría, variante o
+                    atributo para ver la vista previa.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                      <Chip
+                        label={prettyMode(mode)}
+                        sx={{
+                          fontWeight: 950,
+                          bgcolor:
+                            mode === "exclude"
+                              ? alpha(theme.palette.warning.main, 0.18)
+                              : alpha(theme.palette.success.main, 0.18),
+                        }}
+                      />
+                      <Chip
+                        label={prettyScopeType(scopeType)}
+                        variant="outlined"
+                        sx={{ fontWeight: 900 }}
+                      />
+                    </Stack>
+
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Avatar
+                        variant="rounded"
+                        src={previewData.image || undefined}
+                        sx={{
+                          width: 58,
+                          height: 58,
+                          borderRadius: 3,
+                          bgcolor: alpha(theme.palette.primary.main, 0.12),
+                        }}
+                      >
+                        {!previewData.image
+                          ? scopeType === "product"
+                            ? <ImageRoundedIcon />
+                            : scopeType === "category"
+                              ? <CategoryRoundedIcon />
+                              : scopeType === "variant"
+                                ? <Inventory2RoundedIcon />
+                                : <TuneRoundedIcon />
+                          : null}
+                      </Avatar>
+
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography fontWeight={950} noWrap>
+                          {previewData.title}
+                        </Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.78 }}>
+                          {previewData.subtitle}
+                        </Typography>
+                      </Box>
+                    </Stack>
+                  </Stack>
+                )}
+              </Paper>
+            </Box>
+
+            {/* 5) Acciones */}
+            <Box>
+              <Typography fontWeight={950} sx={{ mb: 0.75 }}>
+                5) Acciones
+              </Typography>
+
+              <Stack spacing={1.2}>
                 <Button
                   variant="contained"
                   startIcon={<AddRoundedIcon />}
@@ -740,12 +934,19 @@ export function PromoRulesDialog({
                   Limpiar
                 </Button>
               </Stack>
-            </Grid>
+            </Box>
 
-            <Grid item xs={12}>
-              <Divider sx={{ my: 1 }} />
-              <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Typography fontWeight={950}>Reglas actuales</Typography>
+            {/* 6) Reglas actuales */}
+            <Box>
+              <Divider sx={{ mb: 1.5 }} />
+
+              <Stack
+                direction="row"
+                alignItems="center"
+                justifyContent="space-between"
+                sx={{ mb: 1, gap: 1, flexWrap: "wrap" }}
+              >
+                <Typography fontWeight={950}>6) Reglas actuales</Typography>
                 <Chip
                   size="small"
                   label={`${rules.length} regla${rules.length === 1 ? "" : "s"}`}
@@ -769,7 +970,12 @@ export function PromoRulesDialog({
                   }}
                 >
                   <Stack direction="row" spacing={1.2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}>
+                    <Avatar
+                      sx={{
+                        bgcolor: alpha(theme.palette.primary.main, 0.12),
+                        color: theme.palette.primary.main,
+                      }}
+                    >
                       <LocalOfferRoundedIcon />
                     </Avatar>
                     <Box sx={{ flex: 1 }}>
@@ -786,7 +992,11 @@ export function PromoRulesDialog({
                     <Paper
                       key={r.id}
                       variant="outlined"
-                      sx={{ p: 1.25, borderRadius: 4, borderColor: alpha(theme.palette.divider, 0.9) }}
+                      sx={{
+                        p: 1.25,
+                        borderRadius: 4,
+                        borderColor: alpha(theme.palette.divider, 0.9),
+                      }}
                     >
                       <Stack direction="row" spacing={1} alignItems="center">
                         <Chip
@@ -818,7 +1028,11 @@ export function PromoRulesDialog({
                   ))}
                 </Stack>
               ) : (
-                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 4, maxHeight: "45vh" }}>
+                <TableContainer
+                  component={Paper}
+                  variant="outlined"
+                  sx={{ borderRadius: 4, maxHeight: "42vh" }}
+                >
                   <Table stickyHeader size="small">
                     <TableHead>
                       <TableRow>
@@ -865,8 +1079,8 @@ export function PromoRulesDialog({
                   </Table>
                 </TableContainer>
               )}
-            </Grid>
-          </Grid>
+            </Box>
+          </Stack>
         </DialogContent>
 
         <DialogActions sx={{ p: 2 }}>
