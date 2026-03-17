@@ -2,7 +2,6 @@ import React from "react";
 import {
   Avatar,
   Box,
-  CircularProgress,
   IconButton,
   Skeleton,
   Stack,
@@ -92,7 +91,7 @@ export default function WorkersTable({
             }}
           >
             <TableCell>Trabajador</TableCell>
-            <TableCell>Área</TableCell>
+            <TableCell>Áreas</TableCell>
             <TableCell>Punto de venta</TableCell>
             <TableCell>Horario</TableCell>
             <TableCell>Estatus</TableCell>
@@ -101,96 +100,130 @@ export default function WorkersTable({
         </TableHead>
 
         <TableBody>
-          {workers.map((row) => (
-            <TableRow key={row.id} hover>
-              <TableCell>
-                <Stack direction="row" spacing={1.2} alignItems="center">
-                  <Avatar src={row.profile_photo || ""}>
-                    <BadgeRoundedIcon />
-                  </Avatar>
+          {workers.map((row) => {
+            const workerAreas = Array.isArray(row?.work_areas)
+              ? row.work_areas
+              : Array.isArray(row?.workAreas)
+              ? row.workAreas
+              : [];
 
-                  <Box>
-                    <Typography sx={{ fontWeight: 900 }}>
-                      {[row.first_name, row.last_name].filter(Boolean).join(" ") ||
-                        `Trabajador #${row.id}`}
-                    </Typography>
+            return (
+              <TableRow key={row.id} hover>
+                <TableCell>
+                  <Stack direction="row" spacing={1.2} alignItems="center">
+                    <Avatar src={row.profile_photo || ""}>
+                      <BadgeRoundedIcon />
+                    </Avatar>
+
+                    <Box>
+                      <Typography sx={{ fontWeight: 900 }}>
+                        {[row.first_name, row.last_name].filter(Boolean).join(" ") ||
+                          `Trabajador #${row.id}`}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {row.position || "Sin puesto"} · {row.email || "Sin correo"}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </TableCell>
+
+                <TableCell>
+                  {workerAreas.length > 0 ? (
+                    <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
+                      {workerAreas.map((area) => (
+                        <Box
+                          key={area.id}
+                          component="span"
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            px: 1,
+                            py: 0.35,
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            bgcolor: alpha(COLORS.accent, 0.14),
+                            border: `1px solid ${alpha(COLORS.accent, 0.22)}`,
+                          }}
+                        >
+                          {area.name}
+                        </Box>
+                      ))}
+                    </Stack>
+                  ) : (
                     <Typography variant="caption" color="text.secondary">
-                      {row.position || "Sin puesto"} · {row.email || "Sin correo"}
+                      Sin asignar
                     </Typography>
-                  </Box>
-                </Stack>
-              </TableCell>
+                  )}
+                </TableCell>
 
-              <TableCell>
-                {row?.work_area?.name || row?.workArea?.name || "Sin asignar"}
-              </TableCell>
+                <TableCell>
+                  {row?.pos_location?.name || row?.posLocation?.name || "Sin asignar"}
+                </TableCell>
 
-              <TableCell>
-                {row?.pos_location?.name || row?.posLocation?.name || "Sin asignar"}
-              </TableCell>
+                <TableCell>
+                  {row.entry_time || "—"} / {row.exit_time || "—"}
+                </TableCell>
 
-              <TableCell>
-                {row.entry_time || "—"} / {row.exit_time || "—"}
-              </TableCell>
+                <TableCell>
+                  <StatusChip active={Boolean(row.is_active)} />
+                </TableCell>
 
-              <TableCell>
-                <StatusChip active={Boolean(row.is_active)} />
-              </TableCell>
+                <TableCell>
+                  <Stack direction="row" spacing={0.8}>
+                    <Tooltip title="Editar">
+                      <span>
+                        <IconButton
+                          disabled={!canManage}
+                          onClick={() => onEdit(row)}
+                          sx={{
+                            borderRadius: 2.2,
+                            border: `1px solid ${alpha("#000", 0.10)}`,
+                            bgcolor: "#fff",
+                          }}
+                        >
+                          <EditRoundedIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
 
-              <TableCell>
-                <Stack direction="row" spacing={0.8}>
-                  <Tooltip title="Editar">
-                    <span>
-                      <IconButton
-                        disabled={!canManage}
-                        onClick={() => onEdit(row)}
-                        sx={{
-                          borderRadius: 2.2,
-                          border: `1px solid ${alpha("#000", 0.10)}`,
-                          bgcolor: "#fff",
-                        }}
-                      >
-                        <EditRoundedIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
+                    <Tooltip title="Cambiar estado">
+                      <span>
+                        <IconButton
+                          disabled={!canManage}
+                          onClick={() => onToggleStatus(row)}
+                          sx={{
+                            borderRadius: 2.2,
+                            border: `1px solid ${alpha(COLORS.accent, 0.25)}`,
+                            bgcolor: alpha(COLORS.accent, 0.08),
+                          }}
+                        >
+                          <ToggleOnRoundedIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
 
-                  <Tooltip title="Cambiar estado">
-                    <span>
-                      <IconButton
-                        disabled={!canManage}
-                        onClick={() => onToggleStatus(row)}
-                        sx={{
-                          borderRadius: 2.2,
-                          border: `1px solid ${alpha(COLORS.accent, 0.25)}`,
-                          bgcolor: alpha(COLORS.accent, 0.08),
-                        }}
-                      >
-                        <ToggleOnRoundedIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-
-                  <Tooltip title="Eliminar">
-                    <span>
-                      <IconButton
-                        disabled={!canManage}
-                        onClick={() => onDelete(row)}
-                        sx={{
-                          borderRadius: 2.2,
-                          border: `1px solid ${alpha(COLORS.danger, 0.25)}`,
-                          color: COLORS.danger,
-                          bgcolor: alpha(COLORS.danger, 0.03),
-                        }}
-                      >
-                        <DeleteOutlineRoundedIcon />
-                      </IconButton>
-                    </span>
-                  </Tooltip>
-                </Stack>
-              </TableCell>
-            </TableRow>
-          ))}
+                    <Tooltip title="Eliminar">
+                      <span>
+                        <IconButton
+                          disabled={!canManage}
+                          onClick={() => onDelete(row)}
+                          sx={{
+                            borderRadius: 2.2,
+                            border: `1px solid ${alpha(COLORS.danger, 0.25)}`,
+                            color: COLORS.danger,
+                            bgcolor: alpha(COLORS.danger, 0.03),
+                          }}
+                        >
+                          <DeleteOutlineRoundedIcon />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            );
+          })}
 
           {workers.length === 0 ? (
             <TableRow>

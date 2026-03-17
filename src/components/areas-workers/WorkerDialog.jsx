@@ -181,19 +181,6 @@ function ImagePreviewCard({ url }) {
             La imagen se mostrará como avatar principal del trabajador.
           </Typography>
 
-          {hasImage ? (
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ wordBreak: "break-all", lineHeight: 1.35 }}
-            >
-              {url}
-            </Typography>
-          ) : (
-            <Typography variant="caption" color="text.secondary">
-              Sin imagen cargada
-            </Typography>
-          )}
         </Stack>
       </Stack>
     </Paper>

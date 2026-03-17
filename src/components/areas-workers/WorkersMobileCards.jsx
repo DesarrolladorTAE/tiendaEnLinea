@@ -4,7 +4,6 @@ import {
   Box,
   Card,
   CardContent,
-  CircularProgress,
   IconButton,
   Skeleton,
   Stack,
@@ -93,120 +92,159 @@ export default function WorkersMobileCards({
 
   return (
     <Stack spacing={1.2}>
-      {workers.map((row) => (
-        <Card
-          key={row.id}
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha("#000", 0.07)}`,
-            boxShadow: `0 10px 24px ${alpha("#000", 0.03)}`,
-          }}
-        >
-          <CardContent>
-            <Stack spacing={1.4}>
-              <Stack direction="row" spacing={1.2} alignItems="center">
-                <Avatar
-                  src={row.profile_photo || ""}
-                  sx={{ width: 54, height: 54 }}
-                >
-                  <BadgeRoundedIcon />
-                </Avatar>
+      {workers.map((row) => {
+        const workerAreas = Array.isArray(row?.work_areas)
+          ? row.work_areas
+          : Array.isArray(row?.workAreas)
+          ? row.workAreas
+          : [];
 
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontWeight: 900 }}>
-                    {[row.first_name, row.last_name].filter(Boolean).join(" ") ||
-                      `Trabajador #${row.id}`}
+        return (
+          <Card
+            key={row.id}
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              border: `1px solid ${alpha("#000", 0.07)}`,
+              boxShadow: `0 10px 24px ${alpha("#000", 0.03)}`,
+            }}
+          >
+            <CardContent>
+              <Stack spacing={1.4}>
+                <Stack direction="row" spacing={1.2} alignItems="center">
+                  <Avatar
+                    src={row.profile_photo || ""}
+                    sx={{ width: 54, height: 54 }}
+                  >
+                    <BadgeRoundedIcon />
+                  </Avatar>
+
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography sx={{ fontWeight: 900 }}>
+                      {[row.first_name, row.last_name].filter(Boolean).join(" ") ||
+                        `Trabajador #${row.id}`}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {row.position || "Sin puesto"}
+                    </Typography>
+                  </Box>
+
+                  <StatusChip active={Boolean(row.is_active)} />
+                </Stack>
+
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Áreas
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {row.position || "Sin puesto"}
+
+                  {workerAreas.length > 0 ? (
+                    <Stack
+                      direction="row"
+                      spacing={0.6}
+                      useFlexGap
+                      flexWrap="wrap"
+                      sx={{ mt: 0.6 }}
+                    >
+                      {workerAreas.map((area) => (
+                        <Box
+                          key={area.id}
+                          component="span"
+                          sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            px: 1,
+                            py: 0.35,
+                            borderRadius: 999,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            bgcolor: alpha(COLORS.accent, 0.14),
+                            border: `1px solid ${alpha(COLORS.accent, 0.22)}`,
+                          }}
+                        >
+                          {area.name}
+                        </Box>
+                      ))}
+                    </Stack>
+                  ) : (
+                    <Typography sx={{ fontWeight: 700 }}>
+                      Sin asignar
+                    </Typography>
+                  )}
+                </Box>
+
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Punto de venta
+                  </Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {row?.pos_location?.name || row?.posLocation?.name || "Sin asignar"}
                   </Typography>
                 </Box>
 
-                <StatusChip active={Boolean(row.is_active)} />
+                <Box>
+                  <Typography variant="caption" color="text.secondary">
+                    Horario
+                  </Typography>
+                  <Typography sx={{ fontWeight: 700 }}>
+                    {row.entry_time || "—"} / {row.exit_time || "—"}
+                  </Typography>
+                </Box>
+
+                <Stack direction="row" spacing={0.8} justifyContent="flex-end">
+                  <Tooltip title="Editar">
+                    <span>
+                      <IconButton
+                        disabled={!canManage}
+                        onClick={() => onEdit(row)}
+                        sx={{
+                          borderRadius: 2.2,
+                          border: `1px solid ${alpha("#000", 0.10)}`,
+                          bgcolor: "#fff",
+                        }}
+                      >
+                        <EditRoundedIcon />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+
+                  <Tooltip title="Cambiar estado">
+                    <span>
+                      <IconButton
+                        disabled={!canManage}
+                        onClick={() => onToggleStatus(row)}
+                        sx={{
+                          borderRadius: 2.2,
+                          border: `1px solid ${alpha(COLORS.accent, 0.25)}`,
+                          bgcolor: alpha(COLORS.accent, 0.08),
+                        }}
+                      >
+                        <ToggleOnRoundedIcon />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+
+                  <Tooltip title="Eliminar">
+                    <span>
+                      <IconButton
+                        disabled={!canManage}
+                        onClick={() => onDelete(row)}
+                        sx={{
+                          borderRadius: 2.2,
+                          border: `1px solid ${alpha(COLORS.danger, 0.25)}`,
+                          color: COLORS.danger,
+                          bgcolor: alpha(COLORS.danger, 0.03),
+                        }}
+                      >
+                        <DeleteOutlineRoundedIcon />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+                </Stack>
               </Stack>
-
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Área
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>
-                  {row?.work_area?.name || row?.workArea?.name || "Sin asignar"}
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Punto de venta
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>
-                  {row?.pos_location?.name || row?.posLocation?.name || "Sin asignar"}
-                </Typography>
-              </Box>
-
-              <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Horario
-                </Typography>
-                <Typography sx={{ fontWeight: 700 }}>
-                  {row.entry_time || "—"} / {row.exit_time || "—"}
-                </Typography>
-              </Box>
-
-              <Stack direction="row" spacing={0.8} justifyContent="flex-end">
-                <Tooltip title="Editar">
-                  <span>
-                    <IconButton
-                      disabled={!canManage}
-                      onClick={() => onEdit(row)}
-                      sx={{
-                        borderRadius: 2.2,
-                        border: `1px solid ${alpha("#000", 0.10)}`,
-                        bgcolor: "#fff",
-                      }}
-                    >
-                      <EditRoundedIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-
-                <Tooltip title="Cambiar estado">
-                  <span>
-                    <IconButton
-                      disabled={!canManage}
-                      onClick={() => onToggleStatus(row)}
-                      sx={{
-                        borderRadius: 2.2,
-                        border: `1px solid ${alpha(COLORS.accent, 0.25)}`,
-                        bgcolor: alpha(COLORS.accent, 0.08),
-                      }}
-                    >
-                      <ToggleOnRoundedIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-
-                <Tooltip title="Eliminar">
-                  <span>
-                    <IconButton
-                      disabled={!canManage}
-                      onClick={() => onDelete(row)}
-                      sx={{
-                        borderRadius: 2.2,
-                        border: `1px solid ${alpha(COLORS.danger, 0.25)}`,
-                        color: COLORS.danger,
-                        bgcolor: alpha(COLORS.danger, 0.03),
-                      }}
-                    >
-                      <DeleteOutlineRoundedIcon />
-                    </IconButton>
-                  </span>
-                </Tooltip>
-              </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
-      ))}
+            </CardContent>
+          </Card>
+        );
+      })}
     </Stack>
   );
 }

@@ -685,6 +685,7 @@ useEffect(() => {
             setScannerEnabled={setScannerEnabled}
             setModalDescuentoActivo={setModalDescuentoActivo}
             variant={isMdUp ? "desktop" : "mobile"}
+            posLocationId={posLocationId}
           />
         </Box>
       </Drawer>

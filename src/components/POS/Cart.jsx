@@ -22,7 +22,12 @@ import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 
 import ModalCambioDescuento from "./ModalCambioDescuento";
+import ItemWorkerAssign from "./ItemWorkerAssign";
+import TicketDialog from "./TicketDialog";
+import SaleClientAssign from "./SaleClientAssign";
+
 import { showError } from "../../utils/alerts";
+import axiosClient from "../../config/axiosClient";
 
 const CARDLIKE = ["td", "tc", "transferencia"];
 const METHODS = [
@@ -32,7 +37,6 @@ const METHODS = [
   { key: "transferencia", label: "Transferencia" },
 ];
 
-// Normaliza números: quita espacios, cambia coma por punto y valida finito
 const toNumber = (v) => {
   if (v == null) return NaN;
   const s = String(v).replace(/\s+/g, "").replace(",", ".");
@@ -40,11 +44,9 @@ const toNumber = (v) => {
   return Number.isFinite(n) ? n : NaN;
 };
 
-// ✅ Clave única por línea de carrito (variante/almacén/lo-que-sea)
 const getCartKey = (item) =>
   String(item?.cart_key ?? item?.cartKey ?? item?.line_id ?? item?.lineId ?? item?.id);
 
-// ✅ ID real del producto (si viene "123-v5" o "123-w9" regresa 123)
 const getBaseProductId = (item) => {
   const raw = String(item?.product_id ?? item?.base_id ?? item?.baseId ?? item?.id ?? "");
   const m = raw.match(/^(\d+)(?:-(?:v|w)\d+)?$/);
@@ -61,15 +63,33 @@ export default function CartSidebar({
   setScannerEnabled,
   setModalDescuentoActivo,
   setCart,
-  variant = "desktop", // "desktop" | "mobile"
+  posLocationId,
+  variant = "desktop",
 }) {
   const isMobile = variant === "mobile";
 
-  // ✅ Scroll container real
   const paperRef = useRef(null);
-
-  // ✅ alto del teclado estimado (visualViewport)
   const [kb, setKb] = useState(0);
+
+  const [selected, setSelected] = useState(["efectivo"]);
+  const [cashReceived, setCashReceived] = useState("");
+  const [details, setDetails] = useState({
+    efectivo: { amount: "", referencia: "", ultimos4: "" },
+    td: { amount: "", referencia: "", ultimos4: "" },
+    tc: { amount: "", referencia: "", ultimos4: "" },
+    transferencia: { amount: "", referencia: "", ultimos4: "" },
+  });
+
+  const [productoEditar, setProductoEditar] = useState(null);
+
+  const [posWorkers, setPosWorkers] = useState([]);
+  const [loadingWorkers, setLoadingWorkers] = useState(false);
+
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(false);
+  const [selectedClient, setSelectedClient] = useState(null);
+
+  const [openTicketDialog, setOpenTicketDialog] = useState(false);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -78,7 +98,6 @@ export default function CartSidebar({
     if (!vv) return;
 
     const compute = () => {
-      // kb aproximado: diferencia entre innerHeight y viewport visible
       const raw = window.innerHeight - vv.height - (vv.offsetTop || 0);
       setKb(raw > 0 ? Math.round(raw) : 0);
     };
@@ -95,7 +114,6 @@ export default function CartSidebar({
     };
   }, [isMobile]);
 
-  // ✅ Scroll suave para que el input quede visible dentro del Paper
   const ensureVisible = useCallback(
     (inputEl) => {
       if (!isMobile) return;
@@ -125,16 +143,15 @@ export default function CartSidebar({
               behavior: "smooth",
             });
           }
-        } catch {}
+        } catch { }
       };
 
       requestAnimationFrame(doScroll);
       setTimeout(doScroll, 250);
     },
-    [isMobile, kb],
+    [isMobile, kb]
   );
 
-  // ✅ iOS/Android: cuando se enfoque cualquier input, lo centramos
   useEffect(() => {
     if (!isMobile) return;
 
@@ -145,10 +162,9 @@ export default function CartSidebar({
       const tag = (el.tagName || "").toLowerCase();
       if (tag !== "input" && tag !== "textarea" && !el.isContentEditable) return;
 
-      // scrollIntoView ayuda en Safari
       try {
         el.scrollIntoView({ block: "center", inline: "nearest" });
-      } catch {}
+      } catch { }
       ensureVisible(el);
     };
 
@@ -156,27 +172,78 @@ export default function CartSidebar({
     return () => document.removeEventListener("focusin", onFocusIn);
   }, [isMobile, ensureVisible]);
 
-  // ✅ Selección (1 a 3)
-  const [selected, setSelected] = useState(["efectivo"]);
+  useEffect(() => {
+    if (!posLocationId) {
+      setPosWorkers([]);
+      return;
+    }
 
-  // Estados por método
-  const [cashReceived, setCashReceived] = useState("");
-  const [details, setDetails] = useState({
-    efectivo: { amount: "", referencia: "", ultimos4: "" },
-    td: { amount: "", referencia: "", ultimos4: "" },
-    tc: { amount: "", referencia: "", ultimos4: "" },
-    transferencia: { amount: "", referencia: "", ultimos4: "" },
-  });
+    let cancelled = false;
 
-  const [productoEditar, setProductoEditar] = useState(null);
+    const fetchWorkers = async () => {
+      setLoadingWorkers(true);
+      try {
+        const { data } = await axiosClient.get("/workers/simple-by-pos", {
+          params: { pos_location_id: posLocationId },
+        });
+
+        if (!cancelled) {
+          setPosWorkers(Array.isArray(data?.data) ? data.data : []);
+        }
+      } catch {
+        if (!cancelled) setPosWorkers([]);
+      } finally {
+        if (!cancelled) setLoadingWorkers(false);
+      }
+    };
+
+    fetchWorkers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [posLocationId]);
+
+  useEffect(() => {
+    if (!posLocationId) {
+      setClients([]);
+      setSelectedClient(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchClients = async () => {
+      setLoadingClients(true);
+      try {
+        const { data } = await axiosClient.get("/clientes/simple", {
+          params: { pos_location_id: posLocationId },
+        });
+
+        if (!cancelled) {
+          setClients(Array.isArray(data?.data) ? data.data : []);
+        }
+      } catch {
+        if (!cancelled) setClients([]);
+      } finally {
+        if (!cancelled) setLoadingClients(false);
+      }
+    };
+
+    fetchClients();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [posLocationId]);
 
   const total = useMemo(
     () =>
       cart.reduce(
         (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
-        0,
+        0
       ),
-    [cart],
+    [cart]
   );
 
   const setDetail = (k, patch) =>
@@ -190,10 +257,9 @@ export default function CartSidebar({
         const n = toNumber(details[m].amount);
         return acc + (Number.isFinite(n) ? n : 0);
       }, 0),
-    [selected, details],
+    [selected, details]
   );
 
-  // Cambio visual
   const cambioUnico =
     selectedCount === 1 && selected[0] === "efectivo"
       ? Math.max(0, (toNumber(cashReceived) || 0) - total)
@@ -226,12 +292,12 @@ export default function CartSidebar({
 
       const original = toNumber(
         item.original_price ??
-          item.price_original ??
-          item.base_price ??
-          item.precio_base ??
-          item.precio_sin_descuento ??
-          item.original ??
-          item.originalPrice,
+        item.price_original ??
+        item.base_price ??
+        item.precio_base ??
+        item.precio_sin_descuento ??
+        item.original ??
+        item.originalPrice
       );
 
       return {
@@ -242,10 +308,21 @@ export default function CartSidebar({
         original_price: Number.isFinite(original) ? +original : parseFloat(item.price),
         discount_percent: parseFloat(item.discount || 0),
         warehouse_id: item.warehouse_id ?? null,
+        worker_id: item.worker_id ?? null,
       };
     });
 
-  const handleConfirm = () => {
+  const resetPaymentState = () => {
+    setCashReceived("");
+    setDetails({
+      efectivo: { amount: "", referencia: "", ultimos4: "" },
+      td: { amount: "", referencia: "", ultimos4: "" },
+      tc: { amount: "", referencia: "", ultimos4: "" },
+      transferencia: { amount: "", referencia: "", ultimos4: "" },
+    });
+  };
+
+  const processCheckout = () => {
     if (cart.length === 0) return;
 
     let payments = [];
@@ -290,7 +367,9 @@ export default function CartSidebar({
         const { amount, referencia, ultimos4 } = details[m];
         const val = toNumber(amount);
 
-        if (!Number.isFinite(val) || val <= 0) return showError("Todos los montos deben ser mayores que 0.");
+        if (!Number.isFinite(val) || val <= 0) {
+          return showError("Todos los montos deben ser mayores que 0.");
+        }
 
         if (CARDLIKE.includes(m)) {
           if (!referencia?.trim() || (ultimos4 || "").length !== 4) {
@@ -332,19 +411,14 @@ export default function CartSidebar({
 
     const data = {
       total_amount: +total.toFixed(2),
+      client_id: selectedClient?.id ?? null,
       items: buildItemsPayload(),
       payments,
     };
 
     onCheckout(data);
-
-    setCashReceived("");
-    setDetails({
-      efectivo: { amount: "", referencia: "", ultimos4: "" },
-      td: { amount: "", referencia: "", ultimos4: "" },
-      tc: { amount: "", referencia: "", ultimos4: "" },
-      transferencia: { amount: "", referencia: "", ultimos4: "" },
-    });
+    resetPaymentState();
+    setOpenTicketDialog(false);
   };
 
   const aplicarCambioProducto = (nuevoProducto) => {
@@ -370,7 +444,6 @@ export default function CartSidebar({
     setCart(actualizado);
   };
 
-  // ✅ Un solo contenedor scrolleable (Paper)
   const paperSx = {
     p: { xs: 1.5, md: 2 },
     borderRadius: 3,
@@ -379,13 +452,13 @@ export default function CartSidebar({
     boxShadow: variant === "desktop" ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
     ...(isMobile
       ? {
-          height: "100%",
-          maxHeight: "100%",
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-          overscrollBehavior: "contain",
-          paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
-        }
+        height: "100%",
+        maxHeight: "100%",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "contain",
+        paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
+      }
       : {}),
   };
 
@@ -419,12 +492,11 @@ export default function CartSidebar({
       selected
         .map((m) => toNumber(details[m].amount))
         .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
-        0.00001 <
-        total);
+      0.00001 <
+      total);
 
   return (
     <Box sx={rootSx}>
-      {/* Header */}
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
         <Stack direction="row" spacing={1} alignItems="center">
           <ShoppingCartRoundedIcon fontSize="small" />
@@ -442,7 +514,6 @@ export default function CartSidebar({
           <Typography color="text.secondary">Sin artículos</Typography>
         ) : (
           <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0 }}>
-            {/* Items */}
             {cart.map((item) => {
               const cartKey = getCartKey(item);
 
@@ -453,7 +524,7 @@ export default function CartSidebar({
                   sx={{ py: 1.2, borderBottom: "1px solid", borderColor: "divider" }}
                 >
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                    <Box sx={{ minWidth: 0 }}>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
                       <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
                         {item.display_name || item.name}
                       </Typography>
@@ -469,6 +540,26 @@ export default function CartSidebar({
                         {(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
                       </Typography>
 
+                      {!loadingWorkers && posWorkers.length > 0 && (
+                        <ItemWorkerAssign
+                          workers={posWorkers}
+                          value={item.worker_id || null}
+                          onChange={(workerId, workerObj) => {
+                            setCart((prev) =>
+                              prev.map((prod) =>
+                                getCartKey(prod) === cartKey
+                                  ? {
+                                    ...prod,
+                                    worker_id: workerId,
+                                    worker: workerObj,
+                                  }
+                                  : prod
+                              )
+                            );
+                          }}
+                        />
+                      )}
+
                       <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
                         <IconButton
                           size="small"
@@ -478,8 +569,8 @@ export default function CartSidebar({
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
                                     ? { ...prod, quantity: Math.floor(Number(prod.quantity)) - 1 }
-                                    : prod,
-                                ),
+                                    : prod
+                                )
                               );
                             } else {
                               onRemove(cartKey);
@@ -506,12 +597,12 @@ export default function CartSidebar({
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
                                     ? {
-                                        ...prod,
-                                        inputValue: val,
-                                        quantity: val === "" || val === "." ? 0 : parseFloat(val),
-                                      }
-                                    : prod,
-                                ),
+                                      ...prod,
+                                      inputValue: val,
+                                      quantity: val === "" || val === "." ? 0 : parseFloat(val),
+                                    }
+                                    : prod
+                                )
                               );
                             }
                           }}
@@ -519,12 +610,12 @@ export default function CartSidebar({
                             setCart((prev) =>
                               prev
                                 .map((prod) =>
-                                  getCartKey(prod) === cartKey ? { ...prod, inputValue: undefined } : prod,
+                                  getCartKey(prod) === cartKey ? { ...prod, inputValue: undefined } : prod
                                 )
                                 .filter((prod) => {
                                   if (getCartKey(prod) !== cartKey) return true;
                                   return Number(prod.quantity || 0) > 0;
-                                }),
+                                })
                             );
                           }}
                         />
@@ -536,8 +627,8 @@ export default function CartSidebar({
                               prev.map((prod) =>
                                 getCartKey(prod) === cartKey
                                   ? { ...prod, quantity: Math.floor(Number(prod.quantity)) + 1 }
-                                  : prod,
-                              ),
+                                  : prod
+                              )
                             );
                           }}
                         >
@@ -571,11 +662,17 @@ export default function CartSidebar({
               );
             })}
 
-            {/* ---- Sección de cobro ---- */}
             <Box sx={{ pt: 1.5 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
                 Total: ${total.toFixed(2)}
               </Typography>
+
+              <SaleClientAssign
+                clients={clients}
+                value={selectedClient}
+                onChange={setSelectedClient}
+                loading={loadingClients}
+              />
 
               <Box sx={{ mt: 1.5 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
@@ -752,7 +849,7 @@ export default function CartSidebar({
                   variant="contained"
                   color="success"
                   disabled={disableConfirm}
-                  onClick={handleConfirm}
+                  onClick={() => setOpenTicketDialog(true)}
                   fullWidth
                   sx={{ mt: 2, py: 1.2, borderRadius: 2, fontWeight: 900, textTransform: "none" }}
                 >
@@ -763,6 +860,17 @@ export default function CartSidebar({
           </Box>
         )}
       </Paper>
+
+      <TicketDialog
+        open={openTicketDialog}
+        onClose={() => setOpenTicketDialog(false)}
+        clients={clients}
+        loadingClients={loadingClients}
+        selectedClient={selectedClient}
+        onChangeClient={setSelectedClient}
+        total={total}
+        onConfirm={processCheckout}
+      />
 
       {productoEditar && (
         <ModalCambioDescuento

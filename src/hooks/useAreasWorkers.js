@@ -198,7 +198,7 @@ export function useAreasWorkers({ branchId, canManage }) {
       if (!canManage) return;
 
       try {
-        const { data } = await axiosClient.patch(`/workers/${row.id}/toggle-status`);
+        const { data } = await axiosClient.post(`/workers/${row.id}/toggle-status`);
         const fresh = data?.data || row;
 
         setWorkers((prev) =>
