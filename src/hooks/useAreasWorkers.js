@@ -29,7 +29,7 @@ export function useAreasWorkers({ branchId, canManage }) {
 
     setLoadingPosLocations(true);
     try {
-      const { data } = await axiosClient.get(`/pos-locations`, {
+      const { data } = await axiosClient.get(`/pos-locations/simple`, {
         params: {
           branch_id: branchId,
           paginate: false,
@@ -155,7 +155,7 @@ export function useAreasWorkers({ branchId, canManage }) {
       if (!canManage) return;
 
       try {
-        const { data } = await axiosClient.patch(
+        const { data } = await axiosClient.post(
           `/work-areas/${row.id}/toggle-status`
         );
 
