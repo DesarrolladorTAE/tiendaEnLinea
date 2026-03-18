@@ -4,7 +4,7 @@ const adminNavItems = [
   { path: "/admin/products", label: "🛒 Productos" },
   { path: "/admin/promociones", label: "🚨 Promociones" },
   {path: "/admin/Almacenes", label: "🏢 Almacenes"},
-  {path: "/admin/trabajadores-areas", label: "💼Trabajadores"},
+  {path: "/admin/trabajadores-areas", label: "💼 Trabajadores"},
   { path: "/admin/categorias", label: "📂 Categorías" },
   // { path: "/admin/inventario", label: "🏬 Inventario" },
   { path: "/admin/pos", label: "🏬 Punto de Venta" },

@@ -45,15 +45,15 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           return;
         }
 
-const { data } = await axiosClient.get("my-products-by-pos1", {
-  params: {
-    pos_location_id: Number(posLocationId),
-    page: Number(nextPage) || 1,
-    per_page: Number(perPage) || 12,
-    q: search || "",
-    category_id: categoryId != null ? Number(categoryId) : undefined,
-  },
-});
+        const { data } = await axiosClient.get("my-products-by-pos1", {
+          params: {
+            pos_location_id: Number(posLocationId),
+            page: Number(nextPage) || 1,
+            per_page: Number(perPage) || 12,
+            q: search || "",
+            category_id: categoryId != null ? Number(categoryId) : undefined,
+          },
+        });
 
         setProducts(Array.isArray(data?.products) ? data.products : []);
         setMeta(
@@ -251,28 +251,41 @@ const { data } = await axiosClient.get("my-products-by-pos1", {
     const key = String(cartKey);
     setCart((prev) => prev.filter((item) => String(item.cart_key ?? item.id) !== key));
   };
-
   const handleCheckout = useCallback(
     async (checkoutPayloadFromCart) => {
       if (!cart || cart.length === 0) return;
 
-      const items = cart.map((item) => ({
-        product_id: Number(item.product_id ?? String(item.cart_key ?? item.id).split("-v")[0]),
-        variant_id: item.variant_id ? Number(item.variant_id) : null,
+      const sourceItems = Array.isArray(checkoutPayloadFromCart?.items)
+        ? checkoutPayloadFromCart.items
+        : cart;
+
+      const items = sourceItems.map((item) => ({
+        product_id: Number(
+          item.product_id ?? String(item.cart_key ?? item.id).split("-v")[0]
+        ),
+        variant_id: item.variant_id != null ? Number(item.variant_id) : null,
         quantity: Number(item.quantity),
-        unit_price: Number(item.price),
-        original_price: Number(item.original_price ?? item.price_original ?? item.price),
-        discount_percent: Number(item.discount ?? 0),
-        warehouse_id: item.warehouse_id ?? null, // ✅ aquí ya va el almacén del POS
+        unit_price: Number(item.unit_price ?? item.price),
+        original_price: Number(
+          item.original_price ?? item.price_original ?? item.price
+        ),
+        discount_percent: Number(item.discount_percent ?? item.discount ?? 0),
+        warehouse_id: item.warehouse_id ?? null,
+        worker_id: item.worker_id ?? null,
       }));
 
-      const payments = checkoutPayloadFromCart.payments || [];
+      const payments = Array.isArray(checkoutPayloadFromCart?.payments)
+        ? checkoutPayloadFromCart.payments
+        : [];
+
       const eff = payments.find((p) => p?.method === "efectivo");
 
       const rawCashReceived =
         eff?.cash_received ?? eff?.efectivo_recibido ?? eff?.recibido ?? null;
 
-      const totalAmount = +checkoutPayloadFromCart.total_amount.toFixed(2);
+      const totalAmount = +Number(
+        checkoutPayloadFromCart?.total_amount ?? 0
+      ).toFixed(2);
 
       const cashReceived =
         rawCashReceived != null && Number.isFinite(Number(rawCashReceived))
@@ -286,6 +299,7 @@ const { data } = await axiosClient.get("my-products-by-pos1", {
 
       const payload = {
         total_amount: totalAmount,
+        client_id: checkoutPayloadFromCart?.client_id ?? null,
         items,
         payments: normalizedPayments,
       };

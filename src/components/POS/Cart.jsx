@@ -23,7 +23,6 @@ import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 
 import ModalCambioDescuento from "./ModalCambioDescuento";
 import ItemWorkerAssign from "./ItemWorkerAssign";
-import TicketDialog from "./TicketDialog";
 import SaleClientAssign from "./SaleClientAssign";
 
 import { showError } from "../../utils/alerts";
@@ -89,7 +88,6 @@ export default function CartSidebar({
   const [loadingClients, setLoadingClients] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
-  const [openTicketDialog, setOpenTicketDialog] = useState(false);
 
   useEffect(() => {
     if (!isMobile) return;
@@ -667,12 +665,14 @@ export default function CartSidebar({
                 Total: ${total.toFixed(2)}
               </Typography>
 
-              <SaleClientAssign
-                clients={clients}
-                value={selectedClient}
-                onChange={setSelectedClient}
-                loading={loadingClients}
-              />
+              {!loadingClients && clients.length > 0 && (
+                <SaleClientAssign
+                  clients={clients}
+                  value={selectedClient}
+                  onChange={setSelectedClient}
+                  loading={loadingClients}
+                />
+              )}
 
               <Box sx={{ mt: 1.5 }}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
@@ -849,7 +849,7 @@ export default function CartSidebar({
                   variant="contained"
                   color="success"
                   disabled={disableConfirm}
-                  onClick={() => setOpenTicketDialog(true)}
+                  onClick={processCheckout}
                   fullWidth
                   sx={{ mt: 2, py: 1.2, borderRadius: 2, fontWeight: 900, textTransform: "none" }}
                 >
@@ -861,16 +861,6 @@ export default function CartSidebar({
         )}
       </Paper>
 
-      <TicketDialog
-        open={openTicketDialog}
-        onClose={() => setOpenTicketDialog(false)}
-        clients={clients}
-        loadingClients={loadingClients}
-        selectedClient={selectedClient}
-        onChangeClient={setSelectedClient}
-        total={total}
-        onConfirm={processCheckout}
-      />
 
       {productoEditar && (
         <ModalCambioDescuento
