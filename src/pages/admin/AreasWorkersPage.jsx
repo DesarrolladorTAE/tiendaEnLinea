@@ -20,7 +20,9 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
+import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
 
+import axiosClient from "../../config/axiosClient";
 import { useAdminUi } from "../../context/AdminUiContext";
 import { useTienda } from "../../context/TiendaContext";
 
@@ -30,6 +32,7 @@ import AreasDialog from "../../components/areas-workers/AreasDialog";
 import WorkerDialog from "../../components/areas-workers/WorkerDialog";
 import WorkersTable from "../../components/areas-workers/WorkersTable";
 import WorkersMobileCards from "../../components/areas-workers/WorkersMobileCards";
+import ReporteTrabajadoresDialog from "../../components/reportes/ReporteTrabajadoresDialog";
 
 const COLORS = {
   accent: "#f9b233",
@@ -77,6 +80,20 @@ export default function AreasWorkersPage() {
   const [openAreasDialog, setOpenAreasDialog] = useState(false);
   const [openWorkerDialog, setOpenWorkerDialog] = useState(false);
   const [editingWorker, setEditingWorker] = useState(null);
+  const [openReporteDialog, setOpenReporteDialog] = useState(false);
+
+  const hoy = new Date().toISOString().slice(0, 10);
+
+  const [reportFilters, setReportFilters] = useState({
+    worker_id: "todos",
+    pos_location_id: "todos",
+    fecha_inicio: hoy,
+    fecha_fin: hoy,
+  });
+
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportData, setReportData] = useState(null);
+  const [reportError, setReportError] = useState("");
 
   const planId = useMemo(() => {
     return Number(
@@ -127,6 +144,127 @@ export default function AreasWorkersPage() {
     canManage,
   });
 
+  const buildReportParams = () => ({
+    branch_id: branchId,
+    worker_id: reportFilters.worker_id,
+    pos_location_id: reportFilters.pos_location_id,
+    fecha_inicio: reportFilters.fecha_inicio,
+    fecha_fin: reportFilters.fecha_fin,
+  });
+
+  const handleBuscarReporte = async () => {
+    if (!branchId) return;
+
+    try {
+      setReportLoading(true);
+      setReportError("");
+
+      const { data } = await axiosClient.get("/reportes/ventas-trabajadores", {
+        params: buildReportParams(),
+      });
+
+      setReportData(data);
+    } catch (error) {
+      console.error("Error al consultar reporte:", error);
+      setReportData(null);
+      setReportError(
+        error?.response?.data?.message ||
+          "No fue posible consultar el reporte."
+      );
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  const handleLimpiarReporte = () => {
+    const hoyActual = new Date().toISOString().slice(0, 10);
+
+    setReportFilters({
+      worker_id: "todos",
+      pos_location_id: "todos",
+      fecha_inicio: hoyActual,
+      fecha_fin: hoyActual,
+    });
+
+    setReportData(null);
+    setReportError("");
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const response = await axiosClient.get(
+        "/reportes/ventas-trabajadores/pdf",
+        {
+          params: buildReportParams(),
+          responseType: "blob",
+        }
+      );
+
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `reporte_ventas_trabajador_${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:T]/g, "-")}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      try {
+        const text = await error?.response?.data?.text?.();
+        const json = text ? JSON.parse(text) : null;
+        console.error("Error al exportar PDF:", json || error);
+      } catch {
+        console.error("Error al exportar PDF:", error);
+      }
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const response = await axiosClient.get(
+        "/reportes/ventas-trabajadores/excel",
+        {
+          params: buildReportParams(),
+          responseType: "blob",
+        }
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `reporte_ventas_trabajador_${new Date()
+        .toISOString()
+        .slice(0, 19)
+        .replace(/[:T]/g, "-")}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      try {
+        const text = await error?.response?.data?.text?.();
+        const json = text ? JSON.parse(text) : null;
+        console.error("Error al exportar Excel:", json || error);
+      } catch {
+        console.error("Error al exportar Excel:", error);
+      }
+    }
+  };
+
   return (
     <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: { xs: 2, md: 3 } }}>
       <Container maxWidth="xl">
@@ -167,12 +305,17 @@ export default function AreasWorkersPage() {
                   <Box sx={{ flex: 1 }}>
                     <Typography
                       variant="h5"
-                      sx={{ fontWeight: 900, color: COLORS.black, lineHeight: 1.1 }}
+                      sx={{
+                        fontWeight: 900,
+                        color: COLORS.black,
+                        lineHeight: 1.1,
+                      }}
                     >
                       Áreas y Trabajadores
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Administra personal, horarios, datos fiscales y asignación por punto de venta.
+                      Administra personal, horarios, datos fiscales y asignación
+                      por punto de venta.
                     </Typography>
                   </Box>
 
@@ -251,7 +394,8 @@ export default function AreasWorkersPage() {
               border: `1px solid ${alpha("#000", 0.08)}`,
             }}
           >
-            Primero selecciona una sucursal para administrar áreas y trabajadores.
+            Primero selecciona una sucursal para administrar áreas y
+            trabajadores.
           </Alert>
         ) : (
           <Card
@@ -265,7 +409,9 @@ export default function AreasWorkersPage() {
           >
             <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
               <Stack spacing={1.5}>
-                {!canManage ? <RestrictionAlert nombrePlanActual={nombrePlanActual} /> : null}
+                {!canManage ? (
+                  <RestrictionAlert nombrePlanActual={nombrePlanActual} />
+                ) : null}
 
                 <Card
                   elevation={0}
@@ -307,6 +453,15 @@ export default function AreasWorkersPage() {
                           sx={sxBtnOutlined}
                         >
                           Administrar áreas
+                        </Button>
+
+                        <Button
+                          onClick={() => setOpenReporteDialog(true)}
+                          variant="outlined"
+                          startIcon={<AssessmentRoundedIcon />}
+                          sx={sxBtnOutlined}
+                        >
+                          Reporte trabajadores
                         </Button>
                       </Stack>
 
@@ -410,6 +565,23 @@ export default function AreasWorkersPage() {
           areas={areas}
           posLocations={posLocations}
           onSaved={handleSavedWorker}
+        />
+
+        <ReporteTrabajadoresDialog
+          open={openReporteDialog}
+          onClose={() => setOpenReporteDialog(false)}
+          branchId={branchId}
+          workers={workers}
+          posLocations={posLocations}
+          filters={reportFilters}
+          setFilters={setReportFilters}
+          onBuscar={handleBuscarReporte}
+          onLimpiar={handleLimpiarReporte}
+          onExportPdf={handleExportPdf}
+          onExportExcel={handleExportExcel}
+          loading={reportLoading}
+          reporteData={reportData}
+          reporteError={reportError}
         />
       </Container>
     </Box>
