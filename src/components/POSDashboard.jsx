@@ -29,6 +29,7 @@ const POSDashboard = ({
   posName = "Mi Punto de Venta",
   storeName = "Mi Tienda",
   posDesdeAdmin = false,
+  posLocationId = null,
 }) => {
   const [vista, setVista] = useState("menu");
   const [loadingLogout, setLoadingLogout] = useState(false);
@@ -101,16 +102,27 @@ const POSDashboard = ({
             posName={posName}
             posDesdeAdmin={posDesdeAdmin}
             cambiarVista={setVista}
+            posLocationId={posLocationId}
           />
         );
+
       case "historial":
-        return <HistorialVentas cambiarVista={setVista} />;
+        return (
+          <HistorialVentas
+            cambiarVista={setVista}
+            posLocationId={posLocationId}
+          />
+        );
+
       case "notas":
         return <NotasInternas cambiarVista={setVista} />;
+
       case "facturas":
         return <ComprasFacturadas cambiarVista={setVista} />;
+
       case "clientes":
         return <ClientesPOS cambiarVista={setVista} />;
+
       default:
         return (
           <Box mt={4} sx={{ flexGrow: 1, minHeight: "80vh" }}>

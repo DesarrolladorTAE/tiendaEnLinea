@@ -2,7 +2,7 @@ import { patch } from "@mui/material";
 
 const adminNavItems = [
   { path: "/admin/products", label: "🛒 Productos" },
-  { path: "/admin/promociones", label: "🚨 Promociones" },
+  // { path: "/admin/promociones", label: "🚨 Promociones" },
   {path: "/admin/Almacenes", label: "🏢 Almacenes"},
   {path: "/admin/trabajadores-areas", label: "💼 Trabajadores"},
   { path: "/admin/categorias", label: "📂 Categorías" },

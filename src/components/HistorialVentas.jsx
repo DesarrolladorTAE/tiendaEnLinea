@@ -430,7 +430,7 @@ const SimpleList = ({
 };
 
 // ---- Componente principal ----------------------------------------------------
-export default function HistorialPOS({ cambiarVista }) {
+export default function HistorialPOS({ cambiarVista, posLocationId }) {
   // Estado base
   const [modoConsulta, setModoConsulta] = useState("dia");
   const [ventas, setVentas] = useState([]);
@@ -963,6 +963,7 @@ export default function HistorialPOS({ cambiarVista }) {
         open={modalTicketOpen}
         onClose={() => setModalTicketOpen(false)}
         ventaId={ventaSeleccionada}
+        posLocationId={posLocationId}
       />
       <ModalDetallesVenta
         open={modalDetallesOpen}

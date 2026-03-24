@@ -8,6 +8,7 @@ import {
   Button,
   TextField,
   CircularProgress,
+  Stack,
 } from "@mui/material";
 import { showSuccess, showError } from "../../utils/alerts";
 import axiosClientPOS from "../../config/axiosClientPOS";
@@ -18,23 +19,27 @@ export default function TicketDialog({
   sale,
   ticketUrl,
   onSend,
+  posLocationId,
 }) {
   const [phone, setPhone] = useState("");
   const [loadingSend, setLoadingSend] = useState(false);
-  const [loadingPrint, setLoadingPrint] = useState(false);
+  const [loadingPrintUsb, setLoadingPrintUsb] = useState(false);
+  const [loadingPrintIp, setLoadingPrintIp] = useState(false);
 
   useEffect(() => {
     if (open) {
       setPhone("");
       setLoadingSend(false);
-      setLoadingPrint(false);
+      setLoadingPrintUsb(false);
+      setLoadingPrintIp(false);
     }
   }, [open, sale?.id]);
 
   const handleClose = () => {
     setPhone("");
     setLoadingSend(false);
-    setLoadingPrint(false);
+    setLoadingPrintUsb(false);
+    setLoadingPrintIp(false);
     onClose?.();
   };
 
@@ -57,38 +62,74 @@ export default function TicketDialog({
     }
   };
 
-  const handlePrint = async () => {
+  const getPrintPayload = async () => {
+    const { data } = await axiosClientPOS.get(`/sales/${sale.id}/print-payload`);
+
+    if (!data?.ok || !data?.payload) {
+      throw new Error(data?.message || "No se pudo obtener payload de impresión");
+    }
+
+    return data.payload;
+  };
+
+  const handlePrintUsb = async () => {
     if (!sale?.id) return showError("❌ No hay venta para imprimir.");
 
-    setLoadingPrint(true);
+    setLoadingPrintUsb(true);
 
-    // ✅ timeout en ms (para PrintBridge HTTP)
     const TIMEOUT_MS = 8000;
 
     try {
-      // 1) Pedir payload REAL al backend (logo, qr, texto, openDrawer, etc.)
-      const { data } = await axiosClientPOS.get(
-        `/sales/${sale.id}/print-payload`
-      );
+      const payload = await getPrintPayload();
 
-      if (!data?.ok || !data?.payload) {
-        throw new Error(data?.message || "No se pudo obtener payload de impresión");
-      }
-
-      const payload = data.payload;
-
-      // 2) Caso APP (WebView con JS Interface)
       if (window.AndroidPrintBridge?.print) {
         window.AndroidPrintBridge.print(JSON.stringify(payload));
-        showSuccess("🖨️ Enviado a imprimir (USB)");
+        showSuccess("🖨️ Enviado a imprimir por USB");
         return;
       }
 
-      // 3) Caso navegador normal => pegarle al server de la TABLET (PrintBridge)
-      const PRINTBRIDGE_HOST = "192.168.1.200";
-      const url = `http://${PRINTBRIDGE_HOST}:9100/print`;
+      throw new Error("No hay bridge USB disponible en este dispositivo.");
+    } catch (err) {
+      console.error(err);
 
-      // ✅ Timeout con AbortController
+      if (err?.name === "AbortError") {
+        showError("⏳ Se excedió el tiempo de espera al imprimir por USB.");
+      } else {
+        showError(`❌ Error al imprimir por USB: ${err?.message || err}`);
+      }
+    } finally {
+      setLoadingPrintUsb(false);
+    }
+  };
+
+  const handlePrintIp = async () => {
+    if (!sale?.id) return showError("❌ No hay venta para imprimir.");
+    if (!posLocationId) {
+      return showError("❌ No se encontró el POS actual.");
+    }
+
+    setLoadingPrintIp(true);
+
+    const TIMEOUT_MS = 8000;
+
+    try {
+      const payload = await getPrintPayload();
+
+      const { data: ticket } = await axiosClientPOS.get(
+        `/pos/ticket-config/${posLocationId}`
+      );
+
+      const printerIp = String(ticket?.printer_ip || "").trim();
+      const printerPort = String(ticket?.printer_port || "").trim();
+
+      if (!printerIp || !printerPort) {
+        throw new Error(
+          "Configura primero la IP y el puerto de la impresora en la sucursal correspondiente."
+        );
+      }
+
+      const url = `http://${printerIp}:${printerPort}`;
+
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -99,24 +140,21 @@ export default function TicketDialog({
         signal: controller.signal,
       }).finally(() => clearTimeout(t));
 
-      const respJson = await res.json().catch(() => ({}));
-
-      if (!res.ok || respJson?.ok === false) {
-        throw new Error(respJson?.error || `HTTP ${res.status}`);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
       }
 
-      showSuccess("🖨️ Enviado a imprimir (PrintBridge)");
+      showSuccess(`🖨️ Enviado directo a ${printerIp}:${printerPort}`);
     } catch (err) {
       console.error(err);
 
-      // ✅ Mensaje amigable si fue timeout
       if (err?.name === "AbortError") {
-        showError("⏳ Se excedió el tiempo de espera al imprimir (timeout).");
+        showError("⏳ Tiempo de espera agotado al imprimir.");
       } else {
         showError(`❌ Error al imprimir: ${err?.message || err}`);
       }
     } finally {
-      setLoadingPrint(false);
+      setLoadingPrintIp(false);
     }
   };
 
@@ -149,16 +187,50 @@ export default function TicketDialog({
         />
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={handlePrint} disabled={loadingPrint}>
-          {loadingPrint ? <CircularProgress size={20} /> : "🖨️ Imprimir"}
-        </Button>
+      <DialogActions sx={{ px: 2, pb: 2, pt: 1 }}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          sx={{ width: "100%" }}
+        >
+          <Button
+            onClick={handlePrintUsb}
+            disabled={loadingPrintUsb || loadingPrintIp}
+            variant="outlined"
+            fullWidth
+          >
+            {loadingPrintUsb ? (
+              <CircularProgress size={20} />
+            ) : (
+              "🖨️ Imprimir USB"
+            )}
+          </Button>
 
-        <Button onClick={handleSend} disabled={!isValidPhone || loadingSend}>
-          {loadingSend ? <CircularProgress size={20} /> : "✉️ Enviar"}
-        </Button>
+          <Button
+            onClick={handlePrintIp}
+            disabled={loadingPrintIp || loadingPrintUsb}
+            variant="contained"
+            fullWidth
+          >
+            {loadingPrintIp ? (
+              <CircularProgress size={20} />
+            ) : (
+              "🌐 Imprimir IP"
+            )}
+          </Button>
 
-        <Button onClick={handleClose}>Cerrar</Button>
+          <Button
+            onClick={handleSend}
+            disabled={!isValidPhone || loadingSend}
+            fullWidth
+          >
+            {loadingSend ? <CircularProgress size={20} /> : "✉️ Enviar"}
+          </Button>
+
+          <Button onClick={handleClose} fullWidth>
+            Cerrar
+          </Button>
+        </Stack>
       </DialogActions>
     </Dialog>
   );

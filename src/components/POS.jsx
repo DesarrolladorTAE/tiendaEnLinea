@@ -581,6 +581,7 @@ useEffect(() => {
           ticketUrl={ticketBlobUrl}
           onPrint={handlePrint}
           onSend={handleSendTicket}
+          posLocationId={posLocationId}
         />
       </Box>
 

@@ -30,18 +30,21 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     mensaje_2: "",
     qr_factura: false,
     qr_sitio: false,
-    mostrar_iva: true, // ✅ nuevo campo
+    mostrar_iva: true,
+    printer_ip: "",
+    printer_port: "",
     logo: null,
     logo_preview: "",
-    eliminar_logo: false, // ✅ nuevo campo
+    eliminar_logo: false,
   });
+
   const [open, setOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [openHelp, setOpenHelp] = useState(false);
   const [loading, setLoading] = useState(true);
   const API_BASE = "https://mitiendaenlineamx.com.mx";
-  const [isDirty, setIsDirty] = useState(false); // Detecta cambios en el formulario
-  const [isSubmitting, setIsSubmitting] = useState(false); // Indica envío en progreso
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 👇 estado del gate
   const { allowed, loading: gateLoading } = useReglaTaeconta();
@@ -56,14 +59,20 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           direccion: ticket.direccion || "",
           mensaje_1: ticket.mensaje_1 || "",
           mensaje_2: ticket.mensaje_2 || "",
-          // Si no está permitido, no habilitarlo aunque venga activo en server
           qr_factura: allowed ? !!ticket.qr_factura : false,
           qr_sitio: !!ticket.qr_sitio,
           mostrar_iva:
             ticket.mostrar_iva !== undefined ? !!ticket.mostrar_iva : true,
+          printer_ip: ticket.printer_ip || "",
+          printer_port:
+            ticket.printer_port !== null && ticket.printer_port !== undefined
+              ? String(ticket.printer_port)
+              : "",
           logo_preview: ticket.logo
             ? `${API_BASE}/storage/${ticket.logo}?t=${Date.now()}`
             : "",
+          logo: null,
+          eliminar_logo: false,
         }));
       })
       .catch(() => {
@@ -73,9 +82,8 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
       })
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowed]); // si cambia el permiso, re-sincroniza
+  }, [allowed]);
 
-  // Si pierde permiso en caliente, apaga el switch
   useEffect(() => {
     if (!allowed && formData.qr_factura) {
       setFormData((prev) => ({ ...prev, qr_factura: false }));
@@ -84,7 +92,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
   const handleChange = (e) => {
     const { name, type, value, checked, files } = e.target;
-    setIsDirty(true); // Marcar cambio
+    setIsDirty(true);
 
     if (type === "checkbox") {
       setFormData((prev) => ({ ...prev, [name]: checked }));
@@ -110,12 +118,38 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
   const validate = () => {
     const newErrors = {};
+
     if (formData.mensaje_1.length > 25)
       newErrors.mensaje_1 = "Máximo 25 caracteres.";
+
     if (formData.mensaje_2.length > 25)
       newErrors.mensaje_2 = "Máximo 25 caracteres.";
+
     if (formData.direccion.length > 100)
       newErrors.direccion = "Máximo 100 caracteres.";
+
+    const ip = (formData.printer_ip || "").trim();
+    const port = (formData.printer_port || "").trim();
+
+    const ipv4Regex =
+      /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
+
+    if (ip && !ipv4Regex.test(ip)) {
+      newErrors.printer_ip = "Ingresa una IP válida. Ejemplo: 192.168.1.100";
+    }
+
+    if (port) {
+      const portNumber = Number(port);
+      if (
+        !Number.isInteger(portNumber) ||
+        portNumber < 1 ||
+        portNumber > 65535
+      ) {
+        newErrors.printer_port =
+          "Ingresa un puerto válido entre 1 y 65535.";
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -130,10 +164,11 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
     setIsSubmitting(true);
 
-    // 👇 Sanitiza: si no tiene permiso, no permitir activar qr_factura
     const safeData = {
       ...formData,
       qr_factura: allowed ? formData.qr_factura : false,
+      printer_ip: (formData.printer_ip || "").trim(),
+      printer_port: (formData.printer_port || "").trim(),
     };
 
     const form = new FormData();
@@ -150,6 +185,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         form.append(key, value ?? "");
       }
     });
+
     form.append("eliminar_logo", safeData.eliminar_logo ? "1" : "0");
 
     try {
@@ -159,6 +195,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
       const res = await axiosClient.get("/ticket-view");
       const ticket = res.data;
+
       setFormData((prev) => ({
         ...prev,
         direccion: ticket.direccion || "",
@@ -166,17 +203,24 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         mensaje_2: ticket.mensaje_2 || "",
         qr_factura: allowed ? !!ticket.qr_factura : false,
         qr_sitio: !!ticket.qr_sitio,
+        mostrar_iva:
+          ticket.mostrar_iva !== undefined ? !!ticket.mostrar_iva : true,
+        printer_ip: ticket.printer_ip || "",
+        printer_port:
+          ticket.printer_port !== null && ticket.printer_port !== undefined
+            ? String(ticket.printer_port)
+            : "",
         logo: null,
         logo_preview: ticket.logo
           ? `${API_BASE}/storage/${ticket.logo}?t=${Date.now()}`
           : "",
-        eliminar_logo: false, // ✅ limpiar la bandera
+        eliminar_logo: false,
       }));
 
       showSuccess("✅ Ticket actualizado correctamente");
       onSuccess?.();
       onClose?.();
-      setIsDirty(false); // ✅ Ya no hay cambios pendientes
+      setIsDirty(false);
     } catch {
       showError("❌ Error al actualizar el ticket.");
     } finally {
@@ -237,7 +281,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     </Modal>
   );
 
-  if (loading) {
+  if (loading || gateLoading) {
     return (
       <Box
         display="flex"
@@ -304,6 +348,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
             }
             error={!!errors.direccion}
           />
+
           <TextField
             label="Mensaje 1"
             name="mensaje_1"
@@ -317,6 +362,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
             }
             error={!!errors.mensaje_1}
           />
+
           <TextField
             label="Mensaje 2"
             name="mensaje_2"
@@ -331,8 +377,47 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
             error={!!errors.mensaje_2}
           />
 
-          <Box display="flex" gap={3} mt={2}>
-            {/* ✅ QR Factura protegido por GateTaeconta */}
+          <Divider sx={{ my: 2 }} />
+
+          <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>
+            Impresora térmica TCP/IP
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Estos campos son opcionales. Si tu impresora está en red, puedes
+            guardar su IP y puerto aquí. El puerto más común es 9100.
+          </Typography>
+
+          <Box
+            display="grid"
+            gridTemplateColumns={{ xs: "1fr", md: "1fr 1fr" }}
+            gap={2}
+          >
+            <TextField
+              label="IP de impresora"
+              name="printer_ip"
+              value={formData.printer_ip}
+              onChange={handleChange}
+              fullWidth
+              placeholder="Ej. 192.168.1.100"
+              helperText={errors.printer_ip || "Opcional"}
+              error={!!errors.printer_ip}
+            />
+
+            <TextField
+              label="Puerto"
+              name="printer_port"
+              value={formData.printer_port}
+              onChange={handleChange}
+              fullWidth
+              placeholder="Ej. 9100"
+              helperText={errors.printer_port || "Opcional"}
+              error={!!errors.printer_port}
+              inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+            />
+          </Box>
+
+          <Box display="flex" gap={3} mt={3} flexWrap="wrap">
             <GateTaeconta
               fallback={
                 <Tooltip title="Requiere plan y complemento de Taeconta activos">
@@ -367,6 +452,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               }
               label="QR Sitio Web"
             />
+
             <FormControlLabel
               control={
                 <Checkbox
@@ -407,6 +493,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               onChange={handleChange}
             />
           </Button>
+
           <Button
             variant="text"
             color="error"
@@ -454,7 +541,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                     <CircularProgress size={18} color="inherit" />
                   ) : null
                 }
-                sx={{ height: 40 }} // Forzar altura igual a la de Vista Previa
+                sx={{ height: 40 }}
               >
                 {isSubmitting ? "Guardando..." : "Guardar Cambios"}
               </Button>
