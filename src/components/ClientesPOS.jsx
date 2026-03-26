@@ -14,6 +14,8 @@ import {
   Divider,
   Tooltip,
   Alert,
+  Chip,
+  Snackbar,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -23,12 +25,22 @@ import ClearIcon from "@mui/icons-material/Clear";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import Groups2OutlinedIcon from "@mui/icons-material/Groups2Outlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import axiosClient from "../config/axiosClientPOS";
 import ClientesTable from "./clientes/ClientesTable";
 import ClienteFormDialog from "./clientes/ClienteFormDialog";
+import ClienteHistoryModal from "./clientes/ClienteHistoryModal";
+// import GateTaeconta from "./auth/GateTaeconta";
+import useClientesGate from "../hooks/useClientesGate";
 
-// 👇 Importa el gate
-import GateTaeconta from "./auth/GateTaeconta";
+const PLAN_LABELS = {
+  1: "Demo",
+  2: "Negocio",
+  3: "Profesional",
+  4: "Avanzado",
+};
 
 export default function ClientesPOS({ cambiarVista }) {
   const [q, setQ] = useState("");
@@ -39,8 +51,32 @@ export default function ClientesPOS({ cambiarVista }) {
   const [openForm, setOpenForm] = useState(false);
   const [editing, setEditing] = useState(null);
 
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyClient, setHistoryClient] = useState(null);
+
   const [deletingId, setDeletingId] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "info",
+  });
+
+  const {
+    planId,
+    canViewHistory,
+    canCreate,
+    canEdit,
+    canDelete,
+    clientsLimit,
+    reasonClientsBlocked,
+    openPlanesModal,
+  } = useClientesGate(rows.length);
+
+  const showSnackbar = (message, severity = "info") => {
+    setSnackbar({ open: true, message, severity });
+  };
 
   const load = async () => {
     setLoading(true);
@@ -49,7 +85,13 @@ export default function ClientesPOS({ cambiarVista }) {
       const { data } = await axiosClient.get("/clientes", {
         params: q ? { q } : undefined,
       });
-      const list = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+
+      const list = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data)
+        ? data
+        : [];
+
       setRows(list);
     } catch (e) {
       setRows([]);
@@ -66,41 +108,83 @@ export default function ClientesPOS({ cambiarVista }) {
   }, [q]);
 
   const onCreate = () => {
+    if (!canCreate) {
+      showSnackbar(
+        reasonClientsBlocked || "Tu plan actual no permite registrar clientes.",
+        "warning"
+      );
+      return;
+    }
+
     setEditing(null);
     setOpenForm(true);
   };
 
   const onEdit = (row) => {
+    if (!canEdit) {
+      showSnackbar(
+        reasonClientsBlocked || "Tu plan actual no permite editar clientes.",
+        "warning"
+      );
+      return;
+    }
+
     setEditing(row);
     setOpenForm(true);
+  };
+
+  const onViewHistory = (row) => {
+    if (!canViewHistory) return;
+    setHistoryClient(row);
+    setHistoryOpen(true);
   };
 
   const onSubmit = async (payload) => {
     try {
       if (editing) {
         await axiosClient.put(`/clientes/${editing.id}`, payload);
+        showSnackbar("✅ Cliente actualizado");
       } else {
         await axiosClient.post("/clientesnew", payload);
+        showSnackbar("✅ Cliente creado");
       }
+
       setOpenForm(false);
       setEditing(null);
       await load();
     } catch (e) {
-      setError("No se pudo guardar el cliente. Revisa los datos e intenta de nuevo.");
+      const backendMessage =
+        e?.response?.data?.message ||
+        "No se pudo guardar el cliente. Revisa los datos e intenta de nuevo.";
+
+      setError(backendMessage);
+      throw e;
     }
   };
 
-  const onDelete = (row) => setDeletingId(row.id);
+  const onDelete = (row) => {
+    if (!canDelete) {
+      showSnackbar(
+        reasonClientsBlocked || "Tu plan actual no permite eliminar clientes.",
+        "warning"
+      );
+      return;
+    }
+
+    setDeletingId(row.id);
+  };
 
   const confirmDelete = async () => {
     if (!deletingId) return;
+
     setDeletingBusy(true);
     try {
       await axiosClient.delete(`/clientes/${deletingId}`);
       setDeletingId(null);
+      showSnackbar("🗑️ Cliente eliminado");
       await load();
     } catch (e) {
-      setError("No se pudo eliminar el cliente.");
+      setError(e?.response?.data?.message || "No se pudo eliminar el cliente.");
     } finally {
       setDeletingBusy(false);
     }
@@ -109,34 +193,48 @@ export default function ClientesPOS({ cambiarVista }) {
   const cancelDelete = () => setDeletingId(null);
 
   const headerTitle = useMemo(() => "Clientes", []);
+  const planName = PLAN_LABELS[planId] || "Sin definir";
+
+  const planMessage = useMemo(() => {
+    if (planId === 2) {
+      return "Tu plan Negocio puede visualizar clientes, pero no permite registrarlos.";
+    }
+    if (planId === 3) {
+      return `Plan Profesional: ${rows.length || 0}/50 clientes registrados.`;
+    }
+    if (planId === 1) {
+      return "Plan Demo: puedes registrar clientes sin límite.";
+    }
+    if (planId === 4) {
+      return "Plan Avanzado: clientes ilimitados.";
+    }
+    return "Consulta y administra tus clientes.";
+  }, [planId, rows.length]);
 
   return (
-    // 🔒 GateTaeconta protege TODA la vista
-
-      <Box p={{ xs: 2, sm: 3, md: 4 }}>
-        {/* Barra superior */}
-        <Box
-          sx={{
-            mb: 2,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 2,
-            flexWrap: "wrap",
-          }}
+    <Box p={{ xs: 1.5, sm: 3, md: 4 }}>
+      <Box
+        sx={{
+          mb: 2,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 2,
+          flexWrap: "wrap",
+        }}
+      >
+        <Button
+          variant="outlined"
+          color="success"
+          startIcon={<DashboardIcon />}
+          onClick={() => cambiarVista?.("menu")}
+          sx={{ borderRadius: 3, textTransform: "none", fontWeight: 700 }}
         >
-          <Button
-            variant="outlined"
-            color="success"
-            startIcon={<DashboardIcon />}
-            onClick={() => cambiarVista?.("menu")}
-            sx={{ borderRadius: 3, textTransform: "none", fontWeight: 700 }}
-          >
-            Regresar al Panel
-          </Button>
-        </Box>
-    <GateTaeconta>
-        {/* Header estilizado */}
+          Regresar al Panel
+        </Button>
+      </Box>
+
+      {/* <GateTaeconta> */}
         <Paper
           elevation={0}
           sx={(t) => ({
@@ -151,7 +249,7 @@ export default function ClientesPOS({ cambiarVista }) {
           })}
         >
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} lg={6}>
               <Stack direction="row" spacing={1.5} alignItems="center">
                 <PeopleAltIcon
                   sx={(t) => ({
@@ -162,27 +260,76 @@ export default function ClientesPOS({ cambiarVista }) {
                         : t.palette.primary.main,
                   })}
                 />
-                <Typography
-                  component="h2"
-                  sx={(t) => ({
-                    m: 0,
-                    fontWeight: 900,
-                    letterSpacing: 0.2,
-                    fontSize: { xs: "1.2rem", sm: "1.5rem" },
-                    background:
-                      t.palette.mode === "dark"
-                        ? "linear-gradient(90deg, #ffffff 0%, #9fd1ff 100%)"
-                        : "linear-gradient(90deg, #111827 0%, #2563eb 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  })}
-                >
-                  {headerTitle}
-                </Typography>
+                <Box>
+                  <Typography
+                    component="h2"
+                    sx={(t) => ({
+                      m: 0,
+                      fontWeight: 900,
+                      letterSpacing: 0.2,
+                      fontSize: { xs: "1.2rem", sm: "1.5rem" },
+                      background:
+                        t.palette.mode === "dark"
+                          ? "linear-gradient(90deg, #ffffff 0%, #9fd1ff 100%)"
+                          : "linear-gradient(90deg, #111827 0%, #2563eb 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    })}
+                  >
+                    {headerTitle}
+                  </Typography>
+
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    flexWrap="wrap"
+                    sx={{ mt: 0.5 }}
+                  >
+                    <Chip
+                      size="small"
+                      icon={<Groups2OutlinedIcon />}
+                      label={`Plan: ${planName}`}
+                      color="primary"
+                      variant="outlined"
+                    />
+
+                    {typeof clientsLimit === "number" ? (
+                      <Chip
+                        size="small"
+                        label={`${rows.length}/${clientsLimit}`}
+                        color={canCreate ? "success" : "warning"}
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Chip
+                        size="small"
+                        label={`${rows.length} clientes`}
+                        color="success"
+                        variant="outlined"
+                      />
+                    )}
+                  </Stack>
+
+                  {Boolean(planId) && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mt: 0.5 }}
+                    >
+                      Plan actual: <b>{planId}</b>{" "}
+                      {planId === 2
+                        ? "· Solo consulta e historial ✅"
+                        : planId === 3
+                        ? "· Límite de 50 clientes ✅"
+                        : "· Clientes disponibles ✅"}
+                    </Typography>
+                  )}
+                </Box>
               </Stack>
             </Grid>
 
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} lg={6}>
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={1.2}
@@ -221,20 +368,43 @@ export default function ClientesPOS({ cambiarVista }) {
                         startIcon={
                           loading ? <CircularProgress size={16} /> : <RefreshIcon />
                         }
-                        sx={{ textTransform: "none", borderRadius: 2, fontWeight: 700 }}
+                        sx={{
+                          textTransform: "none",
+                          borderRadius: 2,
+                          fontWeight: 700,
+                        }}
                       >
                         {loading ? "Cargando" : "Actualizar"}
                       </Button>
                     </span>
                   </Tooltip>
-                  <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={onCreate}
-                    sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800 }}
+
+                  <Tooltip
+                    title={
+                      canCreate
+                        ? "Registrar cliente"
+                        : reasonClientsBlocked ||
+                          "Tu plan actual no permite registrar clientes"
+                    }
                   >
-                    Nuevo cliente
-                  </Button>
+                    <span>
+                      <Button
+                        variant="contained"
+                        startIcon={
+                          canCreate ? <AddIcon /> : <LockOutlinedIcon />
+                        }
+                        onClick={onCreate}
+                        disabled={!canCreate}
+                        sx={{
+                          textTransform: "none",
+                          borderRadius: 2,
+                          fontWeight: 800,
+                        }}
+                      >
+                        Nuevo cliente
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </Stack>
               </Stack>
             </Grid>
@@ -242,14 +412,49 @@ export default function ClientesPOS({ cambiarVista }) {
 
           <Divider sx={{ mt: 2 }} />
 
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ pt: 1.5 }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={1}
+            justifyContent="space-between"
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            sx={{ pt: 1.5 }}
+          >
             <Typography variant="body2" color="text.secondary">
               {rows.length} resultado{rows.length === 1 ? "" : "s"}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {planMessage}
             </Typography>
           </Stack>
         </Paper>
 
-        {/* Mensaje de error */}
+        {reasonClientsBlocked ? (
+          <Alert
+            severity={planId === 3 ? "warning" : "info"}
+            sx={{ mb: 2, borderRadius: 2 }}
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={openPlanesModal}
+                sx={{ textTransform: "none", fontWeight: 800 }}
+              >
+                Ver planes
+              </Button>
+            }
+          >
+            <b>Plan {planId || "?"}</b>: {reasonClientsBlocked}
+          </Alert>
+        ) : null}
+
+        <Alert
+          severity="success"
+          sx={{ mb: 2, borderRadius: 2 }}
+          icon={<VisibilityOutlinedIcon fontSize="inherit" />}
+        >
+          Puedes consultar el historial de clientes desde cualquier plan.
+        </Alert>
+
         {error && (
           <Alert
             severity="error"
@@ -260,7 +465,6 @@ export default function ClientesPOS({ cambiarVista }) {
           </Alert>
         )}
 
-        {/* Tabla */}
         <Paper
           elevation={4}
           sx={{
@@ -268,7 +472,9 @@ export default function ClientesPOS({ cambiarVista }) {
             borderRadius: 3,
             boxShadow: (t) =>
               `0 8px 24px ${
-                t.palette.mode === "dark" ? "rgba(0,0,0,.4)" : "rgba(0,0,0,.08)"
+                t.palette.mode === "dark"
+                  ? "rgba(0,0,0,.4)"
+                  : "rgba(0,0,0,.08)"
               }`,
           }}
         >
@@ -277,11 +483,18 @@ export default function ClientesPOS({ cambiarVista }) {
               <CircularProgress />
             </Box>
           ) : (
-            <ClientesTable rows={rows} onEdit={onEdit} onDelete={onDelete} />
+            <ClientesTable
+              rows={rows}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onViewHistory={onViewHistory}
+              canEdit={canEdit}
+              canDelete={canDelete}
+              canViewHistory={canViewHistory}
+            />
           )}
         </Paper>
-</GateTaeconta>
-        {/* Formulario crear/editar */}
+
         <ClienteFormDialog
           open={openForm}
           onClose={() => {
@@ -292,7 +505,15 @@ export default function ClientesPOS({ cambiarVista }) {
           initialValues={editing}
         />
 
-        {/* Confirmación de borrado */}
+        <ClienteHistoryModal
+          open={historyOpen}
+          onClose={() => {
+            setHistoryOpen(false);
+            setHistoryClient(null);
+          }}
+          cliente={historyClient}
+        />
+
         {Boolean(deletingId) && (
           <Box
             sx={{
@@ -314,7 +535,11 @@ export default function ClientesPOS({ cambiarVista }) {
                   Esta acción no se puede deshacer.
                 </Typography>
                 <Stack direction="row" spacing={1.5} sx={{ pt: 1 }}>
-                  <Button onClick={cancelDelete} disabled={deletingBusy} sx={{ textTransform: "none" }}>
+                  <Button
+                    onClick={cancelDelete}
+                    disabled={deletingBusy}
+                    sx={{ textTransform: "none" }}
+                  >
                     Cancelar
                   </Button>
                   <Button
@@ -322,16 +547,40 @@ export default function ClientesPOS({ cambiarVista }) {
                     variant="contained"
                     onClick={confirmDelete}
                     disabled={deletingBusy}
-                    sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800 }}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: 2,
+                      fontWeight: 800,
+                    }}
                   >
-                    {deletingBusy ? <CircularProgress size={18} sx={{ color: "white" }} /> : "Eliminar"}
+                    {deletingBusy ? (
+                      <CircularProgress size={18} sx={{ color: "white" }} />
+                    ) : (
+                      "Eliminar"
+                    )}
                   </Button>
                 </Stack>
               </Stack>
             </Paper>
           </Box>
         )}
-      </Box>
-    
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={2800}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        >
+          <Alert
+            severity={snackbar.severity}
+            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+            variant="filled"
+            sx={{ borderRadius: 2 }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+      {/* </GateTaeconta> */}
+    </Box>
   );
 }

@@ -19,8 +19,9 @@ import {
   InputAdornment,
   MenuItem,
   useMediaQuery,
+  CircularProgress,
 } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import PersonAddAlt1Icon from "@mui/icons-material/PersonAddAlt1";
 import BadgeIcon from "@mui/icons-material/Badge";
@@ -59,14 +60,10 @@ const regimenesFiscales = [
   },
   {
     codigo: "612",
-    nombre:
-      "612 - Personas Físicas con Actividades Empresariales y Profesionales",
+    nombre: "612 - Personas Físicas con Actividades Empresariales y Profesionales",
   },
   { codigo: "614", nombre: "614 - Ingresos por intereses" },
-  {
-    codigo: "615",
-    nombre: "615 - Régimen de los ingresos por obtención de premios",
-  },
+  { codigo: "615", nombre: "615 - Régimen de los ingresos por obtención de premios" },
   { codigo: "616", nombre: "616 - Sin obligaciones fiscales" },
   {
     codigo: "620",
@@ -82,8 +79,7 @@ const regimenesFiscales = [
   { codigo: "624", nombre: "624 - Coordinados" },
   {
     codigo: "625",
-    nombre:
-      "625 - Actividades Empresariales con ingresos en Plataformas Tecnológicas",
+    nombre: "625 - Actividades Empresariales con ingresos en Plataformas Tecnológicas",
   },
   { codigo: "626", nombre: "626 - Régimen Simplificado de Confianza" },
 ];
@@ -97,7 +93,6 @@ export default function ClienteFormDialog({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // init con régimen vacío por defecto para "nuevo cliente"
   const init = useMemo(
     () => ({ ...empty, regimen_codigo: "", ...(initialValues || {}) }),
     [initialValues]
@@ -106,7 +101,6 @@ export default function ClienteFormDialog({
   const [form, setForm] = useState(init);
   const [submitting, setSubmitting] = useState(false);
   const [anchorInfo, setAnchorInfo] = useState(null);
-  const infoOpen = Boolean(anchorInfo);
   const [errors, setErrors] = useState({});
 
   React.useEffect(() => {
@@ -125,12 +119,15 @@ export default function ClienteFormDialog({
 
   const validate = () => {
     const next = {};
-    if (!form.nombre_alias?.trim())
+    if (!form.nombre_alias?.trim()) {
       next.nombre_alias = "El nombre es obligatorio.";
-    if (form.telefono && form.telefono.length !== 10)
+    }
+    if (form.telefono && form.telefono.length !== 10) {
       next.telefono = "Debe contener 10 dígitos.";
-    if (form.codigo_postal_fiscal && form.codigo_postal_fiscal.length !== 5)
+    }
+    if (form.codigo_postal_fiscal && form.codigo_postal_fiscal.length !== 5) {
       next.codigo_postal_fiscal = "Debe contener 5 dígitos.";
+    }
     setErrors(next);
     return Object.keys(next).length === 0;
   };
@@ -145,12 +142,8 @@ export default function ClienteFormDialog({
     };
 
     try {
-      const maybePromise = onSubmit?.(payload);
-      if (maybePromise && typeof maybePromise.then === "function") {
-        setSubmitting(true);
-        await maybePromise;
-      }
-      onClose?.(); // cerrar tras submit exitoso
+      setSubmitting(true);
+      await onSubmit?.(payload);
     } finally {
       setSubmitting(false);
     }
@@ -159,7 +152,7 @@ export default function ClienteFormDialog({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={submitting ? undefined : onClose}
       maxWidth="md"
       fullWidth
       fullScreen={isMobile}
@@ -167,13 +160,11 @@ export default function ClienteFormDialog({
       keepMounted
       PaperProps={{
         sx: {
-          // En mobile, ocupa toda la pantalla y permite scroll interno
           m: { xs: 0, sm: 2 },
           height: { xs: "100dvh", sm: "auto" },
-          maxHeight: { xs: "100dvh", sm: "calc(100dvh - 64px)" },
+          maxHeight: { xs: "100dvh", sm: "calc(100dvh - 48px)" },
           overflow: "hidden",
-          borderRadius: { xs: 0, sm: 3 },
-          boxShadow: 10,
+          borderRadius: { xs: 0, sm: 4 },
           bgcolor: "background.default",
         },
       }}
@@ -182,14 +173,11 @@ export default function ClienteFormDialog({
         sx={{
           px: { xs: 2, sm: 3 },
           py: { xs: 1.5, sm: 2 },
-          background: "linear-gradient(135deg, #1f2937 0%, #0ea5e9 100%)",
+          background: "linear-gradient(135deg, #111827 0%, #0ea5e9 100%)",
           color: "white",
           display: "flex",
           alignItems: "center",
           gap: 1.5,
-          position: "sticky",
-          top: 0,
-          zIndex: 1,
         }}
       >
         <PersonAddAlt1Icon />
@@ -198,36 +186,35 @@ export default function ClienteFormDialog({
             p: 0,
             m: 0,
             flex: 1,
-            fontWeight: 800,
+            fontWeight: 900,
             color: "white",
             fontSize: { xs: 18, sm: 22 },
           }}
         >
           {initialValues ? "Editar cliente" : "Nuevo cliente"}
         </DialogTitle>
+
         <Chip
-          label="Datos para facturación"
+          label="Datos fiscales"
           sx={{
-            bgcolor: "rgba(255,255,255,0.16)",
-            color: "white",
+            bgcolor: "rgba(255,255,255,0.14)",
+            color: "#fff",
             fontWeight: 700,
-            borderRadius: "16px",
             display: { xs: "none", sm: "inline-flex" },
           }}
         />
+
         <IconButton
           onClick={(e) => setAnchorInfo(e.currentTarget)}
           color="inherit"
           size="small"
-          aria-label="Información del formulario"
         >
           <InfoOutlinedIcon />
         </IconButton>
       </Box>
 
-      {/* Recuadro flotante tipo nube */}
       <Popover
-        open={infoOpen}
+        open={Boolean(anchorInfo)}
         anchorEl={anchorInfo}
         onClose={() => setAnchorInfo(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
@@ -237,50 +224,38 @@ export default function ClienteFormDialog({
             p: 2,
             maxWidth: 360,
             borderRadius: 3,
-            boxShadow: 8,
-            position: "relative",
-            "&::after": {
-              content: '""',
-              position: "absolute",
-              top: -8,
-              right: 20,
-              width: 16,
-              height: 16,
-              bgcolor: "background.paper",
-              transform: "rotate(45deg)",
-              boxShadow: 1,
-            },
           },
         }}
       >
-        <Stack spacing={1}>
-          <Typography variant="subtitle1" fontWeight={800}>
-            ¿Para qué sirven estos datos?
-          </Typography>
-          <Typography variant="body2">
-            Registra la información básica de tus clientes para emitir facturas,
-            enviar comprobantes y mantener su historial de compras. El RFC se
-            normaliza automáticamente y el régimen se guarda por código SAT.
-          </Typography>
-        </Stack>
+        <Typography variant="subtitle1" fontWeight={800} mb={1}>
+          Información
+        </Typography>
+        <Typography variant="body2">
+          Registra los datos básicos del cliente y, si lo deseas, su información
+          fiscal para futuras facturas.
+        </Typography>
       </Popover>
 
       <form onSubmit={handleSubmit}>
         <DialogContent
           dividers
           sx={{
-            bgcolor: "background.paper",
             p: { xs: 2, sm: 3 },
-            // Scroll en móviles
-            overflowY: "auto",
-            maxHeight: { xs: "calc(100dvh - 120px)", sm: "auto" },
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
+            bgcolor:
+              theme.palette.mode === "dark"
+                ? alpha(theme.palette.background.default, 0.96)
+                : "#f8fafc",
           }}
         >
           <Paper
-            variant="outlined"
-            sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3 }}
+            elevation={0}
+            sx={(t) => ({
+              p: { xs: 2, sm: 3 },
+              borderRadius: 3,
+              border: `1px solid ${alpha(t.palette.divider, 0.9)}`,
+              bgcolor:
+                t.palette.mode === "dark" ? alpha("#0b1220", 0.5) : "#fff",
+            })}
           >
             <Stack direction="row" alignItems="center" spacing={1} mb={2}>
               <BadgeIcon fontSize="small" />
@@ -358,10 +333,11 @@ export default function ClienteFormDialog({
                   }}
                 />
               </Grid>
+
               <Grid item xs={12} sm={4}>
                 <TextField
                   select
-                  label="Régimen "
+                  label="Régimen"
                   value={form.regimen_codigo || ""}
                   onChange={handleChange("regimen_codigo")}
                   fullWidth
@@ -371,11 +347,9 @@ export default function ClienteFormDialog({
                       : "Selecciona el régimen"
                   }
                 >
-                  {/* Opción vacía */}
                   <MenuItem value="">
                     <em>Sin régimen</em>
                   </MenuItem>
-
                   {regimenesFiscales.map((r) => (
                     <MenuItem key={r.codigo} value={r.codigo}>
                       {r.nombre}
@@ -425,38 +399,35 @@ export default function ClienteFormDialog({
 
             <Divider sx={{ my: 3 }} />
 
-            <Typography variant="subtitle1" fontWeight={800}>
-                Consideraciones Importantes
-              </Typography>
+            <Typography variant="subtitle1" fontWeight={800} mb={1.2}>
+              Consideraciones importantes
+            </Typography>
 
             <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-
-              <div>
-                <Chip
-                  label="RFC en mayúsculas"
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                />
-                <Chip
-                  label="Teléfono a 10 dígitos"
-                  size="small"
-                  color="success"
-                  variant="outlined"
-                />
-                <Chip
-                  label="C.P. Fiscal Existente"
-                  size="small"
-                  color="info"
-                  variant="outlined"
-                />
-                <Chip
-                  label="Régimen Correcto"
-                  size="small"
-                  color="warning"
-                  variant="outlined"
-                />
-              </div>
+              <Chip
+                label="RFC en mayúsculas"
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+              <Chip
+                label="Teléfono a 10 dígitos"
+                size="small"
+                color="success"
+                variant="outlined"
+              />
+              <Chip
+                label="C.P. fiscal válido"
+                size="small"
+                color="info"
+                variant="outlined"
+              />
+              <Chip
+                label="Régimen correcto"
+                size="small"
+                color="warning"
+                variant="outlined"
+              />
             </Box>
           </Paper>
         </DialogContent>
@@ -464,11 +435,9 @@ export default function ClienteFormDialog({
         <DialogActions
           sx={{
             p: { xs: 1.5, sm: 2 },
-            position: isMobile ? "sticky" : "static",
-            bottom: 0,
-            bgcolor: "background.paper",
-            borderTop: { xs: "1px solid", sm: "none" },
+            borderTop: "1px solid",
             borderColor: "divider",
+            bgcolor: "background.paper",
           }}
         >
           <Stack
@@ -478,8 +447,8 @@ export default function ClienteFormDialog({
           >
             <Button
               onClick={onClose}
-              sx={{ textTransform: "none", borderRadius: 2 }}
               disabled={submitting}
+              sx={{ textTransform: "none", borderRadius: 2 }}
             >
               Cancelar
             </Button>
@@ -491,15 +460,19 @@ export default function ClienteFormDialog({
                 textTransform: "none",
                 borderRadius: 2,
                 fontWeight: 800,
-                px: 2.5,
-                boxShadow: 6,
+                minWidth: 160,
               }}
             >
-              {submitting
-                ? "Guardando…"
-                : initialValues
-                ? "Guardar cambios"
-                : "Crear cliente"}
+              {submitting ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={16} sx={{ color: "white" }} />
+                  <span>Guardando...</span>
+                </Stack>
+              ) : initialValues ? (
+                "Guardar cambios"
+              ) : (
+                "Crear cliente"
+              )}
             </Button>
           </Stack>
         </DialogActions>
