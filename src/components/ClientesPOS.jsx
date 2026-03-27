@@ -447,14 +447,6 @@ export default function ClientesPOS({ cambiarVista }) {
           </Alert>
         ) : null}
 
-        <Alert
-          severity="success"
-          sx={{ mb: 2, borderRadius: 2 }}
-          icon={<VisibilityOutlinedIcon fontSize="inherit" />}
-        >
-          Puedes consultar el historial de clientes desde cualquier plan.
-        </Alert>
-
         {error && (
           <Alert
             severity="error"
