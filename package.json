@@ -8,6 +8,7 @@
     "@mui/icons-material": "^7.0.2",
     "@mui/lab": "^7.0.0-beta.16",
     "@mui/material": "^7.0.2",
+    "@mui/x-charts": "^8.28.0",
     "@mui/x-tree-view": "^8.23.0",
     "@paypal/react-paypal-js": "^8.9.2",
     "@reduxjs/toolkit": "^1.8.6",
