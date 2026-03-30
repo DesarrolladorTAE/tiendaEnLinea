@@ -1,4 +1,3 @@
-// src/components/POS/Cart.jsx
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Box,
@@ -14,12 +13,18 @@ import {
   Stack,
   Divider,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DiscountIcon from "@mui/icons-material/Percent";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
+import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 
 import ModalCambioDescuento from "./ModalCambioDescuento";
 import ItemWorkerAssign from "./ItemWorkerAssign";
@@ -88,6 +93,14 @@ export default function CartSidebar({
   const [loadingClients, setLoadingClients] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
 
+  const [openQuickClient, setOpenQuickClient] = useState(false);
+  const [savingQuickClient, setSavingQuickClient] = useState(false);
+  const [submittingSale, setSubmittingSale] = useState(false);
+
+  const [quickClientForm, setQuickClientForm] = useState({
+    nombre_alias: "",
+    telefono: "",
+  });
 
   useEffect(() => {
     if (!isMobile) return;
@@ -141,7 +154,7 @@ export default function CartSidebar({
               behavior: "smooth",
             });
           }
-        } catch { }
+        } catch {}
       };
 
       requestAnimationFrame(doScroll);
@@ -162,7 +175,7 @@ export default function CartSidebar({
 
       try {
         el.scrollIntoView({ block: "center", inline: "nearest" });
-      } catch { }
+      } catch {}
       ensureVisible(el);
     };
 
@@ -202,38 +215,33 @@ export default function CartSidebar({
     };
   }, [posLocationId]);
 
-  useEffect(() => {
+  const fetchClients = useCallback(async () => {
     if (!posLocationId) {
       setClients([]);
       setSelectedClient(null);
-      return;
+      return [];
     }
 
-    let cancelled = false;
+    setLoadingClients(true);
+    try {
+      const { data } = await axiosClient.get("/clientes/simple", {
+        params: { pos_location_id: posLocationId },
+      });
 
-    const fetchClients = async () => {
-      setLoadingClients(true);
-      try {
-        const { data } = await axiosClient.get("/clientes/simple", {
-          params: { pos_location_id: posLocationId },
-        });
-
-        if (!cancelled) {
-          setClients(Array.isArray(data?.data) ? data.data : []);
-        }
-      } catch {
-        if (!cancelled) setClients([]);
-      } finally {
-        if (!cancelled) setLoadingClients(false);
-      }
-    };
-
-    fetchClients();
-
-    return () => {
-      cancelled = true;
-    };
+      const list = Array.isArray(data?.data) ? data.data : [];
+      setClients(list);
+      return list;
+    } catch {
+      setClients([]);
+      return [];
+    } finally {
+      setLoadingClients(false);
+    }
   }, [posLocationId]);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
 
   const total = useMemo(
     () =>
@@ -290,12 +298,12 @@ export default function CartSidebar({
 
       const original = toNumber(
         item.original_price ??
-        item.price_original ??
-        item.base_price ??
-        item.precio_base ??
-        item.precio_sin_descuento ??
-        item.original ??
-        item.originalPrice
+          item.price_original ??
+          item.base_price ??
+          item.precio_base ??
+          item.precio_sin_descuento ??
+          item.original ??
+          item.originalPrice
       );
 
       return {
@@ -320,8 +328,28 @@ export default function CartSidebar({
     });
   };
 
-  const processCheckout = () => {
-    if (cart.length === 0) return;
+  const resetAfterSuccessfulSale = () => {
+    setCart([]);
+    setSelectedClient(null);
+    setCashReceived("");
+    setSelected(["efectivo"]);
+    setDetails({
+      efectivo: { amount: "", referencia: "", ultimos4: "" },
+      td: { amount: "", referencia: "", ultimos4: "" },
+      tc: { amount: "", referencia: "", ultimos4: "" },
+      transferencia: { amount: "", referencia: "", ultimos4: "" },
+    });
+    setProductoEditar(null);
+    setOpenQuickClient(false);
+    setQuickClientForm({
+      nombre_alias: "",
+      telefono: "",
+    });
+    setScannerEnabled?.(true);
+  };
+
+  const processCheckout = async () => {
+    if (cart.length === 0 || submittingSale) return;
 
     let payments = [];
 
@@ -414,9 +442,19 @@ export default function CartSidebar({
       payments,
     };
 
-    onCheckout(data);
-    resetPaymentState();
-    setOpenTicketDialog(false);
+    try {
+      setSubmittingSale(true);
+      await onCheckout(data);
+      resetAfterSuccessfulSale();
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "No se pudo registrar la venta.";
+      showError(msg);
+    } finally {
+      setSubmittingSale(false);
+    }
   };
 
   const aplicarCambioProducto = (nuevoProducto) => {
@@ -442,6 +480,76 @@ export default function CartSidebar({
     setCart(actualizado);
   };
 
+  const handleOpenQuickClient = () => {
+    setQuickClientForm({
+      nombre_alias: "",
+      telefono: "",
+    });
+    setOpenQuickClient(true);
+    setScannerEnabled?.(false);
+  };
+
+  const handleCloseQuickClient = () => {
+    if (savingQuickClient) return;
+    setOpenQuickClient(false);
+    setScannerEnabled?.(true);
+  };
+
+  const handleSaveQuickClient = async () => {
+    const nombre_alias = quickClientForm.nombre_alias.trim();
+    const telefono = quickClientForm.telefono.trim();
+
+    if (!posLocationId) {
+      showError("No se encontró el POS actual.");
+      return;
+    }
+
+    if (!nombre_alias) {
+      showError("Ingresa el nombre o alias del cliente.");
+      return;
+    }
+
+    if (!telefono) {
+      showError("Ingresa el teléfono del cliente.");
+      return;
+    }
+
+    try {
+      setSavingQuickClient(true);
+
+      const { data } = await axiosClient.post("/clientes/quick-store", {
+        pos_location_id: posLocationId,
+        nombre_alias,
+        telefono,
+      });
+
+      const nuevoCliente = data?.cliente ?? data;
+
+      const refreshed = await fetchClients();
+
+      let clienteSeleccionado =
+        refreshed.find((c) => String(c.id) === String(nuevoCliente?.id)) ||
+        nuevoCliente ||
+        null;
+
+      if (clienteSeleccionado) {
+        setSelectedClient(clienteSeleccionado);
+      }
+
+      setOpenQuickClient(false);
+      setQuickClientForm({ nombre_alias: "", telefono: "" });
+      setScannerEnabled?.(true);
+    } catch (error) {
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "No se pudo crear el cliente.";
+      showError(msg);
+    } finally {
+      setSavingQuickClient(false);
+    }
+  };
+
   const paperSx = {
     p: { xs: 1.5, md: 2 },
     borderRadius: 3,
@@ -450,13 +558,13 @@ export default function CartSidebar({
     boxShadow: variant === "desktop" ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
     ...(isMobile
       ? {
-        height: "100%",
-        maxHeight: "100%",
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch",
-        overscrollBehavior: "contain",
-        paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
-      }
+          height: "100%",
+          maxHeight: "100%",
+          overflowY: "auto",
+          WebkitOverflowScrolling: "touch",
+          overscrollBehavior: "contain",
+          paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
+        }
       : {}),
   };
 
@@ -490,286 +598,362 @@ export default function CartSidebar({
       selected
         .map((m) => toNumber(details[m].amount))
         .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
-      0.00001 <
-      total);
+        0.00001 <
+        total);
 
   return (
-    <Box sx={rootSx}>
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <ShoppingCartRoundedIcon fontSize="small" />
-          <Typography variant="h6" sx={{ fontWeight: 900 }}>
-            Carrito!
-          </Typography>
-          <Chip size="small" label={`${cart.length} item${cart.length === 1 ? "" : "s"}`} sx={{ ml: 0.5 }} />
-        </Stack>
+    <>
+      <Box sx={rootSx}>
+        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <ShoppingCartRoundedIcon fontSize="small" />
+            <Typography variant="h6" sx={{ fontWeight: 900 }}>
+              Carrito!
+            </Typography>
+            <Chip size="small" label={`${cart.length} item${cart.length === 1 ? "" : "s"}`} sx={{ ml: 0.5 }} />
+          </Stack>
 
-        <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
-      </Box>
+          <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
+        </Box>
 
-      <Paper ref={paperRef} variant="outlined" sx={paperSx}>
-        {cart.length === 0 ? (
-          <Typography color="text.secondary">Sin artículos</Typography>
-        ) : (
-          <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0 }}>
-            {cart.map((item) => {
-              const cartKey = getCartKey(item);
+        <Paper ref={paperRef} variant="outlined" sx={paperSx}>
+          {cart.length === 0 ? (
+            <Typography color="text.secondary">Sin artículos</Typography>
+          ) : (
+            <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0 }}>
+              {cart.map((item) => {
+                const cartKey = getCartKey(item);
 
-              return (
-                <Box
-                  key={cartKey}
-                  component="li"
-                  sx={{ py: 1.2, borderBottom: "1px solid", borderColor: "divider" }}
-                >
-                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
-                        {item.display_name || item.name}
-                      </Typography>
-
-                      {!!item.warehouse_name && (
-                        <Typography variant="caption" color="text.secondary">
-                          Almacén: <b>{item.warehouse_name}</b>
+                return (
+                  <Box
+                    key={cartKey}
+                    component="li"
+                    sx={{ py: 1.2, borderBottom: "1px solid", borderColor: "divider" }}
+                  >
+                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                          {item.display_name || item.name}
                         </Typography>
-                      )}
 
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        ${Number(item.price || 0).toFixed(2)} c/u · Subtotal: $
-                        {(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
-                      </Typography>
+                        {!!item.warehouse_name && (
+                          <Typography variant="caption" color="text.secondary">
+                            Almacén: <b>{item.warehouse_name}</b>
+                          </Typography>
+                        )}
 
-                      {!loadingWorkers && posWorkers.length > 0 && (
-                        <ItemWorkerAssign
-                          workers={posWorkers}
-                          value={item.worker_id || null}
-                          onChange={(workerId, workerObj) => {
-                            setCart((prev) =>
-                              prev.map((prod) =>
-                                getCartKey(prod) === cartKey
-                                  ? {
-                                    ...prod,
-                                    worker_id: workerId,
-                                    worker: workerObj,
-                                  }
-                                  : prod
-                              )
-                            );
-                          }}
-                        />
-                      )}
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          ${Number(item.price || 0).toFixed(2)} c/u · Subtotal: $
+                          {(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                        </Typography>
 
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            if (Number(item.quantity) > 1) {
-                              setCart((prev) =>
-                                prev.map((prod) =>
-                                  getCartKey(prod) === cartKey
-                                    ? { ...prod, quantity: Math.floor(Number(prod.quantity)) - 1 }
-                                    : prod
-                                )
-                              );
-                            } else {
-                              onRemove(cartKey);
-                            }
-                          }}
-                        >
-                          <RemoveRoundedIcon fontSize="small" />
-                        </IconButton>
-
-                        <TextField
-                          value={item.inputValue ?? item.quantity}
-                          type="text"
-                          size="small"
-                          {...inputCommon}
-                          inputProps={{
-                            style: { textAlign: "center", width: 72 },
-                            inputMode: "decimal",
-                            pattern: "[0-9]*[.,]?[0-9]*",
-                          }}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (/^\d*\.?\d*$/.test(val)) {
+                        {!loadingWorkers && posWorkers.length > 0 && (
+                          <ItemWorkerAssign
+                            workers={posWorkers}
+                            value={item.worker_id || null}
+                            onChange={(workerId, workerObj) => {
                               setCart((prev) =>
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
                                     ? {
-                                      ...prod,
-                                      inputValue: val,
-                                      quantity: val === "" || val === "." ? 0 : parseFloat(val),
-                                    }
+                                        ...prod,
+                                        worker_id: workerId,
+                                        worker: workerObj,
+                                      }
                                     : prod
                                 )
                               );
-                            }
-                          }}
-                          onBlurCapture={() => {
-                            setCart((prev) =>
-                              prev
-                                .map((prod) =>
-                                  getCartKey(prod) === cartKey ? { ...prod, inputValue: undefined } : prod
+                            }}
+                          />
+                        )}
+
+                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              if (Number(item.quantity) > 1) {
+                                setCart((prev) =>
+                                  prev.map((prod) =>
+                                    getCartKey(prod) === cartKey
+                                      ? { ...prod, quantity: Math.floor(Number(prod.quantity)) - 1 }
+                                      : prod
+                                  )
+                                );
+                              } else {
+                                onRemove(cartKey);
+                              }
+                            }}
+                          >
+                            <RemoveRoundedIcon fontSize="small" />
+                          </IconButton>
+
+                          <TextField
+                            value={item.inputValue ?? item.quantity}
+                            type="text"
+                            size="small"
+                            {...inputCommon}
+                            inputProps={{
+                              style: { textAlign: "center", width: 72 },
+                              inputMode: "decimal",
+                              pattern: "[0-9]*[.,]?[0-9]*",
+                            }}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (/^\d*\.?\d*$/.test(val)) {
+                                setCart((prev) =>
+                                  prev.map((prod) =>
+                                    getCartKey(prod) === cartKey
+                                      ? {
+                                          ...prod,
+                                          inputValue: val,
+                                          quantity: val === "" || val === "." ? 0 : parseFloat(val),
+                                        }
+                                      : prod
+                                  )
+                                );
+                              }
+                            }}
+                            onBlurCapture={() => {
+                              setCart((prev) =>
+                                prev
+                                  .map((prod) =>
+                                    getCartKey(prod) === cartKey ? { ...prod, inputValue: undefined } : prod
+                                  )
+                                  .filter((prod) => {
+                                    if (getCartKey(prod) !== cartKey) return true;
+                                    return Number(prod.quantity || 0) > 0;
+                                  })
+                              );
+                            }}
+                          />
+
+                          <IconButton
+                            size="small"
+                            onClick={() => {
+                              setCart((prev) =>
+                                prev.map((prod) =>
+                                  getCartKey(prod) === cartKey
+                                    ? { ...prod, quantity: Math.floor(Number(prod.quantity)) + 1 }
+                                    : prod
                                 )
-                                .filter((prod) => {
-                                  if (getCartKey(prod) !== cartKey) return true;
-                                  return Number(prod.quantity || 0) > 0;
-                                })
-                            );
-                          }}
-                        />
+                              );
+                            }}
+                          >
+                            <AddRoundedIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
+                      </Box>
 
-                        <IconButton
-                          size="small"
-                          onClick={() => {
-                            setCart((prev) =>
-                              prev.map((prod) =>
-                                getCartKey(prod) === cartKey
-                                  ? { ...prod, quantity: Math.floor(Number(prod.quantity)) + 1 }
-                                  : prod
-                              )
-                            );
-                          }}
-                        >
-                          <AddRoundedIcon fontSize="small" />
-                        </IconButton>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <Tooltip title="Editar descuento">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => {
+                              setProductoEditar({ ...item, cart_key: cartKey });
+                              setModalDescuentoActivo?.(true);
+                            }}
+                          >
+                            <DiscountIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+
+                        <Tooltip title="Eliminar">
+                          <IconButton size="small" onClick={() => onRemove(cartKey)} color="error">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </Stack>
-                    </Box>
-
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <Tooltip title="Editar descuento">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => {
-                            setProductoEditar({ ...item, cart_key: cartKey });
-                            setModalDescuentoActivo?.(true);
-                          }}
-                        >
-                          <DiscountIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-
-                      <Tooltip title="Eliminar">
-                        <IconButton size="small" onClick={() => onRemove(cartKey)} color="error">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
                     </Stack>
-                  </Stack>
-                </Box>
-              );
-            })}
+                  </Box>
+                );
+              })}
 
-            <Box sx={{ pt: 1.5 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
-                Total: ${total.toFixed(2)}
-              </Typography>
-
-              {!loadingClients && clients.length > 0 && (
-                <SaleClientAssign
-                  clients={clients}
-                  value={selectedClient}
-                  onChange={setSelectedClient}
-                  loading={loadingClients}
-                />
-              )}
-
-              <Box sx={{ mt: 1.5 }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
-                  Método(s) de pago (máx. 3)
+              <Box sx={{ pt: 1.5 }}>
+                <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
+                  Total: ${total.toFixed(2)}
                 </Typography>
 
-                <Stack spacing={1.25}>
-                  {METHODS.map(({ key, label }) => {
-                    const isChecked = selected.includes(key);
-                    const d = details[key];
+                <Box sx={{ mt: 1.2 }}>
+                  {!loadingClients && clients.length > 0 && (
+                    <SaleClientAssign
+                      clients={clients}
+                      value={selectedClient}
+                      onChange={setSelectedClient}
+                      loading={loadingClients}
+                    />
+                  )}
 
-                    return (
-                      <Box
-                        key={key}
+                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<PersonAddAlt1RoundedIcon />}
+                      onClick={handleOpenQuickClient}
+                      fullWidth={isMobile}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 800,
+                      }}
+                    >
+                      Crear cliente rápido
+                    </Button>
+
+                    {selectedClient && (
+                      <Button
+                        variant="text"
+                        color="inherit"
+                        onClick={() => setSelectedClient(null)}
+                        fullWidth={isMobile}
                         sx={{
-                          p: 1.25,
-                          border: "1px solid",
-                          borderColor: isChecked ? "primary.main" : "divider",
                           borderRadius: 2,
-                          background: isChecked ? "rgba(25,118,210,0.04)" : "#fff",
-                          transition: "all 120ms ease",
+                          textTransform: "none",
+                          fontWeight: 700,
                         }}
                       >
-                        <FormGroup>
-                          <FormControlLabel
-                            control={<Checkbox checked={isChecked} onChange={() => toggleMethod(key)} size="small" />}
-                            label={<Typography sx={{ fontWeight: 700 }}>{label}</Typography>}
-                          />
-                        </FormGroup>
+                        Quitar cliente
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
 
-                        {isChecked && (
-                          <Box sx={{ pl: 4.5, pt: 1 }}>
-                            {selectedCount === 1 ? (
-                              key === "efectivo" ? (
-                                <>
-                                  <TextField
-                                    label="Efectivo recibido"
-                                    type="text"
-                                    fullWidth
-                                    margin="dense"
-                                    value={cashReceived}
-                                    onChange={(e) => setCashReceived(e.target.value)}
-                                    {...inputCommon}
-                                    inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
-                                  />
-                                  {cambioUnico > 0 && (
-                                    <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
-                                      Cambio: ${cambioUnico.toFixed(2)}
-                                    </Typography>
-                                  )}
-                                </>
-                              ) : (
-                                <>
-                                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                    Se cobrará el total con <strong>{label}</strong>.
-                                  </Typography>
+                <Box sx={{ mt: 1.5 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
+                    Método(s) de pago (máx. 3)
+                  </Typography>
 
-                                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Stack spacing={1.25}>
+                    {METHODS.map(({ key, label }) => {
+                      const isChecked = selected.includes(key);
+                      const d = details[key];
+
+                      return (
+                        <Box
+                          key={key}
+                          sx={{
+                            p: 1.25,
+                            border: "1px solid",
+                            borderColor: isChecked ? "primary.main" : "divider",
+                            borderRadius: 2,
+                            background: isChecked ? "rgba(25,118,210,0.04)" : "#fff",
+                            transition: "all 120ms ease",
+                          }}
+                        >
+                          <FormGroup>
+                            <FormControlLabel
+                              control={<Checkbox checked={isChecked} onChange={() => toggleMethod(key)} size="small" />}
+                              label={<Typography sx={{ fontWeight: 700 }}>{label}</Typography>}
+                            />
+                          </FormGroup>
+
+                          {isChecked && (
+                            <Box sx={{ pl: 4.5, pt: 1 }}>
+                              {selectedCount === 1 ? (
+                                key === "efectivo" ? (
+                                  <>
                                     <TextField
-                                      label="Referencia"
+                                      label="Efectivo recibido"
+                                      type="text"
                                       fullWidth
                                       margin="dense"
-                                      value={d.referencia}
-                                      onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                      value={cashReceived}
+                                      onChange={(e) => setCashReceived(e.target.value)}
                                       {...inputCommon}
+                                      inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                     />
+                                    {cambioUnico > 0 && (
+                                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
+                                        Cambio: ${cambioUnico.toFixed(2)}
+                                      </Typography>
+                                    )}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                      Se cobrará el total con <strong>{label}</strong>.
+                                    </Typography>
 
-                                    {CARDLIKE.includes(key) && (
+                                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                      <TextField
+                                        label="Referencia"
+                                        fullWidth
+                                        margin="dense"
+                                        value={d.referencia}
+                                        onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                        {...inputCommon}
+                                      />
+
+                                      {CARDLIKE.includes(key) && (
+                                        <TextField
+                                          label="Últimos 4"
+                                          type="tel"
+                                          margin="dense"
+                                          value={d.ultimos4}
+                                          onChange={(e) => {
+                                            const v = e.target.value.replace(/\D/g, "");
+                                            if (v.length <= 4) setDetail(key, { ultimos4: v });
+                                          }}
+                                          placeholder="2541"
+                                          sx={{ width: { xs: "100%", sm: 170 } }}
+                                          {...inputCommon}
+                                          inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
+                                          InputProps={{
+                                            startAdornment: (
+                                              <Typography sx={{ mr: 1, whiteSpace: "nowrap", color: "text.secondary" }}>
+                                                **** **** ****
+                                              </Typography>
+                                            ),
+                                          }}
+                                        />
+                                      )}
+                                    </Stack>
+                                  </>
+                                )
+                              ) : (
+                                <>
+                                  {CARDLIKE.includes(key) ? (
+                                    <Stack spacing={1}>
+                                      <TextField
+                                        label="Monto"
+                                        type="text"
+                                        value={d.amount}
+                                        onChange={(e) => setDetail(key, { amount: e.target.value })}
+                                        fullWidth
+                                        margin="dense"
+                                        {...inputCommon}
+                                        inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
+                                      />
+                                      <TextField
+                                        label="Referencia"
+                                        value={d.referencia}
+                                        onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                        fullWidth
+                                        margin="dense"
+                                        {...inputCommon}
+                                      />
                                       <TextField
                                         label="Últimos 4"
                                         type="tel"
-                                        margin="dense"
                                         value={d.ultimos4}
                                         onChange={(e) => {
                                           const v = e.target.value.replace(/\D/g, "");
                                           if (v.length <= 4) setDetail(key, { ultimos4: v });
                                         }}
                                         placeholder="2541"
-                                        sx={{ width: { xs: "100%", sm: 170 } }}
+                                        fullWidth
+                                        margin="dense"
                                         {...inputCommon}
                                         inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
                                         InputProps={{
                                           startAdornment: (
                                             <Typography sx={{ mr: 1, whiteSpace: "nowrap", color: "text.secondary" }}>
-                                              **** **** ****
+                                              ****
                                             </Typography>
                                           ),
                                         }}
                                       />
-                                    )}
-                                  </Stack>
-                                </>
-                              )
-                            ) : (
-                              <>
-                                {CARDLIKE.includes(key) ? (
-                                  <Stack spacing={1}>
+                                    </Stack>
+                                  ) : (
                                     <TextField
                                       label="Monto"
                                       type="text"
@@ -780,104 +964,128 @@ export default function CartSidebar({
                                       {...inputCommon}
                                       inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                     />
-                                    <TextField
-                                      label="Referencia"
-                                      value={d.referencia}
-                                      onChange={(e) => setDetail(key, { referencia: e.target.value })}
-                                      fullWidth
-                                      margin="dense"
-                                      {...inputCommon}
-                                    />
-                                    <TextField
-                                      label="Últimos 4"
-                                      type="tel"
-                                      value={d.ultimos4}
-                                      onChange={(e) => {
-                                        const v = e.target.value.replace(/\D/g, "");
-                                        if (v.length <= 4) setDetail(key, { ultimos4: v });
-                                      }}
-                                      placeholder="2541"
-                                      fullWidth
-                                      margin="dense"
-                                      {...inputCommon}
-                                      inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                                      InputProps={{
-                                        startAdornment: (
-                                          <Typography sx={{ mr: 1, whiteSpace: "nowrap", color: "text.secondary" }}>
-                                            ****
-                                          </Typography>
-                                        ),
-                                      }}
-                                    />
-                                  </Stack>
-                                ) : (
-                                  <TextField
-                                    label="Monto"
-                                    type="text"
-                                    value={d.amount}
-                                    onChange={(e) => setDetail(key, { amount: e.target.value })}
-                                    fullWidth
-                                    margin="dense"
-                                    {...inputCommon}
-                                    inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
-                                  />
-                                )}
-                              </>
-                            )}
-                          </Box>
-                        )}
-                      </Box>
-                    );
-                  })}
-                </Stack>
+                                  )}
+                                </>
+                              )}
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Stack>
 
-                {selectedCount >= 2 && (
-                  <Box sx={{ mt: 1.5 }}>
-                    <Divider sx={{ mb: 1 }} />
-                    <Typography variant="body2" color="text.secondary">
-                      Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
-                    </Typography>
-                    {cambioMulti > 0 && (
-                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
-                        Cambio: ${cambioMulti.toFixed(2)}
+                  {selectedCount >= 2 && (
+                    <Box sx={{ mt: 1.5 }}>
+                      <Divider sx={{ mb: 1 }} />
+                      <Typography variant="body2" color="text.secondary">
+                        Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
                       </Typography>
-                    )}
-                  </Box>
-                )}
+                      {cambioMulti > 0 && (
+                        <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
+                          Cambio: ${cambioMulti.toFixed(2)}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
 
-                <Button
-                  variant="contained"
-                  color="success"
-                  disabled={disableConfirm}
-                  onClick={processCheckout}
-                  fullWidth
-                  sx={{ mt: 2, py: 1.2, borderRadius: 2, fontWeight: 900, textTransform: "none" }}
-                >
-                  Confirmar pago
-                </Button>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    disabled={disableConfirm || submittingSale}
+                    onClick={processCheckout}
+                    fullWidth
+                    sx={{ mt: 2, py: 1.2, borderRadius: 2, fontWeight: 900, textTransform: "none" }}
+                  >
+                    {submittingSale ? "Procesando..." : "Confirmar pago"}
+                  </Button>
+                </Box>
               </Box>
             </Box>
-          </Box>
+          )}
+        </Paper>
+
+        {productoEditar && (
+          <ModalCambioDescuento
+            open={!!productoEditar}
+            product={productoEditar}
+            onApply={(nuevoProducto) => {
+              aplicarCambioProducto(nuevoProducto);
+              setProductoEditar(null);
+              setModalDescuentoActivo?.(false);
+            }}
+            onClose={() => {
+              setProductoEditar(null);
+              setModalDescuentoActivo?.(false);
+            }}
+            onOpen={() => setModalDescuentoActivo?.(true)}
+          />
         )}
-      </Paper>
+      </Box>
 
+      <Dialog
+        open={openQuickClient}
+        onClose={handleCloseQuickClient}
+        fullWidth
+        maxWidth="xs"
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>
+          Crear cliente rápido
+        </DialogTitle>
 
-      {productoEditar && (
-        <ModalCambioDescuento
-          open={!!productoEditar}
-          product={productoEditar}
-          onApply={(nuevoProducto) => {
-            aplicarCambioProducto(nuevoProducto);
-            setProductoEditar(null);
-            setModalDescuentoActivo?.(false);
-          }}
-          onClose={() => {
-            setProductoEditar(null);
-            setModalDescuentoActivo?.(false);
-          }}
-          onOpen={() => setModalDescuentoActivo?.(true)}
-        />
-      )}
-    </Box>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 1 }}>
+            <TextField
+              label="Nombre / alias"
+              value={quickClientForm.nombre_alias}
+              onChange={(e) =>
+                setQuickClientForm((prev) => ({
+                  ...prev,
+                  nombre_alias: e.target.value,
+                }))
+              }
+              fullWidth
+              autoFocus
+            />
+
+            <TextField
+              label="Teléfono"
+              value={quickClientForm.telefono}
+              onChange={(e) =>
+                setQuickClientForm((prev) => ({
+                  ...prev,
+                  telefono: e.target.value,
+                }))
+              }
+              fullWidth
+              inputProps={{ inputMode: "tel" }}
+            />
+
+            <Typography variant="caption" color="text.secondary">
+              Solo se guardará si la tienda todavía tiene espacio según el plan.
+            </Typography>
+          </Stack>
+        </DialogContent>
+
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={handleCloseQuickClient}
+            disabled={savingQuickClient}
+            sx={{ textTransform: "none", fontWeight: 700 }}
+          >
+            Cancelar
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={handleSaveQuickClient}
+            disabled={savingQuickClient}
+            sx={{ textTransform: "none", fontWeight: 800 }}
+            startIcon={savingQuickClient ? <CircularProgress size={18} color="inherit" /> : null}
+          >
+            {savingQuickClient ? "Guardando..." : "Crear cliente"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 }
