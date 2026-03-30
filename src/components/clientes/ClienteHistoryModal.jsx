@@ -549,10 +549,15 @@ export default function ClienteHistoryModal({ open, onClose, cliente }) {
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         ),
         totalVentas: daySales.length,
-        totalMonto: daySales.reduce(
-          (acc, sale) => acc + Number(sale?.total_amount || 0),
-          0
-        ),
+        totalMonto: daySales.reduce((acc, sale) => {
+          const isInvalid = ["cancelled", "partially_cancelled", "devuelta"].includes(
+            sale?.status
+          );
+
+          if (isInvalid) return acc;
+
+          return acc + Number(sale?.total_amount || 0);
+        }, 0),
       }));
   }, [sales]);
 
@@ -573,9 +578,19 @@ export default function ClienteHistoryModal({ open, onClose, cliente }) {
     }
   }, [dayPage, totalDayPages]);
 
-  const resumenVentas = payload?.summary?.ventas_total ?? sales.length ?? 0;
-  const resumenMonto =
-    payload?.summary?.monto_total ?? payload?.summary?.monto_neto ?? 0;
+  const resumenVentas = sales.filter(
+    (sale) =>
+      !["cancelled", "partially_cancelled", "devuelta"].includes(sale?.status)
+  ).length;
+  const resumenMonto = sales.reduce((acc, sale) => {
+    const isInvalid = ["cancelled", "partially_cancelled", "devuelta"].includes(
+      sale?.status
+    );
+
+    if (isInvalid) return acc;
+
+    return acc + Number(sale?.total_amount || 0);
+  }, 0);
 
   const activeStatusLabel =
     STATUS_OPTIONS.find((opt) => opt.value === status)?.label ||
@@ -651,7 +666,7 @@ export default function ClienteHistoryModal({ open, onClose, cliente }) {
     } catch (e) {
       setError(
         e?.message ||
-          `No se pudo descargar el reporte en ${isPdf ? "PDF" : "Excel"}.`
+        `No se pudo descargar el reporte en ${isPdf ? "PDF" : "Excel"}.`
       );
     } finally {
       setLoadingState(false);
@@ -1059,9 +1074,8 @@ export default function ClienteHistoryModal({ open, onClose, cliente }) {
 
                     <Typography variant="body2" color="text.secondary">
                       {currentDayGroup
-                        ? `${currentDayGroup.dayLabel} · ${currentDayGroup.totalVentas} venta${
-                            currentDayGroup.totalVentas === 1 ? "" : "s"
-                          } · ${money.format(currentDayGroup.totalMonto)}`
+                        ? `${currentDayGroup.dayLabel} · ${currentDayGroup.totalVentas} venta${currentDayGroup.totalVentas === 1 ? "" : "s"
+                        } · ${money.format(currentDayGroup.totalMonto)}`
                         : "Sin ventas para mostrar"}
                     </Typography>
                   </Stack>
