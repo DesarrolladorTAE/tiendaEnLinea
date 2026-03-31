@@ -129,18 +129,16 @@ export default function ModalTicketVenta({
     }
 
     setLoadingPrintIp(true);
-    const TIMEOUT_MS = 8000;
 
     try {
       const payload = await getPrintPayload();
 
-      // 👇 endpoint especial para resolver ticket real desde el POS
       const { data: ticket } = await axiosClientPOS.get(
         `/pos/ticket-config/${posLocationId}`
       );
 
       const printerIp = String(ticket?.printer_ip || "").trim();
-      const printerPort = String(ticket?.printer_port || "").trim();
+      const printerPort = Number(ticket?.printer_port || 0);
 
       if (!printerIp || !printerPort) {
         throw new Error(
@@ -148,32 +146,36 @@ export default function ModalTicketVenta({
         );
       }
 
-      // 👇 aquí realmente debería existir un bridge o servicio local que mande TCP RAW
-      const url = `http://${printerIp}:${printerPort}`;
+      const request = {
+        payload,
+        host: printerIp,
+        port: printerPort,
+      };
 
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      console.log("printTicket -> request", request);
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      }).finally(() => clearTimeout(t));
+      if (window.flutter_inappwebview?.callHandler) {
+        const resp = await window.flutter_inappwebview.callHandler(
+          "printTicket",
+          request
+        );
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        console.log("printTicket -> response", resp);
+
+        if (resp?.ok) {
+          showSuccess(
+            `🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`
+          );
+          return;
+        }
+
+        throw new Error(resp?.message || "No se pudo imprimir desde la app.");
       }
 
-      showSuccess(`🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`);
+      throw new Error("No hay bridge Flutter disponible en este dispositivo.");
     } catch (err) {
       console.error(err);
-
-      if (err?.name === "AbortError") {
-        showError("⏳ Tiempo de espera agotado al imprimir por IP.");
-      } else {
-        showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
-      }
+      showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
     } finally {
       setLoadingPrintIp(false);
     }

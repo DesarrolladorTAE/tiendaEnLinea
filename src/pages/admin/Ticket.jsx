@@ -23,6 +23,9 @@ import ModalPDFPreview from "../../components/tickets/ModalPDFPreview";
 import GateTaeconta from "../../components/auth/GateTaeconta";
 import useReglaTaeconta from "../../hooks/useReglaTaeconta";
 
+// 👇 contexto admin ui
+import { useAdminUi } from "../../context/AdminUiContext";
+
 const TicketEditForm = ({ onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     direccion: "",
@@ -49,11 +52,26 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
   // 👇 estado del gate
   const { allowed, loading: gateLoading } = useReglaTaeconta();
 
+  // 👇 sacar sucursal actual del contexto
+  const { selectedBranch } = useAdminUi();
+  const branchId = selectedBranch?.id ?? null;
+
   useEffect(() => {
-    axiosClient
-      .get("/ticket-view")
-      .then((res) => {
+    const fetchTicket = async () => {
+      setLoading(true);
+
+      try {
+        console.log("📌 branch seleccionada:", selectedBranch);
+        console.log("📌 branch_id enviado a /ticket-view:", branchId);
+
+        const res = await axiosClient.get("/ticket-view", {
+          params: {
+            branch_id: branchId,
+          },
+        });
+
         const ticket = res.data;
+
         setFormData((prev) => ({
           ...prev,
           direccion: ticket.direccion || "",
@@ -74,15 +92,36 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           logo: null,
           eliminar_logo: false,
         }));
-      })
-      .catch(() => {
+
+        setIsDirty(false);
+      } catch (error) {
+        console.error("❌ Error al cargar ticket:", error?.response?.data || error);
+
+        setFormData((prev) => ({
+          ...prev,
+          direccion: "",
+          mensaje_1: "",
+          mensaje_2: "",
+          qr_factura: false,
+          qr_sitio: false,
+          mostrar_iva: true,
+          printer_ip: "",
+          printer_port: "",
+          logo: null,
+          logo_preview: "",
+          eliminar_logo: false,
+        }));
+
         showError(
-          "❌ No haz personalizado tu Ticket para tus ventas. Revisa las especificaciones en el icono ---ℹ️---   😊 Empieza ahora."
+          "❌ No haz personalizado tu Ticket para tus ventas. Revisa las especificaciones en el icono ---ℹ️--- 😊 Empieza ahora."
         );
-      })
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allowed]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTicket();
+  }, [allowed, branchId, selectedBranch]);
 
   useEffect(() => {
     if (!allowed && formData.qr_factura) {
@@ -95,9 +134,13 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     setIsDirty(true);
 
     if (type === "checkbox") {
-      setFormData((prev) => ({ ...prev, [name]: checked }));
+      setFormData((prev) => ({
+        ...prev,
+        [name]: checked,
+      }));
     } else if (type === "file") {
-      const file = files[0];
+      const file = files?.[0];
+
       if (file && file.size > 3 * 1024 * 1024) {
         setErrors((prev) => ({
           ...prev,
@@ -105,28 +148,37 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         }));
         return;
       }
+
       setErrors((prev) => ({ ...prev, logo: null }));
+
       setFormData((prev) => ({
         ...prev,
-        logo: file,
-        logo_preview: URL.createObjectURL(file),
+        logo: file || null,
+        logo_preview: file ? URL.createObjectURL(file) : prev.logo_preview,
+        eliminar_logo: false,
       }));
     } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
+      setFormData((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
     }
   };
 
   const validate = () => {
     const newErrors = {};
 
-    if (formData.mensaje_1.length > 25)
+    if (formData.mensaje_1.length > 25) {
       newErrors.mensaje_1 = "Máximo 25 caracteres.";
+    }
 
-    if (formData.mensaje_2.length > 25)
+    if (formData.mensaje_2.length > 25) {
       newErrors.mensaje_2 = "Máximo 25 caracteres.";
+    }
 
-    if (formData.direccion.length > 100)
+    if (formData.direccion.length > 100) {
       newErrors.direccion = "Máximo 100 caracteres.";
+    }
 
     const ip = (formData.printer_ip || "").trim();
     const port = (formData.printer_port || "").trim();
@@ -174,6 +226,11 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     const form = new FormData();
     form.append("_method", "PUT");
 
+    // 👇 mandar SIEMPRE el branch_id si existe en contexto
+    if (branchId !== null && branchId !== undefined && branchId !== "") {
+      form.append("branch_id", String(branchId));
+    }
+
     Object.entries(safeData).forEach(([key, value]) => {
       if (key === "logo_preview") return;
 
@@ -189,11 +246,18 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     form.append("eliminar_logo", safeData.eliminar_logo ? "1" : "0");
 
     try {
+      console.log("📤 branch_id enviado en update:", branchId);
+
       await axiosClient.post("/ticket", form, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const res = await axiosClient.get("/ticket-view");
+      const res = await axiosClient.get("/ticket-view", {
+        params: {
+          branch_id: branchId,
+        },
+      });
+
       const ticket = res.data;
 
       setFormData((prev) => ({
@@ -217,12 +281,19 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         eliminar_logo: false,
       }));
 
+      setIsDirty(false);
       showSuccess("✅ Ticket actualizado correctamente");
       onSuccess?.();
       onClose?.();
-      setIsDirty(false);
-    } catch {
-      showError("❌ Error al actualizar el ticket.");
+    } catch (error) {
+      console.error(
+        "❌ Error al actualizar ticket:",
+        error?.response?.data || error
+      );
+
+      showError(
+        error?.response?.data?.message || "❌ Error al actualizar el ticket."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -301,6 +372,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           <Typography variant="h5" fontWeight="bold">
             🧾 Editar Información del Ticket
           </Typography>
+
           <Tooltip title="Ver recomendaciones">
             <Box
               sx={{
@@ -331,6 +403,11 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
             </Box>
           </Tooltip>
         </Box>
+
+        {/* 👇 debug visual opcional */}
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          Sucursal actual: {branchId ? `#${branchId}` : "Sin sucursal seleccionada"}
+        </Typography>
 
         <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 2 }}>
           <TextField
@@ -489,7 +566,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               type="file"
               name="logo"
               hidden
-              accept="image/png, image/jpeg"
+              accept="image/png, image/jpeg, image/webp, image/svg+xml"
               onChange={handleChange}
             />
           </Button>
@@ -502,6 +579,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               const confirmado = window.confirm(
                 "¿Estás seguro de que deseas eliminar el logo actual?"
               );
+
               if (confirmado) {
                 setFormData((prev) => ({
                   ...prev,
@@ -529,7 +607,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           <Divider sx={{ my: 2 }} />
 
           <Box display="flex" gap={2}>
-            <Box display="flex" gap={2}>
+            <Box display="flex" gap={2} width="100%">
               <Button
                 type="submit"
                 variant="contained"
@@ -566,7 +644,11 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
       <ModalPDFPreview
         open={open}
         onClose={() => setOpen(false)}
-        endpoint="/ticket/preview"
+        endpoint={
+          branchId !== null && branchId !== undefined && branchId !== ""
+            ? `/ticket/preview?branch_id=${branchId}`
+            : "/ticket/preview"
+        }
         nombreArchivo="ticket-preview.pdf"
       />
     </>

@@ -1,4 +1,3 @@
-// src/components/POS/TicketDialog.jsx
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
@@ -77,8 +76,6 @@ export default function TicketDialog({
 
     setLoadingPrintUsb(true);
 
-    const TIMEOUT_MS = 8000;
-
     try {
       const payload = await getPrintPayload();
 
@@ -91,12 +88,7 @@ export default function TicketDialog({
       throw new Error("No hay bridge USB disponible en este dispositivo.");
     } catch (err) {
       console.error(err);
-
-      if (err?.name === "AbortError") {
-        showError("⏳ Se excedió el tiempo de espera al imprimir por USB.");
-      } else {
-        showError(`❌ Error al imprimir por USB: ${err?.message || err}`);
-      }
+      showError(`❌ Error al imprimir por USB: ${err?.message || err}`);
     } finally {
       setLoadingPrintUsb(false);
     }
@@ -110,11 +102,10 @@ export default function TicketDialog({
 
     setLoadingPrintIp(true);
 
-    const TIMEOUT_MS = 8000;
-
     try {
       const payload = await getPrintPayload();
 
+      // Validación opcional: mantener la revisión de configuración del POS
       const { data: ticket } = await axiosClientPOS.get(
         `/pos/ticket-config/${posLocationId}`
       );
@@ -128,31 +119,25 @@ export default function TicketDialog({
         );
       }
 
-      const url = `http://${printerIp}:${printerPort}`;
+      // Bridge Flutter WebView
+      if (window.flutter_inappwebview?.callHandler) {
+        const resp = await window.flutter_inappwebview.callHandler(
+          "printTicket",
+          payload
+        );
 
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), TIMEOUT_MS);
+        if (resp?.ok) {
+          showSuccess(`🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`);
+          return;
+        }
 
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      }).finally(() => clearTimeout(t));
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        throw new Error(resp?.message || "No se pudo imprimir desde la app.");
       }
 
-      showSuccess(`🖨️ Enviado directo a ${printerIp}:${printerPort}`);
+      throw new Error("No hay bridge Flutter disponible en este dispositivo.");
     } catch (err) {
       console.error(err);
-
-      if (err?.name === "AbortError") {
-        showError("⏳ Tiempo de espera agotado al imprimir.");
-      } else {
-        showError(`❌ Error al imprimir: ${err?.message || err}`);
-      }
+      showError(`❌ Error al imprimir: ${err?.message || err}`);
     } finally {
       setLoadingPrintIp(false);
     }
