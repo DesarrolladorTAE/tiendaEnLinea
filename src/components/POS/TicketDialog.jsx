@@ -42,17 +42,25 @@ export default function TicketDialog({
     onClose?.();
   };
 
-  const digitsOnly = (v) => (v || "").replace(/\D/g, "");
+  const digitsOnly = (v) => (v || "").replace(/\D/g, "").slice(0, 10);
   const isValidPhone = /^\d{10}$/.test(phone);
 
   const handleSend = async () => {
-    if (!sale?.id) return showError("❌ No hay venta para enviar.");
-    if (!isValidPhone) return;
+    if (!sale?.id) {
+      showError("❌ No hay venta para enviar.");
+      return;
+    }
+
+    if (!isValidPhone) {
+      showError("Ingresa un número válido de 10 dígitos.");
+      return;
+    }
 
     setLoadingSend(true);
     try {
       await onSend?.(digitsOnly(phone));
       showSuccess("📨 Ticket enviado por WhatsApp");
+      setPhone("");
     } catch (err) {
       console.error(err);
       showError("❌ Error al enviar por WhatsApp");
@@ -65,14 +73,19 @@ export default function TicketDialog({
     const { data } = await axiosClientPOS.get(`/sales/${sale.id}/print-payload`);
 
     if (!data?.ok || !data?.payload) {
-      throw new Error(data?.message || "No se pudo obtener payload de impresión");
+      throw new Error(
+        data?.message || "No se pudo obtener payload de impresión"
+      );
     }
 
     return data.payload;
   };
 
   const handlePrintUsb = async () => {
-    if (!sale?.id) return showError("❌ No hay venta para imprimir.");
+    if (!sale?.id) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
 
     setLoadingPrintUsb(true);
 
@@ -95,9 +108,14 @@ export default function TicketDialog({
   };
 
   const handlePrintIp = async () => {
-    if (!sale?.id) return showError("❌ No hay venta para imprimir.");
+    if (!sale?.id) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
+
     if (!posLocationId) {
-      return showError("❌ No se encontró el POS actual.");
+      showError("❌ No se encontró el POS actual.");
+      return;
     }
 
     setLoadingPrintIp(true);
@@ -105,13 +123,12 @@ export default function TicketDialog({
     try {
       const payload = await getPrintPayload();
 
-      // Validación opcional: mantener la revisión de configuración del POS
       const { data: ticket } = await axiosClientPOS.get(
         `/pos/ticket-config/${posLocationId}`
       );
 
       const printerIp = String(ticket?.printer_ip || "").trim();
-      const printerPort = String(ticket?.printer_port || "").trim();
+      const printerPort = Number(ticket?.printer_port || 0);
 
       if (!printerIp || !printerPort) {
         throw new Error(
@@ -119,15 +136,26 @@ export default function TicketDialog({
         );
       }
 
-      // Bridge Flutter WebView
+      const request = {
+        payload,
+        host: printerIp,
+        port: printerPort,
+      };
+
+      console.log("printTicket -> request", request);
+
       if (window.flutter_inappwebview?.callHandler) {
         const resp = await window.flutter_inappwebview.callHandler(
           "printTicket",
-          payload
+          request
         );
 
+        console.log("printTicket -> response", resp);
+
         if (resp?.ok) {
-          showSuccess(`🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`);
+          showSuccess(
+            `🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`
+          );
           return;
         }
 
@@ -137,7 +165,7 @@ export default function TicketDialog({
       throw new Error("No hay bridge Flutter disponible en este dispositivo.");
     } catch (err) {
       console.error(err);
-      showError(`❌ Error al imprimir: ${err?.message || err}`);
+      showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
     } finally {
       setLoadingPrintIp(false);
     }
