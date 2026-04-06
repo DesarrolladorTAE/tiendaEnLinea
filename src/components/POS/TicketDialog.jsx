@@ -8,7 +8,15 @@ import {
   TextField,
   CircularProgress,
   Stack,
+  Box,
+  Typography,
+  IconButton,
+  Divider,
+  useMediaQuery,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { useTheme } from "@mui/material/styles";
 import { showSuccess, showError } from "../../utils/alerts";
 import axiosClientPOS from "../../config/axiosClientPOS";
 
@@ -20,6 +28,12 @@ export default function TicketDialog({
   onSend,
   posLocationId,
 }) {
+  const theme = useTheme();
+
+  // Solo escritorio será modal
+  // Tablet y móvil = vista tipo page
+  const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
+
   const [phone, setPhone] = useState("");
   const [loadingSend, setLoadingSend] = useState(false);
   const [loadingPrintUsb, setLoadingPrintUsb] = useState(false);
@@ -171,23 +185,34 @@ export default function TicketDialog({
     }
   };
 
-  return (
-    <Dialog open={open} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Ticket #{sale?.id}</DialogTitle>
+  if (!open) return null;
 
-      <DialogContent dividers>
-        <iframe
-          src={ticketUrl}
-          width="100%"
-          height="400"
-          title="Ticket preview"
-          style={{ border: "none" }}
-        />
+  const content = (
+    <>
+      <Box sx={{ flex: 1, p: { xs: 1.5, sm: 2 } }}>
+        <Box
+          sx={{
+            width: "100%",
+            borderRadius: 2,
+            overflow: "hidden",
+            border: "1px solid",
+            borderColor: "divider",
+            bgcolor: "#fff",
+            mb: 2,
+          }}
+        >
+          <iframe
+            src={ticketUrl}
+            width="100%"
+            height={isDesktop ? "400" : "520"}
+            title="Ticket preview"
+            style={{ border: "none", display: "block" }}
+          />
+        </Box>
 
         <TextField
           label="Número WhatsApp"
           fullWidth
-          margin="dense"
           value={phone}
           onChange={(e) => setPhone(digitsOnly(e.target.value))}
           placeholder="5512345678"
@@ -198,12 +223,14 @@ export default function TicketDialog({
           }}
           helperText="Ingresa 10 dígitos (MX)."
         />
-      </DialogContent>
+      </Box>
 
-      <DialogActions sx={{ px: 2, pb: 2, pt: 1 }}>
+      <Divider />
+
+      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
         <Stack
-          direction={{ xs: "column", sm: "row" }}
-          spacing={1}
+          direction={{ xs: "column", sm: "column", md: "row" }}
+          spacing={1.2}
           sx={{ width: "100%" }}
         >
           <Button
@@ -240,11 +267,78 @@ export default function TicketDialog({
             {loadingSend ? <CircularProgress size={20} /> : "✉️ Enviar"}
           </Button>
 
-          <Button onClick={handleClose} fullWidth>
+          <Button onClick={handleClose} fullWidth color="inherit">
             Cerrar
           </Button>
         </Stack>
-      </DialogActions>
-    </Dialog>
+      </Box>
+    </>
+  );
+
+  // ESCRITORIO = MODAL
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+        <DialogTitle>Ticket #{sale?.id}</DialogTitle>
+
+        <DialogContent dividers sx={{ p: 0 }}>
+          {content}
+        </DialogContent>
+
+        <DialogActions sx={{ display: "none" }} />
+      </Dialog>
+    );
+  }
+
+  // MÓVIL / TABLET = PAGE
+  return (
+    <Box
+      sx={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 1400,
+        bgcolor: "background.default",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <Box
+        sx={{
+          px: 1,
+          py: 1,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          bgcolor: "background.paper",
+          minHeight: 64,
+        }}
+      >
+        <IconButton onClick={handleClose}>
+          <ArrowBackIcon />
+        </IconButton>
+
+        <Typography variant="h6" sx={{ flex: 1, fontWeight: 700 }}>
+          Ticket #{sale?.id}
+        </Typography>
+
+        <IconButton onClick={handleClose}>
+          <CloseIcon />
+        </IconButton>
+      </Box>
+
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          bgcolor: "background.default",
+        }}
+      >
+        {content}
+      </Box>
+    </Box>
   );
 }
