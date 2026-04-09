@@ -17,77 +17,77 @@ import GtmPageViewTracker from "./components/tracking/GtmPageViewTracker.jsx";
 const HomeTest = lazy(() => import("./pages/home/HomeTest.jsx"));
 const HomeFashion = lazy(() => import("./pages/home/HomeFashion.jsx"));
 const HomeFashionTwo = lazy(() => import("./pages/home/HomeFashionTwo.jsx"));
-const HomeFashionThree = lazy(() =>
-  import("./pages/home/HomeFashionThree.jsx")
+const HomeFashionThree = lazy(
+  () => import("./pages/home/HomeFashionThree.jsx"),
 );
 const HomeFashionFour = lazy(() => import("./pages/home/HomeFashionFour.jsx"));
 const HomeFashionFive = lazy(() => import("./pages/home/HomeFashionFive.jsx"));
 const HomeFashionSix = lazy(() => import("./pages/home/HomeFashionSix.jsx"));
-const HomeFashionSeven = lazy(() =>
-  import("./pages/home/HomeFashionSeven.jsx")
+const HomeFashionSeven = lazy(
+  () => import("./pages/home/HomeFashionSeven.jsx"),
 );
-const HomeFashionEight = lazy(() =>
-  import("./pages/home/HomeFashionEight.jsx")
+const HomeFashionEight = lazy(
+  () => import("./pages/home/HomeFashionEight.jsx"),
 );
 const HomeKidsFashion = lazy(() => import("./pages/home/HomeKidsFashion.jsx"));
 const HomeCosmetics = lazy(() => import("./pages/home/HomeCosmetics.jsx"));
 const HomeFurniture = lazy(() => import("./pages/home/HomeFurniture.jsx"));
-const HomeFurnitureTwo = lazy(() =>
-  import("./pages/home/HomeFurnitureTwo.jsx")
+const HomeFurnitureTwo = lazy(
+  () => import("./pages/home/HomeFurnitureTwo.jsx"),
 );
-const HomeFurnitureThree = lazy(() =>
-  import("./pages/home/HomeFurnitureThree.jsx")
+const HomeFurnitureThree = lazy(
+  () => import("./pages/home/HomeFurnitureThree.jsx"),
 );
-const HomeFurnitureFour = lazy(() =>
-  import("./pages/home/HomeFurnitureFour.jsx")
+const HomeFurnitureFour = lazy(
+  () => import("./pages/home/HomeFurnitureFour.jsx"),
 );
-const HomeFurnitureFive = lazy(() =>
-  import("./pages/home/HomeFurnitureFive.jsx")
+const HomeFurnitureFive = lazy(
+  () => import("./pages/home/HomeFurnitureFive.jsx"),
 );
-const HomeFurnitureSix = lazy(() =>
-  import("./pages/home/HomeFurnitureSix.jsx")
+const HomeFurnitureSix = lazy(
+  () => import("./pages/home/HomeFurnitureSix.jsx"),
 );
-const HomeFurnitureSeven = lazy(() =>
-  import("./pages/home/HomeFurnitureSeven.jsx")
+const HomeFurnitureSeven = lazy(
+  () => import("./pages/home/HomeFurnitureSeven.jsx"),
 );
 const HomeElectronics = lazy(() => import("./pages/home/HomeElectronics.jsx"));
-const HomeElectronicsTwo = lazy(() =>
-  import("./pages/home/HomeElectronicsTwo.jsx")
+const HomeElectronicsTwo = lazy(
+  () => import("./pages/home/HomeElectronicsTwo.jsx"),
 );
-const HomeElectronicsThree = lazy(() =>
-  import("./pages/home/HomeElectronicsThree.jsx")
+const HomeElectronicsThree = lazy(
+  () => import("./pages/home/HomeElectronicsThree.jsx"),
 );
 const HomeBookStore = lazy(() => import("./pages/home/HomeBookStore.jsx"));
-const HomeBookStoreTwo = lazy(() =>
-  import("./pages/home/HomeBookStoreTwo.jsx")
+const HomeBookStoreTwo = lazy(
+  () => import("./pages/home/HomeBookStoreTwo.jsx"),
 );
 const HomePlants = lazy(() => import("./pages/home/HomePlants.jsx"));
 const HomeFlowerShop = lazy(() => import("./pages/home/HomeFlowerShop.jsx"));
-const HomeFlowerShopTwo = lazy(() =>
-  import("./pages/home/HomeFlowerShopTwo.jsx")
+const HomeFlowerShopTwo = lazy(
+  () => import("./pages/home/HomeFlowerShopTwo.jsx"),
 );
 const HomeOrganicFood = lazy(() => import("./pages/home/HomeOrganicFood.jsx"));
-const HomeOrganicFoodTwo = lazy(() =>
-  import("./pages/home/HomeOrganicFoodTwo.jsx")
+const HomeOrganicFoodTwo = lazy(
+  () => import("./pages/home/HomeOrganicFoodTwo.jsx"),
 );
-const HomeOnepageScroll = lazy(() =>
-  import("./pages/home/HomeOnepageScroll.jsx")
+const HomeOnepageScroll = lazy(
+  () => import("./pages/home/HomeOnepageScroll.jsx"),
 );
 const HomeGridBanner = lazy(() => import("./pages/home/HomeGridBanner.jsx"));
 const HomeAutoParts = lazy(() => import("./pages/home/HomeAutoParts.jsx"));
 const HomeCakeShop = lazy(() => import("./pages/home/HomeCakeShop.jsx"));
 const HomeHandmade = lazy(() => import("./pages/home/HomeHandmade.jsx"));
 const HomePetFood = lazy(() => import("./pages/home/HomePetFood.jsx"));
-const HomeMedicalEquipment = lazy(() =>
-  import("./pages/home/HomeMedicalEquipment.jsx")
+const HomeMedicalEquipment = lazy(
+  () => import("./pages/home/HomeMedicalEquipment.jsx"),
 );
 const HomeChristmas = lazy(() => import("./pages/home/HomeChristmas.jsx"));
 const HomeBlackFriday = lazy(() => import("./pages/home/HomeBlackFriday.jsx"));
-const HomeBlackFridayTwo = lazy(() =>
-  import("./pages/home/HomeBlackFridayTwo.jsx")
+const HomeBlackFridayTwo = lazy(
+  () => import("./pages/home/HomeBlackFridayTwo.jsx"),
 );
-const HomeValentinesDay = lazy(() =>
-  import("./pages/home/HomeValentinesDay.jsx")
+const HomeValentinesDay = lazy(
+  () => import("./pages/home/HomeValentinesDay.jsx"),
 );
 const LandingPage = lazy(() => import("./pages/home/LandingPage.jsx"));
 const Hero = lazy(() => import("./pages/home/components/Hero"));
@@ -97,59 +97,59 @@ const Plans = lazy(() => import("./pages/home/components/Plans"));
 const Contacts = lazy(() => import("./pages/home/components/Contact"));
 
 // shop pages
-const ShopGridStandard = lazy(() =>
-  import("./pages/shop/ShopGridStandard.jsx")
+const ShopGridStandard = lazy(
+  () => import("./pages/shop/ShopGridStandard.jsx"),
 );
 const ShopGridFilter = lazy(() => import("./pages/shop/ShopGridFilter.jsx"));
-const ShopGridTwoColumn = lazy(() =>
-  import("./pages/shop/ShopGridTwoColumn.jsx")
+const ShopGridTwoColumn = lazy(
+  () => import("./pages/shop/ShopGridTwoColumn.jsx"),
 );
-const ShopGridNoSidebar = lazy(() =>
-  import("./pages/shop/ShopGridNoSidebar.jsx")
+const ShopGridNoSidebar = lazy(
+  () => import("./pages/shop/ShopGridNoSidebar.jsx"),
 );
 const Catalogo = lazy(() => import("./pages/shop/Catalogo.jsx"));
-const ShopGridFullWidth = lazy(() =>
-  import("./pages/shop/ShopGridFullWidth.jsx")
+const ShopGridFullWidth = lazy(
+  () => import("./pages/shop/ShopGridFullWidth.jsx"),
 );
-const ShopGridRightSidebar = lazy(() =>
-  import("./pages/shop/ShopGridRightSidebar.jsx")
+const ShopGridRightSidebar = lazy(
+  () => import("./pages/shop/ShopGridRightSidebar.jsx"),
 );
-const ShopListStandard = lazy(() =>
-  import("./pages/shop/ShopListStandard.jsx")
+const ShopListStandard = lazy(
+  () => import("./pages/shop/ShopListStandard.jsx"),
 );
-const ShopListFullWidth = lazy(() =>
-  import("./pages/shop/ShopListFullWidth.jsx")
+const ShopListFullWidth = lazy(
+  () => import("./pages/shop/ShopListFullWidth.jsx"),
 );
-const ShopListTwoColumn = lazy(() =>
-  import("./pages/shop/ShopListTwoColumn.jsx")
+const ShopListTwoColumn = lazy(
+  () => import("./pages/shop/ShopListTwoColumn.jsx"),
 );
 
 // product pages
 const Product = lazy(() => import("./pages/shop-product/Product.jsx"));
-const ProductTabLeft = lazy(() =>
-  import("./pages/shop-product/ProductTabLeft.jsx")
+const ProductTabLeft = lazy(
+  () => import("./pages/shop-product/ProductTabLeft.jsx"),
 );
-const ProductTabRight = lazy(() =>
-  import("./pages/shop-product/ProductTabRight.jsx")
+const ProductTabRight = lazy(
+  () => import("./pages/shop-product/ProductTabRight.jsx"),
 );
-const ProductSticky = lazy(() =>
-  import("./pages/shop-product/ProductSticky.jsx")
+const ProductSticky = lazy(
+  () => import("./pages/shop-product/ProductSticky.jsx"),
 );
-const ProductSlider = lazy(() =>
-  import("./pages/shop-product/ProductSlider.jsx")
+const ProductSlider = lazy(
+  () => import("./pages/shop-product/ProductSlider.jsx"),
 );
-const ProductFixedImage = lazy(() =>
-  import("./pages/shop-product/ProductFixedImage.jsx")
+const ProductFixedImage = lazy(
+  () => import("./pages/shop-product/ProductFixedImage.jsx"),
 );
 
 // blog pages
 const BlogStandard = lazy(() => import("./pages/blog/BlogStandard.jsx"));
 const BlogNoSidebar = lazy(() => import("./pages/blog/BlogNoSidebar.jsx"));
-const BlogRightSidebar = lazy(() =>
-  import("./pages/blog/BlogRightSidebar.jsx")
+const BlogRightSidebar = lazy(
+  () => import("./pages/blog/BlogRightSidebar.jsx"),
 );
-const BlogDetailsStandard = lazy(() =>
-  import("./pages/blog/BlogDetailsStandard.jsx")
+const BlogDetailsStandard = lazy(
+  () => import("./pages/blog/BlogDetailsStandard.jsx"),
 );
 
 // other pages
@@ -163,14 +163,16 @@ const Cart = lazy(() => import("./pages/other/Cart.jsx"));
 const Wishlist = lazy(() => import("./pages/other/Wishlist.jsx"));
 const Compare = lazy(() => import("./pages/other/Compare.jsx"));
 const Checkout = lazy(() => import("./pages/other/Checkout.jsx"));
-const Terminos = lazy (()  => import("./pages/other/TerminosCondiciones.jsx"));
+const Terminos = lazy(() => import("./pages/other/TerminosCondiciones.jsx"));
 
 const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 const AdminPanel = lazy(() => import("./pages/superadmin/HomeSuperAdmin.jsx"));
-
+const PublicInvoicePage = lazy(
+  () => import("./pages/facturacion/PublicInvoicePage.jsx"),
+);
 const POSWrapper = lazy(() => import("./wrappers/POSWrapper"));
-const PersonalizacionSitio = lazy(() =>
-  import("./pages/other/PersnalizacionSitio.jsx")
+const PersonalizacionSitio = lazy(
+  () => import("./pages/other/PersnalizacionSitio.jsx"),
 );
 
 const App = () => {
@@ -388,6 +390,10 @@ const App = () => {
                   <POSWrapper />
                 </Container>
               }
+            />
+            <Route
+              path="/facturacion-publica/:token"
+              element={<PublicInvoicePage />}
             />
           </Routes>
         </Suspense>

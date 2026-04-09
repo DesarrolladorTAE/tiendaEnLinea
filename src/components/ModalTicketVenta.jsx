@@ -145,8 +145,17 @@ export default function ModalTicketVenta({
     return false;
   };
 
+  const isPrinting =
+    loadingWindowsUsb ||
+    loadingWindowsIp ||
+    loadingAndroidUsb ||
+    loadingFlutterIp;
+
   const handleEnviarWhatsapp = async () => {
-    if (!ventaId) return showError("❌ No hay venta para enviar.");
+    if (!ventaId) {
+      showError("❌ No hay venta para enviar.");
+      return;
+    }
 
     if (numero.length !== 10) {
       showError("Ingresa un número válido de 10 dígitos.");
@@ -169,7 +178,10 @@ export default function ModalTicketVenta({
   };
 
   const handleWindowsUsb = async () => {
-    if (!ventaId) return showError("❌ No hay venta para imprimir.");
+    if (!ventaId) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
 
     setLoadingWindowsUsb(true);
     try {
@@ -189,7 +201,7 @@ export default function ModalTicketVenta({
 
       throw new Error("No hay bridge de Windows disponible.");
     } catch (err) {
-      console.error(err);
+      console.error("Error Windows USB:", err);
       showError(`❌ Error en Windows USB: ${err?.message || err}`);
     } finally {
       setLoadingWindowsUsb(false);
@@ -197,7 +209,10 @@ export default function ModalTicketVenta({
   };
 
   const handleWindowsIp = async () => {
-    if (!ventaId) return showError("❌ No hay venta para imprimir.");
+    if (!ventaId) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
 
     setLoadingWindowsIp(true);
     try {
@@ -220,7 +235,7 @@ export default function ModalTicketVenta({
 
       throw new Error("No hay bridge de Windows disponible.");
     } catch (err) {
-      console.error(err);
+      console.error("Error Windows IP:", err);
       showError(`❌ Error en Windows IP: ${err?.message || err}`);
     } finally {
       setLoadingWindowsIp(false);
@@ -228,7 +243,10 @@ export default function ModalTicketVenta({
   };
 
   const handleAndroidUsb = async () => {
-    if (!ventaId) return showError("❌ No hay venta para imprimir.");
+    if (!ventaId) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
 
     setLoadingAndroidUsb(true);
     try {
@@ -242,7 +260,7 @@ export default function ModalTicketVenta({
 
       throw new Error("No hay bridge Android USB disponible.");
     } catch (err) {
-      console.error(err);
+      console.error("Error Android USB:", err);
       showError(`❌ Error en Android USB: ${err?.message || err}`);
     } finally {
       setLoadingAndroidUsb(false);
@@ -250,7 +268,10 @@ export default function ModalTicketVenta({
   };
 
   const handleFlutterIp = async () => {
-    if (!ventaId) return showError("❌ No hay venta para imprimir.");
+    if (!ventaId) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
 
     setLoadingFlutterIp(true);
     try {
@@ -263,24 +284,32 @@ export default function ModalTicketVenta({
         port: printerPort,
       };
 
+      console.log("printTicket -> request", request);
+      console.log(
+        "flutter_inappwebview disponible:",
+        !!window.flutter_inappwebview
+      );
+
       if (window.flutter_inappwebview?.callHandler) {
         const resp = await window.flutter_inappwebview.callHandler(
           "printTicket",
           request
         );
 
+        console.log("printTicket -> response", resp);
+
         if (resp?.ok) {
-          showSuccess(`🖨️ Enviado a Flutter IP (${printerIp}:${printerPort})`);
+          showSuccess(`🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`);
           return;
         }
 
-        throw new Error(resp?.message || "No se pudo imprimir desde Flutter.");
+        throw new Error(resp?.message || "No se pudo imprimir desde la app.");
       }
 
-      throw new Error("No hay bridge Flutter IP disponible.");
+      throw new Error("No hay bridge Flutter disponible en este dispositivo.");
     } catch (err) {
-      console.error(err);
-      showError(`❌ Error en Flutter IP: ${err?.message || err}`);
+      console.error("Error Flutter IP:", err);
+      showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
     } finally {
       setLoadingFlutterIp(false);
     }
@@ -335,7 +364,6 @@ export default function ModalTicketVenta({
             minHeight: fullScreen ? "calc(100vh - 64px)" : 620,
           }}
         >
-          {/* IZQUIERDA */}
           <Box
             sx={{
               p: isMobile ? 2 : 0,
@@ -416,7 +444,6 @@ export default function ModalTicketVenta({
             )}
           </Box>
 
-          {/* DERECHA */}
           <Box
             sx={{
               p: 2,
@@ -453,7 +480,7 @@ export default function ModalTicketVenta({
                     )
                   }
                   onClick={handleEnviarWhatsapp}
-                  disabled={sending || numero.length !== 10}
+                  disabled={sending || numero.length !== 10 || isPrinting}
                   fullWidth
                 >
                   {sending ? "Enviando..." : "Enviar WhatsApp"}
@@ -477,12 +504,7 @@ export default function ModalTicketVenta({
                       <ComputerIcon />
                     )
                   }
-                  disabled={
-                    loadingWindowsUsb ||
-                    loadingWindowsIp ||
-                    loadingAndroidUsb ||
-                    loadingFlutterIp
-                  }
+                  disabled={isPrinting}
                   fullWidth
                   sx={{ minHeight: 46, justifyContent: "flex-start" }}
                 >
@@ -499,12 +521,7 @@ export default function ModalTicketVenta({
                       <LanIcon />
                     )
                   }
-                  disabled={
-                    loadingWindowsUsb ||
-                    loadingWindowsIp ||
-                    loadingAndroidUsb ||
-                    loadingFlutterIp
-                  }
+                  disabled={isPrinting}
                   fullWidth
                   sx={{ minHeight: 46, justifyContent: "flex-start" }}
                 >
@@ -522,12 +539,7 @@ export default function ModalTicketVenta({
                       <AndroidIcon />
                     )
                   }
-                  disabled={
-                    loadingWindowsUsb ||
-                    loadingWindowsIp ||
-                    loadingAndroidUsb ||
-                    loadingFlutterIp
-                  }
+                  disabled={isPrinting}
                   fullWidth
                   sx={{ minHeight: 46, justifyContent: "flex-start" }}
                 >
@@ -542,19 +554,14 @@ export default function ModalTicketVenta({
                     loadingFlutterIp ? (
                       <CircularProgress size={18} color="inherit" />
                     ) : (
-                      <UsbIcon />
+                      <LanIcon />
                     )
                   }
-                  disabled={
-                    loadingWindowsUsb ||
-                    loadingWindowsIp ||
-                    loadingAndroidUsb ||
-                    loadingFlutterIp
-                  }
+                  disabled={isPrinting}
                   fullWidth
                   sx={{ minHeight: 46, justifyContent: "flex-start" }}
                 >
-                  {loadingFlutterIp ? "Imprimiendo..." : "Flutter IP"}
+                  {loadingFlutterIp ? "Imprimiendo..." : "IOS IP"}
                 </Button>
 
                 <Divider sx={{ my: 1 }} />

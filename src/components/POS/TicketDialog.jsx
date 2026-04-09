@@ -7,7 +7,6 @@ import {
   Button,
   TextField,
   CircularProgress,
-  Stack,
   Box,
   Typography,
   IconButton,
@@ -17,7 +16,6 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import UsbIcon from "@mui/icons-material/Usb";
 import LanIcon from "@mui/icons-material/Lan";
 import ComputerIcon from "@mui/icons-material/Computer";
 import AndroidIcon from "@mui/icons-material/Android";
@@ -35,9 +33,8 @@ export default function TicketDialog({
 }) {
   const theme = useTheme();
 
-  // Solo escritorio será modal
-  // Tablet y móvil = vista tipo page
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
+  const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("lg"));
 
   const [phone, setPhone] = useState("");
   const [loadingSend, setLoadingSend] = useState(false);
@@ -70,6 +67,12 @@ export default function TicketDialog({
 
   const digitsOnly = (v) => (v || "").replace(/\D/g, "").slice(0, 10);
   const isValidPhone = /^\d{10}$/.test(phone);
+
+  const isAnyPrinting =
+    loadingWindowsUsb ||
+    loadingWindowsIp ||
+    loadingAndroidUsb ||
+    loadingFlutterIp;
 
   const handleSend = async () => {
     if (!sale?.id) {
@@ -144,12 +147,6 @@ export default function TicketDialog({
     return false;
   };
 
-  const isAnyPrinting =
-    loadingWindowsUsb ||
-    loadingWindowsIp ||
-    loadingAndroidUsb ||
-    loadingFlutterIp;
-
   const handleWindowsUsb = async () => {
     if (!sale?.id) {
       showError("❌ No hay venta para imprimir.");
@@ -175,7 +172,7 @@ export default function TicketDialog({
 
       throw new Error("No hay bridge de Windows disponible.");
     } catch (err) {
-      console.error(err);
+      console.error("Error Windows USB:", err);
       showError(`❌ Error en Windows USB: ${err?.message || err}`);
     } finally {
       setLoadingWindowsUsb(false);
@@ -210,7 +207,7 @@ export default function TicketDialog({
 
       throw new Error("No hay bridge de Windows disponible.");
     } catch (err) {
-      console.error(err);
+      console.error("Error Windows IP:", err);
       showError(`❌ Error en Windows IP: ${err?.message || err}`);
     } finally {
       setLoadingWindowsIp(false);
@@ -236,7 +233,7 @@ export default function TicketDialog({
 
       throw new Error("No hay bridge Android USB disponible en este dispositivo.");
     } catch (err) {
-      console.error(err);
+      console.error("Error Android USB:", err);
       showError(`❌ Error en Android USB: ${err?.message || err}`);
     } finally {
       setLoadingAndroidUsb(false);
@@ -262,6 +259,10 @@ export default function TicketDialog({
       };
 
       console.log("printTicket -> request", request);
+      console.log(
+        "flutter_inappwebview disponible:",
+        !!window.flutter_inappwebview
+      );
 
       if (window.flutter_inappwebview?.callHandler) {
         const resp = await window.flutter_inappwebview.callHandler(
@@ -272,9 +273,7 @@ export default function TicketDialog({
         console.log("printTicket -> response", resp);
 
         if (resp?.ok) {
-          showSuccess(
-            `🖨️ Enviado a imprimir por Flutter IP (${printerIp}:${printerPort})`
-          );
+          showSuccess(`🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`);
           return;
         }
 
@@ -283,8 +282,8 @@ export default function TicketDialog({
 
       throw new Error("No hay bridge Flutter disponible en este dispositivo.");
     } catch (err) {
-      console.error(err);
-      showError(`❌ Error en Flutter IP: ${err?.message || err}`);
+      console.error("Error Flutter IP:", err);
+      showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
     } finally {
       setLoadingFlutterIp(false);
     }
@@ -292,9 +291,33 @@ export default function TicketDialog({
 
   if (!open) return null;
 
+  const buttonBaseSx = {
+    minHeight: { xs: 44, sm: 46 },
+    fontSize: { xs: "0.88rem", sm: "0.9rem", md: "0.86rem" },
+    fontWeight: 600,
+    px: 1.2,
+    py: 1,
+    borderRadius: 1.8,
+    whiteSpace: "normal",
+    lineHeight: 1.15,
+    textAlign: "center",
+    "& .MuiButton-startIcon": {
+      marginRight: 0.75,
+      marginLeft: 0,
+    },
+  };
+
   const content = (
     <>
-      <Box sx={{ flex: 1, p: { xs: 1.5, sm: 2 } }}>
+      <Box
+        sx={{
+          flex: 1,
+          p: { xs: 1.5, sm: 2, md: 2.5 },
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+        }}
+      >
         <Box
           sx={{
             width: "100%",
@@ -304,12 +327,13 @@ export default function TicketDialog({
             borderColor: "divider",
             bgcolor: "#fff",
             mb: 2,
+            flexShrink: 0,
           }}
         >
           <iframe
             src={ticketUrl}
             width="100%"
-            height={isDesktop ? "400" : "520"}
+            height={isDesktop ? "430" : "520"}
             title="Ticket preview"
             style={{ border: "none", display: "block" }}
           />
@@ -332,108 +356,152 @@ export default function TicketDialog({
 
       <Divider />
 
-      <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
-        <Stack
-          direction={{ xs: "column", sm: "column", md: "row" }}
-          spacing={1.2}
-          sx={{ width: "100%" }}
-        >
-          <Button
-            onClick={handleWindowsUsb}
-            disabled={isAnyPrinting}
-            variant="outlined"
-            fullWidth
-            startIcon={
-              loadingWindowsUsb ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                <ComputerIcon />
-              )
-            }
+      <Box sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
+        <Box sx={{ width: "100%" }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr 1fr", md: "1fr 1fr" },
+              gap: 1.2,
+              mb: 1.2,
+            }}
           >
-            {loadingWindowsUsb ? "Imprimiendo..." : "Windows USB"}
-          </Button>
+            <Button
+              onClick={handleWindowsUsb}
+              disabled={isAnyPrinting || loadingSend}
+              variant="outlined"
+              fullWidth
+              startIcon={
+                loadingWindowsUsb ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <ComputerIcon fontSize="small" />
+                )
+              }
+              sx={buttonBaseSx}
+            >
+              {loadingWindowsUsb ? "Imprimiendo..." : "Windows USB"}
+            </Button>
 
-          <Button
-            onClick={handleWindowsIp}
-            disabled={isAnyPrinting}
-            variant="contained"
-            fullWidth
-            startIcon={
-              loadingWindowsIp ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                <LanIcon />
-              )
-            }
+            <Button
+              onClick={handleWindowsIp}
+              disabled={isAnyPrinting || loadingSend}
+              variant="contained"
+              fullWidth
+              startIcon={
+                loadingWindowsIp ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <LanIcon fontSize="small" />
+                )
+              }
+              sx={buttonBaseSx}
+            >
+              {loadingWindowsIp ? "Imprimiendo..." : "Windows IP"}
+            </Button>
+
+            <Button
+              onClick={handleAndroidUsb}
+              disabled={isAnyPrinting || loadingSend}
+              variant="outlined"
+              color="success"
+              fullWidth
+              startIcon={
+                loadingAndroidUsb ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <AndroidIcon fontSize="small" />
+                )
+              }
+              sx={buttonBaseSx}
+            >
+              {loadingAndroidUsb ? "Imprimiendo..." : "Android USB"}
+            </Button>
+
+            <Button
+              onClick={handleFlutterIp}
+              disabled={isAnyPrinting || loadingSend}
+              variant="contained"
+              color="secondary"
+              fullWidth
+              startIcon={
+                loadingFlutterIp ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <LanIcon fontSize="small" />
+                )
+              }
+              sx={buttonBaseSx}
+            >
+              {loadingFlutterIp ? "Imprimiendo..." : "IOS IP"}
+            </Button>
+          </Box>
+
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr 1fr", md: "1fr 1fr" },
+              gap: 1.2,
+            }}
           >
-            {loadingWindowsIp ? "Imprimiendo..." : "Windows IP"}
-          </Button>
+            <Button
+              onClick={handleSend}
+              disabled={!isValidPhone || loadingSend || isAnyPrinting}
+              fullWidth
+              variant="contained"
+              color="success"
+              startIcon={
+                loadingSend ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <WhatsAppIcon fontSize="small" />
+                )
+              }
+              sx={buttonBaseSx}
+            >
+              {loadingSend ? "Enviando..." : "Enviar"}
+            </Button>
 
-          <Button
-            onClick={handleAndroidUsb}
-            disabled={isAnyPrinting}
-            variant="outlined"
-            color="success"
-            fullWidth
-            startIcon={
-              loadingAndroidUsb ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                <AndroidIcon />
-              )
-            }
-          >
-            {loadingAndroidUsb ? "Imprimiendo..." : "Android USB"}
-          </Button>
-
-          <Button
-            onClick={handleFlutterIp}
-            disabled={isAnyPrinting}
-            variant="contained"
-            color="secondary"
-            fullWidth
-            startIcon={
-              loadingFlutterIp ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                <UsbIcon />
-              )
-            }
-          >
-            {loadingFlutterIp ? "Imprimiendo..." : "Flutter IP"}
-          </Button>
-
-          <Button
-            onClick={handleSend}
-            disabled={!isValidPhone || loadingSend || isAnyPrinting}
-            fullWidth
-            variant="contained"
-            color="success"
-            startIcon={
-              loadingSend ? (
-                <CircularProgress size={20} color="inherit" />
-              ) : (
-                <WhatsAppIcon />
-              )
-            }
-          >
-            {loadingSend ? "Enviando..." : "Enviar"}
-          </Button>
-
-          <Button onClick={handleClose} fullWidth color="inherit" variant="outlined">
-            Cerrar
-          </Button>
-        </Stack>
+            <Button
+              onClick={handleClose}
+              disabled={loadingSend || isAnyPrinting}
+              fullWidth
+              color="inherit"
+              variant="outlined"
+              sx={buttonBaseSx}
+            >
+              Cerrar
+            </Button>
+          </Box>
+        </Box>
       </Box>
     </>
   );
 
-  // ESCRITORIO = MODAL
   if (isDesktop) {
     return (
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>Ticket #{sale?.id}</DialogTitle>
+      <Dialog
+        open={open}
+        onClose={handleClose}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            overflow: "hidden",
+            width: "100%",
+            maxWidth: 760,
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            fontWeight: 700,
+            fontSize: { sm: "1.1rem", lg: "1.2rem" },
+          }}
+        >
+          Ticket #{sale?.id}
+        </DialogTitle>
 
         <DialogContent dividers sx={{ p: 0 }}>
           {content}
@@ -444,7 +512,6 @@ export default function TicketDialog({
     );
   }
 
-  // MÓVIL / TABLET = PAGE
   return (
     <Box
       sx={{
@@ -454,6 +521,8 @@ export default function TicketDialog({
         bgcolor: "background.default",
         display: "flex",
         flexDirection: "column",
+        width: "100vw",
+        height: "100dvh",
       }}
     >
       <Box
@@ -467,13 +536,21 @@ export default function TicketDialog({
           borderColor: "divider",
           bgcolor: "background.paper",
           minHeight: 64,
+          flexShrink: 0,
         }}
       >
         <IconButton onClick={handleClose}>
           <ArrowBackIcon />
         </IconButton>
 
-        <Typography variant="h6" sx={{ flex: 1, fontWeight: 700 }}>
+        <Typography
+          variant="h6"
+          sx={{
+            flex: 1,
+            fontWeight: 700,
+            fontSize: { xs: "1rem", sm: "1.1rem" },
+          }}
+        >
           Ticket #{sale?.id}
         </Typography>
 
@@ -485,6 +562,7 @@ export default function TicketDialog({
       <Box
         sx={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
