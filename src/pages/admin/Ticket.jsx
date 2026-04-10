@@ -14,33 +14,190 @@ import {
   Tooltip,
   MenuItem,
   Grid,
-  Card,
-  CardContent,
   Stack,
   Chip,
+  Avatar,
   InputAdornment,
+  Collapse,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import InfoIcon from "@mui/icons-material/Info";
-import PrintIcon from "@mui/icons-material/Print";
-import QrCode2Icon from "@mui/icons-material/QrCode2";
-import ImageIcon from "@mui/icons-material/Image";
-import SettingsEthernetIcon from "@mui/icons-material/SettingsEthernet";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import MessageIcon from "@mui/icons-material/Message";
+import ToggleOnIcon from "@mui/icons-material/ToggleOn";
+import ImageIcon from "@mui/icons-material/Image";
 import TuneIcon from "@mui/icons-material/Tune";
 import SaveIcon from "@mui/icons-material/Save";
 import PreviewIcon from "@mui/icons-material/Preview";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import PlaceIcon from "@mui/icons-material/Place";
 
 import axiosClient from "../../config/axiosClient";
 import { showSuccess, showError } from "../../utils/alerts";
 import ticketHelpContent from "../../utils/ticketHelpContent";
 import ModalPDFPreview from "../../components/tickets/ModalPDFPreview";
-
 import GateTaeconta from "../../components/auth/GateTaeconta";
 import useReglaTaeconta from "../../hooks/useReglaTaeconta";
 import { useAdminUi } from "../../context/AdminUiContext";
 
+const SectionCollapse = ({
+  sectionKey,
+  icon,
+  title,
+  subtitle,
+  children,
+  sectionsOpen,
+  toggleSection,
+  theme,
+}) => {
+  const isOpen = sectionsOpen[sectionKey];
+
+  return (
+    <Box
+      sx={{
+        mb: 2,
+        borderRadius: 4,
+        overflow: "hidden",
+        border: "1px solid",
+        borderColor:
+          theme.palette.mode === "dark"
+            ? "rgba(255,255,255,0.08)"
+            : "rgba(15,23,42,0.08)",
+        bgcolor: "background.paper",
+        boxShadow: isOpen
+          ? theme.palette.mode === "dark"
+            ? "0 14px 32px rgba(0,0,0,.28)"
+            : "0 14px 32px rgba(15,23,42,.08)"
+          : "none",
+        transition: "all .25s ease",
+      }}
+    >
+      <Box
+        sx={{
+          px: { xs: 1.5, sm: 2, md: 2.5 },
+          py: { xs: 1.4, sm: 1.6 },
+          background:
+            theme.palette.mode === "dark"
+              ? "linear-gradient(90deg, rgba(15,23,42,.96) 0%, rgba(30,41,59,.94) 100%)"
+              : "linear-gradient(90deg, rgba(248,250,252,1) 0%, rgba(255,255,255,1) 100%)",
+          borderBottom: isOpen ? "1px solid" : "none",
+          borderColor: "divider",
+        }}
+      >
+        <Box
+          onClick={() => toggleSection(sectionKey)}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+            cursor: "pointer",
+            width: "100%",
+            userSelect: "none",
+          }}
+        >
+          <Stack
+            direction="row"
+            spacing={1.5}
+            alignItems="center"
+            sx={{ minWidth: 0 }}
+          >
+            <Avatar
+              sx={{
+                width: { xs: 40, sm: 44 },
+                height: { xs: 40, sm: 44 },
+                bgcolor: "primary.main",
+                color: "#fff",
+                boxShadow:
+                  theme.palette.mode === "dark"
+                    ? "0 8px 18px rgba(59,130,246,.28)"
+                    : "0 8px 18px rgba(59,130,246,.18)",
+              }}
+            >
+              {icon}
+            </Avatar>
+
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                sx={{
+                  fontWeight: 800,
+                  fontSize: { xs: "1rem", sm: "1.06rem" },
+                  lineHeight: 1.2,
+                  letterSpacing: 0.2,
+                }}
+              >
+                {title}
+              </Typography>
+
+              {!!subtitle && (
+                <Typography
+                  color="text.secondary"
+                  sx={{
+                    mt: 0.2,
+                    fontSize: { xs: "0.79rem", sm: "0.86rem" },
+                    lineHeight: 1.25,
+                  }}
+                >
+                  {subtitle}
+                </Typography>
+              )}
+            </Box>
+          </Stack>
+
+          <IconButton
+            size="small"
+            tabIndex={-1}
+            sx={{
+              color: "primary.main",
+              bgcolor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,.05)"
+                  : "rgba(15,23,42,.04)",
+              border: "1px solid",
+              borderColor:
+                theme.palette.mode === "dark"
+                  ? "rgba(255,255,255,.08)"
+                  : "rgba(15,23,42,.06)",
+              flexShrink: 0,
+              "&:hover": {
+                bgcolor:
+                  theme.palette.mode === "dark"
+                    ? "rgba(255,255,255,.09)"
+                    : "rgba(15,23,42,.06)",
+              },
+            }}
+          >
+            {isOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Box>
+      </Box>
+
+      <Collapse in={isOpen} timeout={220}>
+        <Box
+          sx={{
+            px: { xs: 1.5, sm: 2, md: 2.5 },
+            pb: { xs: 2, sm: 2.5 },
+            pt: 2,
+            background:
+              theme.palette.mode === "dark"
+                ? "linear-gradient(180deg, rgba(255,255,255,.01) 0%, rgba(255,255,255,.02) 100%)"
+                : "linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(248,250,252,.45) 100%)",
+          }}
+        >
+          {children}
+        </Box>
+      </Collapse>
+    </Box>
+  );
+};
+
 const TicketEditForm = ({ onClose, onSuccess }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   const [formData, setFormData] = useState({
     direccion: "",
     mensaje_1: "",
@@ -67,6 +224,14 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
   const [isDirty, setIsDirty] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [sectionsOpen, setSectionsOpen] = useState({
+    direccion: false,
+    mensajes: false,
+    opciones: false,
+    logo: false,
+    tecnica: false,
+  });
+
   const API_BASE = "https://mitiendaenlineamx.com.mx";
   const { allowed, loading: gateLoading } = useReglaTaeconta();
   const { selectedBranch } = useAdminUi();
@@ -75,7 +240,6 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
   useEffect(() => {
     const fetchTicket = async () => {
       setLoading(true);
-
       try {
         const res = await axiosClient.get("/ticket-view", {
           params: { branch_id: branchId },
@@ -111,8 +275,6 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
         setIsDirty(false);
       } catch (error) {
-        console.error("❌ Error al cargar ticket:", error?.response?.data || error);
-
         setFormData((prev) => ({
           ...prev,
           direccion: "",
@@ -133,9 +295,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
           eliminar_logo: false,
         }));
 
-        showError(
-          "❌ No has personalizado tu ticket. Revisa la guía y comienza ahora."
-        );
+        showError("❌ No has personalizado tu ticket todavía.");
       } finally {
         setLoading(false);
       }
@@ -150,15 +310,19 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     }
   }, [allowed, formData.qr_factura]);
 
+  const toggleSection = (key) => {
+    setSectionsOpen((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
   const handleChange = (e) => {
     const { name, type, value, checked, files } = e.target;
     setIsDirty(true);
 
     if (type === "checkbox") {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: checked,
-      }));
+      setFormData((prev) => ({ ...prev, [name]: checked }));
       return;
     }
 
@@ -186,7 +350,6 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
 
     if (name === "paper_size") {
       const nextPaper = String(value);
-
       setFormData((prev) => ({
         ...prev,
         paper_size: nextPaper,
@@ -198,25 +361,22 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const validate = () => {
     const newErrors = {};
 
-    if (formData.mensaje_1.length > 25) {
-      newErrors.mensaje_1 = "Máximo 25 caracteres.";
+    if (formData.mensaje_1.length > 125) {
+      newErrors.mensaje_1 = "Máximo 125 caracteres.";
     }
 
-    if (formData.mensaje_2.length > 25) {
-      newErrors.mensaje_2 = "Máximo 25 caracteres.";
+    if (formData.mensaje_2.length > 125) {
+      newErrors.mensaje_2 = "Máximo 125 caracteres.";
     }
 
-    if (formData.direccion.length > 100) {
-      newErrors.direccion = "Máximo 100 caracteres.";
+    if (formData.direccion.length > 300) {
+      newErrors.direccion = "Máximo 300 caracteres.";
     }
 
     const ip = (formData.printer_ip || "").trim();
@@ -226,39 +386,50 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
       /^(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}$/;
 
     if (ip && !ipv4Regex.test(ip)) {
-      newErrors.printer_ip = "Ingresa una IP válida. Ejemplo: 192.168.1.100";
+      newErrors.printer_ip = "Ingresa una IP válida.";
     }
 
     if (port) {
       const portNumber = Number(port);
-      if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) {
-        newErrors.printer_port = "Ingresa un puerto válido entre 1 y 65535.";
+      if (
+        !Number.isInteger(portNumber) ||
+        portNumber < 1 ||
+        portNumber > 65535
+      ) {
+        newErrors.printer_port = "Puerto inválido.";
       }
     }
 
-    const paperSize = Number(formData.paper_size);
-    if (![58, 80].includes(paperSize)) {
-      newErrors.paper_size = "Selecciona 58 mm u 80 mm.";
+    if (![58, 80].includes(Number(formData.paper_size))) {
+      newErrors.paper_size = "Selecciona 58 u 80.";
     }
 
-    const charsPerLine = Number(formData.chars_per_line);
-    if (!Number.isInteger(charsPerLine) || charsPerLine < 16 || charsPerLine > 64) {
-      newErrors.chars_per_line = "Debe estar entre 16 y 64.";
+    if (
+      Number(formData.chars_per_line) < 16 ||
+      Number(formData.chars_per_line) > 64
+    ) {
+      newErrors.chars_per_line = "Entre 16 y 64.";
     }
 
-    const qrFacturaSize = Number(formData.qr_factura_size);
-    if (!Number.isInteger(qrFacturaSize) || qrFacturaSize < 1 || qrFacturaSize > 16) {
-      newErrors.qr_factura_size = "Debe estar entre 1 y 16.";
+    if (
+      Number(formData.qr_factura_size) < 1 ||
+      Number(formData.qr_factura_size) > 16
+    ) {
+      newErrors.qr_factura_size = "Entre 1 y 16.";
     }
 
-    const qrSitioSize = Number(formData.qr_sitio_size);
-    if (!Number.isInteger(qrSitioSize) || qrSitioSize < 1 || qrSitioSize > 16) {
-      newErrors.qr_sitio_size = "Debe estar entre 1 y 16.";
+    if (
+      Number(formData.qr_sitio_size) < 1 ||
+      Number(formData.qr_sitio_size) > 16
+    ) {
+      newErrors.qr_sitio_size = "Entre 1 y 16.";
     }
 
-    const logoMaxWidth = Number(formData.logo_max_width);
-    if (!Number.isInteger(logoMaxWidth) || logoMaxWidth < 64 || logoMaxWidth > 1024) {
-      newErrors.logo_max_width = "Debe estar entre 64 y 1024.";
+    if (
+      Number(formData.logo_max_width) < 64 ||
+      Number(formData.logo_max_width) > 1024
+    ) {
+      newErrors.logo_max_width = "Entre 64 y 1024.";
     }
 
     setErrors(newErrors);
@@ -308,50 +479,46 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const res = await axiosClient.get("/ticket-view", {
-        params: { branch_id: branchId },
-      });
-
-      const ticket = res.data;
-
-      setFormData((prev) => ({
-        ...prev,
-        direccion: ticket.direccion || "",
-        mensaje_1: ticket.mensaje_1 || "",
-        mensaje_2: ticket.mensaje_2 || "",
-        qr_factura: allowed ? !!ticket.qr_factura : false,
-        qr_sitio: !!ticket.qr_sitio,
-        mostrar_iva:
-          ticket.mostrar_iva !== undefined ? !!ticket.mostrar_iva : true,
-        printer_ip: ticket.printer_ip || "",
-        printer_port:
-          ticket.printer_port !== null && ticket.printer_port !== undefined
-            ? String(ticket.printer_port)
-            : "",
-        paper_size: String(ticket.paper_size ?? 80),
-        chars_per_line: String(ticket.chars_per_line ?? 48),
-        qr_factura_size: String(ticket.qr_factura_size ?? 7),
-        qr_sitio_size: String(ticket.qr_sitio_size ?? 7),
-        logo_max_width: String(ticket.logo_max_width ?? 384),
-        logo: null,
-        logo_preview: ticket.logo
-          ? `${API_BASE}/storage/${ticket.logo}?t=${Date.now()}`
-          : "",
-        eliminar_logo: false,
-      }));
-
       setIsDirty(false);
       showSuccess("✅ Ticket actualizado correctamente");
       onSuccess?.();
       onClose?.();
     } catch (error) {
-      console.error("❌ Error al actualizar ticket:", error?.response?.data || error);
       showError(
         error?.response?.data?.message || "❌ Error al actualizar el ticket."
       );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const premiumFieldSx = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 3,
+      backgroundColor:
+        theme.palette.mode === "dark"
+          ? "rgba(255,255,255,0.03)"
+          : "rgba(255,255,255,0.92)",
+      transition: "all .2s ease",
+      "& fieldset": {
+        borderColor:
+          theme.palette.mode === "dark"
+            ? "rgba(255,255,255,0.10)"
+            : "rgba(15,23,42,0.10)",
+      },
+      "&:hover fieldset": {
+        borderColor: theme.palette.primary.main,
+      },
+      "&.Mui-focused": {
+        boxShadow:
+          theme.palette.mode === "dark"
+            ? "0 0 0 4px rgba(59,130,246,.18)"
+            : "0 0 0 4px rgba(59,130,246,.12)",
+      },
+    },
+    "& .MuiFormHelperText-root": {
+      mx: 0.5,
+    },
   };
 
   const renderHelpSection = () => (
@@ -395,54 +562,9 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
     </Modal>
   );
 
-  const SectionCard = ({ icon, title, subtitle, children }) => (
-    <Card
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        border: "1px solid",
-        borderColor: "divider",
-        height: "100%",
-      }}
-    >
-      <CardContent sx={{ p: { xs: 2, md: 2.5 } }}>
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-          <Box
-            sx={{
-              width: 42,
-              height: 42,
-              borderRadius: 2,
-              display: "grid",
-              placeItems: "center",
-              bgcolor: "primary.main",
-              color: "primary.contrastText",
-              flexShrink: 0,
-            }}
-          >
-            {icon}
-          </Box>
-          <Box>
-            <Typography fontWeight={800}>{title}</Typography>
-            {subtitle && (
-              <Typography variant="body2" color="text.secondary">
-                {subtitle}
-              </Typography>
-            )}
-          </Box>
-        </Stack>
-        {children}
-      </CardContent>
-    </Card>
-  );
-
   if (loading || gateLoading) {
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        minHeight="260px"
-      >
+      <Box sx={{ minHeight: 260, display: "grid", placeItems: "center" }}>
         <CircularProgress />
       </Box>
     );
@@ -453,94 +575,134 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 2, md: 3 },
-          borderRadius: 4,
-          bgcolor: "#fff",
+          p: { xs: 1.2, sm: 2, md: 3 },
+          borderRadius: { xs: 3, sm: 4, md: 5 },
           border: "1px solid",
-          borderColor: "divider",
+          borderColor:
+            theme.palette.mode === "dark"
+              ? "rgba(255,255,255,0.08)"
+              : "rgba(15,23,42,0.08)",
+          bgcolor: "background.paper",
+          boxShadow:
+            theme.palette.mode === "dark"
+              ? "0 20px 50px rgba(0,0,0,.25)"
+              : "0 20px 50px rgba(15,23,42,.06)",
         }}
       >
-        <Stack spacing={3}>
+        <Stack spacing={2.5}>
           <Box
             sx={{
               display: "flex",
               flexDirection: { xs: "column", md: "row" },
+              alignItems: { xs: "stretch", md: "center" },
               justifyContent: "space-between",
-              alignItems: { xs: "flex-start", md: "center" },
-              gap: 2,
+              gap: 1.5,
             }}
           >
             <Box>
               <Stack direction="row" spacing={1.2} alignItems="center">
                 <ReceiptLongIcon color="primary" />
-                <Typography variant="h5" fontWeight={800}>
-                  Configuración de ticket
+                <Typography variant={isMobile ? "h6" : "h5"} fontWeight={800}>
+                  Personaliza tu TIcket 
                 </Typography>
               </Stack>
-
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.8 }}>
-                Personaliza impresión, QR, logo y formato visual de tu ticket.
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.7 }}
+              >
+                Personaliza tu ticket con una vista más elegante, clara y moderna.
               </Typography>
-
-              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1.5 }}>
-                <Chip
-                  size="small"
-                  label={
-                    branchId
-                      ? `Sucursal #${branchId}`
-                      : "Sin sucursal seleccionada"
-                  }
-                  color={branchId ? "primary" : "default"}
-                  variant={branchId ? "filled" : "outlined"}
-                />
-                <Chip
-                  size="small"
-                  label={`${formData.paper_size} mm`}
-                  variant="outlined"
-                />
-              </Stack>
             </Box>
 
-            <Tooltip title="Ver recomendaciones">
-              <IconButton
-                onClick={() => setOpenHelp(true)}
-                sx={{
-                  bgcolor: "#1976d2",
-                  "&:hover": { bgcolor: "#1565c0" },
-                  color: "#fff",
-                  width: 48,
-                  height: 48,
-                  boxShadow: 3,
-                }}
-              >
-                <InfoIcon />
-              </IconButton>
-            </Tooltip>
+            <Stack
+              direction="row"
+              spacing={1}
+              flexWrap="wrap"
+              sx={{ justifyContent: { xs: "flex-start", md: "flex-end" } }}
+            >
+
+              <Tooltip title="Ver recomendaciones">
+                <IconButton
+                  onClick={() => setOpenHelp(true)}
+                  sx={{
+                    bgcolor: "primary.main",
+                    color: "#fff",
+                    "&:hover": { bgcolor: "primary.dark" },
+                  }}
+                >
+                  <InfoIcon />
+                </IconButton>
+              </Tooltip>
+            </Stack>
           </Box>
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
-            <Grid container spacing={2.5}>
-              <Grid item xs={12} md={6}>
-                <SectionCard
-                  icon={<ReceiptLongIcon fontSize="small" />}
-                  title="Contenido del ticket"
-                  subtitle="Texto principal que verá el cliente"
-                >
-                  <Stack spacing={2}>
-                    <TextField
-                      label="Dirección"
-                      name="direccion"
-                      value={formData.direccion}
-                      onChange={handleChange}
-                      fullWidth
-                      multiline
-                      rows={3}
-                      inputProps={{ maxLength: 100 }}
-                      helperText={
-                        errors.direccion || `${formData.direccion.length}/100 caracteres`
-                      }
-                      error={!!errors.direccion}
-                    />
+            <SectionCollapse
+              sectionKey="direccion"
+              icon={<PlaceIcon fontSize="small" />}
+              title="Dirección"
+              subtitle="Texto principal del encabezado"
+              sectionsOpen={sectionsOpen}
+              toggleSection={toggleSection}
+              theme={theme}
+            >
+              <TextField
+                label="Dirección del ticket"
+                name="direccion"
+                value={formData.direccion}
+                onChange={handleChange}
+                fullWidth
+                multiline
+                rows={4}
+                inputProps={{ maxLength: 300 }}
+                helperText={
+                  errors.direccion ||
+                  `${formData.direccion.length}/300 caracteres`
+                }
+                error={!!errors.direccion}
+                sx={premiumFieldSx}
+              />
+            </SectionCollapse>
+
+            <SectionCollapse
+              sectionKey="mensajes"
+              icon={<MessageIcon fontSize="small" />}
+              title="Mensajes"
+              subtitle="Textos antes y después del contenido del QR"
+              sectionsOpen={sectionsOpen}
+              toggleSection={toggleSection}
+              theme={theme}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Box
+                    sx={{
+                      p: 1.3,
+                      borderRadius: 3,
+                      border: "1px solid",
+                      borderColor:
+                        theme.palette.mode === "dark"
+                          ? "rgba(255,255,255,.06)"
+                          : "rgba(15,23,42,.06)",
+                      bgcolor:
+                        theme.palette.mode === "dark"
+                          ? "rgba(255,255,255,.02)"
+                          : "rgba(248,250,252,.72)",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        mb: 1,
+                        color: "text.secondary",
+                        fontWeight: 700,
+                        letterSpacing: 0.3,
+                      }}
+                    >
+                      MENSAJE SUPERIOR
+                    </Typography>
 
                     <TextField
                       label="Mensaje 1"
@@ -548,12 +710,53 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                       value={formData.mensaje_1}
                       onChange={handleChange}
                       fullWidth
-                      inputProps={{ maxLength: 25 }}
+                      multiline
+                      rows={4}
+                      inputProps={{ maxLength: 125 }}
                       helperText={
-                        errors.mensaje_1 || `${formData.mensaje_1.length}/25 caracteres`
+                        errors.mensaje_1 ||
+                        `${formData.mensaje_1.length}/125 caracteres`
                       }
                       error={!!errors.mensaje_1}
+                      sx={{
+                        ...premiumFieldSx,
+                        "& .MuiOutlinedInput-root": {
+                          ...premiumFieldSx["& .MuiOutlinedInput-root"],
+                          minHeight: { xs: 132, md: 145 },
+                        },
+                      }}
                     />
+                  </Box>
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Box
+                    sx={{
+                      p: 1.3,
+                      borderRadius: 3,
+                      border: "1px solid",
+                      borderColor:
+                        theme.palette.mode === "dark"
+                          ? "rgba(255,255,255,.06)"
+                          : "rgba(15,23,42,.06)",
+                      bgcolor:
+                        theme.palette.mode === "dark"
+                          ? "rgba(255,255,255,.02)"
+                          : "rgba(248,250,252,.72)",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        mb: 1,
+                        color: "text.secondary",
+                        fontWeight: 700,
+                        letterSpacing: 0.3,
+                      }}
+                    >
+                      MENSAJE INFERIOR
+                    </Typography>
 
                     <TextField
                       label="Mensaje 2"
@@ -561,313 +764,355 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                       value={formData.mensaje_2}
                       onChange={handleChange}
                       fullWidth
-                      inputProps={{ maxLength: 25 }}
+                      multiline
+                      rows={4}
+                      inputProps={{ maxLength: 125 }}
                       helperText={
-                        errors.mensaje_2 || `${formData.mensaje_2.length}/25 caracteres`
+                        errors.mensaje_2 ||
+                        `${formData.mensaje_2.length}/125 caracteres`
                       }
                       error={!!errors.mensaje_2}
+                      sx={{
+                        ...premiumFieldSx,
+                        "& .MuiOutlinedInput-root": {
+                          ...premiumFieldSx["& .MuiOutlinedInput-root"],
+                          minHeight: { xs: 132, md: 145 },
+                        },
+                      }}
                     />
-
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          name="mostrar_iva"
-                          checked={formData.mostrar_iva}
-                          onChange={handleChange}
-                        />
-                      }
-                      label="Mostrar desglose de IVA"
-                    />
-                  </Stack>
-                </SectionCard>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <SectionCard
-                  icon={<SettingsEthernetIcon fontSize="small" />}
-                  title="Impresora TCP/IP"
-                  subtitle="Configuración opcional para impresora en red"
-                >
-                  <Stack spacing={2}>
-                    <TextField
-                      label="IP de impresora"
-                      name="printer_ip"
-                      value={formData.printer_ip}
-                      onChange={handleChange}
-                      fullWidth
-                      placeholder="192.168.1.100"
-                      helperText={errors.printer_ip || "Opcional"}
-                      error={!!errors.printer_ip}
-                    />
-
-                    <TextField
-                      label="Puerto"
-                      name="printer_port"
-                      value={formData.printer_port}
-                      onChange={handleChange}
-                      fullWidth
-                      placeholder="9100"
-                      helperText={errors.printer_port || "Opcional"}
-                      error={!!errors.printer_port}
-                      inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                    />
-                  </Stack>
-                </SectionCard>
-              </Grid>
-
-              <Grid item xs={12} md={6}>
-                <SectionCard
-                  icon={<PrintIcon fontSize="small" />}
-                  title="Formato de impresión"
-                  subtitle="Ajustes para 58 mm y 80 mm"
-                >
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        select
-                        label="Tamaño de papel"
-                        name="paper_size"
-                        value={formData.paper_size}
-                        onChange={handleChange}
-                        fullWidth
-                        helperText={errors.paper_size || "58 mm o 80 mm"}
-                        error={!!errors.paper_size}
-                      >
-                        <MenuItem value="58">58 mm</MenuItem>
-                        <MenuItem value="80">80 mm</MenuItem>
-                      </TextField>
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Caracteres por línea"
-                        name="chars_per_line"
-                        value={formData.chars_per_line}
-                        onChange={handleChange}
-                        fullWidth
-                        helperText={errors.chars_per_line || "32 o 48 aprox."}
-                        error={!!errors.chars_per_line}
-                      />
-                    </Grid>
-                  </Grid>
-
-                  <Box
-                    sx={{
-                      mt: 2,
-                      p: 1.5,
-                      borderRadius: 2,
-                      bgcolor: "grey.50",
-                      border: "1px dashed",
-                      borderColor: "divider",
-                    }}
-                  >
-                    <Typography variant="body2" color="text.secondary">
-                      Al cambiar el tamaño del papel, se sugieren valores automáticos
-                      para QR, caracteres y ancho del logo.
-                    </Typography>
                   </Box>
-                </SectionCard>
+                </Grid>
               </Grid>
+            </SectionCollapse>
 
-              <Grid item xs={12} md={6}>
-                <SectionCard
-                  icon={<QrCode2Icon fontSize="small" />}
-                  title="QR y logo"
-                  subtitle="Control visual para impresión"
-                >
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Tamaño QR factura"
-                        name="qr_factura_size"
-                        value={formData.qr_factura_size}
-                        onChange={handleChange}
-                        fullWidth
-                        helperText={errors.qr_factura_size || "Entre 1 y 16"}
-                        error={!!errors.qr_factura_size}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={6}>
-                      <TextField
-                        label="Tamaño QR sitio"
-                        name="qr_sitio_size"
-                        value={formData.qr_sitio_size}
-                        onChange={handleChange}
-                        fullWidth
-                        helperText={errors.qr_sitio_size || "Entre 1 y 16"}
-                        error={!!errors.qr_sitio_size}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Ancho máximo del logo"
-                        name="logo_max_width"
-                        value={formData.logo_max_width}
-                        onChange={handleChange}
-                        fullWidth
-                        helperText={errors.logo_max_width || "Ej. 256 o 384"}
-                        error={!!errors.logo_max_width}
-                        InputProps={{
-                          endAdornment: (
-                            <InputAdornment position="end">px</InputAdornment>
-                          ),
-                        }}
-                      />
-                    </Grid>
-                  </Grid>
-
-                  <Stack spacing={1} sx={{ mt: 2 }}>
-                    <GateTaeconta
-                      fallback={
-                        <Tooltip title="Requiere plan y complemento de Taeconta activos">
-                          <span>
-                            <FormControlLabel
-                              control={<Checkbox checked={false} disabled />}
-                              label="QR Factura (facturación SAT)"
-                            />
-                          </span>
-                        </Tooltip>
-                      }
-                    >
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            name="qr_factura"
-                            checked={formData.qr_factura}
-                            onChange={handleChange}
-                          />
-                        }
-                        label="QR Factura (facturación SAT)"
-                      />
-                    </GateTaeconta>
-
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          name="qr_sitio"
-                          checked={formData.qr_sitio}
-                          onChange={handleChange}
+            <SectionCollapse
+              sectionKey="opciones"
+              icon={<ToggleOnIcon fontSize="small" />}
+              title="Opciones rápidas"
+              subtitle="Activa o desactiva funciones del ticket"
+              sectionsOpen={sectionsOpen}
+              toggleSection={toggleSection}
+              theme={theme}
+            >
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "1fr 1fr",
+                    lg: "1fr 1fr 1fr",
+                  },
+                  gap: 1.2,
+                }}
+              >
+                <GateTaeconta
+                  fallback={
+                    <Tooltip title="Requiere plan y complemento Taeconta">
+                      <span>
+                        <FormControlLabel
+                          control={<Checkbox checked={false} disabled />}
+                          label="QR factura SAT"
+                          sx={{
+                            m: 0,
+                            px: 1.2,
+                            py: 1,
+                            borderRadius: 2.5,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            width: "100%",
+                            bgcolor: "background.default",
+                          }}
                         />
-                      }
-                      label="QR Sitio web"
+                      </span>
+                    </Tooltip>
+                  }
+                >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        name="qr_factura"
+                        checked={formData.qr_factura}
+                        onChange={handleChange}
+                      />
+                    }
+                    label="QR factura SAT"
+                    sx={{
+                      m: 0,
+                      px: 1.2,
+                      py: 1,
+                      borderRadius: 2.5,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      width: "100%",
+                      bgcolor: "background.default",
+                    }}
+                  />
+                </GateTaeconta>
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="qr_sitio"
+                      checked={formData.qr_sitio}
+                      onChange={handleChange}
                     />
-                  </Stack>
-                </SectionCard>
-              </Grid>
+                  }
+                  label="QR sitio web"
+                  sx={{
+                    m: 0,
+                    px: 1.2,
+                    py: 1,
+                    borderRadius: 2.5,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    width: "100%",
+                    bgcolor: "background.default",
+                  }}
+                />
 
-              <Grid item xs={12}>
-                <SectionCard
-                  icon={<ImageIcon fontSize="small" />}
-                  title="Logo del ticket"
-                  subtitle="Sube y previsualiza el logo de impresión"
-                >
-                  <Stack spacing={2}>
-                    {formData.logo_preview && (
-                      <Box
-                        sx={{
-                          p: 2,
-                          borderRadius: 3,
-                          border: "1px solid",
-                          borderColor: "divider",
-                          bgcolor: "grey.50",
-                          textAlign: "center",
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      name="mostrar_iva"
+                      checked={formData.mostrar_iva}
+                      onChange={handleChange}
+                    />
+                  }
+                  label="Mostrar desglose de IVA"
+                  sx={{
+                    m: 0,
+                    px: 1.2,
+                    py: 1,
+                    borderRadius: 2.5,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    width: "100%",
+                    bgcolor: "background.default",
+                  }}
+                />
+              </Box>
+            </SectionCollapse>
+
+            <SectionCollapse
+              sectionKey="logo"
+              icon={<ImageIcon fontSize="small" />}
+              title="Logo"
+              subtitle="Sube, visualiza y ajusta el logo del ticket"
+              sectionsOpen={sectionsOpen}
+              toggleSection={toggleSection}
+              theme={theme}
+            >
+              <Grid container spacing={2.5} alignItems="center">
+                <Grid item xs={12} md={5}>
+                  <TextField
+                    label="Ancho máximo del logo"
+                    name="logo_max_width"
+                    value={formData.logo_max_width}
+                    onChange={handleChange}
+                    fullWidth
+                    error={!!errors.logo_max_width}
+                    helperText={errors.logo_max_width || "Ej. 256 o 384"}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">px</InputAdornment>
+                      ),
+                    }}
+                    sx={premiumFieldSx}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={7}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    justifyContent="flex-start"
+                  >
+                    <Button
+                      variant="outlined"
+                      component="label"
+                      sx={{ minHeight: 46, borderRadius: 2.5 }}
+                      fullWidth={isMobile}
+                    >
+                      Subir logo
+                      <input
+                        type="file"
+                        hidden
+                        name="logo"
+                        accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                        onChange={handleChange}
+                      />
+                    </Button>
+
+                    <Button
+                      color="error"
+                      variant="text"
+                      startIcon={<DeleteOutlineIcon />}
+                      sx={{ minHeight: 46, borderRadius: 2.5 }}
+                      fullWidth={isMobile}
+                      disabled={!formData.logo_preview && !formData.logo}
+                      onClick={() => {
+                        const confirmado = window.confirm(
+                          "¿Eliminar el logo actual?"
+                        );
+                        if (confirmado) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            logo: null,
+                            logo_preview: "",
+                            eliminar_logo: true,
+                          }));
+                          setIsDirty(true);
+                          showSuccess("✅ Logo marcado para eliminación.");
+                        }
+                      }}
+                    >
+                      Eliminar logo
+                    </Button>
+                  </Stack>
+                </Grid>
+
+                {formData.logo_preview && (
+                  <Grid item xs={12}>
+                    <Box
+                      sx={{
+                        p: 2,
+                        borderRadius: 3,
+                        border: "1px dashed",
+                        borderColor: "divider",
+                        textAlign: "center",
+                        bgcolor: "action.hover",
+                      }}
+                    >
+                      <img
+                        src={formData.logo_preview}
+                        alt="Vista previa"
+                        style={{
+                          maxWidth: "100%",
+                          width: 220,
+                          maxHeight: 140,
+                          objectFit: "contain",
                         }}
-                      >
-                        <Typography
-                          variant="body2"
-                          fontWeight={600}
-                          gutterBottom
-                        >
-                          Vista previa del logo
-                        </Typography>
-                        <img
-                          src={formData.logo_preview}
-                          alt="Vista previa"
-                          style={{
-                            maxWidth: "100%",
-                            width: 260,
-                            maxHeight: 150,
-                            objectFit: "contain",
-                            borderRadius: 12,
-                          }}
-                        />
-                      </Box>
-                    )}
+                      />
+                    </Box>
+                  </Grid>
+                )}
 
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={6}>
-                        <Button
-                          variant="outlined"
-                          component="label"
-                          fullWidth
-                          sx={{ minHeight: 44 }}
-                        >
-                          Subir nuevo logo
-                          <input
-                            type="file"
-                            name="logo"
-                            hidden
-                            accept="image/png, image/jpeg, image/webp, image/svg+xml"
-                            onChange={handleChange}
-                          />
-                        </Button>
-                      </Grid>
-
-                      <Grid item xs={12} md={6}>
-                        <Button
-                          variant="text"
-                          color="error"
-                          fullWidth
-                          startIcon={<DeleteOutlineIcon />}
-                          sx={{ minHeight: 44 }}
-                          onClick={() => {
-                            const confirmado = window.confirm(
-                              "¿Estás seguro de que deseas eliminar el logo actual?"
-                            );
-
-                            if (confirmado) {
-                              setFormData((prev) => ({
-                                ...prev,
-                                logo: null,
-                                logo_preview: "",
-                                eliminar_logo: true,
-                              }));
-                              setIsDirty(true);
-                              showSuccess(
-                                "✅ Logo marcado para eliminación. Guarda cambios para aplicar."
-                              );
-                            }
-                          }}
-                          disabled={!formData.logo_preview && !formData.logo}
-                        >
-                          Eliminar logo actual
-                        </Button>
-                      </Grid>
-                    </Grid>
-
-                    {errors.logo && (
-                      <Typography color="error" fontSize={13}>
-                        {errors.logo}
-                      </Typography>
-                    )}
-                  </Stack>
-                </SectionCard>
+                {errors.logo && (
+                  <Grid item xs={12}>
+                    <Typography color="error" fontSize={13}>
+                      {errors.logo}
+                    </Typography>
+                  </Grid>
+                )}
               </Grid>
-            </Grid>
+            </SectionCollapse>
 
-            <Divider sx={{ my: 3 }} />
+            <SectionCollapse
+              sectionKey="tecnica"
+              icon={<TuneIcon fontSize="small" />}
+              title="Configuración técnica"
+              subtitle="Papel, líneas, QR y conexión"
+              sectionsOpen={sectionsOpen}
+              toggleSection={toggleSection}
+              theme={theme}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    select
+                    label="Tamaño de papel"
+                    name="paper_size"
+                    value={formData.paper_size}
+                    onChange={handleChange}
+                    fullWidth
+                    error={!!errors.paper_size}
+                    helperText={errors.paper_size || "58 mm u 80 mm"}
+                    sx={premiumFieldSx}
+                  >
+                    <MenuItem value="58">58 mm</MenuItem>
+                    <MenuItem value="80">80 mm</MenuItem>
+                  </TextField>
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Caracteres por línea"
+                    name="chars_per_line"
+                    value={formData.chars_per_line}
+                    onChange={handleChange}
+                    fullWidth
+                    error={!!errors.chars_per_line}
+                    helperText={errors.chars_per_line || "32 o 48 aprox."}
+                    sx={premiumFieldSx}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Tamaño QR factura"
+                    name="qr_factura_size"
+                    value={formData.qr_factura_size}
+                    onChange={handleChange}
+                    fullWidth
+                    error={!!errors.qr_factura_size}
+                    helperText={errors.qr_factura_size || "1 a 16"}
+                    sx={premiumFieldSx}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Tamaño QR sitio"
+                    name="qr_sitio_size"
+                    value={formData.qr_sitio_size}
+                    onChange={handleChange}
+                    fullWidth
+                    error={!!errors.qr_sitio_size}
+                    helperText={errors.qr_sitio_size || "1 a 16"}
+                    sx={premiumFieldSx}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="IP impresora"
+                    name="printer_ip"
+                    value={formData.printer_ip}
+                    onChange={handleChange}
+                    fullWidth
+                    placeholder="192.168.1.100"
+                    error={!!errors.printer_ip}
+                    helperText={errors.printer_ip || "Opcional"}
+                    sx={premiumFieldSx}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={4}>
+                  <TextField
+                    label="Puerto"
+                    name="printer_port"
+                    value={formData.printer_port}
+                    onChange={handleChange}
+                    fullWidth
+                    placeholder="9100"
+                    error={!!errors.printer_port}
+                    helperText={errors.printer_port || "Opcional"}
+                    sx={premiumFieldSx}
+                  />
+                </Grid>
+              </Grid>
+            </SectionCollapse>
+
+            <Divider sx={{ my: 2.5 }} />
 
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              spacing={2}
+              spacing={1.5}
               justifyContent="flex-end"
             >
               <Button
                 type="submit"
                 variant="contained"
-                color="primary"
                 disabled={!isDirty || isSubmitting}
                 startIcon={
                   isSubmitting ? (
@@ -876,18 +1121,27 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                     <SaveIcon />
                   )
                 }
-                sx={{ minWidth: 180, minHeight: 44, borderRadius: 2.5 }}
+                sx={{
+                  minWidth: { xs: "100%", sm: 190 },
+                  minHeight: 48,
+                  borderRadius: 3,
+                  fontWeight: 800,
+                }}
               >
                 {isSubmitting ? "Guardando..." : "Guardar cambios"}
               </Button>
 
               <Button
                 variant="outlined"
-                color="secondary"
                 onClick={() => setOpen(true)}
                 disabled={isDirty || isSubmitting}
                 startIcon={<PreviewIcon />}
-                sx={{ minWidth: 180, minHeight: 44, borderRadius: 2.5 }}
+                sx={{
+                  minWidth: { xs: "100%", sm: 190 },
+                  minHeight: 48,
+                  borderRadius: 3,
+                  fontWeight: 700,
+                }}
               >
                 Vista previa
               </Button>
