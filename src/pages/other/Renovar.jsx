@@ -109,28 +109,41 @@ const Renovar = () => {
       if (window.paypal?.Buttons) return resolve(true);
       if (!paypalClientId) return reject(new Error("paypalClientId vacío"));
 
+      const waitUntilReady = (maxMs = 12000) => {
+        const start = Date.now();
+        const timer = setInterval(() => {
+          if (window.paypal?.Buttons) {
+            clearInterval(timer);
+            resolve(true);
+          } else if (Date.now() - start > maxMs) {
+            clearInterval(timer);
+            reject(new Error("Timeout: PayPal SDK no inicializó"));
+          }
+        }, 150);
+      };
+
       const existing = document.querySelector('script[data-paypal-sdk="true"]');
       if (existing) {
-        existing.addEventListener("load", () => resolve(true));
-        existing.addEventListener("error", () =>
-          reject(new Error("PayPal SDK error")),
-        );
-        setTimeout(() => {
-          if (window.paypal?.Buttons) resolve(true);
-        }, 600);
+        waitUntilReady();
         return;
       }
+
+      // Limpia scripts viejos de PayPal por si alguno quedó con parámetros malos
+      document
+        .querySelectorAll('script[src*="paypal.com/sdk/js"]')
+        .forEach((s) => s.remove());
 
       const script = document.createElement("script");
       script.setAttribute("data-paypal-sdk", "true");
       script.async = true;
-
       script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
-        paypalClientId,
-      )}&currency=MXN&intent=capture&components=buttons&locale=es_MX&buyer-country=MX`;
+        paypalClientId
+      )}&currency=MXN&intent=capture&components=buttons&locale=es_MX`;
 
-      script.onload = () => resolve(true);
-      script.onerror = () => reject(new Error("No se pudo cargar PayPal SDK"));
+      script.onload = () => waitUntilReady();
+      script.onerror = () =>
+        reject(new Error("No se pudo cargar PayPal SDK"));
+
       document.body.appendChild(script);
     });
   }, [paypalClientId]);
@@ -157,9 +170,8 @@ const Renovar = () => {
         plan.display_name || plan.nombre || plan.name || `Plan #${plan.id}`;
 
       const mesesObtenidos = Number(plan.mesesPagados || plan.meses || 1);
-      const monthsLabel = `${mesesObtenidos} mes${
-        mesesObtenidos === 1 ? "" : "es"
-      }`;
+      const monthsLabel = `${mesesObtenidos} mes${mesesObtenidos === 1 ? "" : "es"
+        }`;
       const summaryName = `${planName} · ${monthsLabel}`;
 
       setPendingPayment({
@@ -258,7 +270,7 @@ const Renovar = () => {
               loadTime?.initLoadTime,
             );
           },
-          onUserClose: () => {},
+          onUserClose: () => { },
         },
       });
     }, 300);
@@ -715,7 +727,7 @@ const Renovar = () => {
       {/* ================== MODAL PRO: ACTIVANDO PLAN (NO SE PUEDE CERRAR) ================== */}
       <Dialog
         open={modalActivandoOpen}
-        onClose={() => {}}
+        onClose={() => { }}
         fullWidth
         maxWidth="xs"
         disableEscapeKeyDown
