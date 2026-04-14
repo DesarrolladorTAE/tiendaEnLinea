@@ -5,8 +5,12 @@ import {
   InputAdornment,
   IconButton,
   Paper,
+  Typography,
+  Box,
+  alpha,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import FilterAltRoundedIcon from "@mui/icons-material/FilterAltRounded";
 
 export default function FiltersBar({
   mes,
@@ -17,57 +21,94 @@ export default function FiltersBar({
 }) {
   return (
     <Paper
-      elevation={3}
-      sx={{
+      elevation={0}
+      sx={(theme) => ({
         mb: 2,
-        p: 2,
-        borderRadius: 3,
-        background: (theme) =>
+        p: { xs: 1.5, sm: 2 },
+        borderRadius: 4,
+        border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+        background:
           theme.palette.mode === "dark"
-            ? "rgba(255,255,255,0.03)"
-            : "linear-gradient(180deg, #f9f9fb, #ffffff)",
-        boxShadow: (theme) =>
-          `0 4px 12px ${
-            theme.palette.mode === "dark"
-              ? "rgba(0,0,0,.4)"
-              : "rgba(0,0,0,.08)"
-          }`,
-      }}
+            ? `linear-gradient(180deg, ${alpha("#1f2937", 0.9)}, ${alpha(
+                "#111827",
+                0.96
+              )})`
+            : `linear-gradient(180deg, #fbfcff, #ffffff)`,
+        boxShadow: `0 10px 30px ${
+          theme.palette.mode === "dark"
+            ? "rgba(0,0,0,.28)"
+            : "rgba(15, 23, 42, .06)"
+        }`,
+      })}
     >
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={2}
-        alignItems="center"
-      >
-        <TextField
-          label="Buscar por folio"
-          value={folio}
-          onChange={onChangeFolio}
-          placeholder="Ej. A-000123"
-          variant="outlined"
-          size="small"
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconButton
-                  onClick={onSearch}
-                  sx={{
-                    color: "primary.main",
-                    "&:hover": { bgcolor: "primary.light", color: "#fff" },
-                  }}
-                >
-                  <SearchIcon />
-                </IconButton>
-              </InputAdornment>
-            ),
-          }}
-          sx={{
-            flex: 1,
-            "& .MuiOutlinedInput-root": {
-              borderRadius: "12px",
-            },
-          }}
-        />
+      <Stack spacing={1.5}>
+        <Box display="flex" alignItems="center" gap={1}>
+          <FilterAltRoundedIcon color="primary" fontSize="small" />
+          <Typography
+            variant="subtitle2"
+            sx={{
+              fontWeight: 800,
+              letterSpacing: 0.2,
+              color: "text.primary",
+            }}
+          >
+            Filtros de búsqueda
+          </Typography>
+        </Box>
+
+        <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
+          <TextField
+            label="Mes"
+            type="month"
+            value={mes}
+            onChange={onChangeMes}
+            size="small"
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+            sx={{
+              maxWidth: { xs: "100%", md: 220 },
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3,
+                backgroundColor: "background.paper",
+              },
+            }}
+          />
+
+          <TextField
+            label="Buscar por folio"
+            value={folio}
+            onChange={onChangeFolio}
+            placeholder="Ej. 000123"
+            variant="outlined"
+            size="small"
+            fullWidth
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={onSearch}
+                    sx={{
+                      color: "primary.main",
+                      borderRadius: 2,
+                      "&:hover": {
+                        bgcolor: "primary.main",
+                        color: "#fff",
+                      },
+                    }}
+                  >
+                    <SearchIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3,
+                backgroundColor: "background.paper",
+              },
+            }}
+          />
+        </Stack>
       </Stack>
     </Paper>
   );

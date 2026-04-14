@@ -118,7 +118,12 @@ const POSDashboard = ({
         return <NotasInternas cambiarVista={setVista} />;
 
       case "facturas":
-        return <ComprasFacturadas cambiarVista={setVista} />;
+        return (
+          <ComprasFacturadas
+            cambiarVista={setVista}
+            posLocationId={posLocationId}
+          />
+        );
 
       case "clientes":
         return <ClientesPOS cambiarVista={setVista} />;
