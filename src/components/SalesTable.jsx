@@ -24,6 +24,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -36,6 +40,12 @@ import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import TagRoundedIcon from "@mui/icons-material/TagRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
+import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
+import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import LockClockRoundedIcon from "@mui/icons-material/LockClockRounded";
 
 // --- Helpers ---
 const capitalizeFirst = (s) =>
@@ -124,6 +134,15 @@ const chipStatus = (row) => {
     };
   }
 
+  if (row?.fuera_de_rango) {
+    return {
+      label: "Fuera de rango",
+      color: "default",
+      variant: "filled",
+      clickable: false,
+    };
+  }
+
   if (status === "error" || hasError) {
     return {
       label: row?.invoice_status_name || "Error al facturar",
@@ -156,10 +175,129 @@ const fmtMoney = (n) =>
     maximumFractionDigits: 2,
   });
 
+function DocumentoSelector({ row, onVerPdf, onVerXml, dense = false }) {
+  const [value, setValue] = useState("");
+
+  const pdfDisponible = !!row?.invoice?.pdf_url;
+  const xmlDisponible = !!row?.invoice?.xml_url;
+  const disabled = !pdfDisponible && !xmlDisponible;
+
+  const handleChange = (e) => {
+    const next = e.target.value;
+    setValue(next);
+
+    if (next === "pdf") onVerPdf?.(row);
+    if (next === "xml") onVerXml?.(row);
+
+    setTimeout(() => setValue(""), 150);
+  };
+
+  return (
+    <FormControl
+      size="small"
+      sx={{
+        minWidth: dense ? 130 : 145,
+        "& .MuiOutlinedInput-root": {
+          borderRadius: 2.5,
+          fontWeight: 700,
+        },
+      }}
+      disabled={disabled}
+    >
+      <InputLabel id={`ver-doc-${row?.id}`}>Ver</InputLabel>
+      <Select
+        labelId={`ver-doc-${row?.id}`}
+        value={value}
+        label="Ver"
+        onChange={handleChange}
+        startAdornment={
+          <VisibilityRoundedIcon
+            sx={{ fontSize: 18, mr: 0.8, color: "text.secondary" }}
+          />
+        }
+      >
+        <MenuItem value="pdf" disabled={!pdfDisponible}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <PictureAsPdfRoundedIcon fontSize="small" />
+            <span>PDF</span>
+          </Stack>
+        </MenuItem>
+        <MenuItem value="xml" disabled={!xmlDisponible}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <CodeRoundedIcon fontSize="small" />
+            <span>XML</span>
+          </Stack>
+        </MenuItem>
+      </Select>
+    </FormControl>
+  );
+}
+
+function WhatsappSelector({ row, onEnviarWhatsapp, dense = false }) {
+  const [value, setValue] = useState("");
+
+  const pdfDisponible = !!row?.invoice?.pdf_url;
+  const xmlDisponible = !!row?.invoice?.xml_url;
+  const disabled = !pdfDisponible && !xmlDisponible;
+
+  const handleChange = (e) => {
+    const next = e.target.value;
+    setValue(next);
+
+    if (next === "pdf") onEnviarWhatsapp?.(row, "pdf");
+    if (next === "xml") onEnviarWhatsapp?.(row, "xml");
+
+    setTimeout(() => setValue(""), 150);
+  };
+
+  return (
+    <FormControl
+      size="small"
+      sx={{
+        minWidth: dense ? 150 : 170,
+        "& .MuiOutlinedInput-root": {
+          borderRadius: 2.5,
+          fontWeight: 700,
+        },
+      }}
+      disabled={disabled}
+    >
+      <InputLabel id={`wa-doc-${row?.id}`}>WhatsApp</InputLabel>
+      <Select
+        labelId={`wa-doc-${row?.id}`}
+        value={value}
+        label="WhatsApp"
+        onChange={handleChange}
+        startAdornment={
+          <WhatsAppIcon
+            sx={{ fontSize: 18, mr: 0.8, color: "success.main" }}
+          />
+        }
+      >
+        <MenuItem value="pdf" disabled={!pdfDisponible}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <SendRoundedIcon fontSize="small" />
+            <span>Enviar PDF</span>
+          </Stack>
+        </MenuItem>
+        <MenuItem value="xml" disabled={!xmlDisponible}>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <SendRoundedIcon fontSize="small" />
+            <span>Enviar XML</span>
+          </Stack>
+        </MenuItem>
+      </Select>
+    </FormControl>
+  );
+}
+
 export default function SalesTable({
   rows = [],
   loading = false,
   onFacturar,
+  onVerPdf,
+  onVerXml,
+  onEnviarWhatsapp,
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -211,6 +349,9 @@ export default function SalesTable({
     const pago = chipPago(row.tipoPago);
     const status = chipStatus(row);
     const cliente = getClienteNombre(row);
+    const facturada = row.facturable === false && !row?.fuera_de_rango;
+    const fueraDeRango = !!row?.fuera_de_rango;
+    const puedeVerDocumentos = !!row?.puede_ver_documentos;
 
     return (
       <Paper
@@ -331,25 +472,47 @@ export default function SalesTable({
             </Typography>
           </Stack>
 
-          <Button
-            fullWidth
-            variant={row.facturable === false ? "outlined" : "contained"}
-            color={row.facturable === false ? "success" : "primary"}
-            size="small"
-            startIcon={<ReceiptLongIcon />}
-            onClick={() => onFacturar?.(row)}
-            disabled={row.facturable === false}
-            sx={{
-              mt: 0.4,
-              textTransform: "none",
-              borderRadius: 2.5,
-              fontWeight: 800,
-              py: 0.9,
-              boxShadow: 0,
-            }}
-          >
-            {row.facturable === false ? "Facturada" : "Facturar"}
-          </Button>
+          {puedeVerDocumentos ? (
+            <Stack spacing={0.8}>
+              <DocumentoSelector
+                row={row}
+                onVerPdf={onVerPdf}
+                onVerXml={onVerXml}
+                dense
+              />
+              <WhatsappSelector
+                row={row}
+                onEnviarWhatsapp={onEnviarWhatsapp}
+                dense
+              />
+            </Stack>
+          ) : fueraDeRango ? (
+            <Chip
+              icon={<LockClockRoundedIcon />}
+              label="No facturable por mes anterior"
+              color="default"
+              variant="outlined"
+              sx={{ fontWeight: 700 }}
+            />
+          ) : (
+            <Button
+              fullWidth
+              variant="contained"
+              color="primary"
+              size="small"
+              startIcon={<ReceiptLongIcon />}
+              onClick={() => onFacturar?.(row)}
+              sx={{
+                textTransform: "none",
+                borderRadius: 2.5,
+                fontWeight: 800,
+                py: 0.9,
+                boxShadow: 0,
+              }}
+            >
+              Facturar
+            </Button>
+          )}
         </Stack>
       </Paper>
     );
@@ -594,7 +757,7 @@ export default function SalesTable({
                       <TableCell align="right"><Skeleton variant="text" width={80} /></TableCell>
                       <TableCell><Skeleton variant="text" width={120} /></TableCell>
                       <TableCell align="center">
-                        <Skeleton variant="rounded" width={110} height={32} sx={{ mx: "auto" }} />
+                        <Skeleton variant="rounded" width={220} height={32} sx={{ mx: "auto" }} />
                       </TableCell>
                     </TableRow>
                   ))
@@ -603,6 +766,8 @@ export default function SalesTable({
                     const pago = chipPago(r.tipoPago);
                     const status = chipStatus(r);
                     const cliente = getClienteNombre(r);
+                    const fueraDeRango = !!r?.fuera_de_rango;
+                    const puedeVerDocumentos = !!r?.puede_ver_documentos;
 
                     return (
                       <TableRow
@@ -661,22 +826,52 @@ export default function SalesTable({
                         </TableCell>
 
                         <TableCell align="center">
-                          <Button
-                            variant={r.facturable === false ? "outlined" : "contained"}
-                            color={r.facturable === false ? "success" : "primary"}
-                            size={dense ? "small" : "medium"}
-                            startIcon={<ReceiptLongIcon />}
-                            onClick={() => onFacturar?.(r)}
-                            disabled={r.facturable === false}
-                            sx={{
-                              textTransform: "none",
-                              borderRadius: 2.5,
-                              fontWeight: 800,
-                              boxShadow: 0,
-                            }}
-                          >
-                            {r.facturable === false ? "Facturada" : "Facturar"}
-                          </Button>
+                          {puedeVerDocumentos ? (
+                            <Stack
+                              direction="row"
+                              spacing={0.8}
+                              justifyContent="center"
+                              flexWrap="wrap"
+                              useFlexGap
+                            >
+                              <DocumentoSelector
+                                row={r}
+                                onVerPdf={onVerPdf}
+                                onVerXml={onVerXml}
+                                dense={dense}
+                              />
+
+                              <WhatsappSelector
+                                row={r}
+                                onEnviarWhatsapp={onEnviarWhatsapp}
+                                dense={dense}
+                              />
+                            </Stack>
+                          ) : fueraDeRango ? (
+                            <Chip
+                              icon={<LockClockRoundedIcon />}
+                              label="Mes anterior / bloqueada"
+                              color="default"
+                              variant="outlined"
+                              sx={{ fontWeight: 700 }}
+                            />
+                          ) : (
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              size={dense ? "small" : "medium"}
+                              startIcon={<ReceiptLongIcon />}
+                              onClick={() => onFacturar?.(r)}
+                              sx={{
+                                textTransform: "none",
+                                borderRadius: 2.5,
+                                fontWeight: 800,
+                                boxShadow: 0,
+                              }}
+                            >
+                              Facturar
+                            </Button>
+                          )}
                         </TableCell>
                       </TableRow>
                     );

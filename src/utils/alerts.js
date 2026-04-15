@@ -73,9 +73,25 @@ export const showApiSuccess = (data, fallback = "Operación exitosa") => {
 
 // Muestra errores del backend: usa data.mensaje y data.errors si existen
 export const showApiErrors = (data, fallback = "Ocurrió un error") => {
-  const mensaje = data?.mensaje || data?.message || fallback;
+  const mensaje =
+    data?.mensaje ||
+    data?.message ||
+    data?.error ||
+    fallback;
+
   const htmlErrors = errorsObjectToHtml(data?.errors || {});
-  const html = `<p>${mensaje}</p>${htmlErrors}`;
+  const details = data?.details
+    ? `<p style="margin-top:8px"><b>Detalle:</b> ${String(data.details)}</p>`
+    : "";
+
+  const html = `
+    <div style="text-align:left">
+      <p>${mensaje}</p>
+      ${details}
+      ${htmlErrors}
+    </div>
+  `;
+
   return showError(undefined, { html });
 };
 

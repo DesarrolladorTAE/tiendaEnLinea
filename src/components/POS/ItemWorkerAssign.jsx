@@ -56,6 +56,7 @@ export default function ItemWorkerAssign({
 
               <Typography
                 variant="caption"
+                component="div"
                 sx={{
                   fontWeight: 700,
                   maxWidth: 150,
@@ -73,7 +74,7 @@ export default function ItemWorkerAssign({
                 <PersonRoundedIcon fontSize="small" />
               </Avatar>
 
-              <Typography variant="caption" sx={{ fontWeight: 700 }}>
+              <Typography variant="caption" component="div" sx={{ fontWeight: 700 }}>
                 Asignar trabajador
               </Typography>
             </>
@@ -101,7 +102,7 @@ export default function ItemWorkerAssign({
         }}
       >
         <Box sx={{ px: 1, py: 0.5 }}>
-          <Typography sx={{ fontWeight: 900, fontSize: 14 }}>
+          <Typography component="div" sx={{ fontWeight: 900, fontSize: 14 }}>
             Asignar trabajador
           </Typography>
         </Box>
@@ -117,31 +118,40 @@ export default function ItemWorkerAssign({
             <ListItemText primary="Sin asignar" />
           </ListItemButton>
 
-          {workers.map((worker) => (
-            <ListItemButton
-              key={worker.id}
-              onClick={() => {
-                onChange?.(worker.id, worker);
-                setAnchorEl(null);
-              }}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemAvatar>
-                <Avatar src={worker.avatar || ""}>
-                  <PersonRoundedIcon fontSize="small" />
-                </Avatar>
-              </ListItemAvatar>
+          {workers.map((worker) => {
+            const isSelected = Number(value) === Number(worker.id);
 
-              <ListItemText
-                primary={worker.name}
-                secondary={
-                  Number(value) === Number(worker.id) ? (
-                    <Chip size="small" label="Seleccionado" />
-                  ) : null
-                }
-              />s
-            </ListItemButton>
-          ))}
+            return (
+              <ListItemButton
+                key={worker.id}
+                onClick={() => {
+                  onChange?.(worker.id, worker);
+                  setAnchorEl(null);
+                }}
+                sx={{ borderRadius: 2 }}
+              >
+                <ListItemAvatar>
+                  <Avatar src={worker.avatar || ""}>
+                    <PersonRoundedIcon fontSize="small" />
+                  </Avatar>
+                </ListItemAvatar>
+
+                <ListItemText
+                  primary={worker.name}
+                  secondary={
+                    isSelected ? (
+                      <Box sx={{ mt: 0.5 }}>
+                        <Chip size="small" label="Seleccionado" />
+                      </Box>
+                    ) : null
+                  }
+                  secondaryTypographyProps={{
+                    component: "div",
+                  }}
+                />
+              </ListItemButton>
+            );
+          })}
         </List>
       </Popover>
     </>

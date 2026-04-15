@@ -140,6 +140,19 @@ export default function FacturarVentaDialog({
 }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const selectMenuProps = {
+    PaperProps: {
+      sx: {
+        maxWidth: { xs: "calc(100vw - 32px)", sm: 420 },
+        maxHeight: 320,
+      },
+    },
+    MenuListProps: {
+      sx: {
+        py: 0.5,
+      },
+    },
+  };
 
   const [submitting, setSubmitting] = React.useState(false);
 
@@ -157,14 +170,21 @@ export default function FacturarVentaDialog({
 
   React.useEffect(() => {
     if (!open) return;
-    setClienteSel(null);
-    setQuery("");
+
     setOptions(Array.isArray(clientes) ? clientes : []);
-    setForm(emptyCliente);
     setErrors({});
     setSubmitting(false);
     setUsoCfdiSel("G03");
-  }, [open, clientes]);
+
+    if (venta?.client) {
+      setClienteSel(venta.client);
+      setQuery(getClienteLabel(venta.client));
+    } else {
+      setClienteSel(null);
+      setQuery("");
+      setForm(emptyCliente);
+    }
+  }, [open, clientes, venta]);
 
   React.useEffect(() => {
     if (clienteSel?.id) {
@@ -202,8 +222,8 @@ export default function FacturarVentaDialog({
         const list = Array.isArray(data)
           ? data
           : Array.isArray(data?.data)
-          ? data.data
-          : [];
+            ? data.data
+            : [];
 
         setOptions(list);
       } catch {
@@ -311,6 +331,12 @@ export default function FacturarVentaDialog({
 
   const esPM = esPersonaMoral(form.regimen_codigo);
 
+  const formatMoneyValue = (n) =>
+    Number(n || 0).toLocaleString("es-MX", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
   return (
     <Dialog
       open={open}
@@ -321,7 +347,7 @@ export default function FacturarVentaDialog({
       scroll="paper"
       PaperProps={{
         sx: {
-          overflow: "hidden",
+          overflow: "visible",
           borderRadius: { xs: 0, sm: 4 },
           boxShadow: 24,
           background:
@@ -331,16 +357,17 @@ export default function FacturarVentaDialog({
         },
       }}
     >
-      {/* Header premium */}
       <Box
         sx={{
-          px: { xs: 2, sm: 2.5, md: 3 },
-          py: { xs: 1.6, sm: 2 },
+          px: { xs: 1.6, sm: 2.5, md: 3 },
+          pt: { xs: 1.4, sm: 1.8 },
+          pb: { xs: 2.1, sm: 2.2 },
           color: "white",
           position: "relative",
-          overflow: "hidden",
           background:
             "linear-gradient(135deg, #0f172a 0%, #1d4ed8 45%, #0ea5e9 100%)",
+          borderTopLeftRadius: { xs: 0, sm: 16 },
+          borderTopRightRadius: { xs: 0, sm: 16 },
         }}
       >
         <Box
@@ -449,7 +476,6 @@ export default function FacturarVentaDialog({
         }}
       >
         <Stack spacing={2}>
-          {/* Resumen de la venta */}
           <Paper
             elevation={0}
             sx={{
@@ -513,7 +539,149 @@ export default function FacturarVentaDialog({
             </Stack>
           </Paper>
 
-          {/* Estado */}
+          {/* Conceptos a facturar */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              borderRadius: 4,
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              background:
+                theme.palette.mode === "dark"
+                  ? alpha(theme.palette.background.paper, 0.9)
+                  : "#fff",
+            }}
+          >
+            <Stack spacing={1.4}>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 900,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                <ReceiptLongIcon color="primary" fontSize="small" />
+                Conceptos a facturar
+              </Typography>
+
+              {Array.isArray(venta?.items) && venta.items.length > 0 ? (
+                <Stack spacing={1}>
+                  {venta.items.map((item, index) => {
+                    const nombre = item?.product_name || "Producto";
+                    const variante = item?.variant_name
+                      ? ` - ${item.variant_name}`
+                      : "";
+
+                    return (
+                      <Paper
+                        key={item?.id || index}
+                        elevation={0}
+                        sx={{
+                          p: 1.2,
+                          borderRadius: 3,
+                          border: `1px solid ${alpha(
+                            theme.palette.divider,
+                            0.9
+                          )}`,
+                          background:
+                            theme.palette.mode === "dark"
+                              ? alpha(theme.palette.background.default, 0.35)
+                              : alpha(theme.palette.primary.main, 0.02),
+                        }}
+                      >
+                        <Stack spacing={0.8}>
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="flex-start"
+                            spacing={1}
+                          >
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography
+                                sx={{
+                                  fontWeight: 800,
+                                  fontSize: ".95rem",
+                                  lineHeight: 1.2,
+                                  wordBreak: "break-word",
+                                }}
+                              >
+                                {nombre}
+                                {variante}
+                              </Typography>
+
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: "text.secondary",
+                                  display: "block",
+                                  mt: 0.3,
+                                }}
+                              >
+                                Clave SAT: {item?.clave_producto_sat || "—"} ·
+                                Unidad SAT: {item?.clave_unidad_sat || "—"}
+                              </Typography>
+                            </Box>
+
+                            <Typography
+                              sx={{
+                                fontWeight: 900,
+                                color: "success.main",
+                                whiteSpace: "nowrap",
+                              }}
+                            >
+                              ${formatMoneyValue(item?.total_price)}
+                            </Typography>
+                          </Stack>
+
+                          <Stack
+                            direction={{ xs: "column", sm: "row" }}
+                            spacing={0.8}
+                            flexWrap="wrap"
+                            useFlexGap
+                          >
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              label={`Cant: ${item?.quantity ?? 0}`}
+                            />
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              label={`P. unit: $${formatMoneyValue(
+                                item?.unit_price
+                              )}`}
+                            />
+                            <Chip
+                              size="small"
+                              variant="outlined"
+                              label={`IVA: $${formatMoneyValue(
+                                item?.iva_amount
+                              )}`}
+                            />
+                            {!!Number(item?.discount_percent || 0) && (
+                              <Chip
+                                size="small"
+                                color="warning"
+                                variant="outlined"
+                                label={`Desc: ${item?.discount_percent}%`}
+                              />
+                            )}
+                          </Stack>
+                        </Stack>
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Alert severity="info" sx={{ borderRadius: 3 }}>
+                  No hay conceptos cargados para mostrar en esta venta.
+                </Alert>
+              )}
+            </Stack>
+          </Paper>
+
           <Alert
             severity={clienteSel?.id ? "info" : "warning"}
             sx={{
@@ -527,7 +695,6 @@ export default function FacturarVentaDialog({
               : "No has seleccionado un cliente. Se creará uno nuevo con los datos que captures y se usará para facturar esta venta."}
           </Alert>
 
-          {/* Cliente + formulario */}
           <Paper
             elevation={0}
             sx={{
@@ -568,15 +735,31 @@ export default function FacturarVentaDialog({
                 options={Array.isArray(options) ? options : []}
                 loading={loading || loadingOpts}
                 value={clienteSel}
+                inputValue={query}
                 onChange={(_, val) => {
                   setClienteSel(val);
-                  if (!val) {
+
+                  if (val) {
+                    setQuery(getClienteLabel(val));
+                  } else {
+                    setQuery("");
                     setForm({ ...emptyCliente });
                     setErrors({});
+                  }
+                }}
+                onInputChange={(_, val, reason) => {
+                  if (reason === "input") {
+                    setQuery(val || "");
+                  }
+
+                  if (reason === "clear") {
+                    setQuery("");
+                  }
+
+                  if (reason === "reset" && !clienteSel) {
                     setQuery("");
                   }
                 }}
-                onInputChange={(_, val) => setQuery(val || "")}
                 getOptionLabel={getClienteLabel}
                 isOptionEqualToValue={(opt, val) => opt?.id === val?.id}
                 clearOnBlur={false}
@@ -739,19 +922,52 @@ export default function FacturarVentaDialog({
                         ? `Seleccionado: ${form.regimen_codigo}`
                         : "Selecciona el régimen"
                     }
-                    SelectProps={{ displayEmpty: true }}
+                    SelectProps={{
+                      displayEmpty: true,
+                      MenuProps: selectMenuProps,
+                      renderValue: (selected) => {
+                        const item = REGIMENES_FISCALES.find((r) => r.codigo === selected);
+                        return item ? `${item.codigo} - ${item.nombre}` : "";
+                      },
+                    }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: 3,
                         backgroundColor: isLocked
                           ? alpha(theme.palette.action.disabledBackground, 0.3)
                           : "background.paper",
+                        alignItems: "flex-start",
+                      },
+                      "& .MuiSelect-select": {
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                        lineHeight: 1.25,
+                        py: 1.6,
+                      },
+                      "& .MuiFormHelperText-root": {
+                        lineHeight: 1.2,
                       },
                     }}
                   >
                     {REGIMENES_FISCALES.map((r) => (
-                      <MenuItem key={r.codigo} value={r.codigo}>
-                        {r.nombre}
+                      <MenuItem
+                        key={r.codigo}
+                        value={r.codigo}
+                        sx={{
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          lineHeight: 1.25,
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <Box>
+                          <Typography sx={{ fontWeight: 700, fontSize: ".92rem" }}>
+                            {r.codigo}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {r.nombre}
+                          </Typography>
+                        </Box>
                       </MenuItem>
                     ))}
                   </TextField>
@@ -813,7 +1029,6 @@ export default function FacturarVentaDialog({
                     }}
                   />
                 </Grid>
-
                 <Grid item xs={12} sm={6}>
                   <TextField
                     select
@@ -828,20 +1043,53 @@ export default function FacturarVentaDialog({
                           : "Persona física: se muestran usos compatibles."
                         : "Selecciona primero el régimen para validar mejor los usos."
                     }
+                    SelectProps={{
+                      MenuProps: selectMenuProps,
+                      renderValue: (selected) => {
+                        const item = (usosDisponibles.length ? usosDisponibles : USOS_CFDI).find(
+                          (u) => u.codigo === selected
+                        );
+                        return item ? `${item.codigo} - ${item.nombre}` : "";
+                      },
+                    }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
                         borderRadius: 3,
                         backgroundColor: "background.paper",
+                        alignItems: "flex-start",
+                      },
+                      "& .MuiSelect-select": {
+                        whiteSpace: "normal",
+                        wordBreak: "break-word",
+                        lineHeight: 1.25,
+                        py: 1.6,
+                      },
+                      "& .MuiFormHelperText-root": {
+                        lineHeight: 1.2,
                       },
                     }}
                   >
-                    {(usosDisponibles.length ? usosDisponibles : USOS_CFDI).map(
-                      (u) => (
-                        <MenuItem key={u.codigo} value={u.codigo}>
-                          {u.nombre}
-                        </MenuItem>
-                      )
-                    )}
+                    {(usosDisponibles.length ? usosDisponibles : USOS_CFDI).map((u) => (
+                      <MenuItem
+                        key={u.codigo}
+                        value={u.codigo}
+                        sx={{
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                          lineHeight: 1.25,
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <Box>
+                          <Typography sx={{ fontWeight: 700, fontSize: ".92rem" }}>
+                            {u.codigo}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            {u.nombre}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    ))}
                   </TextField>
                 </Grid>
               </Grid>
@@ -919,7 +1167,11 @@ export default function FacturarVentaDialog({
             variant="contained"
             disabled={submitting || loading}
             startIcon={
-              submitting ? <CircularProgress size={18} color="inherit" /> : <ReceiptLongIcon />
+              submitting ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : (
+                <ReceiptLongIcon />
+              )
             }
             sx={{
               textTransform: "none",
@@ -934,8 +1186,8 @@ export default function FacturarVentaDialog({
             {submitting
               ? "Procesando..."
               : clienteSel?.id
-              ? "Facturar con cliente"
-              : "Crear cliente y facturar"}
+                ? "Facturar con cliente"
+                : "Crear cliente y facturar"}
           </Button>
         </Stack>
       </DialogActions>

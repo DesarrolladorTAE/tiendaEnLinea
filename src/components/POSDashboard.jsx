@@ -130,78 +130,97 @@ const POSDashboard = ({
 
       default:
         return (
-          <Box mt={4} sx={{ flexGrow: 1, minHeight: "80vh" }}>
-            <Grid
-              container
-              spacing={4}
-              justifyContent="center"
-              alignItems="center"
-            >
-              {opciones.map((opcion) => (
-                <Grid item xs={12} sm={6} md={6} key={opcion.id}>
-                  <Card
+          <Box
+            mt={4}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                md: "repeat(3, minmax(0, 1fr))",
+              },
+              gap: { xs: 1.2, sm: 2, md: 3 },
+              alignItems: "stretch",
+            }}
+          >
+            {opciones.map((opcion) => (
+              <Card
+                key={opcion.id}
+                sx={{
+                  backgroundColor: opcion.color,
+                  color: "white",
+                  borderRadius: { xs: 3, md: 4 },
+                  minHeight: { xs: 150, sm: 180, md: 220 },
+                  boxShadow: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  opacity: opcion.disabled ? 0.6 : 1,
+                  cursor: opcion.disabled ? "default" : "pointer",
+                  transition: "all 0.2s ease",
+                  overflow: "hidden",
+                  "&:hover": {
+                    transform: opcion.disabled ? "none" : "translateY(-3px)",
+                  },
+                }}
+              >
+                <CardActionArea
+                  disabled={opcion.disabled}
+                  onClick={() => setVista(opcion.id)}
+                  sx={{ height: "100%" }}
+                >
+                  <CardContent
                     sx={{
-                      backgroundColor: opcion.color,
-                      color: "white",
-                      borderRadius: 4,
-                      height: 220,
-                      boxShadow: 8,
+                      height: "100%",
                       display: "flex",
                       flexDirection: "column",
+                      alignItems: "center",
                       justifyContent: "center",
-                      opacity: opcion.disabled ? 0.6 : 1,
-                      cursor: opcion.disabled ? "default" : "pointer",
-                      transition: "transform 0.2s",
-                      "&:hover": {
-                        transform: opcion.disabled ? "none" : "scale(1.03)",
-                      },
+                      textAlign: "center",
+                      px: { xs: 1, sm: 2 },
+                      py: { xs: 2, sm: 2.5 },
+                      gap: { xs: 0.8, sm: 1.2 },
                     }}
                   >
-                    <CardActionArea
-                      disabled={opcion.disabled}
-                      onClick={() => setVista(opcion.id)}
-                      sx={{ height: "100%" }}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        "& svg": {
+                          fontSize: { xs: 28, sm: 34, md: 40 },
+                        },
+                      }}
                     >
-                      <CardContent
-                        sx={{
-                          height: "100%",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          textAlign: "center",
-                          padding: 2,
-                          gap: 1.5,
-                          minHeight: 160,
-                        }}
-                      >
-                        {opcion.icono}
-                        <Typography
-                          variant="h6"
-                          fontWeight="bold"
-                          align="center"
-                          sx={{
-                            color: opcion.disabled ? "#555" : "#fff",
-                            lineHeight: 1.3,
-                          }}
-                        >
-                          {opcion.titulo}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            color: opcion.disabled ? "#ccc" : "#f0f0f0",
-                            maxWidth: 200,
-                          }}
-                        >
-                          {opcion.descripcion}
-                        </Typography>
-                      </CardContent>
-                    </CardActionArea>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
+                      {opcion.icono}
+                    </Box>
+
+                    <Typography
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: { xs: "0.88rem", sm: "1rem", md: "1.1rem" },
+                        lineHeight: 1.2,
+                        color: "#fff",
+                      }}
+                    >
+                      {opcion.titulo}
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        display: { xs: "none", sm: "block" },
+                        color: "rgba(255,255,255,0.9)",
+                        fontSize: { sm: "0.78rem", md: "0.9rem" },
+                        lineHeight: 1.3,
+                        maxWidth: 220,
+                      }}
+                    >
+                      {opcion.descripcion}
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            ))}
           </Box>
         );
     }

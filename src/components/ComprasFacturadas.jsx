@@ -20,6 +20,9 @@ import axiosClient from "../config/axiosClientPOS";
 import FiltersBar from "./FiltersBar";
 import SalesTable from "./SalesTable";
 import FacturarVentaDialog from "./ventas/FacturarVentaDialog";
+import FacturaPdfDialog from "./ventas/FacturaPdfDialog";
+import FacturaXmlDialog from "./ventas/FacturaXmlDialog";
+import FacturaWhatsAppDialog from "./ventas/FacturaWhatsAppDialog";
 import { showSuccess, showError } from "../utils/alerts";
 
 import GateTaeconta from "./auth/GateTaeconta";
@@ -79,6 +82,12 @@ export default function ComprasSuscripcionesView({
   const [clientes, setClientes] = useState([]);
   const [clientesLoading, setClientesLoading] = useState(false);
 
+  const [openPdf, setOpenPdf] = useState(false);
+  const [openXml, setOpenXml] = useState(false);
+  const [openWhatsapp, setOpenWhatsapp] = useState(false);
+  const [ventaDocumentoActiva, setVentaDocumentoActiva] = useState(null);
+  const [documentoActivo, setDocumentoActivo] = useState(null);
+
   const resolvedPosLocationId =
     posLocationIdProp ||
     localStorage.getItem("pos_location_id") ||
@@ -99,7 +108,11 @@ export default function ComprasSuscripcionesView({
 
         if (alive) {
           setClientes(
-            Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []
+            Array.isArray(data)
+              ? data
+              : Array.isArray(data?.data)
+              ? data.data
+              : []
           );
         }
       } catch {
@@ -117,16 +130,19 @@ export default function ComprasSuscripcionesView({
   const fetchVentas = async () => {
     setLoading(true);
     try {
-      const params = resolvedPosLocationId
-        ? { pos_location_id: resolvedPosLocationId }
-        : {};
+      const params = {
+        ...(resolvedPosLocationId
+          ? { pos_location_id: resolvedPosLocationId }
+          : {}),
+        month: mes,
+      };
 
       const { data } = await axiosClient.get("/pos/facturacion/ventas", {
         params,
       });
 
       setVentasRaw(Array.isArray(data?.data) ? data.data : []);
-    } catch (err) {
+    } catch {
       setVentasRaw([]);
     } finally {
       setLoading(false);
@@ -135,7 +151,7 @@ export default function ComprasSuscripcionesView({
 
   useEffect(() => {
     fetchVentas();
-  }, [resolvedPosLocationId]);
+  }, [resolvedPosLocationId, mes]);
 
   const updateVentaLocalFacturada = (ventaId, extra = {}) => {
     setVentasRaw((prev) =>
@@ -147,6 +163,8 @@ export default function ComprasSuscripcionesView({
           invoice_status: "timbrada",
           invoice_status_name: "Facturada",
           facturable: false,
+          fuera_de_rango: false,
+          puede_ver_documentos: true,
           client: extra.client || venta.client || null,
           invoice: {
             ...(venta.invoice || {}),
@@ -164,15 +182,11 @@ export default function ComprasSuscripcionesView({
   };
 
   const ventasRows = useMemo(() => {
-    const [y, m] = mes.split("-").map(Number);
-
     return (ventasRaw || [])
       .filter((v) => {
-        const d = new Date(v.created_at);
-        const inMonth = d.getFullYear() === y && d.getMonth() + 1 === m;
         const f = String(folioFromSale(v)).toLowerCase();
         const byFolio = folio ? f.includes(folio.toLowerCase()) : true;
-        return inMonth && byFolio;
+        return byFolio;
       })
       .map((v) => ({
         id: v.id,
@@ -187,11 +201,17 @@ export default function ComprasSuscripcionesView({
           (v.invoice_status === "timbrada"
             ? "Facturada"
             : "Disponible para facturar"),
-        facturable: v.facturable ?? v.invoice_status !== "timbrada",
+        facturable: !!v.facturable,
+        fuera_de_rango: !!v.fuera_de_rango,
+        puede_ver_documentos:
+          v.puede_ver_documentos ?? v.invoice_status === "timbrada",
+        error_message: v.error_message || v?.invoice?.error_message || null,
+        error_history: v.error_history || [],
         client: v.client || null,
         invoice: v.invoice || null,
+        items: v.items || [],
       }));
-  }, [ventasRaw, mes, folio]);
+  }, [ventasRaw, folio]);
 
   const onChangeMes = (e) => setMes(e.target.value);
   const onChangeFolio = (e) => setFolio(e.target.value);
@@ -205,6 +225,16 @@ export default function ComprasSuscripcionesView({
       return;
     }
 
+    if (row?.fuera_de_rango) {
+      showError(
+        "Venta fuera de rango",
+        {
+          html: "Esta venta pertenece a un mes anterior y ya no puede facturarse. Solo se permite consultar los documentos de las ventas ya timbradas.",
+        }
+      );
+      return;
+    }
+
     if (row?.facturable === false) {
       showError("Esta venta ya está facturada.");
       return;
@@ -212,6 +242,42 @@ export default function ComprasSuscripcionesView({
 
     setVentaActiva(row);
     setOpenFacturar(true);
+  };
+
+  const onVerPdf = (row) => {
+    if (!row?.invoice?.pdf_url) {
+      showError("Esta venta no tiene PDF disponible.");
+      return;
+    }
+    setVentaDocumentoActiva(row);
+    setOpenPdf(true);
+  };
+
+  const onVerXml = (row) => {
+    if (!row?.invoice?.xml_url) {
+      showError("Esta venta no tiene XML disponible.");
+      return;
+    }
+    setVentaDocumentoActiva(row);
+    setOpenXml(true);
+  };
+
+  const onEnviarWhatsapp = (row, tipoDocumento = "pdf") => {
+    const docUrl =
+      tipoDocumento === "xml" ? row?.invoice?.xml_url : row?.invoice?.pdf_url;
+
+    if (!docUrl) {
+      showError(
+        `Esta venta no tiene ${
+          tipoDocumento === "xml" ? "XML" : "PDF"
+        } disponible.`
+      );
+      return;
+    }
+
+    setVentaDocumentoActiva(row);
+    setDocumentoActivo(tipoDocumento);
+    setOpenWhatsapp(true);
   };
 
   const showAlert = (titulo, cuerpo, ok = true) => {
@@ -252,7 +318,8 @@ export default function ComprasSuscripcionesView({
         payload.nombre_alias = cliente_nuevo.nombre_alias || "";
         payload.rfc = cliente_nuevo.rfc || "";
         payload.razon_social = cliente_nuevo.razon_social || "";
-        payload.codigo_postal_fiscal = cliente_nuevo.codigo_postal_fiscal || "";
+        payload.codigo_postal_fiscal =
+          cliente_nuevo.codigo_postal_fiscal || "";
         payload.regimen_codigo = cliente_nuevo.regimen_codigo || "";
         payload.email = cliente_nuevo.email || "";
         payload.telefono = cliente_nuevo.telefono || "";
@@ -291,9 +358,16 @@ export default function ComprasSuscripcionesView({
           ? {
               id: null,
               nombre_alias:
-                cliente_nuevo?.nombre_alias || cliente_nuevo?.razon_social || null,
+                cliente_nuevo?.nombre_alias ||
+                cliente_nuevo?.razon_social ||
+                null,
               razon_social: cliente_nuevo?.razon_social || null,
               rfc: cliente_nuevo?.rfc || null,
+              codigo_postal_fiscal:
+                cliente_nuevo?.codigo_postal_fiscal || null,
+              regimen_codigo: cliente_nuevo?.regimen_codigo || null,
+              email: cliente_nuevo?.email || null,
+              telefono: cliente_nuevo?.telefono || null,
             }
           : null,
       });
@@ -407,7 +481,7 @@ export default function ComprasSuscripcionesView({
   return (
     <Box
       sx={{
-        p: { xs: 2, md: 3, lg: 4 },
+        p: { xs: 0.75, sm: 1.5, md: 3, lg: 4 },
         minHeight: "100%",
         background:
           theme.palette.mode === "dark"
@@ -425,9 +499,9 @@ export default function ComprasSuscripcionesView({
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 2.2, md: 3 },
-            borderRadius: 5,
-            mb: 3,
+            p: { xs: 1.2, sm: 2.2, md: 3 },
+            borderRadius: { xs: 3, md: 5 },
+            mb: { xs: 1.2, md: 3 },
             overflow: "hidden",
             position: "relative",
             border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
@@ -472,33 +546,43 @@ export default function ComprasSuscripcionesView({
               borderRadius: "50%",
               background: alpha(theme.palette.success.main, 0.08),
               filter: "blur(10px)",
+              display: { xs: "none", md: "block" },
             }}
           />
 
           <Stack
             direction={{ xs: "column", md: "row" }}
             justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
-            spacing={2}
+            alignItems={{ xs: "stretch", md: "center" }}
+            spacing={{ xs: 1.2, md: 2 }}
             sx={{ position: "relative", zIndex: 1 }}
           >
             <Box>
-              <Stack direction="row" spacing={1.2} alignItems="center" mb={1.2}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                mb={{ xs: 0.8, md: 1.2 }}
+                flexWrap="wrap"
+                useFlexGap
+              >
                 <Chip
                   icon={<PointOfSaleRoundedIcon />}
                   label="Facturación POS"
                   color="primary"
                   variant="filled"
+                  size="small"
                   sx={{
                     borderRadius: 999,
                     fontWeight: 700,
-                    px: 0.8,
+                    px: 0.4,
                   }}
                 />
                 <Chip
                   label={allowed ? "Taeconta activo" : "Acceso restringido"}
                   color={allowed ? "success" : "warning"}
                   variant="outlined"
+                  size="small"
                   sx={{ borderRadius: 999, fontWeight: 700 }}
                 />
               </Stack>
@@ -507,20 +591,21 @@ export default function ComprasSuscripcionesView({
                 variant="h4"
                 sx={{
                   fontWeight: 900,
-                  lineHeight: 1.1,
+                  lineHeight: 1.05,
                   letterSpacing: -0.5,
-                  fontSize: { xs: "1.7rem", md: "2.15rem" },
+                  fontSize: { xs: "1.25rem", sm: "1.7rem", md: "2.15rem" },
                 }}
               >
                 Ventas Facturables
               </Typography>
 
               <Typography
-                variant="body1"
+                variant="body2"
                 sx={{
                   color: "text.secondary",
-                  mt: 1,
+                  mt: 0.8,
                   maxWidth: 780,
+                  fontSize: { xs: ".87rem", sm: "1rem" },
                 }}
               >
                 Consulta ventas del mes actual, filtra rápidamente por folio y
@@ -530,19 +615,20 @@ export default function ComprasSuscripcionesView({
 
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              spacing={1.2}
+              spacing={1}
               width={{ xs: "100%", md: "auto" }}
             >
               <Button
                 variant="outlined"
                 color="primary"
+                size="small"
                 startIcon={<RefreshRoundedIcon />}
                 onClick={reloadVentas}
                 disabled={loading}
                 sx={{
-                  borderRadius: 3,
-                  px: 2.2,
-                  py: 1.2,
+                  borderRadius: 2.5,
+                  px: 1.8,
+                  py: 1,
                   fontWeight: 700,
                   textTransform: "none",
                   minWidth: { xs: "100%", sm: "auto" },
@@ -556,12 +642,13 @@ export default function ComprasSuscripcionesView({
               <Button
                 variant="contained"
                 color="success"
+                size="small"
                 startIcon={<DashboardIcon />}
                 onClick={() => cambiarVista?.("menu")}
                 sx={{
-                  borderRadius: 3,
-                  px: 2.4,
-                  py: 1.2,
+                  borderRadius: 2.5,
+                  px: 2,
+                  py: 1,
                   fontWeight: 800,
                   textTransform: "none",
                   minWidth: { xs: "100%", sm: "auto" },
@@ -581,50 +668,71 @@ export default function ComprasSuscripcionesView({
           <Paper
             elevation={0}
             sx={{
-              borderRadius: 5,
+              borderRadius: { xs: 3, md: 5 },
               overflow: "hidden",
-              border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+              border: {
+                xs: "none",
+                md: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+              },
               background:
                 theme.palette.mode === "dark"
                   ? alpha(theme.palette.background.paper, 0.88)
                   : "#fff",
-              boxShadow: `0 16px 40px ${alpha(theme.palette.common.black, 0.06)}`,
+              boxShadow: {
+                xs: "none",
+                md: `0 16px 40px ${alpha(theme.palette.common.black, 0.06)}`,
+              },
             }}
           >
             <Box
               sx={{
-                px: { xs: 2, md: 3 },
-                pt: { xs: 2, md: 2.5 },
-                pb: 1.5,
+                px: { xs: 1.1, sm: 2, md: 3 },
+                pt: { xs: 1.1, md: 2.5 },
+                pb: { xs: 1, md: 1.5 },
               }}
             >
               <Stack
                 direction={{ xs: "column", md: "row" }}
                 justifyContent="space-between"
                 alignItems={{ xs: "flex-start", md: "center" }}
-                spacing={1.2}
+                spacing={1}
               >
                 <Box>
                   <Typography
                     variant="body2"
-                    sx={{ color: "text.secondary", mt: 0.5 }}
+                    sx={{
+                      color: "text.secondary",
+                      mt: 0.2,
+                      fontSize: { xs: ".82rem", sm: ".95rem" },
+                    }}
                   >
                     {tituloMes}
                   </Typography>
                 </Box>
 
                 <Chip
-                  label={loading ? "Cargando ventas..." : `${ventasRows.length} registros`}
+                  label={
+                    loading
+                      ? "Cargando ventas..."
+                      : `${ventasRows.length} registros`
+                  }
                   color="primary"
                   variant="outlined"
+                  size="small"
                   sx={{ fontWeight: 700, borderRadius: 999 }}
                 />
               </Stack>
             </Box>
 
-            <Divider />
+            <Divider sx={{ display: { xs: "none", md: "block" } }} />
 
-            <Box sx={{ px: { xs: 1.2, md: 2.2 }, pt: 2, pb: 1 }}>
+            <Box
+              sx={{
+                px: { xs: 0, sm: 1.2, md: 2.2 },
+                pt: { xs: 0.6, md: 2 },
+                pb: 1,
+              }}
+            >
               <FiltersBar
                 mes={mes}
                 folio={folio}
@@ -634,12 +742,20 @@ export default function ComprasSuscripcionesView({
               />
             </Box>
 
-            <Box sx={{ px: { xs: 1.2, md: 2.2 }, pb: 2.2 }}>
+            <Box
+              sx={{
+                px: { xs: 0, sm: 1.2, md: 2.2 },
+                pb: { xs: 0.5, md: 2.2 },
+              }}
+            >
               <Box
                 sx={{
-                  borderRadius: 4,
+                  borderRadius: { xs: 0, md: 4 },
                   overflow: "hidden",
-                  border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
+                  border: {
+                    xs: "none",
+                    md: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
+                  },
                   background:
                     theme.palette.mode === "dark"
                       ? alpha(theme.palette.background.default, 0.35)
@@ -650,6 +766,9 @@ export default function ComprasSuscripcionesView({
                   rows={ventasRows}
                   loading={loading}
                   onFacturar={onFacturar}
+                  onVerPdf={onVerPdf}
+                  onVerXml={onVerXml}
+                  onEnviarWhatsapp={onEnviarWhatsapp}
                 />
               </Box>
             </Box>
@@ -665,6 +784,8 @@ export default function ComprasSuscripcionesView({
             fecha: ventaActiva?.fecha,
             total: ventaActiva?.total,
             tipoPago: ventaActiva?.tipoPago,
+            client: ventaActiva?.client,
+            items: ventaActiva?.items || [],
           }}
           clientes={clientes}
           loading={clientesLoading || facturando}
@@ -677,6 +798,30 @@ export default function ComprasSuscripcionesView({
               usoCfdi,
             })
           }
+        />
+
+        <FacturaPdfDialog
+          open={openPdf}
+          onClose={() => setOpenPdf(false)}
+          pdfUrl={ventaDocumentoActiva?.invoice?.pdf_url}
+          folio={ventaDocumentoActiva?.folio}
+          fileName={`factura_${ventaDocumentoActiva?.folio || "sin_folio"}.pdf`}
+        />
+
+        <FacturaXmlDialog
+          open={openXml}
+          onClose={() => setOpenXml(false)}
+          xmlUrl={ventaDocumentoActiva?.invoice?.xml_url}
+          folio={ventaDocumentoActiva?.folio}
+          fileName={`factura_${ventaDocumentoActiva?.folio || "sin_folio"}.xml`}
+        />
+
+        <FacturaWhatsAppDialog
+          open={openWhatsapp}
+          onClose={() => setOpenWhatsapp(false)}
+          saleId={ventaDocumentoActiva?.id}
+          cliente={ventaDocumentoActiva?.client}
+          tipoDocumento={documentoActivo}
         />
       </Box>
     </Box>
