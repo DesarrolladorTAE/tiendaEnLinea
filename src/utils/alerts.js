@@ -47,11 +47,8 @@ export const showConfirm = async (
   return result.isConfirmed;
 };
 
-
-
 // --- Helpers para respuestas de API TAEconta / Axios ---
 
-// Convierte { campo: [ "msg1", "msg2" ], ... } a una lista HTML
 const errorsObjectToHtml = (errors = {}) => {
   const items = Object.entries(errors).flatMap(([field, arr]) =>
     (Array.isArray(arr) ? arr : [String(arr)]).map(
@@ -62,32 +59,34 @@ const errorsObjectToHtml = (errors = {}) => {
   return `<ul style="text-align:left;margin-left:1rem">${items.join("")}</ul>`;
 };
 
-// Extrae "data" seguro de un error de Axios
 const getAxiosData = (err) => err?.response?.data ?? null;
 
-// Muestra un éxito tomando en cuenta las claves típicas del backend: {status, mensaje}
 export const showApiSuccess = (data, fallback = "Operación exitosa") => {
-  const title = data?.mensaje || fallback;
+  const title = data?.mensaje || data?.message || fallback;
   return showSuccess(undefined, { html: `<p>${title}</p>` });
 };
 
-// Muestra errores del backend: usa data.mensaje y data.errors si existen
 export const showApiErrors = (data, fallback = "Ocurrió un error") => {
-  const mensaje =
+  const generalMessage =
     data?.mensaje ||
     data?.message ||
-    data?.error ||
     fallback;
 
-  const htmlErrors = errorsObjectToHtml(data?.errors || {});
-  const details = data?.details
-    ? `<p style="margin-top:8px"><b>Detalle:</b> ${String(data.details)}</p>`
+  const backendError = data?.error
+    ? `<p style="margin-top:8px"><b>Detalle:</b> ${String(data.error)}</p>`
     : "";
+
+  const extraDetails = data?.details
+    ? `<p style="margin-top:8px"><b>Información adicional:</b> ${String(data.details)}</p>`
+    : "";
+
+  const htmlErrors = errorsObjectToHtml(data?.errors || {});
 
   const html = `
     <div style="text-align:left">
-      <p>${mensaje}</p>
-      ${details}
+      <p>${generalMessage}</p>
+      ${backendError}
+      ${extraDetails}
       ${htmlErrors}
     </div>
   `;
@@ -95,17 +94,17 @@ export const showApiErrors = (data, fallback = "Ocurrió un error") => {
   return showError(undefined, { html });
 };
 
-// Atajo: decide automáticamente según "status" (true/false) y muestra el alert correcto.
-// Si es falso o viene en un catch, muestra los errores.
 export const alertFromApiResult = (data, successFallback, errorFallback) => {
-  if (data?.status === true) {
+  if (data?.status === true || data?.ok === true) {
     return showApiSuccess(data, successFallback);
   }
   return showApiErrors(data, errorFallback);
 };
 
-// Para usar en catch(e): intenta leer e.response.data; si no hay, muestra e.message
-export const alertFromAxiosError = (err, fallback = "Error de red o del servidor") => {
+export const alertFromAxiosError = (
+  err,
+  fallback = "Error de red o del servidor"
+) => {
   const data = getAxiosData(err);
   if (data) return showApiErrors(data, fallback);
   return showError(fallback + (err?.message ? `: ${err.message}` : ""));
