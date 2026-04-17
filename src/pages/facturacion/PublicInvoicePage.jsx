@@ -53,7 +53,10 @@ const REGIMENES = [
   { value: "603", label: "603 - Personas Morales con Fines no Lucrativos" },
   { value: "605", label: "605 - Sueldos y Salarios e Ingresos Asimilados" },
   { value: "606", label: "606 - Arrendamiento" },
-  { value: "612", label: "612 - Personas Físicas con Actividades Empresariales" },
+  {
+    value: "612",
+    label: "612 - Personas Físicas con Actividades Empresariales",
+  },
   { value: "616", label: "616 - Sin obligaciones fiscales" },
   { value: "621", label: "621 - Incorporación Fiscal" },
   {
@@ -194,7 +197,7 @@ export default function PublicInvoicePage() {
     }
 
     const missing = items.filter(
-      (item) => !item.clave_producto_sat || !item.clave_unidad_sat
+      (item) => !item.clave_producto_sat || !item.clave_unidad_sat,
     );
 
     return {
@@ -247,38 +250,12 @@ export default function PublicInvoicePage() {
     if (token) loadSale(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
-
   async function handlePreview(formData) {
     try {
-      setTimbrando(true);
+      setPreviewLoading(true);
       setError("");
       setPreviewMessage("");
       clearErrors();
-
-      if (!previewData) {
-        setError("Primero genera la vista previa para validar la información.");
-        showApiErrors(
-          {
-            mensaje: "Primero genera la vista previa para validar la información.",
-          },
-          "Validación requerida"
-        );
-        return;
-      }
-
-      if (!previewValidation.valid) {
-        setError(
-          "No se puede facturar porque hay productos sin clave SAT de producto o unidad."
-        );
-        showApiErrors(
-          {
-            mensaje:
-              "No se puede facturar porque hay productos sin clave SAT de producto o unidad.",
-          },
-          "Información incompleta"
-        );
-        return;
-      }
 
       const payload = {
         ...formData,
@@ -289,45 +266,27 @@ export default function PublicInvoicePage() {
         regimen_codigo: (formData.regimen_codigo || "").trim(),
         email: (formData.email || "").trim(),
         telefono: (formData.telefono || "").trim(),
+        uso_cfdi: (formData.uso_cfdi || "").trim(),
       };
 
       const { data } = await api.post(
-        `/facturacion-publica/${token}/timbrar`,
-        payload
+        `/facturacion-publica/${token}/preview`,
+        payload,
       );
 
       if (!data?.ok) {
-        showApiErrors(data, "No se pudo timbrar la factura.");
+        showApiErrors(data, "No se pudo generar la vista previa.");
         return;
       }
 
-      const resultInvoice = data?.data || data;
-
-      showApiSuccess(data, "Factura timbrada correctamente.");
-      setPreviewData(null);
-
-      await loadSale(false);
-
-      const folio = resultInvoice?.folio || saleData?.sale_id || "archivo";
-      const serie = resultInvoice?.serie || "A";
-
-      if (resultInvoice?.pdf_url) {
-        await downloadFile(
-          resultInvoice.pdf_url,
-          `factura-${serie}-${folio}.pdf`
-        );
-      }
-
-      if (resultInvoice?.xml_url) {
-        await downloadFile(
-          resultInvoice.xml_url,
-          `factura-${serie}-${folio}.xml`
-        );
-      }
+      setPreviewData(data?.data || null);
+      setPreviewMessage(
+        data?.message || "Vista previa generada correctamente.",
+      );
     } catch (err) {
-      alertFromAxiosError(err, "No se pudo timbrar la factura");
+      alertFromAxiosError(err, "No se pudo generar la vista previa");
     } finally {
-      setTimbrando(false);
+      setPreviewLoading(false);
     }
   }
 
@@ -342,23 +301,24 @@ export default function PublicInvoicePage() {
         setError("Primero genera la vista previa para validar la información.");
         showApiErrors(
           {
-            mensaje: "Primero genera la vista previa para validar la información.",
+            mensaje:
+              "Primero genera la vista previa para validar la información.",
           },
-          "Validación requerida"
+          "Validación requerida",
         );
         return;
       }
 
       if (!previewValidation.valid) {
         setError(
-          "No se puede facturar porque hay productos sin clave SAT de producto o unidad."
+          "No se puede facturar porque hay productos sin clave SAT de producto o unidad.",
         );
         showApiErrors(
           {
             mensaje:
               "No se puede facturar porque hay productos sin clave SAT de producto o unidad.",
           },
-          "Información incompleta"
+          "Información incompleta",
         );
         return;
       }
@@ -376,7 +336,7 @@ export default function PublicInvoicePage() {
 
       const { data } = await api.post(
         `/facturacion-publica/${token}/timbrar`,
-        payload
+        payload,
       );
 
       if (!data?.ok) {
@@ -635,10 +595,18 @@ export default function PublicInvoicePage() {
                         <Typography variant="body2" color="text.secondary">
                           Total pagado
                         </Typography>
-                        <Typography variant="h4" fontWeight={900} sx={{ mt: 0.5 }}>
+                        <Typography
+                          variant="h4"
+                          fontWeight={900}
+                          sx={{ mt: 0.5 }}
+                        >
                           {money(saleData?.total_amount)}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.6 }}>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mt: 0.6 }}
+                        >
                           IVA: {money(saleData?.iva_total)}
                         </Typography>
                       </Box>
@@ -654,7 +622,12 @@ export default function PublicInvoicePage() {
                   }}
                 >
                   <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      sx={{ mb: 2 }}
+                    >
                       <ShoppingBagRoundedIcon />
                       <Typography variant="h6" fontWeight={800}>
                         Productos
@@ -680,11 +653,18 @@ export default function PublicInvoicePage() {
                           }}
                         >
                           <Typography fontWeight={700}>
-                            {item.descripcion || item.product_name || "Producto"}
+                            {item.descripcion ||
+                              item.product_name ||
+                              "Producto"}
                           </Typography>
 
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.6 }}>
-                            Cantidad: {item.quantity} · Total: {money(item.total_price)}
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mt: 0.6 }}
+                          >
+                            Cantidad: {item.quantity} · Total:{" "}
+                            {money(item.total_price)}
                           </Typography>
 
                           {item.estado && (
@@ -709,7 +689,12 @@ export default function PublicInvoicePage() {
                     }}
                   >
                     <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-                      <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 2 }}>
+                      <Stack
+                        direction="row"
+                        spacing={1}
+                        alignItems="center"
+                        sx={{ mb: 2 }}
+                      >
                         <VerifiedRoundedIcon color="success" />
                         <Typography variant="h6" fontWeight={800}>
                           Factura generada
@@ -743,8 +728,11 @@ export default function PublicInvoicePage() {
                             onClick={() =>
                               downloadFile(
                                 invoice?.pdf_url,
-                                `factura-${invoice?.serie || "A"}-${invoice?.folio || saleData?.sale_id || "archivo"
-                                }.pdf`
+                                `factura-${invoice?.serie || "A"}-${
+                                  invoice?.folio ||
+                                  saleData?.sale_id ||
+                                  "archivo"
+                                }.pdf`,
                               )
                             }
                             disabled={!invoice?.pdf_url}
@@ -760,8 +748,11 @@ export default function PublicInvoicePage() {
                             onClick={() =>
                               downloadFile(
                                 invoice?.xml_url,
-                                `factura-${invoice?.serie || "A"}-${invoice?.folio || saleData?.sale_id || "archivo"
-                                }.xml`
+                                `factura-${invoice?.serie || "A"}-${
+                                  invoice?.folio ||
+                                  saleData?.sale_id ||
+                                  "archivo"
+                                }.xml`,
                               )
                             }
                             disabled={!invoice?.xml_url}
@@ -811,7 +802,8 @@ export default function PublicInvoicePage() {
                       textAlign: { xs: "center", md: "left" },
                     }}
                   >
-                    Completa la información para generar tu factura correctamente.
+                    Completa la información para generar tu factura
+                    correctamente.
                   </Typography>
 
                   <Box
@@ -841,7 +833,9 @@ export default function PublicInvoicePage() {
                             label="RFC"
                             error={!!errors.rfc}
                             helperText={errors.rfc?.message}
-                            onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                            onChange={(e) =>
+                              field.onChange(e.target.value.toUpperCase())
+                            }
                             sx={fieldSx()}
                           />
                         )}
@@ -991,7 +985,11 @@ export default function PublicInvoicePage() {
                           fullWidth
                           variant="contained"
                           onClick={handleSubmit(handleTimbrar)}
-                          disabled={timbrando || !previewData || !previewValidation.valid}
+                          disabled={
+                            timbrando ||
+                            !previewData ||
+                            !previewValidation.valid
+                          }
                           sx={{ borderRadius: 3, py: 1.25 }}
                         >
                           {timbrando ? "Timbrando..." : "Facturar"}
@@ -1022,7 +1020,9 @@ export default function PublicInvoicePage() {
                               <ErrorOutlineRoundedIcon />
                             )
                           }
-                          color={previewValidation.valid ? "success" : "warning"}
+                          color={
+                            previewValidation.valid ? "success" : "warning"
+                          }
                           label={
                             previewValidation.valid
                               ? "Validación correcta"
@@ -1032,9 +1032,12 @@ export default function PublicInvoicePage() {
                       </Stack>
 
                       {!previewValidation.valid && (
-                        <Alert severity="warning" sx={{ mb: 2, borderRadius: 3 }}>
-                          Hay productos sin clave de producto SAT o clave de unidad SAT.
-                          Corrige eso antes de facturar.
+                        <Alert
+                          severity="warning"
+                          sx={{ mb: 2, borderRadius: 3 }}
+                        >
+                          Hay productos sin clave de producto SAT o clave de
+                          unidad SAT. Corrige eso antes de facturar.
                         </Alert>
                       )}
 
@@ -1063,7 +1066,8 @@ export default function PublicInvoicePage() {
                                 color="text.secondary"
                                 sx={{ mt: 0.6 }}
                               >
-                                Cantidad: {item.cantidad} · Total: {money(item.total)}
+                                Cantidad: {item.cantidad} · Total:{" "}
+                                {money(item.total)}
                               </Typography>
 
                               <Stack
