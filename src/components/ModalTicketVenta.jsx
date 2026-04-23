@@ -17,10 +17,10 @@ import {
 import { useTheme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import UsbIcon from "@mui/icons-material/Usb";
 import LanIcon from "@mui/icons-material/Lan";
 import ComputerIcon from "@mui/icons-material/Computer";
 import AndroidIcon from "@mui/icons-material/Android";
+import BluetoothIcon from "@mui/icons-material/Bluetooth";
 
 import axiosClientPOS from "../config/axiosClientPOS";
 import { showSuccess, showError } from "../utils/alerts";
@@ -39,6 +39,7 @@ export default function ModalTicketVenta({
   const [loadingWindowsIp, setLoadingWindowsIp] = useState(false);
   const [loadingAndroidUsb, setLoadingAndroidUsb] = useState(false);
   const [loadingFlutterIp, setLoadingFlutterIp] = useState(false);
+  const [loadingIosBle, setLoadingIosBle] = useState(false);
 
   const [loadingPayload, setLoadingPayload] = useState(false);
   const [payloadPreview, setPayloadPreview] = useState(null);
@@ -60,6 +61,7 @@ export default function ModalTicketVenta({
       setLoadingWindowsIp(false);
       setLoadingAndroidUsb(false);
       setLoadingFlutterIp(false);
+      setLoadingIosBle(false);
       loadPayloadPreview();
     } else {
       setPayloadPreview(null);
@@ -149,7 +151,8 @@ export default function ModalTicketVenta({
     loadingWindowsUsb ||
     loadingWindowsIp ||
     loadingAndroidUsb ||
-    loadingFlutterIp;
+    loadingFlutterIp ||
+    loadingIosBle;
 
   const handleEnviarWhatsapp = async () => {
     if (!ventaId) {
@@ -299,7 +302,9 @@ export default function ModalTicketVenta({
         console.log("printTicket -> response", resp);
 
         if (resp?.ok) {
-          showSuccess(`🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`);
+          showSuccess(
+            `🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`
+          );
           return;
         }
 
@@ -312,6 +317,51 @@ export default function ModalTicketVenta({
       showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
     } finally {
       setLoadingFlutterIp(false);
+    }
+  };
+
+  const handleIosBle = async () => {
+    if (!ventaId) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
+
+    setLoadingIosBle(true);
+    try {
+      const payload = await getPrintPayload();
+
+      const request = {
+        payload,
+      };
+
+      console.log("printTicket BLE -> request", request);
+      console.log(
+        "flutter_inappwebview disponible:",
+        !!window.flutter_inappwebview
+      );
+
+      if (window.flutter_inappwebview?.callHandler) {
+        const resp = await window.flutter_inappwebview.callHandler(
+          "printTicket",
+          request
+        );
+
+        console.log("printTicket BLE -> response", resp);
+
+        if (resp?.ok) {
+          showSuccess("🖨️ Enviado a imprimir por iOS BLE");
+          return;
+        }
+
+        throw new Error(resp?.message || "No se pudo imprimir desde la app.");
+      }
+
+      throw new Error("No hay bridge Flutter disponible en este dispositivo.");
+    } catch (err) {
+      console.error("Error iOS BLE:", err);
+      showError(`❌ Error al imprimir por iOS BLE: ${err?.message || err}`);
+    } finally {
+      setLoadingIosBle(false);
     }
   };
 
@@ -431,7 +481,12 @@ export default function ModalTicketVenta({
                   >
                     {previewText(payloadPreview.textBeforeQr)}
                     {"\n\n"}
-                    QR: {previewText(payloadPreview.qrText)}
+                    QR:{" "}
+                    {previewText(
+                      payloadPreview.qrText ||
+                        payloadPreview.qrs?.[0]?.text ||
+                        "—"
+                    )}
                     {"\n\n"}
                     {previewText(payloadPreview.textAfterQr)}
                   </Typography>
@@ -488,7 +543,10 @@ export default function ModalTicketVenta({
               </Stack>
             </Paper>
 
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, flexGrow: 1 }}>
+            <Paper
+              variant="outlined"
+              sx={{ p: 2, borderRadius: 2, flexGrow: 1 }}
+            >
               <Typography variant="subtitle1" fontWeight={700} mb={1.5}>
                 Impresión por plataforma
               </Typography>
@@ -562,6 +620,24 @@ export default function ModalTicketVenta({
                   sx={{ minHeight: 46, justifyContent: "flex-start" }}
                 >
                   {loadingFlutterIp ? "Imprimiendo..." : "IOS IP"}
+                </Button>
+
+                <Button
+                  onClick={handleIosBle}
+                  variant="contained"
+                  color="info"
+                  startIcon={
+                    loadingIosBle ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <BluetoothIcon />
+                    )
+                  }
+                  disabled={isPrinting}
+                  fullWidth
+                  sx={{ minHeight: 46, justifyContent: "flex-start" }}
+                >
+                  {loadingIosBle ? "Imprimiendo..." : "IOS BLE"}
                 </Button>
 
                 <Divider sx={{ my: 1 }} />

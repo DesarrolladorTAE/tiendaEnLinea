@@ -318,16 +318,6 @@ export default function CartSidebar({
       };
     });
 
-  const resetPaymentState = () => {
-    setCashReceived("");
-    setDetails({
-      efectivo: { amount: "", referencia: "", ultimos4: "" },
-      td: { amount: "", referencia: "", ultimos4: "" },
-      tc: { amount: "", referencia: "", ultimos4: "" },
-      transferencia: { amount: "", referencia: "", ultimos4: "" },
-    });
-  };
-
   const resetAfterSuccessfulSale = () => {
     setCart([]);
     setSelectedClient(null);
@@ -873,38 +863,63 @@ export default function CartSidebar({
                                       Se cobrará el total con <strong>{label}</strong>.
                                     </Typography>
 
-                                    <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                                    <Stack spacing={1.2}>
                                       <TextField
                                         label="Referencia"
                                         fullWidth
                                         margin="dense"
-                                        value={d.referencia}
+                                        value={d.referencia || ""}
                                         onChange={(e) => setDetail(key, { referencia: e.target.value })}
                                         {...inputCommon}
                                       />
 
                                       {CARDLIKE.includes(key) && (
-                                        <TextField
-                                          label="Últimos 4"
-                                          type="tel"
-                                          margin="dense"
-                                          value={d.ultimos4}
-                                          onChange={(e) => {
-                                            const v = e.target.value.replace(/\D/g, "");
-                                            if (v.length <= 4) setDetail(key, { ultimos4: v });
+                                        <Box
+                                          sx={{
+                                            mt: 0.25,
+                                            p: 1.2,
+                                            border: "1px dashed",
+                                            borderColor: "divider",
+                                            borderRadius: 2,
+                                            bgcolor: "background.paper",
                                           }}
-                                          placeholder="2541"
-                                          sx={{ width: { xs: "100%", sm: 170 } }}
-                                          {...inputCommon}
-                                          inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                                          InputProps={{
-                                            startAdornment: (
-                                              <Typography sx={{ mr: 1, whiteSpace: "nowrap", color: "text.secondary" }}>
-                                                **** **** ****
-                                              </Typography>
-                                            ),
-                                          }}
-                                        />
+                                        >
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              display: "block",
+                                              color: "text.secondary",
+                                              mb: 0.8,
+                                              fontWeight: 700,
+                                              letterSpacing: 1,
+                                            }}
+                                          >
+                                            **** **** **** {d.ultimos4?.padEnd(4, "_") || "____"}
+                                          </Typography>
+
+                                          <TextField
+                                            label="Últimos 4"
+                                            type="tel"
+                                            fullWidth
+                                            size="small"
+                                            margin="dense"
+                                            value={d.ultimos4 || ""}
+                                            onChange={(e) => {
+                                              const v = String(e.target.value || "")
+                                                .replace(/\D/g, "")
+                                                .slice(0, 4);
+                                              setDetail(key, { ultimos4: v });
+                                            }}
+                                            placeholder="1234"
+                                            helperText="Ingresa solo los últimos 4 dígitos"
+                                            {...inputCommon}
+                                            inputProps={{
+                                              maxLength: 4,
+                                              inputMode: "numeric",
+                                              pattern: "[0-9]*",
+                                            }}
+                                          />
+                                        </Box>
                                       )}
                                     </Stack>
                                   </>
@@ -916,48 +931,75 @@ export default function CartSidebar({
                                       <TextField
                                         label="Monto"
                                         type="text"
-                                        value={d.amount}
+                                        value={d.amount || ""}
                                         onChange={(e) => setDetail(key, { amount: e.target.value })}
                                         fullWidth
                                         margin="dense"
                                         {...inputCommon}
                                         inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                       />
+
                                       <TextField
                                         label="Referencia"
-                                        value={d.referencia}
+                                        value={d.referencia || ""}
                                         onChange={(e) => setDetail(key, { referencia: e.target.value })}
                                         fullWidth
                                         margin="dense"
                                         {...inputCommon}
                                       />
-                                      <TextField
-                                        label="Últimos 4"
-                                        type="tel"
-                                        value={d.ultimos4}
-                                        onChange={(e) => {
-                                          const v = e.target.value.replace(/\D/g, "");
-                                          if (v.length <= 4) setDetail(key, { ultimos4: v });
+
+                                      <Box
+                                        sx={{
+                                          mt: 0.25,
+                                          p: 1.2,
+                                          border: "1px dashed",
+                                          borderColor: "divider",
+                                          borderRadius: 2,
+                                          bgcolor: "background.paper",
                                         }}
-                                        placeholder="2541"
-                                        fullWidth
-                                        margin="dense"
-                                        {...inputCommon}
-                                        inputProps={{ inputMode: "numeric", pattern: "[0-9]*" }}
-                                        InputProps={{
-                                          startAdornment: (
-                                            <Typography sx={{ mr: 1, whiteSpace: "nowrap", color: "text.secondary" }}>
-                                              ****
-                                            </Typography>
-                                          ),
-                                        }}
-                                      />
+                                      >
+                                        <Typography
+                                          variant="caption"
+                                          sx={{
+                                            display: "block",
+                                            color: "text.secondary",
+                                            mb: 0.8,
+                                            fontWeight: 700,
+                                            letterSpacing: 1,
+                                          }}
+                                        >
+                                          **** **** **** {d.ultimos4?.padEnd(4, "_") || "____"}
+                                        </Typography>
+
+                                        <TextField
+                                          label="Últimos 4"
+                                          type="tel"
+                                          value={d.ultimos4 || ""}
+                                          onChange={(e) => {
+                                            const v = String(e.target.value || "")
+                                              .replace(/\D/g, "")
+                                              .slice(0, 4);
+                                            setDetail(key, { ultimos4: v });
+                                          }}
+                                          placeholder="1234"
+                                          helperText="Ingresa solo los últimos 4 dígitos"
+                                          fullWidth
+                                          size="small"
+                                          margin="dense"
+                                          {...inputCommon}
+                                          inputProps={{
+                                            maxLength: 4,
+                                            inputMode: "numeric",
+                                            pattern: "[0-9]*",
+                                          }}
+                                        />
+                                      </Box>
                                     </Stack>
                                   ) : (
                                     <TextField
                                       label="Monto"
                                       type="text"
-                                      value={d.amount}
+                                      value={d.amount || ""}
                                       onChange={(e) => setDetail(key, { amount: e.target.value })}
                                       fullWidth
                                       margin="dense"
@@ -1022,12 +1064,7 @@ export default function CartSidebar({
         )}
       </Box>
 
-      <Dialog
-        open={openQuickClient}
-        onClose={handleCloseQuickClient}
-        fullWidth
-        maxWidth="xs"
-      >
+      <Dialog open={openQuickClient} onClose={handleCloseQuickClient} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 900 }}>
           Crear cliente rápido
         </DialogTitle>
