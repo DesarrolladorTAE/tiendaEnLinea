@@ -96,22 +96,36 @@ const formatFechaLarga = (value) => {
 
 const fechaSoloDia = (value) => String(value || "").slice(0, 10);
 
-const getColorByType = (type) => {
+const isPendiente = (row) =>
+  row?.estadoRaw === "open" || row?.venta?.status === "open";
+
+const getColorByType = (type, estado) => {
+  if (estado === "open") return "warning";
   if (type === "cancelacion") return "error";
   if (type === "devolucion") return "info";
   return "success";
 };
 
-const getBgByType = (type) => {
+const getBgByType = (type, estado) => {
+  if (estado === "open") return "#fff3e0";
   if (type === "cancelacion") return "#ffebee";
   if (type === "devolucion") return "#e3f2fd";
   return "#e8f5e9";
 };
 
-const getTypeLabel = (type) => {
+const getTypeLabel = (type, estado) => {
+  if (estado === "open") return "Pendiente";
   if (type === "cancelacion") return "Cancelación";
   if (type === "devolucion") return "Devolución";
   return "Venta";
+};
+
+const getBorderColor = (color) => {
+  if (color === "warning") return "warning.light";
+  if (color === "success") return "success.light";
+  if (color === "info") return "info.light";
+  if (color === "error") return "error.light";
+  return "divider";
 };
 
 const agruparPorDia = (rows = []) => {
@@ -121,10 +135,7 @@ const agruparPorDia = (rows = []) => {
     const key = fechaSoloDia(row.fecha);
     if (!key) return;
 
-    if (!map.has(key)) {
-      map.set(key, []);
-    }
-
+    if (!map.has(key)) map.set(key, []);
     map.get(key).push(row);
   });
 
@@ -162,7 +173,9 @@ function DayPagination({ groups, page, setPage }) {
         alignItems={{ xs: "flex-start", md: "center" }}
       >
         <Box>
-          <Typography fontWeight={800}>{current?.label || "Sin fecha"}</Typography>
+          <Typography fontWeight={800}>
+            {current?.label || "Sin fecha"}
+          </Typography>
           <Typography variant="body2" color="text.secondary">
             Página {page + 1} de {totalPages} · {current?.total || 0} registros de este día
           </Typography>
@@ -223,8 +236,8 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
 
   const [openModalCliente, setOpenModalCliente] = useState(false);
 
-  const [ventaSeleccionada, setVentaSeleccionada] = useState(null); // id para otros modales
-  const [ventaClienteSeleccionada, setVentaClienteSeleccionada] = useState(null); // objeto venta para modal cliente
+  const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
+  const [ventaClienteSeleccionada, setVentaClienteSeleccionada] = useState(null);
 
   const handleFiltrar = async () => {
     setLoading(true);
@@ -237,15 +250,18 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
     if (tipoPago) params.payment_method = tipoPago;
 
     try {
-      const { data } = await axiosClientPOS.get("/ventas/mis-ventas", { params });
+      const { data } = await axiosClientPOS.get("/ventas/mis-ventas", {
+        params,
+      });
 
       setVentas(
         Array.isArray(data?.ventas)
           ? data.ventas
           : Array.isArray(data)
-            ? data
-            : []
+          ? data
+          : []
       );
+
       setDevoluciones(Array.isArray(data?.devoluciones) ? data.devoluciones : []);
       setCancelaciones(Array.isArray(data?.cancelaciones) ? data.cancelaciones : []);
       setPaginaDia(0);
@@ -320,6 +336,7 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
       pago: r.sale ? etiquetaPagoVenta(r.sale) : "—",
       motivo: r.motivo || "—",
       estado: r.tipo || "Devuelta",
+      estadoRaw: r.tipo || "devolucion",
       cliente: r.sale?.client || null,
     }));
   }, [devoluciones]);
@@ -335,6 +352,7 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
       pago: r.sale ? etiquetaPagoVenta(r.sale) : "—",
       motivo: r.motivo || "—",
       estado: r.tipo || "Cancelada",
+      estadoRaw: r.tipo || "cancelacion",
       cliente: r.sale?.client || null,
     }));
   }, [cancelaciones]);
@@ -350,28 +368,40 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
       pago: etiquetaPagoVenta(v),
       motivo: "—",
       estado:
-        v.status === "cancelled"
+        v.status === "open"
+          ? "Pendiente"
+          : v.status === "cancelled"
           ? "Cancelada"
           : v.status === "partially_cancelled"
-            ? "Parcial"
-            : v.status === "devuelta"
-              ? "Devuelta"
-              : v.status === "paid"
-                ? "Pagada"
-                : v.status || "—",
+          ? "Parcial"
+          : v.status === "devuelta"
+          ? "Devuelta"
+          : v.status === "paid"
+          ? "Pagada"
+          : v.status || "—",
+      estadoRaw: v.status,
       cliente: v.client || null,
     }));
   }, [ventas]);
 
   const historialRows = useMemo(() => {
-    return [...ventasRows, ...devolucionesRows, ...cancelacionesRows].sort((a, b) => {
-      const fa = new Date(a.fecha || 0).getTime();
-      const fb = new Date(b.fecha || 0).getTime();
-      return fb - fa;
-    });
+    return [...ventasRows, ...devolucionesRows, ...cancelacionesRows].sort(
+      (a, b) => {
+        const fa = new Date(a.fecha || 0).getTime();
+        const fb = new Date(b.fecha || 0).getTime();
+        return fb - fa;
+      }
+    );
   }, [ventasRows, devolucionesRows, cancelacionesRows]);
 
-  const historialGroups = useMemo(() => agruparPorDia(historialRows), [historialRows]);
+  const historialRowsParaResumen = useMemo(() => {
+    return historialRows.filter((row) => !isPendiente(row));
+  }, [historialRows]);
+
+  const historialGroups = useMemo(
+    () => agruparPorDia(historialRows),
+    [historialRows]
+  );
 
   const rowsPaginaActual = historialGroups[paginaDia]?.rows || [];
 
@@ -472,19 +502,31 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
     return (
       <Stack direction="row" spacing={0.3} justifyContent="center" flexWrap="wrap">
         <Tooltip title="Ticket">
-          <IconButton size="small" color="primary" onClick={() => abrirModalTicket(ventaId)}>
+          <IconButton
+            size="small"
+            color="primary"
+            onClick={() => abrirModalTicket(ventaId)}
+          >
             <PrintIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         <Tooltip title="Detalles">
-          <IconButton size="small" color="secondary" onClick={() => abrirModalDetalles(ventaId)}>
+          <IconButton
+            size="small"
+            color="secondary"
+            onClick={() => abrirModalDetalles(ventaId)}
+          >
             <VisibilityIcon fontSize="small" />
           </IconButton>
         </Tooltip>
 
         <Tooltip title="Cliente">
-          <IconButton size="small" color="inherit" onClick={() => abrirModalCliente(row)}>
+          <IconButton
+            size="small"
+            color="inherit"
+            onClick={() => abrirModalCliente(row)}
+          >
             <PersonOutlineIcon fontSize="small" />
           </IconButton>
         </Tooltip>
@@ -492,13 +534,21 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
         {isVenta ? (
           <>
             <Tooltip title="Cancelar">
-              <IconButton size="small" color="error" onClick={() => abrirModalCancelar(ventaId)}>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => abrirModalCancelar(ventaId)}
+              >
                 <CancelIcon fontSize="small" />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Devolver">
-              <IconButton size="small" color="info" onClick={() => abrirModalDevolver(ventaId)}>
+              <IconButton
+                size="small"
+                color="info"
+                onClick={() => abrirModalDevolver(ventaId)}
+              >
                 <AutorenewIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -522,26 +572,56 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
         <Table size="small">
           <TableHead>
             <TableRow sx={{ bgcolor: "#fafafa" }}>
-              <TableCell><strong>Tipo</strong></TableCell>
-              <TableCell><strong>Venta</strong></TableCell>
-              <TableCell><strong>Fecha</strong></TableCell>
-              <TableCell><strong>Total</strong></TableCell>
-              <TableCell><strong>Cliente</strong></TableCell>
-              <TableCell><strong>Pago</strong></TableCell>
-              <TableCell><strong>Estado / Motivo</strong></TableCell>
-              <TableCell align="center"><strong>Acciones</strong></TableCell>
+              <TableCell>
+                <strong>Tipo</strong>
+              </TableCell>
+              <TableCell>
+                <strong>Venta</strong>
+              </TableCell>
+              <TableCell>
+                <strong>Fecha</strong>
+              </TableCell>
+              <TableCell>
+                <strong>Total</strong>
+              </TableCell>
+              <TableCell>
+                <strong>Cliente</strong>
+              </TableCell>
+              <TableCell>
+                <strong>Pago</strong>
+              </TableCell>
+              <TableCell>
+                <strong>Estado / Motivo</strong>
+              </TableCell>
+              <TableCell align="center">
+                <strong>Acciones</strong>
+              </TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
             {rows.map((row) => {
-              const color = getColorByType(row.rowType);
-              const bg = getBgByType(row.rowType);
+              const pendiente = isPendiente(row);
+              const color = pendiente
+                ? "warning"
+                : getColorByType(row.rowType, row.estadoRaw);
+              const bg = pendiente
+                ? "#fff3e0"
+                : getBgByType(row.rowType, row.estadoRaw);
 
               return (
                 <TableRow key={row.id} hover sx={{ bgcolor: bg }}>
                   <TableCell>
-                    <Chip size="small" color={color} label={getTypeLabel(row.rowType)} />
+                    <Chip
+                      size="small"
+                      color={color}
+                      label={
+                        pendiente
+                          ? "Pendiente"
+                          : getTypeLabel(row.rowType, row.estadoRaw)
+                      }
+                      sx={{ fontWeight: 700 }}
+                    />
                   </TableCell>
 
                   <TableCell>#{row.venta_id}</TableCell>
@@ -569,6 +649,17 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
                       <Typography variant="body2" fontWeight={700}>
                         {row.estado || "—"}
                       </Typography>
+
+                      {pendiente ? (
+                        <Typography
+                          variant="caption"
+                          color="warning.dark"
+                          fontWeight={800}
+                        >
+                          Se paga en el módulo de ventas pendientes
+                        </Typography>
+                      ) : null}
+
                       {row.motivo && row.motivo !== "—" ? (
                         <Typography
                           variant="caption"
@@ -600,8 +691,13 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
   const MobileCards = ({ rows }) => (
     <Stack spacing={1.2}>
       {rows.map((row) => {
-        const color = getColorByType(row.rowType);
-        const bg = getBgByType(row.rowType);
+        const pendiente = isPendiente(row);
+        const color = pendiente
+          ? "warning"
+          : getColorByType(row.rowType, row.estadoRaw);
+        const bg = pendiente
+          ? "#fff3e0"
+          : getBgByType(row.rowType, row.estadoRaw);
 
         return (
           <Card
@@ -610,18 +706,23 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
               borderRadius: 3,
               bgcolor: bg,
               border: "1px solid",
-              borderColor:
-                color === "success"
-                  ? "success.light"
-                  : color === "info"
-                    ? "info.light"
-                    : "error.light",
+              borderColor: getBorderColor(color),
             }}
           >
             <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
               <Stack spacing={1}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Chip size="small" color={color} label={getTypeLabel(row.rowType)} />
+                  <Chip
+                    size="small"
+                    color={color}
+                    label={
+                      pendiente
+                        ? "Pendiente"
+                        : getTypeLabel(row.rowType, row.estadoRaw)
+                    }
+                    sx={{ fontWeight: 700 }}
+                  />
+
                   <Typography variant="caption" color="text.secondary">
                     {formatFecha(row.fecha)}
                   </Typography>
@@ -643,8 +744,24 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
                   <Typography variant="body2" fontWeight={700}>
                     {row.estado || "—"}
                   </Typography>
+
+                  {pendiente ? (
+                    <Typography
+                      variant="caption"
+                      color="warning.dark"
+                      fontWeight={800}
+                      display="block"
+                    >
+                      Se paga en el módulo de ventas pendientes
+                    </Typography>
+                  ) : null}
+
                   {row.motivo && row.motivo !== "—" ? (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      display="block"
+                    >
                       Motivo: {row.motivo}
                     </Typography>
                   ) : null}
@@ -687,7 +804,7 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
         />
 
         <Box sx={{ px: { xs: 1.2, md: 2 } }}>
-          <HistorialPOSResumen rows={historialRows} />
+          <HistorialPOSResumen rows={historialRowsParaResumen} />
 
           {loading ? (
             <Box display="flex" justifyContent="center" py={6}>

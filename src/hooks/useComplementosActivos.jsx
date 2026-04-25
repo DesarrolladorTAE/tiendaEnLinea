@@ -3,12 +3,21 @@ import { useEffect, useState } from "react";
 import axiosClient from "../config/axiosClient";
 import catalogoComplementos from "../utils/complementos";
 
-const useComplementosActivos = () => {
+const useComplementosActivos = ({ enabled = true } = {}) => {
   const [complementos, setComplementos] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    if (!enabled) {
+      setComplementos([]);
+      setLoading(false);
+      setError(false);
+      return;
+    }
+
+    setLoading(true);
+
     axiosClient
       .get("/mis-complementos")
       .then((res) => {
@@ -20,7 +29,7 @@ const useComplementosActivos = () => {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [enabled]);
 
   return {
     complementos,

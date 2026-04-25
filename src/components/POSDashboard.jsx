@@ -18,12 +18,17 @@ import RocketLaunchIcon from "@mui/icons-material/RocketLaunch";
 import LogoutIcon from "@mui/icons-material/Logout";
 import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import NoteIcon from "@mui/icons-material/Note";
+import PendingActionsIcon from "@mui/icons-material/PendingActions";
+import SettingsInputComponentIcon from "@mui/icons-material/SettingsInputComponent";
+import CreditScoreIcon from "@mui/icons-material/CreditScore";
 
 import POS from "./POS";
 import HistorialVentas from "./HistorialVentas";
 import ComprasFacturadas from "./ComprasFacturadas";
 import ClientesPOS from "./ClientesPOS";
 import NotasInternas from "./NotasInternas";
+import PendingSalesPOS from "./PendingSalePos";
+import PosLocationPrintSettings from "./POS/PosLocationPrintSettings";
 
 const POSDashboard = ({
   posName = "Mi Punto de Venta",
@@ -52,6 +57,21 @@ const POSDashboard = ({
       icono: <HistoryIcon sx={{ fontSize: 40 }} />,
     },
     {
+      id: "ventas_pendientes",
+      titulo: "Ventas Pendientes",
+      descripcion: "Consulta ventas con saldo pendiente",
+      color: "#f59e0b",
+      icono: <PendingActionsIcon sx={{ fontSize: 40 }} />,
+    },
+    {
+      id: "credito_fiado",
+      titulo: "Módulo de crédito",
+      descripcion: "Control de fiados, abonos y saldos pendientes. Próximamente.",
+      color: "#64748b",
+      icono: <CreditScoreIcon sx={{ fontSize: 40 }} />,
+      disabled: true,
+    },
+    {
       id: "notas",
       titulo: "Notas Internas",
       descripcion: "Gestiona notas y recordatorios",
@@ -72,6 +92,15 @@ const POSDashboard = ({
       color: "#673ab7",
       icono: <PeopleAltIcon sx={{ fontSize: 40 }} />,
     },
+
+    {
+      id: "configuracion_pos",
+      titulo: "Configuración punto de venta",
+      descripcion: "Administra la conectividad, automatizaciones y futuras opciones de este punto de venta.",
+      color: "#0f766e",
+      icono: <SettingsInputComponentIcon sx={{ fontSize: 40 }} />,
+    },
+
     {
       id: "proximamente",
       titulo: "Próximamente",
@@ -113,9 +142,24 @@ const POSDashboard = ({
             posLocationId={posLocationId}
           />
         );
+      case "ventas_pendientes":
+        return (
+          <PendingSalesPOS
+            cambiarVista={setVista}
+            posLocationId={posLocationId}
+          />
+        );
 
       case "notas":
         return <NotasInternas cambiarVista={setVista} />;
+
+      case "configuracion_pos":
+        return (
+          <PosLocationPrintSettings
+            cambiarVista={setVista}
+            posLocationId={posLocationId}
+          />
+        );
 
       case "facturas":
         return (
@@ -124,6 +168,8 @@ const POSDashboard = ({
             posLocationId={posLocationId}
           />
         );
+
+
 
       case "clientes":
         return <ClientesPOS cambiarVista={setVista} />;

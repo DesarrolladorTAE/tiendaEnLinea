@@ -25,8 +25,8 @@ const TiendaContext = createContext({
   comprasPrevias: 0,
   mostrarCTAReferidos: false,
   // control del modal de planes
-  openPlanesModal: () => {},
-  closePlanesModal: () => {},
+  openPlanesModal: () => { },
+  closePlanesModal: () => { },
 });
 
 const FALLBACK_CTA_KEY = "cta_referidos_shown"; // usado si aún no hay tienda
@@ -91,7 +91,7 @@ export const TiendaProvider = ({
   } = useMemo(() => {
     const enDemo = Number(tienda?.plan_id) === 1;
     const trialOk = Boolean(referidos?.trial?.vigente);
-    const refOk   = Boolean(referidos?.referido?.valido);
+    const refOk = Boolean(referidos?.referido?.valido);
     const compras = Number(referidos?.compras_previas || 0);
 
     // ✅ Confiar en el backend (no revalidar condiciones)
@@ -174,6 +174,7 @@ export const TiendaProvider = ({
   const ctxValue = useMemo(
     () => ({
       tienda,
+      loading: tiendaLoading,
       tiendaLoading,
       referidos,
       referidosLoading,
@@ -246,8 +247,10 @@ export const TiendaProvider = ({
 // ✅ hook seguro
 export const useTienda = () => {
   const ctx = useContext(TiendaContext);
+
   return ctx ?? {
     tienda: null,
+    loading: false,
     tiendaLoading: false,
     referidos: null,
     referidosLoading: false,
@@ -256,7 +259,7 @@ export const useTienda = () => {
     codRefValido: false,
     comprasPrevias: 0,
     mostrarCTAReferidos: false,
-    openPlanesModal: () => {},
-    closePlanesModal: () => {},
+    openPlanesModal: () => { },
+    closePlanesModal: () => { },
   };
 };

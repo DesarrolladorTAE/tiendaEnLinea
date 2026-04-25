@@ -11,8 +11,9 @@ import {
   useMediaQuery,
   Box,
   Typography,
-  Divider,
   Paper,
+  Alert,
+  Chip,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
@@ -21,9 +22,49 @@ import LanIcon from "@mui/icons-material/Lan";
 import ComputerIcon from "@mui/icons-material/Computer";
 import AndroidIcon from "@mui/icons-material/Android";
 import BluetoothIcon from "@mui/icons-material/Bluetooth";
+import SettingsIcon from "@mui/icons-material/Settings";
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 
 import axiosClientPOS from "../config/axiosClientPOS";
 import { showSuccess, showError } from "../utils/alerts";
+
+const APP_META = {
+  windows_usb: {
+    label: "Enviar a Windows USB",
+    color: "#1565c0",
+    icon: <ComputerIcon />,
+  },
+  windows_ip: {
+    label: "Enviar a Windows IP",
+    color: "#1976d2",
+    icon: <LanIcon />,
+  },
+  android_usb: {
+    label: "Enviar a Android USB",
+    color: "#2e7d32",
+    icon: <AndroidIcon />,
+  },
+  android_ip: {
+    label: "Enviar a Android IP",
+    color: "#1b5e20",
+    icon: <AndroidIcon />,
+  },
+  ios_ip: {
+    label: "Enviar a iPhone IP",
+    color: "#455a64",
+    icon: <LanIcon />,
+  },
+  ios_ble: {
+    label: "Enviar a iPhone BLE",
+    color: "#212121",
+    icon: <BluetoothIcon />,
+  },
+  whatsapp: {
+    label: "Enviar por WhatsApp",
+    color: "#25D366",
+    icon: <WhatsAppIcon />,
+  },
+};
 
 export default function ModalTicketVenta({
   open,
@@ -33,16 +74,13 @@ export default function ModalTicketVenta({
   posLocationId,
 }) {
   const [numero, setNumero] = useState("");
-  const [sending, setSending] = useState(false);
-
-  const [loadingWindowsUsb, setLoadingWindowsUsb] = useState(false);
-  const [loadingWindowsIp, setLoadingWindowsIp] = useState(false);
-  const [loadingAndroidUsb, setLoadingAndroidUsb] = useState(false);
-  const [loadingFlutterIp, setLoadingFlutterIp] = useState(false);
-  const [loadingIosBle, setLoadingIosBle] = useState(false);
-
   const [loadingPayload, setLoadingPayload] = useState(false);
   const [payloadPreview, setPayloadPreview] = useState(null);
+
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  const [printSetting, setPrintSetting] = useState(null);
+
+  const [sendingPayload, setSendingPayload] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -53,28 +91,54 @@ export default function ModalTicketVenta({
     ? "https://mitiendaenlineamx.com.mx"
     : origin;
 
-  useEffect(() => {
-    if (open) {
-      setNumero("");
-      setSending(false);
-      setLoadingWindowsUsb(false);
-      setLoadingWindowsIp(false);
-      setLoadingAndroidUsb(false);
-      setLoadingFlutterIp(false);
-      setLoadingIosBle(false);
-      loadPayloadPreview();
-    } else {
-      setPayloadPreview(null);
-      setLoadingPayload(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, ventaId]);
-
   const pdfUrl = useMemo(() => {
     if (ticketUrl) return ticketUrl;
     if (!ventaId) return "";
     return `${baseUrl}/api/sales/${ventaId}/ticket.pdf`;
   }, [ticketUrl, ventaId, baseUrl]);
+
+  const meta = useMemo(() => {
+    if (!printSetting?.enabled || !printSetting?.app_type) {
+      return {
+        label: "Configurar conexión",
+        color: "#9ca3af",
+        icon: <SettingsIcon />,
+      };
+    }
+
+    return (
+      APP_META[printSetting.app_type] || {
+        label: "Enviar payload",
+        color: "#2563eb",
+        icon: <PrintRoundedIcon />,
+      }
+    );
+  }, [printSetting]);
+
+  const isWhatsapp = printSetting?.app_type === "whatsapp";
+  const canSend =
+    Boolean(printSetting?.enabled && printSetting?.app_type) &&
+    !loadingConfig &&
+    !sendingPayload;
+
+  useEffect(() => {
+    if (open) {
+      setNumero("");
+      setPrintSetting(null);
+      setPayloadPreview(null);
+      loadPayloadPreview();
+      loadPayloadConfig();
+    } else {
+      setNumero("");
+      setPrintSetting(null);
+      setPayloadPreview(null);
+      setLoadingPayload(false);
+      setLoadingConfig(false);
+      setSendingPayload(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, ventaId, posLocationId]);
+
 
   if (!ventaId) return null;
 
@@ -83,13 +147,30 @@ export default function ModalTicketVenta({
     setNumero(input);
   };
 
+  const loadPayloadConfig = async () => {
+    if (!posLocationId) return;
+
+    setLoadingConfig(true);
+
+    try {
+      const { data } = await axiosClientPOS.get(
+        `/pos/print-settings/${posLocationId}/payload-config`
+      );
+
+      setPrintSetting(data || null);
+    } catch (error) {
+      console.error("Error cargando configuración:", error);
+      setPrintSetting(null);
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
+
   const getPrintPayload = async () => {
     const { data } = await axiosClientPOS.get(`/sales/${ventaId}/print-payload`);
 
     if (!data?.ok || !data?.payload) {
-      throw new Error(
-        data?.message || "No se pudo obtener payload de impresión"
-      );
+      throw new Error(data?.message || "No se pudo obtener payload de impresión");
     }
 
     return data.payload;
@@ -120,6 +201,7 @@ export default function ModalTicketVenta({
     if (!ventaId) return;
 
     setLoadingPayload(true);
+
     try {
       const payload = await getPrintPayload();
       setPayloadPreview(payload);
@@ -133,13 +215,11 @@ export default function ModalTicketVenta({
 
   const sendToWindows = (payload) => {
     if (typeof window.sendPrintPayloadToWindows === "function") {
-      return window.sendPrintPayloadToWindows(payload);
+      window.sendPrintPayloadToWindows(payload);
+      return true;
     }
 
-    if (
-      window.chrome?.webview?.postMessage &&
-      typeof window.chrome.webview.postMessage === "function"
-    ) {
+    if (window.chrome?.webview?.postMessage) {
       window.chrome.webview.postMessage(JSON.stringify(payload));
       return true;
     }
@@ -147,221 +227,132 @@ export default function ModalTicketVenta({
     return false;
   };
 
-  const isPrinting =
-    loadingWindowsUsb ||
-    loadingWindowsIp ||
-    loadingAndroidUsb ||
-    loadingFlutterIp ||
-    loadingIosBle;
+  const sendToAndroidUsb = (payload) => {
+    if (window.AndroidPrintBridge?.print) {
+      window.AndroidPrintBridge.print(JSON.stringify(payload));
+      return true;
+    }
+
+    return false;
+  };
+
+  const sendToFlutter = async (request) => {
+    if (!window.flutter_inappwebview?.callHandler) {
+      throw new Error("No hay bridge disponible en esta aplicación.");
+    }
+
+    const resp = await window.flutter_inappwebview.callHandler(
+      "printTicket",
+      request
+    );
+
+    if (!resp?.ok) {
+      throw new Error(resp?.message || "No se pudo imprimir desde la aplicación.");
+    }
+
+    return true;
+  };
 
   const handleEnviarWhatsapp = async () => {
-    if (!ventaId) {
-      showError("❌ No hay venta para enviar.");
-      return;
-    }
-
     if (numero.length !== 10) {
-      showError("Ingresa un número válido de 10 dígitos.");
+      throw new Error("Ingresa un número válido de 10 dígitos.");
+    }
+
+    await axiosClientPOS.post(`/sales/${ventaId}/send-whatsapp`, {
+      phone: numero,
+    });
+
+    setNumero("");
+  };
+
+  const handleEnviarPayload = async () => {
+    if (!ventaId) {
+      showError("No hay venta para enviar.");
       return;
     }
 
-    setSending(true);
+    if (!printSetting?.enabled || !printSetting?.app_type) {
+      showError("Configura primero la conexión del punto de venta.");
+      return;
+    }
+
+    setSendingPayload(true);
+
     try {
-      await axiosClientPOS.post(`/sales/${ventaId}/send-whatsapp`, {
-        phone: numero,
-      });
-      showSuccess("✅ Ticket enviado por WhatsApp correctamente.");
-      setNumero("");
+      const appType = printSetting.app_type;
+
+      if (appType === "whatsapp") {
+        await handleEnviarWhatsapp();
+        showSuccess("Ticket enviado por WhatsApp correctamente.");
+        return;
+      }
+
+      const payload = await getPrintPayload();
+
+      if (appType === "windows_usb") {
+        const ok = sendToWindows({
+          ...payload,
+          app_type: appType,
+          transport: "usb",
+        });
+
+        if (!ok) throw new Error("No hay bridge de Windows disponible.");
+      }
+
+      if (appType === "windows_ip") {
+        const { printerIp, printerPort } = await getPrinterConfig();
+
+        const ok = sendToWindows({
+          ...payload,
+          app_type: appType,
+          transport: "tcp",
+          host: printerIp,
+          port: printerPort,
+        });
+
+        if (!ok) throw new Error("No hay bridge de Windows disponible.");
+      }
+
+      if (appType === "android_usb") {
+        const ok = sendToAndroidUsb({
+          ...payload,
+          app_type: appType,
+          transport: "usb",
+        });
+
+        if (!ok) throw new Error("No hay bridge Android USB disponible.");
+      }
+
+      if (appType === "android_ip" || appType === "ios_ip") {
+        const { printerIp, printerPort } = await getPrinterConfig();
+
+        await sendToFlutter({
+          payload: {
+            ...payload,
+            app_type: appType,
+            transport: "tcp",
+          },
+          host: printerIp,
+          port: printerPort,
+        });
+      }
+
+      if (appType === "ios_ble") {
+        await sendToFlutter({
+          payload: {
+            ...payload,
+            app_type: appType,
+            transport: "ble",
+          },
+        });
+      }
+
+      showSuccess(`${meta.label} correctamente.`);
     } catch (error) {
-      console.error("Error al enviar WhatsApp:", error);
-      showError("❌ No se pudo enviar el ticket.");
+      console.error("Error enviando payload:", error);
+      showError(error?.message || "No se pudo enviar el payload.");
     } finally {
-      setSending(false);
-    }
-  };
-
-  const handleWindowsUsb = async () => {
-    if (!ventaId) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingWindowsUsb(true);
-    try {
-      const payload = await getPrintPayload();
-
-      const windowsPayload = {
-        ...payload,
-        transport: "usb",
-      };
-
-      const ok = sendToWindows(windowsPayload);
-
-      if (ok) {
-        showSuccess("🖨️ Enviado a imprimir por Windows USB");
-        return;
-      }
-
-      throw new Error("No hay bridge de Windows disponible.");
-    } catch (err) {
-      console.error("Error Windows USB:", err);
-      showError(`❌ Error en Windows USB: ${err?.message || err}`);
-    } finally {
-      setLoadingWindowsUsb(false);
-    }
-  };
-
-  const handleWindowsIp = async () => {
-    if (!ventaId) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingWindowsIp(true);
-    try {
-      const payload = await getPrintPayload();
-      const { printerIp, printerPort } = await getPrinterConfig();
-
-      const windowsPayload = {
-        ...payload,
-        transport: "tcp",
-        host: printerIp,
-        port: printerPort,
-      };
-
-      const ok = sendToWindows(windowsPayload);
-
-      if (ok) {
-        showSuccess(`🖨️ Enviado a Windows IP (${printerIp}:${printerPort})`);
-        return;
-      }
-
-      throw new Error("No hay bridge de Windows disponible.");
-    } catch (err) {
-      console.error("Error Windows IP:", err);
-      showError(`❌ Error en Windows IP: ${err?.message || err}`);
-    } finally {
-      setLoadingWindowsIp(false);
-    }
-  };
-
-  const handleAndroidUsb = async () => {
-    if (!ventaId) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingAndroidUsb(true);
-    try {
-      const payload = await getPrintPayload();
-
-      if (window.AndroidPrintBridge?.print) {
-        window.AndroidPrintBridge.print(JSON.stringify(payload));
-        showSuccess("🖨️ Enviado a Android USB");
-        return;
-      }
-
-      throw new Error("No hay bridge Android USB disponible.");
-    } catch (err) {
-      console.error("Error Android USB:", err);
-      showError(`❌ Error en Android USB: ${err?.message || err}`);
-    } finally {
-      setLoadingAndroidUsb(false);
-    }
-  };
-
-  const handleFlutterIp = async () => {
-    if (!ventaId) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingFlutterIp(true);
-    try {
-      const payload = await getPrintPayload();
-      const { printerIp, printerPort } = await getPrinterConfig();
-
-      const request = {
-        payload,
-        host: printerIp,
-        port: printerPort,
-      };
-
-      console.log("printTicket -> request", request);
-      console.log(
-        "flutter_inappwebview disponible:",
-        !!window.flutter_inappwebview
-      );
-
-      if (window.flutter_inappwebview?.callHandler) {
-        const resp = await window.flutter_inappwebview.callHandler(
-          "printTicket",
-          request
-        );
-
-        console.log("printTicket -> response", resp);
-
-        if (resp?.ok) {
-          showSuccess(
-            `🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`
-          );
-          return;
-        }
-
-        throw new Error(resp?.message || "No se pudo imprimir desde la app.");
-      }
-
-      throw new Error("No hay bridge Flutter disponible en este dispositivo.");
-    } catch (err) {
-      console.error("Error Flutter IP:", err);
-      showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
-    } finally {
-      setLoadingFlutterIp(false);
-    }
-  };
-
-  const handleIosBle = async () => {
-    if (!ventaId) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingIosBle(true);
-    try {
-      const payload = await getPrintPayload();
-
-      const request = {
-        payload,
-      };
-
-      console.log("printTicket BLE -> request", request);
-      console.log(
-        "flutter_inappwebview disponible:",
-        !!window.flutter_inappwebview
-      );
-
-      if (window.flutter_inappwebview?.callHandler) {
-        const resp = await window.flutter_inappwebview.callHandler(
-          "printTicket",
-          request
-        );
-
-        console.log("printTicket BLE -> response", resp);
-
-        if (resp?.ok) {
-          showSuccess("🖨️ Enviado a imprimir por iOS BLE");
-          return;
-        }
-
-        throw new Error(resp?.message || "No se pudo imprimir desde la app.");
-      }
-
-      throw new Error("No hay bridge Flutter disponible en este dispositivo.");
-    } catch (err) {
-      console.error("Error iOS BLE:", err);
-      showError(`❌ Error al imprimir por iOS BLE: ${err?.message || err}`);
-    } finally {
-      setLoadingIosBle(false);
+      setSendingPayload(false);
     }
   };
 
@@ -400,13 +391,7 @@ export default function ModalTicketVenta({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent
-        dividers
-        sx={{
-          p: 0,
-          bgcolor: "#f7f7f7",
-        }}
-      >
+      <DialogContent dividers sx={{ p: 0, bgcolor: "#f7f7f7" }}>
         <Box
           sx={{
             display: "grid",
@@ -451,11 +436,7 @@ export default function ModalTicketVenta({
               )
             ) : (
               <Box>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={700}
-                  sx={{ mb: 1.5 }}
-                >
+                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
                   Datos del ticket
                 </Typography>
 
@@ -484,8 +465,8 @@ export default function ModalTicketVenta({
                     QR:{" "}
                     {previewText(
                       payloadPreview.qrText ||
-                        payloadPreview.qrs?.[0]?.text ||
-                        "—"
+                      payloadPreview.qrs?.[0]?.text ||
+                      "—"
                     )}
                     {"\n\n"}
                     {previewText(payloadPreview.textAfterQr)}
@@ -508,151 +489,153 @@ export default function ModalTicketVenta({
               gap: 2,
             }}
           >
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Typography variant="subtitle1" fontWeight={700} mb={1.5}>
-                Enviar por WhatsApp
-              </Typography>
-
-              <Stack spacing={1.25}>
-                <TextField
-                  label="Número para WhatsApp"
-                  value={numero}
-                  onChange={handleNumeroChange}
-                  placeholder="5522334455"
-                  size="small"
-                  fullWidth
-                  inputProps={{ inputMode: "numeric", maxLength: 10 }}
-                />
-
-                <Button
-                  variant="contained"
-                  color="success"
-                  startIcon={
-                    sending ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <WhatsAppIcon />
-                    )
-                  }
-                  onClick={handleEnviarWhatsapp}
-                  disabled={sending || numero.length !== 10 || isPrinting}
-                  fullWidth
-                >
-                  {sending ? "Enviando..." : "Enviar WhatsApp"}
-                </Button>
-              </Stack>
-            </Paper>
-
             <Paper
               variant="outlined"
-              sx={{ p: 2, borderRadius: 2, flexGrow: 1 }}
+              sx={{
+                p: 2,
+                borderRadius: 3,
+                borderColor: "#e5e7eb",
+              }}
             >
-              <Typography variant="subtitle1" fontWeight={700} mb={1.5}>
-                Impresión por plataforma
-              </Typography>
+              <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="subtitle1" fontWeight={800}>
+                    Envío configurado
+                  </Typography>
 
-              <Stack spacing={1.25}>
-                <Button
-                  onClick={handleWindowsUsb}
-                  variant="outlined"
-                  startIcon={
-                    loadingWindowsUsb ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <ComputerIcon />
-                    )
-                  }
-                  disabled={isPrinting}
-                  fullWidth
-                  sx={{ minHeight: 46, justifyContent: "flex-start" }}
-                >
-                  {loadingWindowsUsb ? "Imprimiendo..." : "Windows USB"}
-                </Button>
+                  <Typography variant="body2" color="text.secondary">
+                    El botón se muestra según la configuración guardada del punto
+                    de venta.
+                  </Typography>
+                </Box>
 
-                <Button
-                  onClick={handleWindowsIp}
-                  variant="contained"
-                  startIcon={
-                    loadingWindowsIp ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <LanIcon />
-                    )
-                  }
-                  disabled={isPrinting}
-                  fullWidth
-                  sx={{ minHeight: 46, justifyContent: "flex-start" }}
-                >
-                  {loadingWindowsIp ? "Imprimiendo..." : "Windows IP"}
-                </Button>
+                {loadingConfig ? (
+                  <Box
+                    sx={{
+                      minHeight: 72,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <CircularProgress size={26} />
+                  </Box>
+                ) : (
+                  <>
+                    <Chip
+                      label={
+                        printSetting?.enabled
+                          ? `Conexión: ${meta.label}`
+                          : "Sin conexión configurada"
+                      }
+                      sx={{
+                        alignSelf: "flex-start",
+                        fontWeight: 800,
+                        bgcolor: printSetting?.enabled ? `${meta.color}18` : "#f3f4f6",
+                        color: printSetting?.enabled ? meta.color : "#6b7280",
+                      }}
+                    />
 
-                <Button
-                  onClick={handleAndroidUsb}
-                  variant="outlined"
-                  color="success"
-                  startIcon={
-                    loadingAndroidUsb ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <AndroidIcon />
-                    )
-                  }
-                  disabled={isPrinting}
-                  fullWidth
-                  sx={{ minHeight: 46, justifyContent: "flex-start" }}
-                >
-                  {loadingAndroidUsb ? "Imprimiendo..." : "Android USB"}
-                </Button>
+                    <TextField
+                      label="Número para WhatsApp"
+                      value={numero}
+                      onChange={handleNumeroChange}
+                      placeholder="5522334455"
+                      size="small"
+                      fullWidth
+                      inputProps={{ inputMode: "numeric", maxLength: 10 }}
+                    />
 
-                <Button
-                  onClick={handleFlutterIp}
-                  variant="contained"
-                  color="secondary"
-                  startIcon={
-                    loadingFlutterIp ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <LanIcon />
-                    )
-                  }
-                  disabled={isPrinting}
-                  fullWidth
-                  sx={{ minHeight: 46, justifyContent: "flex-start" }}
-                >
-                  {loadingFlutterIp ? "Imprimiendo..." : "IOS IP"}
-                </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={<WhatsAppIcon />}
+                      onClick={async () => {
+                        try {
+                          setSendingPayload(true);
+                          await handleEnviarWhatsapp();
+                          showSuccess("Ticket enviado por WhatsApp correctamente.");
+                        } catch (error) {
+                          showError(error?.message || "No se pudo enviar por WhatsApp.");
+                        } finally {
+                          setSendingPayload(false);
+                        }
+                      }}
+                      disabled={sendingPayload || numero.length !== 10}
+                      fullWidth
+                      sx={{
+                        minHeight: 48,
+                        borderRadius: 3,
+                        fontWeight: 900,
+                        textTransform: "none",
+                        bgcolor: "#25D366",
+                        boxShadow: "0 12px 26px rgba(37,211,102,.28)",
+                        "&:hover": {
+                          bgcolor: "#1ebe5d",
+                        },
+                        "&.Mui-disabled": {
+                          bgcolor: "#d1d5db",
+                          color: "#6b7280",
+                          boxShadow: "none",
+                        },
+                      }}
+                    >
+                      Enviar por WhatsApp
+                    </Button>
 
-                <Button
-                  onClick={handleIosBle}
-                  variant="contained"
-                  color="info"
-                  startIcon={
-                    loadingIosBle ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <BluetoothIcon />
-                    )
-                  }
-                  disabled={isPrinting}
-                  fullWidth
-                  sx={{ minHeight: 46, justifyContent: "flex-start" }}
-                >
-                  {loadingIosBle ? "Imprimiendo..." : "IOS BLE"}
-                </Button>
+                    {!printSetting?.enabled && (
+                      <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                        Debes configurar la conexión en el apartado de
+                        configuración del punto de venta.
+                      </Alert>
+                    )}
 
-                <Divider sx={{ my: 1 }} />
-
-                <Button
-                  onClick={onClose}
-                  variant="outlined"
-                  color="inherit"
-                  fullWidth
-                  sx={{ minHeight: 44 }}
-                >
-                  Cerrar
-                </Button>
+                    <Button
+                      variant="contained"
+                      startIcon={
+                        sendingPayload ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : (
+                          meta.icon
+                        )
+                      }
+                      onClick={handleEnviarPayload}
+                      disabled={!canSend || sendingPayload}
+                      fullWidth
+                      sx={{
+                        minHeight: 48,
+                        justifyContent: "flex-start",
+                        borderRadius: 3,
+                        fontWeight: 900,
+                        textTransform: "none",
+                        bgcolor: meta.color,
+                        boxShadow: `0 12px 26px ${meta.color}44`,
+                        "&:hover": {
+                          bgcolor: meta.color,
+                          filter: "brightness(.92)",
+                        },
+                        "&.Mui-disabled": {
+                          bgcolor: "#d1d5db",
+                          color: "#6b7280",
+                          boxShadow: "none",
+                        },
+                      }}
+                    >
+                      {sendingPayload ? "Enviando..." : meta.label}
+                    </Button>
+                  </>
+                )}
               </Stack>
             </Paper>
+
+            <Button
+              onClick={onClose}
+              variant="outlined"
+              color="inherit"
+              fullWidth
+              sx={{ minHeight: 44, borderRadius: 3 }}
+            >
+              Cerrar
+            </Button>
           </Box>
         </Box>
       </DialogContent>

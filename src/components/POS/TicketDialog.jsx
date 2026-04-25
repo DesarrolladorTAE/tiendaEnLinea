@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -12,6 +12,8 @@ import {
   IconButton,
   Divider,
   useMediaQuery,
+  Alert,
+  Chip,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -19,9 +21,51 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 import LanIcon from "@mui/icons-material/Lan";
 import ComputerIcon from "@mui/icons-material/Computer";
 import AndroidIcon from "@mui/icons-material/Android";
+import AppleIcon from "@mui/icons-material/Apple";
+import BluetoothIcon from "@mui/icons-material/Bluetooth";
+import SettingsIcon from "@mui/icons-material/Settings";
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import { useTheme } from "@mui/material/styles";
 import { showSuccess, showError } from "../../utils/alerts";
 import axiosClientPOS from "../../config/axiosClientPOS";
+
+const APP_META = {
+  windows_usb: {
+    label: "Enviar a Windows USB",
+    color: "#1565c0",
+    icon: <ComputerIcon fontSize="small" />,
+  },
+  windows_ip: {
+    label: "Enviar a Windows IP",
+    color: "#1976d2",
+    icon: <LanIcon fontSize="small" />,
+  },
+  android_usb: {
+    label: "Enviar a Android USB",
+    color: "#2e7d32",
+    icon: <AndroidIcon fontSize="small" />,
+  },
+  android_ip: {
+    label: "Enviar a Android IP",
+    color: "#1b5e20",
+    icon: <AndroidIcon fontSize="small" />,
+  },
+  ios_ip: {
+    label: "Enviar a iPhone IP",
+    color: "#455a64",
+    icon: <AppleIcon fontSize="small" />,
+  },
+  ios_ble: {
+    label: "Enviar a iPhone BLE",
+    color: "#212121",
+    icon: <BluetoothIcon fontSize="small" />,
+  },
+  whatsapp: {
+    label: "Payload WhatsApp",
+    color: "#25D366",
+    icon: <WhatsAppIcon fontSize="small" />,
+  },
+};
 
 export default function TicketDialog({
   open,
@@ -34,45 +78,96 @@ export default function TicketDialog({
   const theme = useTheme();
 
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
-  const isMobileOrTablet = useMediaQuery(theme.breakpoints.down("lg"));
-
   const [phone, setPhone] = useState("");
-  const [loadingSend, setLoadingSend] = useState(false);
 
-  const [loadingWindowsUsb, setLoadingWindowsUsb] = useState(false);
-  const [loadingWindowsIp, setLoadingWindowsIp] = useState(false);
-  const [loadingAndroidUsb, setLoadingAndroidUsb] = useState(false);
-  const [loadingFlutterIp, setLoadingFlutterIp] = useState(false);
+  const [loadingSend, setLoadingSend] = useState(false);
+  const [loadingConfig, setLoadingConfig] = useState(false);
+  const [sendingPayload, setSendingPayload] = useState(false);
+  const [printSetting, setPrintSetting] = useState(null);
+  const [autoSent, setAutoSent] = useState(false);
+
+  const digitsOnly = (v) => (v || "").replace(/\D/g, "").slice(0, 10);
+  const isValidPhone = /^\d{10}$/.test(phone);
+
+  const meta = useMemo(() => {
+    if (!printSetting?.enabled || !printSetting?.app_type) {
+      return {
+        label: "Configurar conexión",
+        color: "#9ca3af",
+        icon: <SettingsIcon fontSize="small" />,
+      };
+    }
+
+    return (
+      APP_META[printSetting.app_type] || {
+        label: "Enviar payload",
+        color: "#2563eb",
+        icon: <PrintRoundedIcon fontSize="small" />,
+      }
+    );
+  }, [printSetting]);
+
+  const canSendPayload =
+    Boolean(printSetting?.enabled && printSetting?.app_type) &&
+    !loadingConfig &&
+    !sendingPayload &&
+    !loadingSend;
 
   useEffect(() => {
     if (open) {
       setPhone("");
       setLoadingSend(false);
-      setLoadingWindowsUsb(false);
-      setLoadingWindowsIp(false);
-      setLoadingAndroidUsb(false);
-      setLoadingFlutterIp(false);
+      setLoadingConfig(false);
+      setSendingPayload(false);
+      setPrintSetting(null);
+      setAutoSent(false);
+      loadPayloadConfig();
     }
-  }, [open, sale?.id]);
+  }, [open, sale?.id, posLocationId]);
+
+  useEffect(() => {
+    if (
+      open &&
+      sale?.id &&
+      printSetting?.enabled &&
+      printSetting?.auto_send_payload &&
+      printSetting?.app_type !== "whatsapp" &&
+      !autoSent &&
+      !sendingPayload
+    ) {
+      setAutoSent(true);
+      handleConfiguredPayload();
+    }
+  }, [open, sale?.id, printSetting]);
 
   const handleClose = () => {
     setPhone("");
     setLoadingSend(false);
-    setLoadingWindowsUsb(false);
-    setLoadingWindowsIp(false);
-    setLoadingAndroidUsb(false);
-    setLoadingFlutterIp(false);
+    setLoadingConfig(false);
+    setSendingPayload(false);
+    setPrintSetting(null);
+    setAutoSent(false);
     onClose?.();
   };
 
-  const digitsOnly = (v) => (v || "").replace(/\D/g, "").slice(0, 10);
-  const isValidPhone = /^\d{10}$/.test(phone);
+  const loadPayloadConfig = async () => {
+    if (!posLocationId) return;
 
-  const isAnyPrinting =
-    loadingWindowsUsb ||
-    loadingWindowsIp ||
-    loadingAndroidUsb ||
-    loadingFlutterIp;
+    setLoadingConfig(true);
+
+    try {
+      const { data } = await axiosClientPOS.get(
+        `/pos/print-settings/${posLocationId}/payload-config`
+      );
+
+      setPrintSetting(data || null);
+    } catch (error) {
+      console.error("Error cargando configuración de payload:", error);
+      setPrintSetting(null);
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
 
   const handleSend = async () => {
     if (!sale?.id) {
@@ -86,6 +181,7 @@ export default function TicketDialog({
     }
 
     setLoadingSend(true);
+
     try {
       await onSend?.(digitsOnly(phone));
       showSuccess("📨 Ticket enviado por WhatsApp");
@@ -102,9 +198,7 @@ export default function TicketDialog({
     const { data } = await axiosClientPOS.get(`/sales/${sale.id}/print-payload`);
 
     if (!data?.ok || !data?.payload) {
-      throw new Error(
-        data?.message || "No se pudo obtener payload de impresión"
-      );
+      throw new Error(data?.message || "No se pudo obtener payload de impresión");
     }
 
     return data.payload;
@@ -147,160 +241,136 @@ export default function TicketDialog({
     return false;
   };
 
-  const handleWindowsUsb = async () => {
-    if (!sale?.id) {
-      showError("❌ No hay venta para imprimir.");
-      return;
+  const sendToAndroidUsb = (payload) => {
+    if (window.AndroidPrintBridge?.print) {
+      window.AndroidPrintBridge.print(JSON.stringify(payload));
+      return true;
     }
 
-    setLoadingWindowsUsb(true);
-
-    try {
-      const payload = await getPrintPayload();
-
-      const windowsPayload = {
-        ...payload,
-        transport: "usb",
-      };
-
-      const ok = sendToWindows(windowsPayload);
-
-      if (ok) {
-        showSuccess("🖨️ Enviado a imprimir por Windows USB");
-        return;
-      }
-
-      throw new Error("No hay bridge de Windows disponible.");
-    } catch (err) {
-      console.error("Error Windows USB:", err);
-      showError(`❌ Error en Windows USB: ${err?.message || err}`);
-    } finally {
-      setLoadingWindowsUsb(false);
-    }
+    return false;
   };
 
-  const handleWindowsIp = async () => {
-    if (!sale?.id) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingWindowsIp(true);
-
-    try {
-      const payload = await getPrintPayload();
-      const { printerIp, printerPort } = await getPrinterConfig();
-
-      const windowsPayload = {
-        ...payload,
-        transport: "tcp",
-        host: printerIp,
-        port: printerPort,
-      };
-
-      const ok = sendToWindows(windowsPayload);
-
-      if (ok) {
-        showSuccess(`🖨️ Enviado a Windows IP (${printerIp}:${printerPort})`);
-        return;
-      }
-
-      throw new Error("No hay bridge de Windows disponible.");
-    } catch (err) {
-      console.error("Error Windows IP:", err);
-      showError(`❌ Error en Windows IP: ${err?.message || err}`);
-    } finally {
-      setLoadingWindowsIp(false);
-    }
-  };
-
-  const handleAndroidUsb = async () => {
-    if (!sale?.id) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingAndroidUsb(true);
-
-    try {
-      const payload = await getPrintPayload();
-
-      if (window.AndroidPrintBridge?.print) {
-        window.AndroidPrintBridge.print(JSON.stringify(payload));
-        showSuccess("🖨️ Enviado a Android USB");
-        return;
-      }
-
-      throw new Error("No hay bridge Android USB disponible en este dispositivo.");
-    } catch (err) {
-      console.error("Error Android USB:", err);
-      showError(`❌ Error en Android USB: ${err?.message || err}`);
-    } finally {
-      setLoadingAndroidUsb(false);
-    }
-  };
-
-  const handleFlutterIp = async () => {
-    if (!sale?.id) {
-      showError("❌ No hay venta para imprimir.");
-      return;
-    }
-
-    setLoadingFlutterIp(true);
-
-    try {
-      const payload = await getPrintPayload();
-      const { printerIp, printerPort } = await getPrinterConfig();
-
-      const request = {
-        payload,
-        host: printerIp,
-        port: printerPort,
-      };
-
-      console.log("printTicket -> request", request);
-      console.log(
-        "flutter_inappwebview disponible:",
-        !!window.flutter_inappwebview
-      );
-
-      if (window.flutter_inappwebview?.callHandler) {
-        const resp = await window.flutter_inappwebview.callHandler(
-          "printTicket",
-          request
-        );
-
-        console.log("printTicket -> response", resp);
-
-        if (resp?.ok) {
-          showSuccess(`🖨️ Enviado a imprimir por IP (${printerIp}:${printerPort})`);
-          return;
-        }
-
-        throw new Error(resp?.message || "No se pudo imprimir desde la app.");
-      }
-
+  const sendToFlutter = async (request) => {
+    if (!window.flutter_inappwebview?.callHandler) {
       throw new Error("No hay bridge Flutter disponible en este dispositivo.");
+    }
+
+    const resp = await window.flutter_inappwebview.callHandler(
+      "printTicket",
+      request
+    );
+
+    if (!resp?.ok) {
+      throw new Error(resp?.message || "No se pudo imprimir desde la aplicación.");
+    }
+
+    return true;
+  };
+
+  const handleConfiguredPayload = async () => {
+    if (!sale?.id) {
+      showError("❌ No hay venta para imprimir.");
+      return;
+    }
+
+    if (!printSetting?.enabled || !printSetting?.app_type) {
+      showError("Configura primero la conexión del punto de venta.");
+      return;
+    }
+
+    setSendingPayload(true);
+
+    try {
+      const appType = printSetting.app_type;
+      const payload = await getPrintPayload();
+
+      if (appType === "windows_usb") {
+        const ok = sendToWindows({
+          ...payload,
+          app_type: appType,
+          transport: "usb",
+        });
+
+        if (!ok) throw new Error("No hay bridge de Windows disponible.");
+      }
+
+      if (appType === "windows_ip") {
+        const { printerIp, printerPort } = await getPrinterConfig();
+
+        const ok = sendToWindows({
+          ...payload,
+          app_type: appType,
+          transport: "tcp",
+          host: printerIp,
+          port: printerPort,
+        });
+
+        if (!ok) throw new Error("No hay bridge de Windows disponible.");
+      }
+
+      if (appType === "android_usb") {
+        const ok = sendToAndroidUsb({
+          ...payload,
+          app_type: appType,
+          transport: "usb",
+        });
+
+        if (!ok) throw new Error("No hay bridge Android USB disponible.");
+      }
+
+      if (appType === "android_ip" || appType === "ios_ip") {
+        const { printerIp, printerPort } = await getPrinterConfig();
+
+        await sendToFlutter({
+          payload: {
+            ...payload,
+            app_type: appType,
+            transport: "tcp",
+          },
+          host: printerIp,
+          port: printerPort,
+        });
+      }
+
+      if (appType === "ios_ble") {
+        await sendToFlutter({
+          payload: {
+            ...payload,
+            app_type: appType,
+            transport: "ble",
+          },
+        });
+      }
+
+      if (appType === "whatsapp") {
+        showError("WhatsApp se envía desde el botón verde de WhatsApp.");
+        return;
+      }
+
+      showSuccess(`🖨️ ${meta.label} correctamente.`);
     } catch (err) {
-      console.error("Error Flutter IP:", err);
-      showError(`❌ Error al imprimir por IP: ${err?.message || err}`);
+      console.error("Error payload configurado:", err);
+      showError(`❌ ${err?.message || "No se pudo enviar el payload."}`);
     } finally {
-      setLoadingFlutterIp(false);
+      setSendingPayload(false);
     }
   };
 
   if (!open) return null;
 
+  const isBusy = loadingSend || sendingPayload || loadingConfig;
+
   const buttonBaseSx = {
     minHeight: { xs: 44, sm: 46 },
     fontSize: { xs: "0.88rem", sm: "0.9rem", md: "0.86rem" },
-    fontWeight: 600,
+    fontWeight: 700,
     px: 1.2,
     py: 1,
     borderRadius: 1.8,
     whiteSpace: "normal",
     lineHeight: 1.15,
     textAlign: "center",
+    textTransform: "none",
     "& .MuiButton-startIcon": {
       marginRight: 0.75,
       marginLeft: 0,
@@ -360,93 +430,73 @@ export default function TicketDialog({
         <Box sx={{ width: "100%" }}>
           <Box
             sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr 1fr", md: "1fr 1fr" },
-              gap: 1.2,
-              mb: 1.2,
+              mb: 1.4,
+              display: "flex",
+              flexDirection: "column",
+              gap: 1,
             }}
           >
-            <Button
-              onClick={handleWindowsUsb}
-              disabled={isAnyPrinting || loadingSend}
-              variant="outlined"
-              fullWidth
-              startIcon={
-                loadingWindowsUsb ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <ComputerIcon fontSize="small" />
-                )
-              }
-              sx={buttonBaseSx}
-            >
-              {loadingWindowsUsb ? "Imprimiendo..." : "Windows USB"}
-            </Button>
-
-            <Button
-              onClick={handleWindowsIp}
-              disabled={isAnyPrinting || loadingSend}
-              variant="contained"
-              fullWidth
-              startIcon={
-                loadingWindowsIp ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <LanIcon fontSize="small" />
-                )
-              }
-              sx={buttonBaseSx}
-            >
-              {loadingWindowsIp ? "Imprimiendo..." : "Windows IP"}
-            </Button>
-
-            <Button
-              onClick={handleAndroidUsb}
-              disabled={isAnyPrinting || loadingSend}
-              variant="outlined"
-              color="success"
-              fullWidth
-              startIcon={
-                loadingAndroidUsb ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <AndroidIcon fontSize="small" />
-                )
-              }
-              sx={buttonBaseSx}
-            >
-              {loadingAndroidUsb ? "Imprimiendo..." : "Android USB"}
-            </Button>
-
-            <Button
-              onClick={handleFlutterIp}
-              disabled={isAnyPrinting || loadingSend}
-              variant="contained"
-              color="secondary"
-              fullWidth
-              startIcon={
-                loadingFlutterIp ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <LanIcon fontSize="small" />
-                )
-              }
-              sx={buttonBaseSx}
-            >
-              {loadingFlutterIp ? "Imprimiendo..." : "IOS IP"}
-            </Button>
+            {loadingConfig ? (
+              <Alert severity="info" sx={{ borderRadius: 2 }}>
+                Cargando configuración de conectividad...
+              </Alert>
+            ) : printSetting?.enabled ? (
+              <Chip
+                label={`Conectividad configurada: ${meta.label}`}
+                sx={{
+                  alignSelf: "flex-start",
+                  fontWeight: 800,
+                  bgcolor: `${meta.color}18`,
+                  color: meta.color,
+                }}
+              />
+            ) : (
+              <Alert severity="warning" sx={{ borderRadius: 2 }}>
+                No hay conectividad configurada para este punto de venta.
+              </Alert>
+            )}
           </Box>
 
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: { xs: "1fr 1fr", md: "1fr 1fr" },
+              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
               gap: 1.2,
             }}
           >
             <Button
+              onClick={handleConfiguredPayload}
+              disabled={!canSendPayload}
+              variant="contained"
+              fullWidth
+              startIcon={
+                sendingPayload || loadingConfig ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  meta.icon
+                )
+              }
+              sx={{
+                ...buttonBaseSx,
+                bgcolor: meta.color,
+                boxShadow: `0 10px 24px ${meta.color}44`,
+                "&:hover": {
+                  bgcolor: meta.color,
+                  filter: "brightness(.92)",
+                },
+                "&.Mui-disabled": {
+                  bgcolor: "#d1d5db",
+                  color: "#6b7280",
+                  boxShadow: "none",
+                },
+              }}
+            >
+              {sendingPayload || loadingConfig ? "Procesando..." : meta.label}
+            </Button>
+
+            <Button
               onClick={handleSend}
-              disabled={!isValidPhone || loadingSend || isAnyPrinting}
+              disabled={!isValidPhone || isBusy}
               fullWidth
               variant="contained"
               color="success"
@@ -459,16 +509,19 @@ export default function TicketDialog({
               }
               sx={buttonBaseSx}
             >
-              {loadingSend ? "Enviando..." : "Enviar"}
+              {loadingSend ? "Enviando..." : "Enviar WhatsApp"}
             </Button>
 
             <Button
               onClick={handleClose}
-              disabled={loadingSend || isAnyPrinting}
+              disabled={isBusy}
               fullWidth
               color="inherit"
               variant="outlined"
-              sx={buttonBaseSx}
+              sx={{
+                ...buttonBaseSx,
+                gridColumn: { xs: "auto", sm: "1 / -1" },
+              }}
             >
               Cerrar
             </Button>

@@ -18,6 +18,7 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
+  Switch,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import DiscountIcon from "@mui/icons-material/Percent";
@@ -29,6 +30,7 @@ import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 import ModalCambioDescuento from "./ModalCambioDescuento";
 import ItemWorkerAssign from "./ItemWorkerAssign";
 import SaleClientAssign from "./SaleClientAssign";
+import PendingSaleModal from "./PendingSaleModal";
 
 import { showError } from "../../utils/alerts";
 import axiosClient from "../../config/axiosClient";
@@ -97,6 +99,15 @@ export default function CartSidebar({
   const [savingQuickClient, setSavingQuickClient] = useState(false);
   const [submittingSale, setSubmittingSale] = useState(false);
 
+  const [pendingSale, setPendingSale] = useState(false);
+  const [openPendingModal, setOpenPendingModal] = useState(false);
+  const [pendingHasAdvance, setPendingHasAdvance] = useState(false);
+  const [pendingAdvancePayment, setPendingAdvancePayment] = useState(null);
+  const [editingAdvance, setEditingAdvance] = useState(false);
+
+  const [pendingDueAt, setPendingDueAt] = useState(null);
+  const [pendingNote, setPendingNote] = useState("");
+
   const [quickClientForm, setQuickClientForm] = useState({
     nombre_alias: "",
     telefono: "",
@@ -154,7 +165,7 @@ export default function CartSidebar({
               behavior: "smooth",
             });
           }
-        } catch {}
+        } catch { }
       };
 
       requestAnimationFrame(doScroll);
@@ -175,7 +186,7 @@ export default function CartSidebar({
 
       try {
         el.scrollIntoView({ block: "center", inline: "nearest" });
-      } catch {}
+      } catch { }
       ensureVisible(el);
     };
 
@@ -298,12 +309,12 @@ export default function CartSidebar({
 
       const original = toNumber(
         item.original_price ??
-          item.price_original ??
-          item.base_price ??
-          item.precio_base ??
-          item.precio_sin_descuento ??
-          item.original ??
-          item.originalPrice
+        item.price_original ??
+        item.base_price ??
+        item.precio_base ??
+        item.precio_sin_descuento ??
+        item.original ??
+        item.originalPrice
       );
 
       return {
@@ -336,6 +347,15 @@ export default function CartSidebar({
       telefono: "",
     });
     setScannerEnabled?.(true);
+
+    setPendingSale(false);
+    setPendingHasAdvance(false);
+    setOpenPendingModal(false);
+    setPendingAdvancePayment(null);
+    setEditingAdvance(false);
+
+    setPendingDueAt(null);
+    setPendingNote("");
   };
 
   const processCheckout = async () => {
@@ -343,86 +363,110 @@ export default function CartSidebar({
 
     let payments = [];
 
-    if (selectedCount === 1) {
-      const m = selected[0];
-
-      if (m === "efectivo") {
-        const recibido = toNumber(cashReceived);
-        if (!Number.isFinite(recibido)) return showError("Ingresa un monto de efectivo válido.");
-        if (recibido + 0.00001 < total) return showError("El efectivo recibido no cubre el total.");
-
-        const aplicado = Math.min(recibido, total);
-        const r = +recibido.toFixed(2);
-
-        payments = [
-          {
-            method: "efectivo",
-            amount: +aplicado.toFixed(2),
-            recibido: r,
-            cash_received: r,
-            efectivo_recibido: r,
-          },
-        ];
+    if (pendingSale) {
+      if (!pendingHasAdvance) {
+        payments = [];
       } else {
-        const { referencia, ultimos4 } = details[m];
-        if (!referencia?.trim() || (CARDLIKE.includes(m) && (ultimos4 || "").length !== 4)) {
-          return showError("Completa referencia y últimos 4.");
+        if (!pendingAdvancePayment) {
+          return showError("Selecciona o registra el anticipo de la venta pendiente.");
         }
 
-        payments = [
-          {
-            method: m,
-            amount: +total.toFixed(2),
-            referencia: referencia.trim(),
-            ...(CARDLIKE.includes(m) ? { ultimos_4: ultimos4 } : {}),
-          },
-        ];
+        payments = [pendingAdvancePayment];
       }
     } else {
-      for (const m of selected) {
-        const { amount, referencia, ultimos4 } = details[m];
-        const val = toNumber(amount);
-
-        if (!Number.isFinite(val) || val <= 0) {
-          return showError("Todos los montos deben ser mayores que 0.");
-        }
-
-        if (CARDLIKE.includes(m)) {
-          if (!referencia?.trim() || (ultimos4 || "").length !== 4) {
-            const label = METHODS.find((x) => x.key === m)?.label || m;
-            return showError(`Completa referencia y últimos 4 para ${label}.`);
-          }
-        }
-      }
-
-      const sumaValida = selected
-        .map((m) => toNumber(details[m].amount))
-        .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-
-      if (sumaValida + 0.00001 < total) {
-        return showError(`Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(2)}.`);
-      }
-
-      payments = selected.map((m) => {
-        const { amount, referencia, ultimos4 } = details[m];
-        const val = toNumber(amount);
-
-        const p = { method: m, amount: +val.toFixed(2) };
-
-        if (CARDLIKE.includes(m)) {
-          p.referencia = (referencia || "").trim();
-          p.ultimos_4 = ultimos4 || "";
-        }
+      if (selectedCount === 1) {
+        const m = selected[0];
 
         if (m === "efectivo") {
-          const r = +val.toFixed(2);
-          p.recibido = r;
-          p.cash_received = r;
-          p.efectivo_recibido = r;
+          const recibido = toNumber(cashReceived);
+
+          if (!Number.isFinite(recibido)) {
+            return showError("Ingresa un monto de efectivo válido.");
+          }
+
+          if (recibido + 0.00001 < total) {
+            return showError("El efectivo recibido no cubre el total.");
+          }
+
+          const aplicado = Math.min(recibido, total);
+          const r = +recibido.toFixed(2);
+
+          payments = [
+            {
+              method: "efectivo",
+              amount: +aplicado.toFixed(2),
+              recibido: r,
+              cash_received: r,
+              efectivo_recibido: r,
+            },
+          ];
+        } else {
+          const { referencia, ultimos4 } = details[m];
+
+          if (
+            !referencia?.trim() ||
+            (CARDLIKE.includes(m) && (ultimos4 || "").length !== 4)
+          ) {
+            return showError("Completa referencia y últimos 4.");
+          }
+
+          payments = [
+            {
+              method: m,
+              amount: +total.toFixed(2),
+              referencia: referencia.trim(),
+              ...(CARDLIKE.includes(m) ? { ultimos_4: ultimos4 } : {}),
+            },
+          ];
+        }
+      } else {
+        for (const m of selected) {
+          const { amount, referencia, ultimos4 } = details[m];
+          const val = toNumber(amount);
+
+          if (!Number.isFinite(val) || val <= 0) {
+            return showError("Todos los montos deben ser mayores que 0.");
+          }
+
+          if (CARDLIKE.includes(m)) {
+            if (!referencia?.trim() || (ultimos4 || "").length !== 4) {
+              const label = METHODS.find((x) => x.key === m)?.label || m;
+              return showError(`Completa referencia y últimos 4 para ${label}.`);
+            }
+          }
         }
 
-        return p;
-      });
+        const sumaValida = selected
+          .map((m) => toNumber(details[m].amount))
+          .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+
+        if (sumaValida + 0.00001 < total) {
+          return showError(
+            `Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(2)}.`
+          );
+        }
+
+        payments = selected.map((m) => {
+          const { amount, referencia, ultimos4 } = details[m];
+          const val = toNumber(amount);
+
+          const p = { method: m, amount: +val.toFixed(2) };
+
+          if (CARDLIKE.includes(m)) {
+            p.referencia = (referencia || "").trim();
+            p.ultimos_4 = ultimos4 || "";
+          }
+
+          if (m === "efectivo") {
+            const r = +val.toFixed(2);
+            p.recibido = r;
+            p.cash_received = r;
+            p.efectivo_recibido = r;
+          }
+
+          return p;
+        });
+      }
     }
 
     const data = {
@@ -430,6 +474,10 @@ export default function CartSidebar({
       client_id: selectedClient?.id ?? null,
       items: buildItemsPayload(),
       payments,
+      is_pending_sale: pendingSale,
+      pending_has_advance: pendingHasAdvance,
+      pending_due_at: pendingDueAt,
+      pending_note: pendingNote,
     };
 
     try {
@@ -548,13 +596,13 @@ export default function CartSidebar({
     boxShadow: variant === "desktop" ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
     ...(isMobile
       ? {
-          height: "100%",
-          maxHeight: "100%",
-          overflowY: "auto",
-          WebkitOverflowScrolling: "touch",
-          overscrollBehavior: "contain",
-          paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
-        }
+        height: "100%",
+        maxHeight: "100%",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "contain",
+        paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
+      }
       : {}),
   };
 
@@ -581,15 +629,20 @@ export default function CartSidebar({
 
   const disableConfirm =
     cart.length === 0 ||
-    (selectedCount === 1 &&
-      selected[0] === "efectivo" &&
-      (!Number.isFinite(toNumber(cashReceived)) || toNumber(cashReceived) + 0.00001 < total)) ||
-    (selectedCount >= 2 &&
-      selected
-        .map((m) => toNumber(details[m].amount))
-        .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
-        0.00001 <
-        total);
+    (pendingSale && pendingHasAdvance && !pendingAdvancePayment) ||
+    (!pendingSale &&
+      (
+        (selectedCount === 1 &&
+          selected[0] === "efectivo" &&
+          (!Number.isFinite(toNumber(cashReceived)) ||
+            toNumber(cashReceived) + 0.00001 < total)) ||
+        (selectedCount >= 2 &&
+          selected
+            .map((m) => toNumber(details[m].amount))
+            .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
+          0.00001 <
+          total)
+      ));
 
   return (
     <>
@@ -604,6 +657,56 @@ export default function CartSidebar({
           </Stack>
 
           <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
+        </Box>
+        <Box
+          sx={{
+            mb: 1.5,
+            p: 1.25,
+            border: "1px solid",
+            borderColor: pendingSale ? "warning.main" : "divider",
+            borderRadius: 2,
+            bgcolor: pendingSale ? "rgba(255,152,0,0.08)" : "#fff",
+          }}
+        >
+          <FormControlLabel
+            control={
+              <Switch
+                checked={pendingSale}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setPendingSale(checked);
+
+                  if (checked) {
+                    setOpenPendingModal(true);
+                    setScannerEnabled?.(false);
+                  } else {
+                    setPendingHasAdvance(false);
+                    setOpenPendingModal(false);
+                    setScannerEnabled?.(true);
+                  }
+                }}
+              />
+            }
+            label={
+              <Box>
+                <Typography sx={{ fontWeight: 900 }}>
+                  Venta pendiente
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Actívalo si el cliente no pagará completo por ahora.
+                </Typography>
+              </Box>
+            }
+          />
+
+          {pendingSale && (
+            <Chip
+              size="small"
+              color="warning"
+              sx={{ mt: 1, fontWeight: 800 }}
+              label={pendingHasAdvance ? "Con anticipo" : "Sin anticipo"}
+            />
+          )}
         </Box>
 
         <Paper ref={paperRef} variant="outlined" sx={paperSx}>
@@ -646,10 +749,10 @@ export default function CartSidebar({
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
                                     ? {
-                                        ...prod,
-                                        worker_id: workerId,
-                                        worker: workerObj,
-                                      }
+                                      ...prod,
+                                      worker_id: workerId,
+                                      worker: workerObj,
+                                    }
                                     : prod
                                 )
                               );
@@ -694,10 +797,10 @@ export default function CartSidebar({
                                   prev.map((prod) =>
                                     getCartKey(prod) === cartKey
                                       ? {
-                                          ...prod,
-                                          inputValue: val,
-                                          quantity: val === "" || val === "." ? 0 : parseFloat(val),
-                                        }
+                                        ...prod,
+                                        inputValue: val,
+                                        quantity: val === "" || val === "." ? 0 : parseFloat(val),
+                                      }
                                       : prod
                                   )
                                 );
@@ -807,73 +910,148 @@ export default function CartSidebar({
                   </Stack>
                 </Box>
 
-                <Box sx={{ mt: 1.5 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
-                    Método(s) de pago (máx. 3)
-                  </Typography>
+                {!pendingSale && (
+                  <Box sx={{ mt: 1.5 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
+                      {pendingSale ? "Método(s) del anticipo" : "Método(s) de pago (máx. 3)"}
+                    </Typography>
 
-                  <Stack spacing={1.25}>
-                    {METHODS.map(({ key, label }) => {
-                      const isChecked = selected.includes(key);
-                      const d = details[key];
+                    <Stack spacing={1.25}>
+                      {METHODS.map(({ key, label }) => {
+                        const isChecked = selected.includes(key);
+                        const d = details[key];
 
-                      return (
-                        <Box
-                          key={key}
-                          sx={{
-                            p: 1.25,
-                            border: "1px solid",
-                            borderColor: isChecked ? "primary.main" : "divider",
-                            borderRadius: 2,
-                            background: isChecked ? "rgba(25,118,210,0.04)" : "#fff",
-                            transition: "all 120ms ease",
-                          }}
-                        >
-                          <FormGroup>
-                            <FormControlLabel
-                              control={<Checkbox checked={isChecked} onChange={() => toggleMethod(key)} size="small" />}
-                              label={<Typography sx={{ fontWeight: 700 }}>{label}</Typography>}
-                            />
-                          </FormGroup>
+                        return (
+                          <Box
+                            key={key}
+                            sx={{
+                              p: 1.25,
+                              border: "1px solid",
+                              borderColor: isChecked ? "primary.main" : "divider",
+                              borderRadius: 2,
+                              background: isChecked ? "rgba(25,118,210,0.04)" : "#fff",
+                              transition: "all 120ms ease",
+                            }}
+                          >
+                            <FormGroup>
+                              <FormControlLabel
+                                control={<Checkbox checked={isChecked} onChange={() => toggleMethod(key)} size="small" />}
+                                label={<Typography sx={{ fontWeight: 700 }}>{label}</Typography>}
+                              />
+                            </FormGroup>
 
-                          {isChecked && (
-                            <Box sx={{ pl: 4.5, pt: 1 }}>
-                              {selectedCount === 1 ? (
-                                key === "efectivo" ? (
-                                  <>
-                                    <TextField
-                                      label="Efectivo recibido"
-                                      type="text"
-                                      fullWidth
-                                      margin="dense"
-                                      value={cashReceived}
-                                      onChange={(e) => setCashReceived(e.target.value)}
-                                      {...inputCommon}
-                                      inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
-                                    />
-                                    {cambioUnico > 0 && (
-                                      <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
-                                        Cambio: ${cambioUnico.toFixed(2)}
-                                      </Typography>
-                                    )}
-                                  </>
-                                ) : (
-                                  <>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                      Se cobrará el total con <strong>{label}</strong>.
-                                    </Typography>
-
-                                    <Stack spacing={1.2}>
+                            {isChecked && (
+                              <Box sx={{ pl: 4.5, pt: 1 }}>
+                                {selectedCount === 1 ? (
+                                  key === "efectivo" ? (
+                                    <>
                                       <TextField
-                                        label="Referencia"
+                                        label="Efectivo recibido"
+                                        type="text"
                                         fullWidth
                                         margin="dense"
-                                        value={d.referencia || ""}
-                                        onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                        value={cashReceived}
+                                        onChange={(e) => setCashReceived(e.target.value)}
                                         {...inputCommon}
+                                        inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                       />
+                                      {cambioUnico > 0 && (
+                                        <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
+                                          Cambio: ${cambioUnico.toFixed(2)}
+                                        </Typography>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                        Se cobrará el total con <strong>{label}</strong>.
+                                      </Typography>
 
-                                      {CARDLIKE.includes(key) && (
+                                      <Stack spacing={1.2}>
+                                        <TextField
+                                          label="Referencia"
+                                          fullWidth
+                                          margin="dense"
+                                          value={d.referencia || ""}
+                                          onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                          {...inputCommon}
+                                        />
+
+                                        {CARDLIKE.includes(key) && (
+                                          <Box
+                                            sx={{
+                                              mt: 0.25,
+                                              p: 1.2,
+                                              border: "1px dashed",
+                                              borderColor: "divider",
+                                              borderRadius: 2,
+                                              bgcolor: "background.paper",
+                                            }}
+                                          >
+                                            <Typography
+                                              variant="caption"
+                                              sx={{
+                                                display: "block",
+                                                color: "text.secondary",
+                                                mb: 0.8,
+                                                fontWeight: 700,
+                                                letterSpacing: 1,
+                                              }}
+                                            >
+                                              **** **** **** {d.ultimos4?.padEnd(4, "_") || "____"}
+                                            </Typography>
+
+                                            <TextField
+                                              label="Últimos 4"
+                                              type="tel"
+                                              fullWidth
+                                              size="small"
+                                              margin="dense"
+                                              value={d.ultimos4 || ""}
+                                              onChange={(e) => {
+                                                const v = String(e.target.value || "")
+                                                  .replace(/\D/g, "")
+                                                  .slice(0, 4);
+                                                setDetail(key, { ultimos4: v });
+                                              }}
+                                              placeholder="1234"
+                                              helperText="Ingresa solo los últimos 4 dígitos"
+                                              {...inputCommon}
+                                              inputProps={{
+                                                maxLength: 4,
+                                                inputMode: "numeric",
+                                                pattern: "[0-9]*",
+                                              }}
+                                            />
+                                          </Box>
+                                        )}
+                                      </Stack>
+                                    </>
+                                  )
+                                ) : (
+                                  <>
+                                    {CARDLIKE.includes(key) ? (
+                                      <Stack spacing={1}>
+                                        <TextField
+                                          label="Monto"
+                                          type="text"
+                                          value={d.amount || ""}
+                                          onChange={(e) => setDetail(key, { amount: e.target.value })}
+                                          fullWidth
+                                          margin="dense"
+                                          {...inputCommon}
+                                          inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
+                                        />
+
+                                        <TextField
+                                          label="Referencia"
+                                          value={d.referencia || ""}
+                                          onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                          fullWidth
+                                          margin="dense"
+                                          {...inputCommon}
+                                        />
+
                                         <Box
                                           sx={{
                                             mt: 0.25,
@@ -900,9 +1078,6 @@ export default function CartSidebar({
                                           <TextField
                                             label="Últimos 4"
                                             type="tel"
-                                            fullWidth
-                                            size="small"
-                                            margin="dense"
                                             value={d.ultimos4 || ""}
                                             onChange={(e) => {
                                               const v = String(e.target.value || "")
@@ -912,6 +1087,9 @@ export default function CartSidebar({
                                             }}
                                             placeholder="1234"
                                             helperText="Ingresa solo los últimos 4 dígitos"
+                                            fullWidth
+                                            size="small"
+                                            margin="dense"
                                             {...inputCommon}
                                             inputProps={{
                                               maxLength: 4,
@@ -920,14 +1098,8 @@ export default function CartSidebar({
                                             }}
                                           />
                                         </Box>
-                                      )}
-                                    </Stack>
-                                  </>
-                                )
-                              ) : (
-                                <>
-                                  {CARDLIKE.includes(key) ? (
-                                    <Stack spacing={1}>
+                                      </Stack>
+                                    ) : (
                                       <TextField
                                         label="Monto"
                                         type="text"
@@ -938,111 +1110,164 @@ export default function CartSidebar({
                                         {...inputCommon}
                                         inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
                                       />
+                                    )}
+                                  </>
+                                )}
+                              </Box>
+                            )}
+                          </Box>
+                        );
+                      })}
+                    </Stack>
 
-                                      <TextField
-                                        label="Referencia"
-                                        value={d.referencia || ""}
-                                        onChange={(e) => setDetail(key, { referencia: e.target.value })}
-                                        fullWidth
-                                        margin="dense"
-                                        {...inputCommon}
-                                      />
-
-                                      <Box
-                                        sx={{
-                                          mt: 0.25,
-                                          p: 1.2,
-                                          border: "1px dashed",
-                                          borderColor: "divider",
-                                          borderRadius: 2,
-                                          bgcolor: "background.paper",
-                                        }}
-                                      >
-                                        <Typography
-                                          variant="caption"
-                                          sx={{
-                                            display: "block",
-                                            color: "text.secondary",
-                                            mb: 0.8,
-                                            fontWeight: 700,
-                                            letterSpacing: 1,
-                                          }}
-                                        >
-                                          **** **** **** {d.ultimos4?.padEnd(4, "_") || "____"}
-                                        </Typography>
-
-                                        <TextField
-                                          label="Últimos 4"
-                                          type="tel"
-                                          value={d.ultimos4 || ""}
-                                          onChange={(e) => {
-                                            const v = String(e.target.value || "")
-                                              .replace(/\D/g, "")
-                                              .slice(0, 4);
-                                            setDetail(key, { ultimos4: v });
-                                          }}
-                                          placeholder="1234"
-                                          helperText="Ingresa solo los últimos 4 dígitos"
-                                          fullWidth
-                                          size="small"
-                                          margin="dense"
-                                          {...inputCommon}
-                                          inputProps={{
-                                            maxLength: 4,
-                                            inputMode: "numeric",
-                                            pattern: "[0-9]*",
-                                          }}
-                                        />
-                                      </Box>
-                                    </Stack>
-                                  ) : (
-                                    <TextField
-                                      label="Monto"
-                                      type="text"
-                                      value={d.amount || ""}
-                                      onChange={(e) => setDetail(key, { amount: e.target.value })}
-                                      fullWidth
-                                      margin="dense"
-                                      {...inputCommon}
-                                      inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
-                                    />
-                                  )}
-                                </>
-                              )}
-                            </Box>
-                          )}
-                        </Box>
-                      );
-                    })}
-                  </Stack>
-
-                  {selectedCount >= 2 && (
-                    <Box sx={{ mt: 1.5 }}>
-                      <Divider sx={{ mb: 1 }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
-                      </Typography>
-                      {cambioMulti > 0 && (
-                        <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
-                          Cambio: ${cambioMulti.toFixed(2)}
+                    {selectedCount >= 2 && (
+                      <Box sx={{ mt: 1.5 }}>
+                        <Divider sx={{ mb: 1 }} />
+                        <Typography variant="body2" color="text.secondary">
+                          Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
                         </Typography>
-                      )}
-                    </Box>
-                  )}
+                        {cambioMulti > 0 && (
+                          <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
+                            Cambio: ${cambioMulti.toFixed(2)}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+                )}
 
-                  <Button
-                    variant="contained"
-                    color="success"
-                    disabled={disableConfirm || submittingSale}
-                    onClick={processCheckout}
-                    fullWidth
-                    sx={{ mt: 2, py: 1.2, borderRadius: 2, fontWeight: 900, textTransform: "none" }}
+                {pendingSale && pendingHasAdvance && pendingAdvancePayment && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      p: 1.5,
+                      borderRadius: 2,
+                      border: "1px solid",
+                      borderColor: "warning.main",
+                      bgcolor: "rgba(255,152,0,0.08)",
+                    }}
                   >
-                    {submittingSale ? "Procesando..." : "Confirmar pago"}
-                  </Button>
-                </Box>
+                    <Typography sx={{ fontWeight: 900 }}>
+                      Anticipo registrado
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                      Método: <strong>{pendingAdvancePayment.method}</strong>
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                      Anticipo: <strong>${Number(pendingAdvancePayment.amount || 0).toFixed(2)}</strong>
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                      Restante:{" "}
+                      <strong>
+                        ${Math.max(0, total - Number(pendingAdvancePayment.amount || 0)).toFixed(2)}
+                      </strong>
+                    </Typography>
+
+                    {pendingDueAt && (
+                      <Typography variant="body2" color="text.secondary">
+                        Fecha compromiso:{" "}
+                        <strong>
+                          {new Date(pendingDueAt).toLocaleString("es-MX")}
+                        </strong>
+                      </Typography>
+                    )}
+
+                    {pendingNote && (
+                      <Typography variant="body2" color="text.secondary">
+                        Nota: <strong>{pendingNote}</strong>
+                      </Typography>
+                    )}
+
+                    <Button
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      sx={{ mt: 1, textTransform: "none", fontWeight: 800 }}
+                      onClick={() => {
+                        setEditingAdvance(true);
+                        setOpenPendingModal(true);
+                        setScannerEnabled?.(false);
+                      }}
+                    >
+                      Editar anticipo
+                    </Button>
+                  </Box>
+                )}
+                
+                {pendingSale && !pendingHasAdvance && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      p: 1.5,
+                      borderRadius: 2,
+                      border: "1px solid",
+                      borderColor: "warning.main",
+                      bgcolor: "rgba(255,152,0,0.08)",
+                    }}
+                  >
+                    <Typography sx={{ fontWeight: 900 }}>
+                      Venta pendiente sin anticipo
+                    </Typography>
+
+                    <Typography variant="body2" color="text.secondary">
+                      Total pendiente: <strong>${total.toFixed(2)}</strong>
+                    </Typography>
+
+                    {pendingDueAt && (
+                      <Typography variant="body2" color="text.secondary">
+                        Fecha compromiso:{" "}
+                        <strong>{new Date(pendingDueAt).toLocaleString("es-MX")}</strong>
+                      </Typography>
+                    )}
+
+                    {pendingNote && (
+                      <Typography variant="body2" color="text.secondary">
+                        Nota: <strong>{pendingNote}</strong>
+                      </Typography>
+                    )}
+
+                    <Button
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      sx={{ mt: 1, textTransform: "none", fontWeight: 800 }}
+                      onClick={() => {
+                        setEditingAdvance(false);
+                        setOpenPendingModal(true);
+                        setScannerEnabled?.(false);
+                      }}
+                    >
+                      Editar pendiente
+                    </Button>
+                  </Box>
+                )}
+
+                <Button
+                  variant="contained"
+                  color={pendingSale ? "warning" : "success"}
+                  disabled={disableConfirm || submittingSale}
+                  onClick={processCheckout}
+                  fullWidth
+                  sx={{
+                    mt: 2,
+                    py: 1.2,
+                    borderRadius: 2,
+                    fontWeight: 900,
+                    textTransform: "none",
+                  }}
+                >
+                  {submittingSale
+                    ? "Procesando..."
+                    : pendingSale
+                      ? "Guardar venta pendiente"
+                      : "Confirmar pago"}
+                </Button>
               </Box>
             </Box>
+
           )}
         </Paper>
 
@@ -1063,6 +1288,40 @@ export default function CartSidebar({
           />
         )}
       </Box>
+
+      <PendingSaleModal
+        open={openPendingModal}
+        total={total}
+        startInAdvance={editingAdvance}
+        initialPayment={pendingAdvancePayment}
+        initialDueAt={pendingDueAt}
+        initialNote={pendingNote}
+        onClose={() => {
+          setOpenPendingModal(false);
+          setEditingAdvance(false);
+          setScannerEnabled?.(true);
+        }}
+        onSelectAdvance={(payload) => {
+          setPendingSale(true);
+          setPendingHasAdvance(true);
+          setPendingAdvancePayment(payload.payment);
+          setPendingDueAt(payload.pending_due_at);
+          setPendingNote(payload.pending_note || "");
+          setOpenPendingModal(false);
+          setEditingAdvance(false);
+          setScannerEnabled?.(true);
+        }}
+        onSelectNoPayment={(payload) => {
+          setPendingSale(true);
+          setPendingHasAdvance(false);
+          setPendingAdvancePayment(null);
+          setPendingDueAt(payload.pending_due_at);
+          setPendingNote(payload.pending_note || "");
+          setOpenPendingModal(false);
+          setEditingAdvance(false);
+          setScannerEnabled?.(true);
+        }}
+      />
 
       <Dialog open={openQuickClient} onClose={handleCloseQuickClient} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 900 }}>

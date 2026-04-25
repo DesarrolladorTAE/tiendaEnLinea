@@ -302,6 +302,12 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         client_id: checkoutPayloadFromCart?.client_id ?? null,
         items,
         payments: normalizedPayments,
+
+        // Datos de venta pendiente
+        is_pending_sale: checkoutPayloadFromCart?.is_pending_sale ?? false,
+        pending_has_advance: checkoutPayloadFromCart?.pending_has_advance ?? false,
+        pending_due_at: checkoutPayloadFromCart?.pending_due_at ?? null,
+        pending_note: checkoutPayloadFromCart?.pending_note ?? "",
       };
 
       try {

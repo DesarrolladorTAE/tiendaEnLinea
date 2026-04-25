@@ -66,7 +66,6 @@ export default function ComprasSuscripcionesView({
   posLocationId: posLocationIdProp,
 }) {
   const theme = useTheme();
-  const { allowed } = useReglaTaeconta();
 
   const defaultMes = toYYYYMM(new Date());
   const [mes, setMes] = useState(defaultMes);
@@ -94,6 +93,8 @@ export default function ComprasSuscripcionesView({
     localStorage.getItem("POS_LOCATION_ID") ||
     null;
 
+  const { allowed } = useReglaTaeconta(resolvedPosLocationId);
+
   useEffect(() => {
     let alive = true;
 
@@ -111,8 +112,8 @@ export default function ComprasSuscripcionesView({
             Array.isArray(data)
               ? data
               : Array.isArray(data?.data)
-              ? data.data
-              : []
+                ? data.data
+                : []
           );
         }
       } catch {
@@ -215,7 +216,7 @@ export default function ComprasSuscripcionesView({
 
   const onChangeMes = (e) => setMes(e.target.value);
   const onChangeFolio = (e) => setFolio(e.target.value);
-  const onSearch = () => {};
+  const onSearch = () => { };
 
   const onFacturar = (row) => {
     if (!allowed) {
@@ -268,8 +269,7 @@ export default function ComprasSuscripcionesView({
 
     if (!docUrl) {
       showError(
-        `Esta venta no tiene ${
-          tipoDocumento === "xml" ? "XML" : "PDF"
+        `Esta venta no tiene ${tipoDocumento === "xml" ? "XML" : "PDF"
         } disponible.`
       );
       return;
@@ -355,7 +355,7 @@ export default function ComprasSuscripcionesView({
         client: cliente_id
           ? clientes.find((c) => String(c.id) === String(cliente_id)) || null
           : cliente_nuevo
-          ? {
+            ? {
               id: null,
               nombre_alias:
                 cliente_nuevo?.nombre_alias ||
@@ -369,7 +369,7 @@ export default function ComprasSuscripcionesView({
               email: cliente_nuevo?.email || null,
               telefono: cliente_nuevo?.telefono || null,
             }
-          : null,
+            : null,
       });
 
       showAlert(
@@ -486,13 +486,13 @@ export default function ComprasSuscripcionesView({
         background:
           theme.palette.mode === "dark"
             ? `linear-gradient(180deg, ${alpha("#0b1220", 0.96)} 0%, ${alpha(
-                "#111827",
-                0.98
-              )} 100%)`
+              "#111827",
+              0.98
+            )} 100%)`
             : `linear-gradient(180deg, ${alpha("#f8fbff", 1)} 0%, ${alpha(
-                "#eef4ff",
-                1
-              )} 100%)`,
+              "#eef4ff",
+              1
+            )} 100%)`,
       }}
     >
       <Box sx={{ maxWidth: 1500, mx: "auto" }}>
@@ -508,19 +508,19 @@ export default function ComprasSuscripcionesView({
             background:
               theme.palette.mode === "dark"
                 ? `linear-gradient(135deg, ${alpha(
-                    theme.palette.primary.main,
-                    0.12
-                  )} 0%, ${alpha("#0f172a", 0.94)} 60%, ${alpha(
-                    "#111827",
-                    0.98
-                  )} 100%)`
+                  theme.palette.primary.main,
+                  0.12
+                )} 0%, ${alpha("#0f172a", 0.94)} 60%, ${alpha(
+                  "#111827",
+                  0.98
+                )} 100%)`
                 : `linear-gradient(135deg, ${alpha(
-                    theme.palette.primary.main,
-                    0.12
-                  )} 0%, ${alpha("#ffffff", 0.96)} 55%, ${alpha(
-                    "#f6faff",
-                    1
-                  )} 100%)`,
+                  theme.palette.primary.main,
+                  0.12
+                )} 0%, ${alpha("#ffffff", 0.96)} 55%, ${alpha(
+                  "#f6faff",
+                  1
+                )} 100%)`,
             boxShadow: `0 16px 40px ${alpha(theme.palette.common.black, 0.08)}`,
           }}
         >
@@ -664,7 +664,7 @@ export default function ComprasSuscripcionesView({
           </Stack>
         </Paper>
 
-        <GateTaeconta>
+        <GateTaeconta posLocationId={resolvedPosLocationId}>
           <Paper
             elevation={0}
             sx={{
