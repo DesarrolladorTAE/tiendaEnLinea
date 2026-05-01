@@ -10,7 +10,6 @@ import {
   TableContainer,
   IconButton,
   Tooltip,
-  Box,
   Stack,
   Typography,
   Chip,
@@ -24,18 +23,72 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import BadgeIcon from "@mui/icons-material/Badge";
+import CreditScoreIcon from "@mui/icons-material/CreditScore";
 
 export default function ClientesTable({
   rows = [],
   onEdit,
   onDelete,
   onViewHistory,
+  onCredit,
   canEdit = true,
   canDelete = true,
   canViewHistory = true,
+  canCredit = true,
 }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const getCreditInfo = (r) => {
+    const acc = r.credit_account || null;
+
+    return {
+      hasAccount: Boolean(acc?.id),
+      isActive: Boolean(acc?.is_active),
+      balance: Number(acc?.current_balance || 0),
+      limit: Number(acc?.credit_limit || 0),
+      dueDate: acc?.payment_due_date || null,
+    };
+  };
+
+  const renderCreditChip = (r) => {
+    const credit = getCreditInfo(r);
+
+    if (!credit.hasAccount) {
+      return <Chip size="small" label="Sin fiado" variant="outlined" />;
+    }
+
+    if (!credit.isActive) {
+      return (
+        <Chip
+          size="small"
+          label="Fiado inactivo"
+          variant="outlined"
+          color="default"
+        />
+      );
+    }
+
+    if (credit.balance > 0) {
+      return (
+        <Chip
+          size="small"
+          label={`Debe $${credit.balance.toFixed(2)}`}
+          color="warning"
+          variant="outlined"
+        />
+      );
+    }
+
+    return (
+      <Chip
+        size="small"
+        label="Fiado activo"
+        color="success"
+        variant="outlined"
+      />
+    );
+  };
 
   if (isMobile) {
     return (
@@ -74,47 +127,43 @@ export default function ClientesTable({
               })}
             >
               <Stack spacing={1.2}>
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="flex-start"
-                  spacing={1}
-                >
-                  <Stack spacing={0.5} sx={{ minWidth: 0 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <PersonOutlineIcon
-                        sx={{ fontSize: 18, color: "text.secondary" }}
-                      />
-                      <Typography
-                        sx={{
-                          fontWeight: 800,
-                          fontSize: 15,
-                          lineHeight: 1.2,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {r.nombre_alias}
-                      </Typography>
-                    </Stack>
+                <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <PersonOutlineIcon
+                      sx={{ fontSize: 18, color: "text.secondary" }}
+                    />
+                    <Typography
+                      sx={{
+                        fontWeight: 800,
+                        fontSize: 15,
+                        lineHeight: 1.2,
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {r.nombre_alias}
+                    </Typography>
+                  </Stack>
 
-                    <Stack direction="row" spacing={0.8} flexWrap="wrap">
-                      {r.rfc ? (
-                        <Chip
-                          size="small"
-                          icon={<BadgeIcon />}
-                          label={`RFC: ${r.rfc}`}
-                          variant="outlined"
-                        />
-                      ) : null}
-                      {r.razon_social ? (
-                        <Chip
-                          size="small"
-                          label="Facturación"
-                          color="info"
-                          variant="outlined"
-                        />
-                      ) : null}
-                    </Stack>
+                  <Stack direction="row" spacing={0.8} flexWrap="wrap">
+                    {r.rfc ? (
+                      <Chip
+                        size="small"
+                        icon={<BadgeIcon />}
+                        label={`RFC: ${r.rfc}`}
+                        variant="outlined"
+                      />
+                    ) : null}
+
+                    {r.razon_social ? (
+                      <Chip
+                        size="small"
+                        label="Facturación"
+                        color="info"
+                        variant="outlined"
+                      />
+                    ) : null}
+
+                    {renderCreditChip(r)}
                   </Stack>
                 </Stack>
 
@@ -148,6 +197,23 @@ export default function ClientesTable({
                   spacing={0.5}
                   flexWrap="wrap"
                 >
+                  <Tooltip title="Configurar fiado">
+                    <span>
+                      <IconButton
+                        size="small"
+                        onClick={() => onCredit?.(r)}
+                        disabled={!canCredit}
+                        sx={{
+                          border: "1px solid",
+                          borderColor: alpha(theme.palette.primary.main, 0.35),
+                          borderRadius: 2,
+                        }}
+                      >
+                        <CreditScoreIcon fontSize="small" />
+                      </IconButton>
+                    </span>
+                  </Tooltip>
+
                   <Tooltip title="Ver historial">
                     <span>
                       <IconButton
@@ -165,13 +231,7 @@ export default function ClientesTable({
                     </span>
                   </Tooltip>
 
-                  <Tooltip
-                    title={
-                      canEdit
-                        ? "Editar"
-                        : "Tu plan no permite editar clientes"
-                    }
-                  >
+                  <Tooltip title={canEdit ? "Editar" : "Tu plan no permite editar clientes"}>
                     <span>
                       <IconButton
                         size="small"
@@ -188,13 +248,7 @@ export default function ClientesTable({
                     </span>
                   </Tooltip>
 
-                  <Tooltip
-                    title={
-                      canDelete
-                        ? "Eliminar"
-                        : "Tu plan no permite eliminar clientes"
-                    }
-                  >
+                  <Tooltip title={canDelete ? "Eliminar" : "Tu plan no permite eliminar clientes"}>
                     <span>
                       <IconButton
                         size="small"
@@ -251,6 +305,7 @@ export default function ClientesTable({
               <TableCell>Teléfono</TableCell>
               <TableCell>RFC</TableCell>
               <TableCell>Razón social</TableCell>
+              <TableCell>Fiado</TableCell>
               <TableCell align="center">Acciones</TableCell>
             </TableRow>
           </TableHead>
@@ -259,7 +314,7 @@ export default function ClientesTable({
             {rows.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   align="center"
                   sx={{ py: 5, color: "text.secondary" }}
                 >
@@ -285,7 +340,22 @@ export default function ClientesTable({
                   <TableCell>{r.telefono || "—"}</TableCell>
                   <TableCell>{r.rfc || "—"}</TableCell>
                   <TableCell>{r.razon_social || "—"}</TableCell>
+                  <TableCell>{renderCreditChip(r)}</TableCell>
+
                   <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
+                    <Tooltip title="Configurar fiado">
+                      <span>
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => onCredit?.(r)}
+                          disabled={!canCredit}
+                        >
+                          <CreditScoreIcon fontSize="small" />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+
                     <Tooltip title="Ver historial">
                       <span>
                         <IconButton
@@ -298,13 +368,7 @@ export default function ClientesTable({
                       </span>
                     </Tooltip>
 
-                    <Tooltip
-                      title={
-                        canEdit
-                          ? "Editar"
-                          : "Tu plan no permite editar clientes"
-                      }
-                    >
+                    <Tooltip title={canEdit ? "Editar" : "Tu plan no permite editar clientes"}>
                       <span>
                         <IconButton
                           size="small"
@@ -316,13 +380,7 @@ export default function ClientesTable({
                       </span>
                     </Tooltip>
 
-                    <Tooltip
-                      title={
-                        canDelete
-                          ? "Eliminar"
-                          : "Tu plan no permite eliminar clientes"
-                      }
-                    >
+                    <Tooltip title={canDelete ? "Eliminar" : "Tu plan no permite eliminar clientes"}>
                       <span>
                         <IconButton
                           size="small"

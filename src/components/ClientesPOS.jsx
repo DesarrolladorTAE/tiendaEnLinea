@@ -32,6 +32,7 @@ import axiosClient from "../config/axiosClientPOS";
 import ClientesTable from "./clientes/ClientesTable";
 import ClienteFormDialog from "./clientes/ClienteFormDialog";
 import ClienteHistoryModal from "./clientes/ClienteHistoryModal";
+import ClienteFiadoModal from "../components/clientes/ClienteFiadoModal";
 // import GateTaeconta from "./auth/GateTaeconta";
 import useClientesGate from "../hooks/useClientesGate";
 
@@ -57,6 +58,9 @@ export default function ClientesPOS({ cambiarVista }) {
   const [deletingId, setDeletingId] = useState(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
 
+  const [creditClient, setCreditClient] = useState(null);
+  const [creditOpen, setCreditOpen] = useState(false);
+
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -81,18 +85,37 @@ export default function ClientesPOS({ cambiarVista }) {
   const load = async () => {
     setLoading(true);
     setError("");
-    try {
-      const { data } = await axiosClient.get("/clientes", {
-        params: q ? { q } : undefined,
-      });
 
-      const list = Array.isArray(data?.data)
-        ? data.data
-        : Array.isArray(data)
-        ? data
+    try {
+      const [{ data: clientesData }, { data: creditData }] = await Promise.all([
+        axiosClient.get("/clientes", {
+          params: q ? { q } : undefined,
+        }),
+        axiosClient.get("/pos/credit-accounts", {
+          params: { only_active: 1 },
+        }),
+      ]);
+
+      const clientes = Array.isArray(clientesData?.data)
+        ? clientesData.data
+        : Array.isArray(clientesData)
+          ? clientesData
+          : [];
+
+      const creditAccounts = Array.isArray(creditData?.accounts?.data)
+        ? creditData.accounts.data
         : [];
 
-      setRows(list);
+      const creditByClientId = new Map(
+        creditAccounts.map((acc) => [Number(acc.client_id), acc])
+      );
+
+      const merged = clientes.map((cliente) => ({
+        ...cliente,
+        credit_account: creditByClientId.get(Number(cliente.id)) || null,
+      }));
+
+      setRows(merged);
     } catch (e) {
       setRows([]);
       setError("No se pudieron cargar los clientes. Intenta de nuevo.");
@@ -100,12 +123,16 @@ export default function ClientesPOS({ cambiarVista }) {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
+
+  const handleOpenCredit = (client) => {
+    setCreditClient(client);
+    setCreditOpen(true);
+  };
 
   const onCreate = () => {
     if (!canCreate) {
@@ -235,343 +262,351 @@ export default function ClientesPOS({ cambiarVista }) {
       </Box>
 
       {/* <GateTaeconta> */}
-        <Paper
-          elevation={0}
-          sx={(t) => ({
-            p: { xs: 2, sm: 3 },
-            mb: 2,
-            borderRadius: 3,
-            border: `1px solid ${t.palette.divider}`,
-            background:
-              t.palette.mode === "dark"
-                ? alpha(t.palette.primary.main, 0.08)
-                : alpha(t.palette.primary.main, 0.06),
-          })}
-        >
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} lg={6}>
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <PeopleAltIcon
+      <Paper
+        elevation={0}
+        sx={(t) => ({
+          p: { xs: 2, sm: 3 },
+          mb: 2,
+          borderRadius: 3,
+          border: `1px solid ${t.palette.divider}`,
+          background:
+            t.palette.mode === "dark"
+              ? alpha(t.palette.primary.main, 0.08)
+              : alpha(t.palette.primary.main, 0.06),
+        })}
+      >
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} lg={6}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <PeopleAltIcon
+                sx={(t) => ({
+                  fontSize: 32,
+                  color:
+                    t.palette.mode === "dark"
+                      ? t.palette.primary.light
+                      : t.palette.primary.main,
+                })}
+              />
+              <Box>
+                <Typography
+                  component="h2"
                   sx={(t) => ({
-                    fontSize: 32,
-                    color:
+                    m: 0,
+                    fontWeight: 900,
+                    letterSpacing: 0.2,
+                    fontSize: { xs: "1.2rem", sm: "1.5rem" },
+                    background:
                       t.palette.mode === "dark"
-                        ? t.palette.primary.light
-                        : t.palette.primary.main,
+                        ? "linear-gradient(90deg, #ffffff 0%, #9fd1ff 100%)"
+                        : "linear-gradient(90deg, #111827 0%, #2563eb 100%)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
                   })}
-                />
-                <Box>
-                  <Typography
-                    component="h2"
-                    sx={(t) => ({
-                      m: 0,
-                      fontWeight: 900,
-                      letterSpacing: 0.2,
-                      fontSize: { xs: "1.2rem", sm: "1.5rem" },
-                      background:
-                        t.palette.mode === "dark"
-                          ? "linear-gradient(90deg, #ffffff 0%, #9fd1ff 100%)"
-                          : "linear-gradient(90deg, #111827 0%, #2563eb 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                    })}
-                  >
-                    {headerTitle}
-                  </Typography>
+                >
+                  {headerTitle}
+                </Typography>
 
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    alignItems="center"
-                    flexWrap="wrap"
-                    sx={{ mt: 0.5 }}
-                  >
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  flexWrap="wrap"
+                  sx={{ mt: 0.5 }}
+                >
+                  <Chip
+                    size="small"
+                    icon={<Groups2OutlinedIcon />}
+                    label={`Plan: ${planName}`}
+                    color="primary"
+                    variant="outlined"
+                  />
+
+                  {typeof clientsLimit === "number" ? (
                     <Chip
                       size="small"
-                      icon={<Groups2OutlinedIcon />}
-                      label={`Plan: ${planName}`}
-                      color="primary"
+                      label={`${rows.length}/${clientsLimit}`}
+                      color={canCreate ? "success" : "warning"}
                       variant="outlined"
                     />
+                  ) : (
+                    <Chip
+                      size="small"
+                      label={`${rows.length} clientes`}
+                      color="success"
+                      variant="outlined"
+                    />
+                  )}
+                </Stack>
 
-                    {typeof clientsLimit === "number" ? (
-                      <Chip
-                        size="small"
-                        label={`${rows.length}/${clientsLimit}`}
-                        color={canCreate ? "success" : "warning"}
-                        variant="outlined"
-                      />
-                    ) : (
-                      <Chip
-                        size="small"
-                        label={`${rows.length} clientes`}
-                        color="success"
-                        variant="outlined"
-                      />
-                    )}
-                  </Stack>
-
-                  {Boolean(planId) && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block", mt: 0.5 }}
-                    >
-                      Plan actual: <b>{planId}</b>{" "}
-                      {planId === 2
-                        ? "· Solo consulta e historial ✅"
-                        : planId === 3
+                {Boolean(planId) && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ display: "block", mt: 0.5 }}
+                  >
+                    Plan actual: <b>{planId}</b>{" "}
+                    {planId === 2
+                      ? "· Solo consulta e historial ✅"
+                      : planId === 3
                         ? "· Límite de 50 clientes ✅"
                         : "· Clientes disponibles ✅"}
-                    </Typography>
-                  )}
-                </Box>
-              </Stack>
-            </Grid>
-
-            <Grid item xs={12} lg={6}>
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={1.2}
-                justifyContent="flex-end"
-                alignItems={{ xs: "stretch", sm: "center" }}
-              >
-                <TextField
-                  size="small"
-                  placeholder="Buscar cliente (Nombre, RFC, email, teléfono)"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon />
-                      </InputAdornment>
-                    ),
-                    endAdornment: q ? (
-                      <InputAdornment position="end">
-                        <IconButton size="small" onClick={() => setQ("")}>
-                          <ClearIcon fontSize="small" />
-                        </IconButton>
-                      </InputAdornment>
-                    ) : null,
-                  }}
-                  sx={{ minWidth: { xs: "100%", sm: 300 } }}
-                />
-
-                <Stack direction="row" spacing={1}>
-                  <Tooltip title="Recargar">
-                    <span>
-                      <Button
-                        variant="outlined"
-                        onClick={load}
-                        disabled={loading}
-                        startIcon={
-                          loading ? <CircularProgress size={16} /> : <RefreshIcon />
-                        }
-                        sx={{
-                          textTransform: "none",
-                          borderRadius: 2,
-                          fontWeight: 700,
-                        }}
-                      >
-                        {loading ? "Cargando" : "Actualizar"}
-                      </Button>
-                    </span>
-                  </Tooltip>
-
-                  <Tooltip
-                    title={
-                      canCreate
-                        ? "Registrar cliente"
-                        : reasonClientsBlocked ||
-                          "Tu plan actual no permite registrar clientes"
-                    }
-                  >
-                    <span>
-                      <Button
-                        variant="contained"
-                        startIcon={
-                          canCreate ? <AddIcon /> : <LockOutlinedIcon />
-                        }
-                        onClick={onCreate}
-                        disabled={!canCreate}
-                        sx={{
-                          textTransform: "none",
-                          borderRadius: 2,
-                          fontWeight: 800,
-                        }}
-                      >
-                        Nuevo cliente
-                      </Button>
-                    </span>
-                  </Tooltip>
-                </Stack>
-              </Stack>
-            </Grid>
+                  </Typography>
+                )}
+              </Box>
+            </Stack>
           </Grid>
 
-          <Divider sx={{ mt: 2 }} />
-
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            justifyContent="space-between"
-            alignItems={{ xs: "flex-start", sm: "center" }}
-            sx={{ pt: 1.5 }}
-          >
-            <Typography variant="body2" color="text.secondary">
-              {rows.length} resultado{rows.length === 1 ? "" : "s"}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {planMessage}
-            </Typography>
-          </Stack>
-        </Paper>
-
-        {reasonClientsBlocked ? (
-          <Alert
-            severity={planId === 3 ? "warning" : "info"}
-            sx={{ mb: 2, borderRadius: 2 }}
-            action={
-              <Button
-                color="inherit"
+          <Grid item xs={12} lg={6}>
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={1.2}
+              justifyContent="flex-end"
+              alignItems={{ xs: "stretch", sm: "center" }}
+            >
+              <TextField
                 size="small"
-                onClick={openPlanesModal}
-                sx={{ textTransform: "none", fontWeight: 800 }}
-              >
-                Ver planes
-              </Button>
-            }
-          >
-            <b>Plan {planId || "?"}</b>: {reasonClientsBlocked}
-          </Alert>
-        ) : null}
+                placeholder="Buscar cliente (Nombre, RFC, email, teléfono)"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                  endAdornment: q ? (
+                    <InputAdornment position="end">
+                      <IconButton size="small" onClick={() => setQ("")}>
+                        <ClearIcon fontSize="small" />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : null,
+                }}
+                sx={{ minWidth: { xs: "100%", sm: 300 } }}
+              />
 
-        {error && (
-          <Alert
-            severity="error"
-            sx={{ mb: 2, borderRadius: 2 }}
-            onClose={() => setError("")}
-          >
-            {error}
-          </Alert>
-        )}
+              <Stack direction="row" spacing={1}>
+                <Tooltip title="Recargar">
+                  <span>
+                    <Button
+                      variant="outlined"
+                      onClick={load}
+                      disabled={loading}
+                      startIcon={
+                        loading ? <CircularProgress size={16} /> : <RefreshIcon />
+                      }
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: 2,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {loading ? "Cargando" : "Actualizar"}
+                    </Button>
+                  </span>
+                </Tooltip>
 
-        <Paper
-          elevation={4}
-          sx={{
-            p: { xs: 1, sm: 2 },
-            borderRadius: 3,
-            boxShadow: (t) =>
-              `0 8px 24px ${
-                t.palette.mode === "dark"
-                  ? "rgba(0,0,0,.4)"
-                  : "rgba(0,0,0,.08)"
-              }`,
-          }}
-        >
-          {loading ? (
-            <Box display="flex" justifyContent="center" py={6}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <ClientesTable
-              rows={rows}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onViewHistory={onViewHistory}
-              canEdit={canEdit}
-              canDelete={canDelete}
-              canViewHistory={canViewHistory}
-            />
-          )}
-        </Paper>
-
-        <ClienteFormDialog
-          open={openForm}
-          onClose={() => {
-            setOpenForm(false);
-            setEditing(null);
-          }}
-          onSubmit={onSubmit}
-          initialValues={editing}
-        />
-
-        <ClienteHistoryModal
-          open={historyOpen}
-          onClose={() => {
-            setHistoryOpen(false);
-            setHistoryClient(null);
-          }}
-          cliente={historyClient}
-        />
-
-        {Boolean(deletingId) && (
-          <Box
-            sx={{
-              position: "fixed",
-              inset: 0,
-              bgcolor: "rgba(0,0,0,.35)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1300,
-              p: 2,
-            }}
-          >
-            <Paper sx={{ p: 3, borderRadius: 3, width: "100%", maxWidth: 420 }}>
-              <Stack spacing={2} alignItems="center" textAlign="center">
-                <DeleteOutlineIcon color="error" sx={{ fontSize: 32 }} />
-                <Typography variant="h6">¿Eliminar este cliente?</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Esta acción no se puede deshacer.
-                </Typography>
-                <Stack direction="row" spacing={1.5} sx={{ pt: 1 }}>
-                  <Button
-                    onClick={cancelDelete}
-                    disabled={deletingBusy}
-                    sx={{ textTransform: "none" }}
-                  >
-                    Cancelar
-                  </Button>
-                  <Button
-                    color="error"
-                    variant="contained"
-                    onClick={confirmDelete}
-                    disabled={deletingBusy}
-                    sx={{
-                      textTransform: "none",
-                      borderRadius: 2,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {deletingBusy ? (
-                      <CircularProgress size={18} sx={{ color: "white" }} />
-                    ) : (
-                      "Eliminar"
-                    )}
-                  </Button>
-                </Stack>
+                <Tooltip
+                  title={
+                    canCreate
+                      ? "Registrar cliente"
+                      : reasonClientsBlocked ||
+                      "Tu plan actual no permite registrar clientes"
+                  }
+                >
+                  <span>
+                    <Button
+                      variant="contained"
+                      startIcon={
+                        canCreate ? <AddIcon /> : <LockOutlinedIcon />
+                      }
+                      onClick={onCreate}
+                      disabled={!canCreate}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: 2,
+                        fontWeight: 800,
+                      }}
+                    >
+                      Nuevo cliente
+                    </Button>
+                  </span>
+                </Tooltip>
               </Stack>
-            </Paper>
-          </Box>
-        )}
+            </Stack>
+          </Grid>
+        </Grid>
 
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={2800}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          anchorOrigin={{ vertical: "top", horizontal: "center" }}
+        <Divider sx={{ mt: 2 }} />
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          sx={{ pt: 1.5 }}
         >
-          <Alert
-            severity={snackbar.severity}
-            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-            variant="filled"
-            sx={{ borderRadius: 2 }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+          <Typography variant="body2" color="text.secondary">
+            {rows.length} resultado{rows.length === 1 ? "" : "s"}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {planMessage}
+          </Typography>
+        </Stack>
+      </Paper>
+
+      {reasonClientsBlocked ? (
+        <Alert
+          severity={planId === 3 ? "warning" : "info"}
+          sx={{ mb: 2, borderRadius: 2 }}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={openPlanesModal}
+              sx={{ textTransform: "none", fontWeight: 800 }}
+            >
+              Ver planes
+            </Button>
+          }
+        >
+          <b>Plan {planId || "?"}</b>: {reasonClientsBlocked}
+        </Alert>
+      ) : null}
+
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 2, borderRadius: 2 }}
+          onClose={() => setError("")}
+        >
+          {error}
+        </Alert>
+      )}
+
+      <Paper
+        elevation={4}
+        sx={{
+          p: { xs: 1, sm: 2 },
+          borderRadius: 3,
+          boxShadow: (t) =>
+            `0 8px 24px ${t.palette.mode === "dark"
+              ? "rgba(0,0,0,.4)"
+              : "rgba(0,0,0,.08)"
+            }`,
+        }}
+      >
+        {loading ? (
+          <Box display="flex" justifyContent="center" py={6}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <ClientesTable
+            rows={rows}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onViewHistory={onViewHistory}
+            canEdit={canEdit}
+            canDelete={canDelete}
+            canViewHistory={canViewHistory}
+            onCredit={handleOpenCredit}
+          />
+
+        )}
+      </Paper>
+
+      <ClienteFormDialog
+        open={openForm}
+        onClose={() => {
+          setOpenForm(false);
+          setEditing(null);
+        }}
+        onSubmit={onSubmit}
+        initialValues={editing}
+      />
+      <ClienteFiadoModal
+        open={creditOpen}
+        client={creditClient}
+        onClose={() => setCreditOpen(false)}
+        onSaved={async () => {
+          await load();
+        }}
+      />
+      <ClienteHistoryModal
+        open={historyOpen}
+        onClose={() => {
+          setHistoryOpen(false);
+          setHistoryClient(null);
+        }}
+        cliente={historyClient}
+      />
+
+      {Boolean(deletingId) && (
+        <Box
+          sx={{
+            position: "fixed",
+            inset: 0,
+            bgcolor: "rgba(0,0,0,.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1300,
+            p: 2,
+          }}
+        >
+          <Paper sx={{ p: 3, borderRadius: 3, width: "100%", maxWidth: 420 }}>
+            <Stack spacing={2} alignItems="center" textAlign="center">
+              <DeleteOutlineIcon color="error" sx={{ fontSize: 32 }} />
+              <Typography variant="h6">¿Eliminar este cliente?</Typography>
+              <Typography variant="body2" color="text.secondary">
+                Esta acción no se puede deshacer.
+              </Typography>
+              <Stack direction="row" spacing={1.5} sx={{ pt: 1 }}>
+                <Button
+                  onClick={cancelDelete}
+                  disabled={deletingBusy}
+                  sx={{ textTransform: "none" }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  color="error"
+                  variant="contained"
+                  onClick={confirmDelete}
+                  disabled={deletingBusy}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: 2,
+                    fontWeight: 800,
+                  }}
+                >
+                  {deletingBusy ? (
+                    <CircularProgress size={18} sx={{ color: "white" }} />
+                  ) : (
+                    "Eliminar"
+                  )}
+                </Button>
+              </Stack>
+            </Stack>
+          </Paper>
+        </Box>
+      )}
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2800}
+        onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
+          variant="filled"
+          sx={{ borderRadius: 2 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
       {/* </GateTaeconta> */}
     </Box>
   );

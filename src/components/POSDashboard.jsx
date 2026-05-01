@@ -29,6 +29,7 @@ import ClientesPOS from "./ClientesPOS";
 import NotasInternas from "./NotasInternas";
 import PendingSalesPOS from "./PendingSalePos";
 import PosLocationPrintSettings from "./POS/PosLocationPrintSettings";
+import CreditoFiadoPOS from "./CreditoFiadoPOS";
 
 const POSDashboard = ({
   posName = "Mi Punto de Venta",
@@ -66,10 +67,9 @@ const POSDashboard = ({
     {
       id: "credito_fiado",
       titulo: "Módulo de crédito",
-      descripcion: "Control de fiados, abonos y saldos pendientes. Próximamente.",
-      color: "#64748b",
+      descripcion: "Control de fiados, abonos y saldos pendientes.",
+      color: "#b45309",
       icono: <CreditScoreIcon sx={{ fontSize: 40 }} />,
-      disabled: true,
     },
     {
       id: "notas",
@@ -145,6 +145,13 @@ const POSDashboard = ({
       case "ventas_pendientes":
         return (
           <PendingSalesPOS
+            cambiarVista={setVista}
+            posLocationId={posLocationId}
+          />
+        );
+      case "credito_fiado":
+        return (
+          <CreditoFiadoPOS
             cambiarVista={setVista}
             posLocationId={posLocationId}
           />

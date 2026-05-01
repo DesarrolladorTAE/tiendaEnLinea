@@ -33,7 +33,7 @@ import SaleClientAssign from "./SaleClientAssign";
 import PendingSaleModal from "./PendingSaleModal";
 
 import { showError } from "../../utils/alerts";
-import axiosClient from "../../config/axiosClient";
+import axiosClient from "../../config/axiosClientPOS";
 
 const CARDLIKE = ["td", "tc", "transferencia"];
 const METHODS = [
@@ -107,6 +107,10 @@ export default function CartSidebar({
 
   const [pendingDueAt, setPendingDueAt] = useState(null);
   const [pendingNote, setPendingNote] = useState("");
+
+  const [creditSale, setCreditSale] = useState(false);
+  const [creditAccount, setCreditAccount] = useState(null);
+  const [loadingCredit, setLoadingCredit] = useState(false);
 
   const [quickClientForm, setQuickClientForm] = useState({
     nombre_alias: "",
@@ -254,6 +258,29 @@ export default function CartSidebar({
     fetchClients();
   }, [fetchClients]);
 
+  useEffect(() => {
+    const loadCreditAccount = async () => {
+      if (!selectedClient?.id) {
+        setCreditSale(false);
+        setCreditAccount(null);
+        return;
+      }
+
+      setLoadingCredit(true);
+
+      try {
+        const { data } = await axiosClient.get(`/pos/credit-client/${selectedClient.id}`);
+        setCreditAccount(data?.account || null);
+      } catch {
+        setCreditAccount(null);
+      } finally {
+        setLoadingCredit(false);
+      }
+    };
+
+    loadCreditAccount();
+  }, [selectedClient?.id]);
+
   const total = useMemo(
     () =>
       cart.reduce(
@@ -262,6 +289,21 @@ export default function CartSidebar({
       ),
     [cart]
   );
+
+  const hasCreditAccount = Boolean(creditAccount?.id);
+  const creditActive = Boolean(creditAccount?.is_active);
+  const creditLimit = Number(creditAccount?.credit_limit || 0);
+  const currentBalance = Number(creditAccount?.current_balance || 0);
+  const isUnlimitedCredit = creditLimit === 0;
+  const availableCredit = isUnlimitedCredit
+    ? Infinity
+    : Math.max(0, creditLimit - currentBalance);
+
+  const canUseCredit =
+    Boolean(selectedClient?.id) &&
+    hasCreditAccount &&
+    creditActive &&
+    (isUnlimitedCredit || availableCredit >= total);
 
   const setDetail = (k, patch) =>
     setDetails((prev) => ({ ...prev, [k]: { ...prev[k], ...patch } }));
@@ -356,14 +398,39 @@ export default function CartSidebar({
 
     setPendingDueAt(null);
     setPendingNote("");
+
+    setCreditSale(false);
+    setCreditAccount(null);
   };
 
   const processCheckout = async () => {
     if (cart.length === 0 || submittingSale) return;
 
+    if (creditSale) {
+      if (!selectedClient?.id) {
+        return showError("Selecciona un cliente para vender a fiado.");
+      }
+
+      if (!creditAccount?.id) {
+        return showError("Este cliente no tiene cuenta de fiado configurada.");
+      }
+
+      if (!creditAccount?.is_active) {
+        return showError("La cuenta de fiado del cliente está desactivada.");
+      }
+
+      if (!isUnlimitedCredit && total > availableCredit) {
+        return showError(
+          `El cliente no tiene crédito suficiente. Disponible: $${availableCredit.toFixed(2)}`
+        );
+      }
+    }
+
     let payments = [];
 
-    if (pendingSale) {
+    if (creditSale) {
+      payments = [];
+    } else if (pendingSale) {
       if (!pendingHasAdvance) {
         payments = [];
       } else {
@@ -474,10 +541,14 @@ export default function CartSidebar({
       client_id: selectedClient?.id ?? null,
       items: buildItemsPayload(),
       payments,
-      is_pending_sale: pendingSale,
-      pending_has_advance: pendingHasAdvance,
-      pending_due_at: pendingDueAt,
-      pending_note: pendingNote,
+
+      is_pending_sale: creditSale ? true : pendingSale,
+      pending_has_advance: creditSale ? false : pendingHasAdvance,
+      pending_due_at: creditSale ? creditAccount?.payment_due_date || null : pendingDueAt,
+      pending_note: creditSale ? "Venta registrada a fiado desde POS." : pendingNote,
+
+      is_credit_sale: creditSale,
+      credit_due_at: creditSale ? creditAccount?.payment_due_date || null : null,
     };
 
     try {
@@ -588,6 +659,28 @@ export default function CartSidebar({
     }
   };
 
+  const paymentInvalid =
+    selectedCount === 1 &&
+    selected[0] === "efectivo" &&
+    (!Number.isFinite(toNumber(cashReceived)) ||
+      toNumber(cashReceived) + 0.00001 < total);
+
+  const multiInvalid =
+    selectedCount >= 2 &&
+    selected
+      .map((m) => toNumber(details[m].amount))
+      .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
+    0.00001 <
+    total;
+
+  const disableConfirm =
+    cart.length === 0 ||
+    submittingSale ||
+    (creditSale && !canUseCredit) ||
+    (!creditSale &&
+      ((pendingSale && pendingHasAdvance && !pendingAdvancePayment) ||
+        (!pendingSale && (paymentInvalid || multiInvalid))));
+
   const paperSx = {
     p: { xs: 1.5, md: 2 },
     borderRadius: 3,
@@ -627,23 +720,6 @@ export default function CartSidebar({
     onBlur: () => setScannerEnabled?.(true),
   };
 
-  const disableConfirm =
-    cart.length === 0 ||
-    (pendingSale && pendingHasAdvance && !pendingAdvancePayment) ||
-    (!pendingSale &&
-      (
-        (selectedCount === 1 &&
-          selected[0] === "efectivo" &&
-          (!Number.isFinite(toNumber(cashReceived)) ||
-            toNumber(cashReceived) + 0.00001 < total)) ||
-        (selectedCount >= 2 &&
-          selected
-            .map((m) => toNumber(details[m].amount))
-            .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
-          0.00001 <
-          total)
-      ));
-
   return (
     <>
       <Box sx={rootSx}>
@@ -658,6 +734,7 @@ export default function CartSidebar({
 
           <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
         </Box>
+
         <Box
           sx={{
             mb: 1.5,
@@ -672,11 +749,13 @@ export default function CartSidebar({
             control={
               <Switch
                 checked={pendingSale}
+                disabled={creditSale}
                 onChange={(e) => {
                   const checked = e.target.checked;
                   setPendingSale(checked);
 
                   if (checked) {
+                    setCreditSale(false);
                     setOpenPendingModal(true);
                     setScannerEnabled?.(false);
                   } else {
@@ -689,9 +768,7 @@ export default function CartSidebar({
             }
             label={
               <Box>
-                <Typography sx={{ fontWeight: 900 }}>
-                  Venta pendiente
-                </Typography>
+                <Typography sx={{ fontWeight: 900 }}>Venta pendiente</Typography>
                 <Typography variant="caption" color="text.secondary">
                   Actívalo si el cliente no pagará completo por ahora.
                 </Typography>
@@ -748,11 +825,7 @@ export default function CartSidebar({
                               setCart((prev) =>
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
-                                    ? {
-                                      ...prod,
-                                      worker_id: workerId,
-                                      worker: workerObj,
-                                    }
+                                    ? { ...prod, worker_id: workerId, worker: workerObj }
                                     : prod
                                 )
                               );
@@ -883,11 +956,7 @@ export default function CartSidebar({
                       startIcon={<PersonAddAlt1RoundedIcon />}
                       onClick={handleOpenQuickClient}
                       fullWidth={isMobile}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 800,
-                      }}
+                      sx={{ borderRadius: 2, textTransform: "none", fontWeight: 800 }}
                     >
                       Crear cliente rápido
                     </Button>
@@ -898,11 +967,7 @@ export default function CartSidebar({
                         color="inherit"
                         onClick={() => setSelectedClient(null)}
                         fullWidth={isMobile}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 700,
-                        }}
+                        sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
                       >
                         Quitar cliente
                       </Button>
@@ -910,10 +975,73 @@ export default function CartSidebar({
                   </Stack>
                 </Box>
 
-                {!pendingSale && (
+                {selectedClient && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      p: 1.25,
+                      border: "1px solid",
+                      borderColor: creditSale ? "primary.main" : "divider",
+                      borderRadius: 2,
+                      bgcolor: creditSale ? "rgba(25,118,210,0.06)" : "#fff",
+                    }}
+                  >
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={creditSale}
+                          disabled={loadingCredit || !creditActive}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setCreditSale(checked);
+
+                            if (checked) {
+                              setPendingSale(false);
+                              setPendingHasAdvance(false);
+                              setPendingAdvancePayment(null);
+                              setPendingDueAt(null);
+                              setPendingNote("");
+                            }
+                          }}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography sx={{ fontWeight: 900 }}>Venta a Crédito</Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {loadingCredit
+                              ? "Validando cuenta de fiado..."
+                              : !hasCreditAccount
+                                ? "Este cliente no tiene fiado configurado."
+                                : !creditActive
+                                  ? "Fiado desactivado para este cliente."
+                                  : isUnlimitedCredit
+                                    ? "Fiado activo sin límite."
+                                    : `Disponible: $${availableCredit.toFixed(2)}`}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+
+                    {creditSale && (
+                      <Chip
+                        size="small"
+                        color="primary"
+                        sx={{ mt: 1, fontWeight: 800 }}
+                        label={
+                          creditAccount?.payment_due_date
+                            ? `Fecha de pago: ${String(creditAccount.payment_due_date).slice(0, 10)}`
+                            : "Sin fecha límite"
+                        }
+                      />
+                    )}
+                  </Box>
+                )}
+
+                {!pendingSale && !creditSale && (
                   <Box sx={{ mt: 1.5 }}>
                     <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
-                      {pendingSale ? "Método(s) del anticipo" : "Método(s) de pago (máx. 3)"}
+                      Método(s) de pago (máx. 3)
                     </Typography>
 
                     <Stack spacing={1.25}>
@@ -1052,52 +1180,28 @@ export default function CartSidebar({
                                           {...inputCommon}
                                         />
 
-                                        <Box
-                                          sx={{
-                                            mt: 0.25,
-                                            p: 1.2,
-                                            border: "1px dashed",
-                                            borderColor: "divider",
-                                            borderRadius: 2,
-                                            bgcolor: "background.paper",
+                                        <TextField
+                                          label="Últimos 4"
+                                          type="tel"
+                                          value={d.ultimos4 || ""}
+                                          onChange={(e) => {
+                                            const v = String(e.target.value || "")
+                                              .replace(/\D/g, "")
+                                              .slice(0, 4);
+                                            setDetail(key, { ultimos4: v });
                                           }}
-                                        >
-                                          <Typography
-                                            variant="caption"
-                                            sx={{
-                                              display: "block",
-                                              color: "text.secondary",
-                                              mb: 0.8,
-                                              fontWeight: 700,
-                                              letterSpacing: 1,
-                                            }}
-                                          >
-                                            **** **** **** {d.ultimos4?.padEnd(4, "_") || "____"}
-                                          </Typography>
-
-                                          <TextField
-                                            label="Últimos 4"
-                                            type="tel"
-                                            value={d.ultimos4 || ""}
-                                            onChange={(e) => {
-                                              const v = String(e.target.value || "")
-                                                .replace(/\D/g, "")
-                                                .slice(0, 4);
-                                              setDetail(key, { ultimos4: v });
-                                            }}
-                                            placeholder="1234"
-                                            helperText="Ingresa solo los últimos 4 dígitos"
-                                            fullWidth
-                                            size="small"
-                                            margin="dense"
-                                            {...inputCommon}
-                                            inputProps={{
-                                              maxLength: 4,
-                                              inputMode: "numeric",
-                                              pattern: "[0-9]*",
-                                            }}
-                                          />
-                                        </Box>
+                                          placeholder="1234"
+                                          helperText="Ingresa solo los últimos 4 dígitos"
+                                          fullWidth
+                                          size="small"
+                                          margin="dense"
+                                          {...inputCommon}
+                                          inputProps={{
+                                            maxLength: 4,
+                                            inputMode: "numeric",
+                                            pattern: "[0-9]*",
+                                          }}
+                                        />
                                       </Stack>
                                     ) : (
                                       <TextField
@@ -1147,9 +1251,7 @@ export default function CartSidebar({
                       bgcolor: "rgba(255,152,0,0.08)",
                     }}
                   >
-                    <Typography sx={{ fontWeight: 900 }}>
-                      Anticipo registrado
-                    </Typography>
+                    <Typography sx={{ fontWeight: 900 }}>Anticipo registrado</Typography>
 
                     <Typography variant="body2" color="text.secondary">
                       Método: <strong>{pendingAdvancePayment.method}</strong>
@@ -1161,17 +1263,12 @@ export default function CartSidebar({
 
                     <Typography variant="body2" color="text.secondary">
                       Restante:{" "}
-                      <strong>
-                        ${Math.max(0, total - Number(pendingAdvancePayment.amount || 0)).toFixed(2)}
-                      </strong>
+                      <strong>${Math.max(0, total - Number(pendingAdvancePayment.amount || 0)).toFixed(2)}</strong>
                     </Typography>
 
                     {pendingDueAt && (
                       <Typography variant="body2" color="text.secondary">
-                        Fecha compromiso:{" "}
-                        <strong>
-                          {new Date(pendingDueAt).toLocaleString("es-MX")}
-                        </strong>
+                        Fecha compromiso: <strong>{new Date(pendingDueAt).toLocaleString("es-MX")}</strong>
                       </Typography>
                     )}
 
@@ -1196,7 +1293,7 @@ export default function CartSidebar({
                     </Button>
                   </Box>
                 )}
-                
+
                 {pendingSale && !pendingHasAdvance && (
                   <Box
                     sx={{
@@ -1208,9 +1305,7 @@ export default function CartSidebar({
                       bgcolor: "rgba(255,152,0,0.08)",
                     }}
                   >
-                    <Typography sx={{ fontWeight: 900 }}>
-                      Venta pendiente sin anticipo
-                    </Typography>
+                    <Typography sx={{ fontWeight: 900 }}>Venta pendiente sin anticipo</Typography>
 
                     <Typography variant="body2" color="text.secondary">
                       Total pendiente: <strong>${total.toFixed(2)}</strong>
@@ -1218,8 +1313,7 @@ export default function CartSidebar({
 
                     {pendingDueAt && (
                       <Typography variant="body2" color="text.secondary">
-                        Fecha compromiso:{" "}
-                        <strong>{new Date(pendingDueAt).toLocaleString("es-MX")}</strong>
+                        Fecha compromiso: <strong>{new Date(pendingDueAt).toLocaleString("es-MX")}</strong>
                       </Typography>
                     )}
 
@@ -1247,8 +1341,8 @@ export default function CartSidebar({
 
                 <Button
                   variant="contained"
-                  color={pendingSale ? "warning" : "success"}
-                  disabled={disableConfirm || submittingSale}
+                  color={creditSale ? "primary" : pendingSale ? "warning" : "success"}
+                  disabled={disableConfirm}
                   onClick={processCheckout}
                   fullWidth
                   sx={{
@@ -1261,13 +1355,14 @@ export default function CartSidebar({
                 >
                   {submittingSale
                     ? "Procesando..."
-                    : pendingSale
-                      ? "Guardar venta pendiente"
-                      : "Confirmar pago"}
+                    : creditSale
+                      ? "Guardar venta a Credito"
+                      : pendingSale
+                        ? "Guardar venta pendiente"
+                        : "Confirmar pago"}
                 </Button>
               </Box>
             </Box>
-
           )}
         </Paper>
 
@@ -1303,6 +1398,7 @@ export default function CartSidebar({
         }}
         onSelectAdvance={(payload) => {
           setPendingSale(true);
+          setCreditSale(false);
           setPendingHasAdvance(true);
           setPendingAdvancePayment(payload.payment);
           setPendingDueAt(payload.pending_due_at);
@@ -1313,6 +1409,7 @@ export default function CartSidebar({
         }}
         onSelectNoPayment={(payload) => {
           setPendingSale(true);
+          setCreditSale(false);
           setPendingHasAdvance(false);
           setPendingAdvancePayment(null);
           setPendingDueAt(payload.pending_due_at);
@@ -1324,9 +1421,7 @@ export default function CartSidebar({
       />
 
       <Dialog open={openQuickClient} onClose={handleCloseQuickClient} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ fontWeight: 900 }}>
-          Crear cliente rápido
-        </DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>Crear cliente rápido</DialogTitle>
 
         <DialogContent dividers>
           <Stack spacing={2} sx={{ pt: 1 }}>

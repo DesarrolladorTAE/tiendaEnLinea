@@ -251,6 +251,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     const key = String(cartKey);
     setCart((prev) => prev.filter((item) => String(item.cart_key ?? item.id) !== key));
   };
+  
   const handleCheckout = useCallback(
     async (checkoutPayloadFromCart) => {
       if (!cart || cart.length === 0) return;
@@ -308,6 +309,10 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         pending_has_advance: checkoutPayloadFromCart?.pending_has_advance ?? false,
         pending_due_at: checkoutPayloadFromCart?.pending_due_at ?? null,
         pending_note: checkoutPayloadFromCart?.pending_note ?? "",
+
+        // Datos de venta a fiado
+        is_credit_sale: checkoutPayloadFromCart?.is_credit_sale ?? false,
+        credit_due_at: checkoutPayloadFromCart?.credit_due_at ?? null,
       };
 
       try {
