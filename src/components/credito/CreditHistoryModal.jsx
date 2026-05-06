@@ -51,6 +51,103 @@ const formatDate = (v) => {
 const normalizePhone = (value = "") =>
   String(value || "").replace(/\D/g, "").slice(0, 10);
 
+const isCancelledSale = (status = "") => {
+  const value = String(status || "").toLowerCase();
+  return ["cancelled", "canceled", "cancelada", "cancelado"].includes(value);
+};
+
+const getSaleStatusChip = (status = "") => {
+  const value = String(status || "").toLowerCase();
+
+  if (isCancelledSale(value)) {
+    return (
+      <Chip
+        size="small"
+        label="Venta cancelada"
+        color="error"
+        sx={{ fontWeight: 900 }}
+      />
+    );
+  }
+
+  if (["credit", "credito"].includes(value)) {
+    return (
+      <Chip
+        size="small"
+        label="Venta a crédito"
+        color="warning"
+        variant="outlined"
+        sx={{ fontWeight: 900 }}
+      />
+    );
+  }
+
+  if (value === "paid") {
+    return (
+      <Chip
+        size="small"
+        label="Pagada"
+        color="success"
+        sx={{ fontWeight: 900 }}
+      />
+    );
+  }
+
+  if (value === "open") {
+    return (
+      <Chip
+        size="small"
+        label="Abierta"
+        color="warning"
+        sx={{ fontWeight: 900 }}
+      />
+    );
+  }
+
+  if (value === "pending") {
+    return (
+      <Chip
+        size="small"
+        label="Pendiente"
+        color="info"
+        sx={{ fontWeight: 900 }}
+      />
+    );
+  }
+
+  if (value === "devuelta") {
+    return (
+      <Chip
+        size="small"
+        label="Devuelta"
+        color="secondary"
+        sx={{ fontWeight: 900 }}
+      />
+    );
+  }
+
+  if (value === "devuelta_parcial") {
+    return (
+      <Chip
+        size="small"
+        label="Devolución parcial"
+        color="secondary"
+        variant="outlined"
+        sx={{ fontWeight: 900 }}
+      />
+    );
+  }
+
+  return (
+    <Chip
+      size="small"
+      label={status || "Sin estado"}
+      variant="outlined"
+      sx={{ fontWeight: 900 }}
+    />
+  );
+};
+
 const APP_META = {
   windows_usb: {
     label: "Enviar Historial a Windows USB",
@@ -63,22 +160,22 @@ const APP_META = {
     icon: <LanIcon />,
   },
   android_usb: {
-    label: "Enviar a Historial Android USB",
+    label: "Enviar Historial Android USB",
     color: "#2e7d32",
     icon: <AndroidIcon />,
   },
   android_ip: {
-    label: "Enviar a Historial Android IP",
+    label: "Enviar Historial Android IP",
     color: "#1b5e20",
     icon: <AndroidIcon />,
   },
   ios_ip: {
-    label: "Enviar a Historial iPhone IP",
+    label: "Enviar Historial iPhone IP",
     color: "#455a64",
     icon: <LanIcon />,
   },
   ios_ble: {
-    label: "Enviar a Historial iPhone BLE",
+    label: "Enviar Historial iPhone BLE",
     color: "#212121",
     icon: <BluetoothIcon />,
   },
@@ -205,7 +302,58 @@ export default function CreditHistoryModal({ open, onClose, account }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, account?.id]);
 
-  const movements = Array.isArray(detail?.movements) ? detail.movements : [];
+  const movementsRaw = Array.isArray(detail?.movements) ? detail.movements : [];
+
+  const isReversalType = (type = "") =>
+    ["cancelacion", "reversal", "devolucion"].includes(String(type).toLowerCase());
+
+  const movementsToShow = movementsRaw.filter((m) => {
+    const cancelled = isCancelledSale(m?.sale?.status);
+
+    // Ocultamos el cargo original si ya fue cancelado,
+    // porque la reversión/cancelación ya representa ese movimiento.
+    if (m.type === "cargo" && cancelled) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const movements = [...movementsToShow]
+    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .reduce((acc, m) => {
+      const prevBalance =
+        acc.length > 0
+          ? Number(acc[acc.length - 1].computed_balance_after || 0)
+          : 0;
+
+      const amount = Number(m.amount || 0);
+      const cancelled = isCancelledSale(m?.sale?.status);
+
+      let nextBalance = prevBalance;
+
+      if (m.type === "cargo" && !cancelled) {
+        nextBalance = prevBalance + amount;
+      }
+
+      if (m.type === "abono") {
+        nextBalance = Math.max(0, prevBalance - amount);
+      }
+
+      // // Si es cargo cancelado o reversión, visualmente no mueve el saldo
+      // if ((m.type === "cargo" && cancelled) || isReversalType(m.type)) {
+      //   nextBalance = prevBalance;
+      // }
+
+      acc.push({
+        ...m,
+        computed_balance_before: prevBalance,
+        computed_balance_after: nextBalance,
+      });
+
+      return acc;
+    }, [])
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   const downloadExcel = async () => {
     if (!account?.id) return;
@@ -267,8 +415,8 @@ export default function CreditHistoryModal({ open, onClose, account }) {
       console.error(error);
       showError(
         error?.response?.data?.message ||
-          error?.response?.data?.error ||
-          "No se pudo enviar el estado de cuenta."
+        error?.response?.data?.error ||
+        "No se pudo enviar el estado de cuenta."
       );
     } finally {
       setBusy(false);
@@ -277,6 +425,11 @@ export default function CreditHistoryModal({ open, onClose, account }) {
 
   const sendTicketWhatsapp = async (payload = {}) => {
     if (!selectedSale?.id) return;
+
+    if (isCancelledSale(selectedSale?.status)) {
+      showError("No se puede enviar el ticket de una venta cancelada.");
+      return;
+    }
 
     const phoneToSend = payload.es_cliente ? ticketPhone : payload.phone;
 
@@ -298,8 +451,8 @@ export default function CreditHistoryModal({ open, onClose, account }) {
       console.error(error);
       showError(
         error?.response?.data?.message ||
-          error?.response?.data?.error ||
-          "No se pudo enviar el ticket."
+        error?.response?.data?.error ||
+        "No se pudo enviar el ticket."
       );
     } finally {
       setBusy(false);
@@ -473,6 +626,11 @@ export default function CreditHistoryModal({ open, onClose, account }) {
   };
 
   const openTicket = (sale) => {
+    if (isCancelledSale(sale?.status)) {
+      showError("Esta venta está cancelada. No se puede abrir el ticket.");
+      return;
+    }
+
     const phone = normalizePhone(
       detail?.client?.telefono || account?.client_phone || ""
     );
@@ -483,8 +641,20 @@ export default function CreditHistoryModal({ open, onClose, account }) {
   };
 
   const renderMovementType = (m) => {
+    const cancelled = isCancelledSale(m?.sale?.status);
+
     if (m.type === "cargo") {
-      return <Chip size="small" label="Venta fiada" color="warning" />;
+      return (
+        <Chip
+          size="small"
+          label={cancelled ? "Venta fiada cancelada" : "Venta fiada"}
+          color={cancelled ? "error" : "warning"}
+        />
+      );
+    }
+
+    if (m.type === "cancelacion") {
+      return <Chip size="small" label="Cancelación" color="error" />;
     }
 
     return <Chip size="small" label="Abono" color="success" />;
@@ -551,11 +721,10 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                   />
 
                   <Chip
-                    label={`Límite: ${
-                      Number(detail?.credit_limit || 0) <= 0
-                        ? "Ilimitado"
-                        : money(detail?.credit_limit)
-                    }`}
+                    label={`Límite: ${Number(detail?.credit_limit || 0) <= 0
+                      ? "Ilimitado"
+                      : money(detail?.credit_limit)
+                      }`}
                     variant="outlined"
                   />
                 </Stack>
@@ -659,12 +828,18 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                   {movements.map((m) => {
                     const sale = m.sale;
                     const items = Array.isArray(sale?.items) ? sale.items : [];
+                    const cancelled = isCancelledSale(sale?.status);
 
                     return (
                       <Paper
                         key={m.id}
                         variant="outlined"
-                        sx={{ p: 1.5, borderRadius: 3 }}
+                        sx={{
+                          p: 1.5,
+                          borderRadius: 3,
+                          bgcolor: cancelled ? "#fef2f2" : "background.paper",
+                          borderColor: cancelled ? "#fecaca" : "divider",
+                        }}
                       >
                         <Stack spacing={1}>
                           <Stack
@@ -687,7 +862,7 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                           </Typography>
 
                           <Typography variant="body2">
-                            Saldo después: <b>{money(m.balance_after)}</b>
+                            Saldo después: <b>{money(m.computed_balance_after)}</b>
                           </Typography>
 
                           {m.payment_method ? (
@@ -707,9 +882,28 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                             <>
                               <Divider />
 
-                              <Typography sx={{ fontWeight: 900 }}>
-                                Venta #{sale.id} · Total {money(sale.total_amount)}
-                              </Typography>
+                              <Stack spacing={0.7}>
+                                <Typography sx={{ fontWeight: 900 }}>
+                                  Venta #{sale.id} · Total {money(sale.total_amount)}
+                                </Typography>
+
+                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                  {getSaleStatusChip(sale.status)}
+
+                                </Stack>
+
+                                {sale.motivo_cancelacion ? (
+                                  <Typography variant="caption" color="error">
+                                    Motivo: {sale.motivo_cancelacion}
+                                  </Typography>
+                                ) : null}
+
+                                {sale.fecha_cancelacion ? (
+                                  <Typography variant="caption" color="error">
+                                    Cancelada el: {formatDate(sale.fecha_cancelacion)}
+                                  </Typography>
+                                ) : null}
+                              </Stack>
 
                               {items.length === 0 ? (
                                 <Typography variant="body2" color="text.secondary">
@@ -744,9 +938,10 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                                 variant="outlined"
                                 startIcon={<ReceiptLongIcon />}
                                 onClick={() => openTicket(sale)}
+                                disabled={cancelled}
                                 sx={{ textTransform: "none", fontWeight: 800 }}
                               >
-                                Ver ticket
+                                {cancelled ? "Ticket cancelado" : "Ver ticket"}
                               </Button>
                             </>
                           ) : null}
@@ -765,9 +960,15 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                         <TableCell>Fecha</TableCell>
                         <TableCell>Concepto</TableCell>
                         <TableCell>Venta / Productos</TableCell>
+
                         <TableCell align="right">Cargo</TableCell>
+
                         <TableCell align="right">Abono</TableCell>
+
+                        <TableCell align="right">Reversión</TableCell>
+
                         <TableCell align="right">Saldo después</TableCell>
+
                         <TableCell align="center">Acciones</TableCell>
                       </TableRow>
                     </TableHead>
@@ -777,9 +978,28 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                         const sale = m.sale;
                         const items = Array.isArray(sale?.items) ? sale.items : [];
 
+                        const cancelled = isCancelledSale(sale?.status);
+
+                        const isReversal = [
+                          "cancelacion",
+                          "reversal",
+                          "devolucion",
+                        ].includes(m.type);
+
                         return (
-                          <TableRow key={m.id} hover>
-                            <TableCell>{formatDate(m.created_at)}</TableCell>
+                          <TableRow
+                            key={m.id}
+                            hover
+                            sx={{
+                              bgcolor: cancelled ? "#fef2f2" : "inherit",
+                              "&:hover": {
+                                bgcolor: cancelled ? "#fee2e2" : undefined,
+                              },
+                            }}
+                          >
+                            <TableCell>
+                              {formatDate(m.created_at)}
+                            </TableCell>
 
                             <TableCell>
                               <Stack spacing={0.5}>
@@ -801,6 +1021,35 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                                     Venta #{sale.id}
                                   </Typography>
 
+                                  <Stack
+                                    direction="row"
+                                    spacing={1}
+                                    flexWrap="wrap"
+                                  >
+                                    {getSaleStatusChip(sale.status)}
+                                  </Stack>
+
+                                  {sale.motivo_cancelacion ? (
+                                    <Typography
+                                      variant="caption"
+                                      color="error"
+                                    >
+                                      Motivo: {sale.motivo_cancelacion}
+                                    </Typography>
+                                  ) : null}
+
+                                  {sale.fecha_cancelacion ? (
+                                    <Typography
+                                      variant="caption"
+                                      color="error"
+                                    >
+                                      Cancelada el:{" "}
+                                      {formatDate(
+                                        sale.fecha_cancelacion
+                                      )}
+                                    </Typography>
+                                  ) : null}
+
                                   {items.length ? (
                                     items.map((it) => (
                                       <Typography
@@ -808,11 +1057,17 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                                         variant="caption"
                                         color="text.secondary"
                                       >
-                                        {it.product?.name || "Producto"}
+                                        {it.product?.name ||
+                                          "Producto"}
+
                                         {it.product_variant?.name
                                           ? ` - ${it.product_variant.name}`
-                                          : ""}{" "}
-                                        · Cant: {it.quantity} ·{" "}
+                                          : ""}
+
+                                        {" · Cant: "}
+                                        {it.quantity}
+
+                                        {" · "}
                                         {money(it.total_price)}
                                       </Typography>
                                     ))
@@ -826,31 +1081,63 @@ export default function CreditHistoryModal({ open, onClose, account }) {
                                   )}
                                 </Stack>
                               ) : (
-                                m.notes || "Abono registrado"
+                                m.notes || "Movimiento registrado"
                               )}
                             </TableCell>
 
+                            {/* CARGO */}
                             <TableCell align="right">
-                              {m.type === "cargo" ? money(m.amount) : "—"}
+                              {m.type === "cargo" && !cancelled
+                                ? money(m.amount)
+                                : "—"}
                             </TableCell>
 
+                            {/* ABONO */}
                             <TableCell align="right">
-                              {m.type === "abono" ? money(m.amount) : "—"}
+                              {m.type === "abono"
+                                ? money(m.amount)
+                                : "—"}
                             </TableCell>
 
+                            {/* REVERSIÓN */}
                             <TableCell align="right">
-                              <b>{money(m.balance_after)}</b>
+                              {isReversal
+                                ? money(m.amount)
+                                : cancelled && m.type === "cargo"
+                                  ? "Reversada"
+                                  : "—"}
                             </TableCell>
 
+                            {/* SALDO */}
+                            <TableCell align="right">
+                              <b>{money(m.computed_balance_after)}</b>
+                            </TableCell>
+
+                            {/* ACCIONES */}
                             <TableCell align="center">
                               {sale ? (
-                                <Tooltip title="Ver ticket">
-                                  <IconButton
-                                    color="primary"
-                                    onClick={() => openTicket(sale)}
-                                  >
-                                    <ReceiptLongIcon />
-                                  </IconButton>
+                                <Tooltip
+                                  title={
+                                    cancelled
+                                      ? "Venta cancelada"
+                                      : "Ver ticket"
+                                  }
+                                >
+                                  <span>
+                                    <IconButton
+                                      color={
+                                        cancelled
+                                          ? "default"
+                                          : "primary"
+                                      }
+                                      onClick={() =>
+                                        openTicket(sale)
+                                      }
+                                      disabled={cancelled}
+                                    >
+                                      <ReceiptLongIcon />
+                                    </IconButton>
+                                  </span>
                                 </Tooltip>
                               ) : (
                                 "—"
