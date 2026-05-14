@@ -214,13 +214,16 @@ export default function ModalTicketVenta({
   };
 
   const sendToWindows = (payload) => {
+    const safePayload = JSON.parse(JSON.stringify(payload));
+
+    console.log("PAYLOAD WINDOWS:", JSON.stringify(safePayload).slice(0, 300));
+
     if (typeof window.sendPrintPayloadToWindows === "function") {
-      window.sendPrintPayloadToWindows(payload);
-      return true;
+      return window.sendPrintPayloadToWindows(safePayload);
     }
 
     if (window.chrome?.webview?.postMessage) {
-      window.chrome.webview.postMessage(JSON.stringify(payload));
+      window.chrome.webview.postMessage(JSON.stringify(safePayload));
       return true;
     }
 
