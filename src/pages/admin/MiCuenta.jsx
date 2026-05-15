@@ -8,7 +8,11 @@ import EditarDatosTaeconta from "../../components/micuenta/EditarDatosTaeconta";
 import GateTaeconta from "../../components/auth/GateTaeconta";
 
 function TabPanel({ children, value, index }) {
-  return <div hidden={value !== index}>{value === index && <Box sx={{ mt: 3 }}>{children}</Box>}</div>;
+  return (
+    <div hidden={value !== index}>
+      {value === index && <Box sx={{ mt: 3 }}>{children}</Box>}
+    </div>
+  );
 }
 
 export default function MiCuenta() {
@@ -18,12 +22,24 @@ export default function MiCuenta() {
     <Container maxWidth="md" sx={{ py: 4 }}>
       <Typography
         variant="h4"
-        sx={{ mb: 3, display: "flex", alignItems: "center", gap: 1, color: "#111827", fontWeight: "bold" }}
+        sx={{
+          mb: 3,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          color: "#111827",
+          fontWeight: "bold",
+        }}
       >
-        <span role="img" aria-label="cuenta">👤</span>{" "}Mi cuenta
+        <span role="img" aria-label="cuenta">
+          👤
+        </span>{" "}
+        Mi cuenta
       </Typography>
 
-      <Paper sx={{ backgroundColor: "#111827", color: "#fff", borderRadius: 2 }}>
+      <Paper
+        sx={{ backgroundColor: "#111827", color: "#fff", borderRadius: 2 }}
+      >
         <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
           <Tabs
             value={tabIndex}
@@ -53,7 +69,7 @@ export default function MiCuenta() {
 
           {/* 🔒 Gate solo dentro del panel de TAEconta */}
           <TabPanel value={tabIndex} index={2}>
-            <GateTaeconta>
+            <GateTaeconta ignorePOS>
               <EditarDatosTaeconta />
             </GateTaeconta>
           </TabPanel>

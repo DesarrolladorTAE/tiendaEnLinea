@@ -11,8 +11,10 @@ import useReglaTaeconta, {
 import planes from "../../utils/planes";
 import complementos from "../../utils/complementos";
 
-const GateTaeconta = ({ children, fallback }) => {
-  const { allowed, loading, reason, planId } = useReglaTaeconta();
+const GateTaeconta = ({ children, fallback, ignorePOS = false }) => {
+  const { allowed, loading, reason, planId } = useReglaTaeconta(null, {
+    ignorePOS,
+  });
   const navigate = useNavigate();
 
   const reqPlan = planes.find((p) => p.plan_id === PLAN_TAECONTA_MIN);

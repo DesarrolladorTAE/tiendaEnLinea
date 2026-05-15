@@ -7,15 +7,18 @@ import { useTienda } from "../context/TiendaContext";
 export const PLAN_TAECONTA_MIN = 3;
 export const COMPLEMENTO_TAECONTA_ID = 4;
 
-export default function useReglaTaeconta(posLocationId = null) {
-  const posId =
-    posLocationId ||
-    localStorage.getItem("POS_LOCATION_ID") ||
-    localStorage.getItem("pos_location_id") ||
-    null;
+export default function useReglaTaeconta(posLocationId = null, options = {}) {
+  const { ignorePOS = false } = options;
 
-  const tieneTokenPOS = !!localStorage.getItem("POS_TOKEN");
-  const usandoPOS = !!posId || tieneTokenPOS;
+  const posId = ignorePOS
+    ? null
+    : posLocationId ||
+      localStorage.getItem("POS_LOCATION_ID") ||
+      localStorage.getItem("pos_location_id") ||
+      null;
+
+  const tieneTokenPOS = ignorePOS ? false : !!localStorage.getItem("POS_TOKEN");
+  const usandoPOS = !ignorePOS && (!!posId || tieneTokenPOS);
 
   const { tienda, loading: tiendaLoading } = useTienda();
 
