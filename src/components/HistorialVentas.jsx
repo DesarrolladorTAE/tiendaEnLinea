@@ -45,7 +45,14 @@ import ModalClienteVenta from "./ModalClienteVenta";
 import HistorialPOSFilters from "./HistorialPOSFilters";
 import HistorialPOSResumen from "./HistorialPOSResumen";
 
-const hoyISO = () => new Date().toISOString().slice(0, 10);
+const hoyISO = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
 
 const money = (n) =>
   Number(n || 0).toLocaleString("es-MX", {
@@ -72,10 +79,23 @@ const etiquetaPagoVenta = (v) => {
     .join(" + ");
 };
 
+const parseFechaLocal = (value) => {
+  if (!value) return null;
+
+  const dateOnly = String(value).slice(0, 10);
+  const [year, month, day] = dateOnly.split("-").map(Number);
+
+  if (!year || !month || !day) return null;
+
+  return new Date(year, month - 1, day);
+};
+
 const formatFecha = (value) => {
-  if (!value) return "—";
   try {
-    return format(parseISO(String(value).slice(0, 10)), "d 'de' MMM yyyy", {
+    const fecha = parseFechaLocal(value);
+    if (!fecha) return "—";
+
+    return format(fecha, "d 'de' MMM yyyy", {
       locale: es,
     });
   } catch {
@@ -84,9 +104,11 @@ const formatFecha = (value) => {
 };
 
 const formatFechaLarga = (value) => {
-  if (!value) return "Sin fecha";
   try {
-    return format(parseISO(String(value).slice(0, 10)), "d 'de' MMMM 'del' yyyy", {
+    const fecha = parseFechaLocal(value);
+    if (!fecha) return "Sin fecha";
+
+    return format(fecha, "d 'de' MMMM 'del' yyyy", {
       locale: es,
     });
   } catch {
@@ -94,29 +116,60 @@ const formatFechaLarga = (value) => {
   }
 };
 
-const fechaSoloDia = (value) => String(value || "").slice(0, 10);
+const fechaSoloDia = (value) => {
+  if (!value) return "";
 
-const isPendiente = (row) =>
-  row?.estadoRaw === "open" || row?.venta?.status === "open";
+  const fecha = new Date(value);
+
+  const year = fecha.getFullYear();
+  const month = String(fecha.getMonth() + 1).padStart(2, "0");
+  const day = String(fecha.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const isPendiente = (row) => {
+  const status = String(
+    row?.estadoRaw || row?.venta?.status || "",
+  ).toLowerCase();
+  return status === "open" || status === "credit";
+};
 
 const getColorByType = (type, estado) => {
-  if (estado === "open") return "warning";
-  if (type === "cancelacion") return "error";
-  if (type === "devolucion") return "info";
+  const status = String(estado || "").toLowerCase();
+
+  if (status === "open" || status === "credit") return "warning";
+  if (status === "cancelled" || status === "partially_cancelled")
+    return "error";
+  if (status === "devuelta" || status === "devuelta_parcial") return "info";
+  if (status === "credit_paid") return "primary";
+
   return "success";
 };
 
 const getBgByType = (type, estado) => {
-  if (estado === "open") return "#fff3e0";
-  if (type === "cancelacion") return "#ffebee";
-  if (type === "devolucion") return "#e3f2fd";
+  const status = String(estado || "").toLowerCase();
+
+  if (status === "open" || status === "credit") return "#fff3e0";
+  if (status === "cancelled" || status === "partially_cancelled")
+    return "#ffebee";
+  if (status === "devuelta" || status === "devuelta_parcial") return "#e3f2fd";
+  if (status === "credit_paid") return "#e8eaf6";
+
   return "#e8f5e9";
 };
 
 const getTypeLabel = (type, estado) => {
-  if (estado === "open") return "Pendiente";
-  if (type === "cancelacion") return "Cancelación";
-  if (type === "devolucion") return "Devolución";
+  const status = String(estado || "").toLowerCase();
+
+  if (status === "open") return "Pendiente";
+  if (status === "credit") return "Crédito";
+  if (status === "credit_paid") return "Crédito pagado";
+  if (status === "cancelled") return "Cancelada";
+  if (status === "partially_cancelled") return "Cancelada parcial";
+  if (status === "devuelta") return "Devuelta";
+  if (status === "devuelta_parcial") return "Devolución parcial";
+
   return "Venta";
 };
 
@@ -177,7 +230,8 @@ function DayPagination({ groups, page, setPage }) {
             {current?.label || "Sin fecha"}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Página {page + 1} de {totalPages} · {current?.total || 0} registros de este día
+            Página {page + 1} de {totalPages} · {current?.total || 0} registros
+            de este día
           </Typography>
         </Box>
 
@@ -198,7 +252,9 @@ function DayPagination({ groups, page, setPage }) {
             variant="contained"
             endIcon={<ChevronRightIcon />}
             disabled={page >= totalPages - 1}
-            onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}
+            onClick={() =>
+              setPage((prev) => Math.min(totalPages - 1, prev + 1))
+            }
             sx={{ textTransform: "none", borderRadius: 2 }}
           >
             Siguiente
@@ -237,7 +293,8 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
   const [openModalCliente, setOpenModalCliente] = useState(false);
 
   const [ventaSeleccionada, setVentaSeleccionada] = useState(null);
-  const [ventaClienteSeleccionada, setVentaClienteSeleccionada] = useState(null);
+  const [ventaClienteSeleccionada, setVentaClienteSeleccionada] =
+    useState(null);
 
   const handleFiltrar = async () => {
     setLoading(true);
@@ -258,12 +315,16 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
         Array.isArray(data?.ventas)
           ? data.ventas
           : Array.isArray(data)
-          ? data
-          : []
+            ? data
+            : [],
       );
 
-      setDevoluciones(Array.isArray(data?.devoluciones) ? data.devoluciones : []);
-      setCancelaciones(Array.isArray(data?.cancelaciones) ? data.cancelaciones : []);
+      setDevoluciones(
+        Array.isArray(data?.devoluciones) ? data.devoluciones : [],
+      );
+      setCancelaciones(
+        Array.isArray(data?.cancelaciones) ? data.cancelaciones : [],
+      );
       setPaginaDia(0);
     } catch (error) {
       console.error("Error al consultar historial:", error);
@@ -341,21 +402,38 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
     }));
   }, [devoluciones]);
 
-  const cancelacionesRows = useMemo(() => {
-    return cancelaciones.map((r) => ({
+const cancelacionesRows = useMemo(() => {
+  return cancelaciones.map((r) => {
+    const tipoCancelacion = String(r?.tipo || "").toLowerCase();
+
+    const statusCancelacion =
+      tipoCancelacion.includes("parcial") ||
+      tipoCancelacion.includes("partial")
+        ? "partially_cancelled"
+        : "cancelled";
+
+    return {
       id: `cancel-${r.id}`,
       rowType: "cancelacion",
       fecha: r.fecha || r.created_at,
       venta_id: r.sale?.id || r.sale_id || r.id,
-      venta: r.sale || null,
+      venta: {
+        ...(r.sale || {}),
+        status: statusCancelacion,
+      },
       total: Number(r?.importe_afectado ?? r?.sale?.total_amount ?? 0),
       pago: r.sale ? etiquetaPagoVenta(r.sale) : "—",
       motivo: r.motivo || "—",
-      estado: r.tipo || "Cancelada",
-      estadoRaw: r.tipo || "cancelacion",
+      estado:
+        statusCancelacion === "partially_cancelled"
+          ? "Cancelada parcial"
+          : "Cancelada",
+      estadoRaw: statusCancelacion,
+      tipoCancelacion: r.tipo || "total",
       cliente: r.sale?.client || null,
-    }));
-  }, [cancelaciones]);
+    };
+  });
+}, [cancelaciones]);
 
   const ventasRows = useMemo(() => {
     return ventas.map((v) => ({
@@ -371,28 +449,45 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
         v.status === "open"
           ? "Pendiente"
           : v.status === "cancelled"
-          ? "Cancelada"
-          : v.status === "partially_cancelled"
-          ? "Parcial"
-          : v.status === "devuelta"
-          ? "Devuelta"
-          : v.status === "paid"
-          ? "Pagada"
-          : v.status || "—",
+            ? "Cancelada"
+            : v.status === "partially_cancelled"
+              ? "Parcial"
+              : v.status === "devuelta"
+                ? "Devuelta"
+                : v.status === "paid"
+                  ? "Pagada"
+                  : v.status || "—",
       estadoRaw: v.status,
       cliente: v.client || null,
     }));
   }, [ventas]);
 
-  const historialRows = useMemo(() => {
-    return [...ventasRows, ...devolucionesRows, ...cancelacionesRows].sort(
-      (a, b) => {
-        const fa = new Date(a.fecha || 0).getTime();
-        const fb = new Date(b.fecha || 0).getTime();
-        return fb - fa;
-      }
-    );
-  }, [ventasRows, devolucionesRows, cancelacionesRows]);
+const historialRows = useMemo(() => {
+  const idsConMovimiento = new Set([
+    ...devolucionesRows.map((r) => Number(r.venta_id)),
+    ...cancelacionesRows.map((r) => Number(r.venta_id)),
+  ]);
+
+  const ventasLimpias = ventasRows.filter((v) => {
+    const status = String(v.estadoRaw || "").toLowerCase();
+
+    if (status === "open" || status === "credit") {
+      return true;
+    }
+
+    return !idsConMovimiento.has(Number(v.venta_id));
+  });
+
+  return [
+    ...ventasLimpias,
+    ...devolucionesRows,
+    ...cancelacionesRows,
+  ].sort((a, b) => {
+    const fa = new Date(a.fecha || 0).getTime();
+    const fb = new Date(b.fecha || 0).getTime();
+    return fb - fa;
+  });
+}, [ventasRows, devolucionesRows, cancelacionesRows]);
 
   const historialRowsParaResumen = useMemo(() => {
     return historialRows.filter((row) => !isPendiente(row));
@@ -400,7 +495,7 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
 
   const historialGroups = useMemo(
     () => agruparPorDia(historialRows),
-    [historialRows]
+    [historialRows],
   );
 
   const rowsPaginaActual = historialGroups[paginaDia]?.rows || [];
@@ -500,7 +595,12 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
     const isVenta = row.rowType === "venta";
 
     return (
-      <Stack direction="row" spacing={0.3} justifyContent="center" flexWrap="wrap">
+      <Stack
+        direction="row"
+        spacing={0.3}
+        justifyContent="center"
+        flexWrap="wrap"
+      >
         <Tooltip title="Ticket">
           <IconButton
             size="small"
@@ -601,13 +701,12 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
 
           <TableBody>
             {rows.map((row) => {
+              const status = String(
+                row.estadoRaw || row.venta?.status || "",
+              ).toLowerCase();
               const pendiente = isPendiente(row);
-              const color = pendiente
-                ? "warning"
-                : getColorByType(row.rowType, row.estadoRaw);
-              const bg = pendiente
-                ? "#fff3e0"
-                : getBgByType(row.rowType, row.estadoRaw);
+              const color = getColorByType(row.rowType, status);
+              const bg = getBgByType(row.rowType, status);
 
               return (
                 <TableRow key={row.id} hover sx={{ bgcolor: bg }}>
@@ -615,18 +714,16 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
                     <Chip
                       size="small"
                       color={color}
-                      label={
-                        pendiente
-                          ? "Pendiente"
-                          : getTypeLabel(row.rowType, row.estadoRaw)
-                      }
+                      label={getTypeLabel(row.rowType, status)}
                       sx={{ fontWeight: 700 }}
                     />
                   </TableCell>
 
                   <TableCell>#{row.venta_id}</TableCell>
                   <TableCell>{formatFecha(row.fecha)}</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>{money(row.total)}</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>
+                    {money(row.total)}
+                  </TableCell>
                   <TableCell>{renderCliente(row.cliente)}</TableCell>
 
                   <TableCell>
@@ -711,7 +808,11 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
           >
             <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
               <Stack spacing={1}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                <Stack
+                  direction="row"
+                  justifyContent="space-between"
+                  alignItems="center"
+                >
                   <Chip
                     size="small"
                     color={color}
@@ -804,7 +905,7 @@ export default function HistorialPOSSimple({ cambiarVista, posLocationId }) {
         />
 
         <Box sx={{ px: { xs: 1.2, md: 2 } }}>
-          <HistorialPOSResumen rows={historialRowsParaResumen} />
+          <HistorialPOSResumen rows={historialRows} />
 
           {loading ? (
             <Box display="flex" justifyContent="center" py={6}>
