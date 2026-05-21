@@ -7,18 +7,15 @@ import {
   TextField,
   MenuItem,
   Button,
-  IconButton,
   Chip,
 } from "@mui/material";
-import ReplayIcon from "@mui/icons-material/Replay";
+import { alpha, useTheme } from "@mui/material/styles";
+
+import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
+import FilterAltRoundedIcon from "@mui/icons-material/FilterAltRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 
 export default function HistorialPOSFilters({
-  sucursalLabel = "Sucursal #6",
-  puntoVenta = "",
-  setPuntoVenta,
-  trabajadores = [],
-  trabajadorId = "",
-  setTrabajadorId,
   fechaInicio,
   setFechaInicio,
   fechaFin,
@@ -31,56 +28,89 @@ export default function HistorialPOSFilters({
   onClear,
   loading,
 }) {
+  const theme = useTheme();
+
+  const fieldSx = {
+    minWidth: { xs: "100%", md: 170 },
+    "& .MuiOutlinedInput-root": {
+      borderRadius: 3,
+      bgcolor: "background.paper",
+      fontWeight: 700,
+    },
+  };
+
   return (
     <Paper
       elevation={0}
       sx={{
-        mb: 2,
-        borderRadius: 0,
-        borderBottom: "1px solid",
+        p: { xs: 2, md: 2.4 },
+        borderRadius: 5,
+        border: "1px solid",
         borderColor: "divider",
-        bgcolor: "#efefef",
+        background:
+          "linear-gradient(135deg, rgba(15,23,42,.025), rgba(255,255,255,.98))",
+        boxShadow: "0 18px 45px rgba(15,23,42,.06)",
       }}
     >
-      <Box sx={{ px: { xs: 1.2, md: 2 }, py: 1.25 }}>
+      <Stack spacing={2}>
         <Stack
           direction={{ xs: "column", md: "row" }}
-          alignItems={{ xs: "flex-start", md: "center" }}
           justifyContent="space-between"
+          alignItems={{ xs: "flex-start", md: "center" }}
           spacing={1}
-          sx={{ mb: 1.25 }}
         >
+          <Stack direction="row" spacing={1.2} alignItems="center">
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                borderRadius: 3,
+                display: "grid",
+                placeItems: "center",
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                color: "primary.main",
+              }}
+            >
+              <FilterAltRoundedIcon />
+            </Box>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ display: { xs: "none", md: "block" } }}
-          >
-            Configura los filtros para consultar el historial
-          </Typography>
+            <Box>
+              <Typography fontWeight={950} fontSize={18}>
+                Filtros de consulta
+              </Typography>
+
+              <Typography variant="body2" color="text.secondary">
+                Filtra movimientos por fecha y método de pago.
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Chip
+            size="small"
+            label={loading ? "Consultando..." : "Listo para consultar"}
+            color={loading ? "warning" : "success"}
+            variant="outlined"
+            sx={{ fontWeight: 900 }}
+          />
         </Stack>
 
         <Stack
           direction={{ xs: "column", md: "row" }}
-          spacing={1.25}
+          spacing={1.2}
           alignItems="stretch"
           flexWrap="wrap"
+          useFlexGap
         >
-          
-
           <TextField
             select
             size="small"
-            label="Modo"
+            label="Consulta"
             value={modoConsulta}
             onChange={(e) => setModoConsulta(e.target.value)}
-            sx={{
-              minWidth: { xs: "100%", md: 130 },
-              bgcolor: "white",
-            }}
+            sx={fieldSx}
           >
-            <MenuItem value="dia">Día</MenuItem>
-            <MenuItem value="personalizada">Rango</MenuItem>
+            <MenuItem value="dia">Por día</MenuItem>
+            <MenuItem value="personalizada">Rango personalizado</MenuItem>
           </TextField>
 
           <TextField
@@ -89,11 +119,14 @@ export default function HistorialPOSFilters({
             label="Fecha inicio"
             InputLabelProps={{ shrink: true }}
             value={fechaInicio}
-            onChange={(e) => setFechaInicio(e.target.value)}
-            sx={{
-              minWidth: { xs: "100%", md: 165 },
-              bgcolor: "white",
+            onChange={(e) => {
+              setFechaInicio(e.target.value);
+
+              if (modoConsulta === "dia") {
+                setFechaFin(e.target.value);
+              }
             }}
+            sx={fieldSx}
           />
 
           <TextField
@@ -102,25 +135,23 @@ export default function HistorialPOSFilters({
             label="Fecha fin"
             InputLabelProps={{ shrink: true }}
             value={fechaFin}
+            disabled={modoConsulta === "dia"}
             onChange={(e) => setFechaFin(e.target.value)}
-            sx={{
-              minWidth: { xs: "100%", md: 165 },
-              bgcolor: "white",
-            }}
+            sx={fieldSx}
           />
 
           <TextField
             select
             size="small"
-            label="Pago"
+            label="Método de pago"
             value={tipoPago}
             onChange={(e) => setTipoPago(e.target.value)}
             sx={{
-              minWidth: { xs: "100%", md: 180 },
-              bgcolor: "white",
+              ...fieldSx,
+              minWidth: { xs: "100%", md: 210 },
             }}
           >
-            <MenuItem value="">Todos</MenuItem>
+            <MenuItem value="">Todos los métodos</MenuItem>
             <MenuItem value="efectivo">Efectivo</MenuItem>
             <MenuItem value="transferencia">Transferencia</MenuItem>
             <MenuItem value="tc">Tarjeta crédito</MenuItem>
@@ -128,44 +159,50 @@ export default function HistorialPOSFilters({
           </TextField>
 
           <Stack
-            direction="row"
+            direction={{ xs: "column", sm: "row" }}
             spacing={1}
-            sx={{ ml: { md: "auto" } }}
-            alignItems="center"
+            sx={{
+              ml: { md: "auto" },
+              width: { xs: "100%", md: "auto" },
+            }}
           >
             <Button
+              fullWidth
               variant="contained"
+              startIcon={<SearchRoundedIcon />}
               onClick={onApply}
               disabled={loading}
               sx={{
-                borderRadius: 2,
+                borderRadius: 3,
                 textTransform: "none",
-                fontWeight: 700,
-                minWidth: 110,
+                fontWeight: 900,
+                minHeight: 42,
+                px: 2.5,
               }}
             >
               {loading ? "Cargando..." : "Aplicar"}
             </Button>
 
             <Button
+              fullWidth
               variant="outlined"
               color="inherit"
+              startIcon={<ReplayRoundedIcon />}
               onClick={onClear}
+              disabled={loading}
               sx={{
-                borderRadius: 2,
+                borderRadius: 3,
                 textTransform: "none",
-                fontWeight: 700,
+                fontWeight: 900,
+                minHeight: 42,
+                px: 2.5,
               }}
             >
               Limpiar
             </Button>
-
-            <IconButton onClick={onApply}>
-              <ReplayIcon />
-            </IconButton>
           </Stack>
         </Stack>
-      </Box>
+      </Stack>
     </Paper>
   );
 }

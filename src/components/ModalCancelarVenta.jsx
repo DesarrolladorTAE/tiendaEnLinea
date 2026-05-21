@@ -1,21 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  Typography,
+  Alert,
+  Avatar,
   Box,
-  TextField,
-  Stack,
-  Grid,
-  Checkbox,
+  Button,
   CircularProgress,
-  ToggleButtonGroup,
-  ToggleButton,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
 } from "@mui/material";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import { alpha, useTheme } from "@mui/material/styles";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
+
 import axiosClient from "../config/axiosClientPOS";
 import { showError, showSuccess } from "../utils/alerts";
 
@@ -25,183 +28,216 @@ export default function ModalCancelarVenta({
   ventaId,
   onSuccess,
 }) {
-  const [tipo, setTipo] = useState("total"); // "total" o "parcial"
+  const theme = useTheme();
+
   const [motivo, setMotivo] = useState("");
   const [loading, setLoading] = useState(false);
-  const [productos, setProductos] = useState([]);
-  const [productosSeleccionados, setProductosSeleccionados] = useState([]);
-  const [loadingProductos, setLoadingProductos] = useState(false);
 
   useEffect(() => {
     if (open) {
       setMotivo("");
-      setTipo("total");
-      setProductos([]);
-      setProductosSeleccionados([]);
+      setLoading(false);
     }
   }, [open]);
 
-  useEffect(() => {
-    if (open && tipo === "parcial" && ventaId) {
-      cargarProductos();
-    }
-  }, [open, tipo, ventaId]);
-
-  const cargarProductos = async () => {
-    setLoadingProductos(true);
-    try {
-      const { data } = await axiosClient.get(`/ventas/${ventaId}/items`);
-      setProductos(data.filter((p) => p.estado === "vendido")); // solo los vendidos
-    } catch (error) {
-      showError("Error al cargar los productos de la venta.");
-    } finally {
-      setLoadingProductos(false);
-    }
-  };
-
-  const handleProductoToggle = (id) => {
-    setProductosSeleccionados((prev) =>
-      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
-    );
+  const handleClose = () => {
+    if (loading) return;
+    onClose?.();
   };
 
   const handleCancelar = async () => {
     if (!motivo.trim()) {
-      showError("Debes ingresar un motivo.");
-      return;
-    }
-
-    if (tipo === "parcial" && productosSeleccionados.length === 0) {
-      showError("Selecciona al menos un producto para devolver.");
+      showError("Debe ingresar el motivo de la cancelación.");
       return;
     }
 
     setLoading(true);
 
     try {
-      if (tipo === "total") {
-        await axiosClient.post(`/cancelacion/venta/${ventaId}`, { motivo });
-        showSuccess("Venta cancelada correctamente.");
-      } else {
-        await axiosClient.post(`/cancelacion/productos/${ventaId}`, {
-          motivo,
-          sale_item_ids: productosSeleccionados,
-        });
-        showSuccess("Productos devueltos correctamente.");
-      }
+      await axiosClient.post(`/cancelacion/venta/${ventaId}`, {
+        motivo: motivo.trim(),
+      });
+
+      showSuccess("Venta cancelada correctamente.");
       onSuccess?.();
-      onClose();
+      onClose?.();
     } catch (error) {
-      showError("Ocurrió un error al procesar la cancelación.");
+      showError(
+        error?.response?.data?.message ||
+          "Ocurrió un error al procesar la cancelación."
+      );
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <WarningAmberIcon color="error" />
-          <Typography variant="h6">Cancelar / Devolver Venta</Typography>
-        </Stack>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: "hidden",
+          boxShadow: "0 24px 80px rgba(15, 23, 42, 0.25)",
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          p: 0,
+          background:
+            theme.palette.mode === "dark"
+              ? "linear-gradient(135deg, #111827 0%, #1f2937 100%)"
+              : "linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)",
+        }}
+      >
+        <Box sx={{ p: 3 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Avatar
+              sx={{
+                width: 48,
+                height: 48,
+                bgcolor: alpha(theme.palette.error.main, 0.12),
+                color: theme.palette.error.main,
+              }}
+            >
+              <WarningAmberRoundedIcon />
+            </Avatar>
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography fontWeight={900} fontSize={20}>
+                Cancelación total de venta
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Esta acción cancelará completamente la venta seleccionada.
+              </Typography>
+            </Box>
+
+            <Button
+              onClick={handleClose}
+              disabled={loading}
+              sx={{
+                minWidth: 40,
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                color: "text.secondary",
+              }}
+            >
+              <CloseRoundedIcon />
+            </Button>
+          </Stack>
+        </Box>
       </DialogTitle>
 
-      <DialogContent dividers>
-        <Typography mb={2}>
-          Estás a punto de realizar una{" "}
-          <strong>
-            {tipo === "total" ? "cancelación total" : "devolución parcial"}
-          </strong>{" "}
-          de la venta <strong>#{ventaId}</strong>.
-        </Typography>
+      <Divider />
 
-        <Box mb={2}>
-          <ToggleButtonGroup
-            value={tipo}
-            exclusive
-            onChange={(e, val) => val && setTipo(val)}
-            size="small"
-            fullWidth
+      <DialogContent sx={{ p: 3 }}>
+        <Stack spacing={2.5}>
+          <Alert
+            severity="warning"
+            icon={<WarningAmberRoundedIcon />}
+            sx={{
+              borderRadius: 3,
+              alignItems: "center",
+              border: `1px solid ${alpha(theme.palette.warning.main, 0.25)}`,
+              bgcolor: alpha(theme.palette.warning.main, 0.08),
+            }}
           >
-            <ToggleButton value="total">Cancelación Total</ToggleButton>
-            <ToggleButton value="parcial">Devolución Parcial</ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
+            Está a punto de cancelar la venta{" "}
+            <strong>#{ventaId || "N/A"}</strong>. Verifique la información antes
+            de continuar.
+          </Alert>
 
-        {tipo === "parcial" && (
-          <Box mt={2}>
-            <Typography variant="subtitle2" gutterBottom>
-              Selecciona los productos a cancelar:
+          <Box
+            sx={{
+              border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+              borderRadius: 3,
+              p: 2,
+              bgcolor:
+                theme.palette.mode === "dark"
+                  ? alpha(theme.palette.common.white, 0.03)
+                  : alpha(theme.palette.grey[100], 0.8),
+            }}
+          >
+            <Typography fontWeight={800} mb={0.5}>
+              Detalle de la acción
             </Typography>
-            {loadingProductos ? (
-              <Box display="flex" justifyContent="center" mt={1}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : productos.length === 0 ? (
-              <Typography color="text.secondary" fontSize={14}>
-                No hay productos disponibles para devolver.
-              </Typography>
-            ) : (
-              <Grid container spacing={1}>
-                {productos.map((p) => (
-                  <Grid item xs={12} sm={6} md={6} key={p.id}>
-                    <Box
-                      sx={{
-                        border: "1px solid #ccc",
-                        borderRadius: 2,
-                        p: 1.5,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        backgroundColor: productosSeleccionados.includes(p.id)
-                          ? "rgba(255, 193, 7, 0.15)"
-                          : "#fafafa",
-                        transition: "background-color 0.2s",
-                      }}
-                    >
-                      <Checkbox
-                        checked={productosSeleccionados.includes(p.id)}
-                        onChange={() => handleProductoToggle(p.id)}
-                      />
-                      <Box>
-                        <Typography fontWeight="bold" fontSize={14}>
-                          {p.nombre}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          Cantidad: x{parseFloat(p.quantity).toString()}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </Box>
-        )}
 
-        <TextField
-          fullWidth
-          label="Motivo"
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          multiline
-          rows={3}
-          sx={{ mt: 2 }}
-        />
+            <Typography variant="body2" color="text.secondary">
+              La cancelación total marcará la venta como cancelada y podrá
+              afectar reportes, historial y cortes relacionados con esta
+              operación.
+            </Typography>
+          </Box>
+
+          <TextField
+            fullWidth
+            required
+            label="Motivo de cancelación"
+            placeholder="Ejemplo: Error en el cobro, venta duplicada, solicitud del cliente..."
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            multiline
+            minRows={4}
+            disabled={loading}
+            inputProps={{ maxLength: 500 }}
+            helperText={`${motivo.length}/500 caracteres`}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3,
+              },
+            }}
+          />
+        </Stack>
       </DialogContent>
 
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+      <DialogActions
+        sx={{
+          p: 3,
+          pt: 0,
+          gap: 1,
+          flexDirection: { xs: "column-reverse", sm: "row" },
+        }}
+      >
+        <Button
+          fullWidth
+          variant="outlined"
+          onClick={handleClose}
+          disabled={loading}
+          sx={{
+            borderRadius: 2.5,
+            py: 1.2,
+            fontWeight: 800,
+          }}
+        >
           Cerrar
         </Button>
+
         <Button
+          fullWidth
           variant="contained"
           color="error"
           onClick={handleCancelar}
-          disabled={loading}
+          disabled={loading || !ventaId}
+          startIcon={
+            loading ? (
+              <CircularProgress size={18} color="inherit" />
+            ) : (
+              <DeleteForeverRoundedIcon />
+            )
+          }
+          sx={{
+            borderRadius: 2.5,
+            py: 1.2,
+            fontWeight: 900,
+            boxShadow: `0 12px 30px ${alpha(theme.palette.error.main, 0.32)}`,
+          }}
         >
-          {tipo === "total" ? "Cancelar Venta" : "Devolver Productos"}
+          {loading ? "Cancelando..." : "Confirmar cancelación"}
         </Button>
       </DialogActions>
     </Dialog>

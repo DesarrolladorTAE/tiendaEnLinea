@@ -5,11 +5,9 @@ import axiosClientPOS from "../config/axiosClientPOS";
 
 export const hoyISO = () => {
   const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
 };
 
 export const money = (n) =>
@@ -19,45 +17,33 @@ export const money = (n) =>
     minimumFractionDigits: 2,
   });
 
-const LABELS_PAGO = {
-  efectivo: "Efectivo",
-  transferencia: "Transferencia",
-  tc: "T. crédito",
-  td: "T. débito",
-};
-
-export const etiquetaPagoVenta = (v) => {
-  if (v?.payment_label) return v.payment_label;
-
-  const pagos = Array.isArray(v?.payment_methods) ? v.payment_methods : [];
-  if (!pagos.length) return "—";
-
-  return pagos
-    .map((p) => `${LABELS_PAGO[p.method] || p.method} ${money(p.total)}`)
-    .join(" + ");
-};
-
-export const parseFechaLocal = (value) => {
+const parseDateSafe = (value) => {
   if (!value) return null;
 
-  const text = String(value);
+  const d = new Date(value);
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    const [year, month, day] = text.split("-").map(Number);
-    return new Date(year, month - 1, day);
-  }
+  if (Number.isNaN(d.getTime())) return null;
 
-  return new Date(value);
+  return d;
 };
 
 export const formatFecha = (value) => {
   try {
-    const fecha = parseFechaLocal(value);
-    if (!fecha) return "—";
+    const d = parseDateSafe(value);
+    if (!d) return "—";
 
-    return format(fecha, "d 'de' MMM yyyy", {
-      locale: es,
-    });
+    return format(d, "d MMM yyyy", { locale: es });
+  } catch {
+    return "—";
+  }
+};
+
+export const formatHora = (value) => {
+  try {
+    const d = parseDateSafe(value);
+    if (!d) return "—";
+
+    return format(d, "hh:mm a", { locale: es });
   } catch {
     return "—";
   }
@@ -65,162 +51,45 @@ export const formatFecha = (value) => {
 
 export const formatFechaLarga = (value) => {
   try {
-    const fecha = parseFechaLocal(value);
-    if (!fecha) return "Sin fecha";
+    if (value === "sin_fecha") return "Sin fecha registrada";
 
-    return format(fecha, "d 'de' MMMM 'del' yyyy", {
+    const d = parseDateSafe(`${value}T00:00:00`);
+    if (!d) return "Sin fecha registrada";
+
+    return format(d, "d 'de' MMMM 'del' yyyy", {
       locale: es,
     });
   } catch {
-    return "Sin fecha";
+    return "Sin fecha registrada";
   }
 };
 
 export const fechaSoloDia = (value) => {
-  if (!value) return "";
+  const d = parseDateSafe(value);
 
-  const fecha = new Date(value);
+  if (!d) return "sin_fecha";
 
-  const year = fecha.getFullYear();
-  const month = String(fecha.getMonth() + 1).padStart(2, "0");
-  const day = String(fecha.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-};
-
-export const STATUS_NO_CONTABLES = ["open", "credit"];
-
-export const STATUS_CONTABLES = ["paid", "credit_paid"];
-
-export const isPendiente = (row) =>
-  STATUS_NO_CONTABLES.includes(row?.estadoRaw) ||
-  STATUS_NO_CONTABLES.includes(row?.venta?.status);
-
-export const isPagada = (row) =>
-  STATUS_CONTABLES.includes(row?.estadoRaw) ||
-  STATUS_CONTABLES.includes(row?.venta?.status);
-
-const getColorByType = (type, estado) => {
-  const status = String(estado || "").toLowerCase();
-
-  // pendientes
-  if (status === "open" || status === "credit") {
-    return "warning";
-  }
-
-  // canceladas
-  if (
-    status === "cancelled" ||
-    status === "partially_cancelled"
-  ) {
-    return "error";
-  }
-
-  // devoluciones
-  if (
-    status === "devuelta" ||
-    status === "devuelta_parcial"
-  ) {
-    return "info";
-  }
-
-  // crédito pagado
-  if (status === "credit_paid") {
-    return "primary";
-  }
-
-  // pagadas normales
-  return "success";
-};
-
-const getBgByType = (type, estado) => {
-  const status = String(estado || "").toLowerCase();
-
-  // pendientes
-  if (status === "open" || status === "credit") {
-    return "#fff3e0";
-  }
-
-  // canceladas
-  if (
-    status === "cancelled" ||
-    status === "partially_cancelled"
-  ) {
-    return "#ffebee";
-  }
-
-  // devoluciones
-  if (
-    status === "devuelta" ||
-    status === "devuelta_parcial"
-  ) {
-    return "#e3f2fd";
-  }
-
-  // crédito pagado
-  if (status === "credit_paid") {
-    return "#e8eaf6";
-  }
-
-  // pagadas normales
-  return "#e8f5e9";
-};
-
-const getTypeLabel = (type, estado) => {
-  const status = String(estado || "").toLowerCase();
-
-  if (status === "open") {
-    return "Pendiente";
-  }
-
-  if (status === "credit") {
-    return "Crédito";
-  }
-
-  if (status === "credit_paid") {
-    return "Crédito pagado";
-  }
-
-  if (status === "cancelled") {
-    return "Cancelada";
-  }
-
-  if (status === "partially_cancelled") {
-    return "Cancelada parcial";
-  }
-
-  if (status === "devuelta") {
-    return "Devuelta";
-  }
-
-  if (status === "devuelta_parcial") {
-    return "Devolución parcial";
-  }
-
-  return "Venta";
-};
-
-export const getBorderColor = (color) => {
-  if (color === "warning") return "warning.light";
-  if (color === "success") return "success.light";
-  if (color === "info") return "info.light";
-  if (color === "error") return "error.light";
-  return "divider";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
 };
 
 export const agruparPorDia = (rows = []) => {
   const map = new Map();
 
   rows.forEach((row) => {
-    const key = fechaSoloDia(row.fecha);
-    if (!key) return;
+    const key = fechaSoloDia(row.date || row.fecha || row.created_at);
 
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(row);
   });
 
   return Array.from(map.entries())
-    .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+    .sort((a, b) => {
+      if (a[0] === "sin_fecha") return 1;
+      if (b[0] === "sin_fecha") return -1;
+      return a[0] < b[0] ? 1 : -1;
+    })
     .map(([date, items]) => ({
       date,
       label: formatFechaLarga(date),
@@ -237,14 +106,11 @@ export default function useHistorialPOSSimple() {
   const [fechaFin, setFechaFin] = useState(hoyISO());
   const [tipoPago, setTipoPago] = useState("");
 
-  const [puntoVenta, setPuntoVenta] = useState("");
-  const [trabajadorId, setTrabajadorId] = useState("");
-
-  const [ventas, setVentas] = useState([]);
-  const [devoluciones, setDevoluciones] = useState([]);
-  const [cancelaciones, setCancelaciones] = useState([]);
-
+  const [rows, setRows] = useState([]);
+  const [summary, setSummary] = useState({});
   const [paginaDia, setPaginaDia] = useState(0);
+
+  const [posLocationId, setPosLocationId] = useState(null);
 
   const handleFiltrar = async () => {
     setLoading(true);
@@ -257,32 +123,18 @@ export default function useHistorialPOSSimple() {
     if (tipoPago) params.payment_method = tipoPago;
 
     try {
-      const { data } = await axiosClientPOS.get("/ventas/mis-ventas", {
+      const { data } = await axiosClientPOS.get("/pos/historial-unificado", {
         params,
       });
 
-      setVentas(
-        Array.isArray(data?.ventas)
-          ? data.ventas
-          : Array.isArray(data)
-            ? data
-            : [],
-      );
-
-      setDevoluciones(
-        Array.isArray(data?.devoluciones) ? data.devoluciones : [],
-      );
-
-      setCancelaciones(
-        Array.isArray(data?.cancelaciones) ? data.cancelaciones : [],
-      );
-
+      setRows(Array.isArray(data?.rows) ? data.rows : []);
+      setSummary(data?.summary || {});
+      setPosLocationId(data?.pos_location_id || null);
       setPaginaDia(0);
     } catch (error) {
       console.error("Error al consultar historial:", error);
-      setVentas([]);
-      setDevoluciones([]);
-      setCancelaciones([]);
+      setRows([]);
+      setSummary({});
     } finally {
       setLoading(false);
     }
@@ -295,8 +147,6 @@ export default function useHistorialPOSSimple() {
     setFechaInicio(h);
     setFechaFin(h);
     setTipoPago("");
-    setPuntoVenta("");
-    setTrabajadorId("");
     setPaginaDia(0);
 
     setTimeout(() => handleFiltrar(), 0);
@@ -307,103 +157,13 @@ export default function useHistorialPOSSimple() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const devolucionesRows = useMemo(() => {
-    return devoluciones.map((r) => ({
-      id: `dev-${r.id}`,
-      rowType: "devolucion",
-      fecha: r.fecha || r.created_at,
-      venta_id: r.sale?.id || r.sale_id || r.id,
-      venta: r.sale || null,
-      total: Number(r?.importe_afectado ?? r?.sale?.total_amount ?? 0),
-      pago: r.sale ? etiquetaPagoVenta(r.sale) : "—",
-      motivo: r.motivo || "—",
-      estado: r.tipo || "Devuelta",
-      estadoRaw: r.tipo || "devolucion",
-      cliente: r.sale?.client || null,
-    }));
-  }, [devoluciones]);
-
-  const cancelacionesRows = useMemo(() => {
-    return cancelaciones.map((r) => ({
-      id: `cancel-${r.id}`,
-      rowType: "cancelacion",
-      fecha: r.fecha || r.created_at,
-      venta_id: r.sale?.id || r.sale_id || r.id,
-      venta: r.sale || null,
-      total: Number(r?.importe_afectado ?? r?.sale?.total_amount ?? 0),
-      pago: r.sale ? etiquetaPagoVenta(r.sale) : "—",
-      motivo: r.motivo || "—",
-      estado: r.tipo || "Cancelada",
-      estadoRaw: r.tipo || "cancelacion",
-      cliente: r.sale?.client || null,
-    }));
-  }, [cancelaciones]);
-
-  const ventasRows = useMemo(() => {
-    return ventas.map((v) => ({
-      id: `venta-${v.id}`,
-      rowType: "venta",
-      fecha: v.created_at,
-      venta_id: v.id,
-      venta: v,
-      total: Number(v.total_amount || 0),
-      pago: etiquetaPagoVenta(v),
-      motivo: "—",
-      estado:
-        v.status === "open"
-          ? "Venta pendiente"
-          : v.status === "credit"
-            ? "Crédito pendiente"
-            : v.status === "credit_paid"
-              ? "Crédito pagado"
-              : v.status === "cancelled"
-                ? "Cancelada"
-                : v.status === "partially_cancelled"
-                  ? "Parcial"
-                  : v.status === "devuelta"
-                    ? "Devuelta"
-                    : v.status === "devuelta_parcial"
-                      ? "Devolución parcial"
-                      : v.status === "paid"
-                        ? "Pagada"
-                        : v.status || "—",
-      estadoRaw: v.status,
-      cliente: v.client || null,
-    }));
-  }, [ventas]);
-
-  const historialRows = useMemo(() => {
-    return [...ventasRows, ...devolucionesRows, ...cancelacionesRows].sort(
-      (a, b) => {
-        const fa = new Date(a.fecha || 0).getTime();
-        const fb = new Date(b.fecha || 0).getTime();
-        return fb - fa;
-      },
-    );
-  }, [ventasRows, devolucionesRows, cancelacionesRows]);
-
-  const historialRowsParaResumen = useMemo(() => {
-    return historialRows.filter((row) => isPagada(row));
-  }, [historialRows]);
-
-  const historialGroups = useMemo(
-    () => agruparPorDia(historialRows),
-    [historialRows],
-  );
+  const historialGroups = useMemo(() => agruparPorDia(rows), [rows]);
 
   const rowsPaginaActual = historialGroups[paginaDia]?.rows || [];
 
   useEffect(() => {
     setPaginaDia(0);
   }, [fechaInicio, fechaFin, tipoPago, modoConsulta]);
-
-  useEffect(() => {
-    if (paginaDia > historialGroups.length - 1 && historialGroups.length > 0) {
-      setPaginaDia(0);
-    }
-  }, [paginaDia, historialGroups.length]);
-
-  const trabajadores = useMemo(() => [], []);
 
   return {
     loading,
@@ -417,17 +177,14 @@ export default function useHistorialPOSSimple() {
     tipoPago,
     setTipoPago,
 
-    puntoVenta,
-    setPuntoVenta,
-    trabajadorId,
-    setTrabajadorId,
-    trabajadores,
-
     paginaDia,
     setPaginaDia,
 
-    historialRows,
-    historialRowsParaResumen,
+    summary,
+    posLocationId,
+
+    historialRows: rows,
+    historialRowsParaResumen: rows.filter((r) => r.affects_cash_total),
     historialGroups,
     rowsPaginaActual,
 

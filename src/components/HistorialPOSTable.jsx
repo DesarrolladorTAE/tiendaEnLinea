@@ -14,142 +14,115 @@ import {
   Card,
   CardContent,
   Chip,
+  Avatar,
 } from "@mui/material";
 
-import PrintIcon from "@mui/icons-material/Print";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import CancelIcon from "@mui/icons-material/Cancel";
-import AutorenewIcon from "@mui/icons-material/Autorenew";
-import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
+import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import CreditCardRoundedIcon from "@mui/icons-material/CreditCardRounded";
+import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import UndoRoundedIcon from "@mui/icons-material/UndoRounded";
 
-import { formatFecha, money } from "./useHistorialPOSSimple";
+import { formatFecha, formatHora, money } from "./useHistorialPOSSimple";
 
-const normalizeText = (value) =>
-  String(value || "")
-    .toLowerCase()
-    .trim();
-
-const getRealStatus = (row) => {
-  if (row?.rowType === "cancelacion") {
-    const tipo = normalizeText(row?.tipoCancelacion || row?.tipo || row?.estado);
-
-    if (
-      tipo.includes("parcial") ||
-      tipo.includes("partial") ||
-      tipo === "partially_cancelled"
-    ) {
-      return "partially_cancelled";
-    }
-
-    return "cancelled";
-  }
-
-  if (row?.rowType === "devolucion") {
-    const tipo = normalizeText(row?.tipoDevolucion || row?.tipo || row?.estado);
-
-    if (
-      tipo.includes("parcial") ||
-      tipo.includes("partial") ||
-      tipo === "devuelta_parcial"
-    ) {
-      return "devuelta_parcial";
-    }
-
-    return "devuelta";
-  }
-
-  const raw = normalizeText(row?.venta?.status || row?.estadoRaw || row?.estado);
-
-  if (
-    raw === "open" ||
-    raw === "pending" ||
-    raw.includes("pendiente") ||
-    raw.includes("por cobrar")
-  ) {
-    return "open";
-  }
-
-  if (
-    raw === "credit" ||
-    raw.includes("credito") ||
-    raw.includes("crédito")
-  ) {
-    return "credit";
-  }
-
-  if (raw === "credit_paid" || raw.includes("crédito pagado")) {
-    return "credit_paid";
-  }
-
-  if (
-    raw === "cancelled" ||
-    raw === "canceled" ||
-    raw.includes("cancelada") ||
-    raw.includes("cancelado")
-  ) {
-    return "cancelled";
-  }
-
-  if (
-    raw === "partially_cancelled" ||
-    raw.includes("cancelada parcial") ||
-    raw.includes("cancelado parcial")
-  ) {
-    return "partially_cancelled";
-  }
-
-  if (raw === "devuelta_parcial" || raw.includes("devolución parcial")) {
-    return "devuelta_parcial";
-  }
-
-  if (raw === "devuelta" || raw.includes("devuelta")) {
-    return "devuelta";
-  }
-
-  if (raw === "paid" || raw.includes("pagada")) {
-    return "paid";
-  }
-
-  return raw || "paid";
+const rowConfig = {
+  sale_paid: {
+    label: "Venta pagada",
+    color: "success",
+    icon: <ReceiptLongRoundedIcon />,
+  },
+  sale_paid_mixed: {
+    label: "Pago mixto",
+    color: "success",
+    icon: <PaymentsRoundedIcon />,
+  },
+  pending_sale: {
+    label: "Pendiente",
+    color: "warning",
+    icon: <PendingActionsRoundedIcon />,
+  },
+  pending_initial_payment: {
+    label: "Anticipo inicial",
+    color: "warning",
+    icon: <PaymentsRoundedIcon />,
+  },
+  pending_payment: {
+    label: "Abono pendiente",
+    color: "warning",
+    icon: <PaymentsRoundedIcon />,
+  },
+  pending_final_payment: {
+    label: "Liquidación pendiente",
+    color: "success",
+    icon: <PaymentsRoundedIcon />,
+  },
+  credit_sale: {
+    label: "Crédito",
+    color: "primary",
+    icon: <CreditCardRoundedIcon />,
+  },
+  credit_sale_paid: {
+    label: "Crédito pagado",
+    color: "primary",
+    icon: <CreditCardRoundedIcon />,
+  },
+  credit_payment: {
+    label: "Abono crédito",
+    color: "info",
+    icon: <PaymentsRoundedIcon />,
+  },
+  credit_liquidation: {
+    label: "Liquidación crédito",
+    color: "success",
+    icon: <PaymentsRoundedIcon />,
+  },
+  cancelacion: {
+    label: "Cancelación",
+    color: "error",
+    icon: <CancelRoundedIcon />,
+  },
+  devolucion: {
+    label: "Devolución",
+    color: "info",
+    icon: <UndoRoundedIcon />,
+  },
 };
 
-const isPendienteStatus = (status) => ["open", "credit"].includes(status);
+const getConfig = (row) =>
+  rowConfig[row?.row_type] || {
+    label: row?.label || "Movimiento",
+    color: "default",
+    icon: <ReceiptLongRoundedIcon />,
+  };
 
-const getColor = (status) => {
-  if (["open", "credit"].includes(status)) return "warning";
-  if (["cancelled", "partially_cancelled"].includes(status)) return "error";
-  if (["devuelta", "devuelta_parcial"].includes(status)) return "info";
-  if (status === "credit_paid") return "primary";
-  return "success";
-};
+const getClientName = (row) =>
+  row?.client?.name ||
+  row?.cliente?.nombre_alias ||
+  row?.cliente?.razon_social ||
+  "Cliente general";
 
-const getBg = (status) => {
-  if (["open", "credit"].includes(status)) return "#fff3e0";
-  if (["cancelled", "partially_cancelled"].includes(status)) return "#ffebee";
-  if (["devuelta", "devuelta_parcial"].includes(status)) return "#e3f2fd";
-  if (status === "credit_paid") return "#e8eaf6";
-  return "#e8f5e9";
-};
+const getPhone = (row) => row?.client?.phone || row?.cliente?.telefono || "";
 
-const getBorder = (color) => {
-  if (color === "warning") return "warning.light";
-  if (color === "success") return "success.light";
-  if (color === "info") return "info.light";
-  if (color === "error") return "error.light";
-  if (color === "primary") return "primary.light";
-  return "divider";
-};
+const getAmount = (row) => Number(row?.amount ?? row?.total ?? 0);
 
-const getLabel = (status) => {
-  if (status === "open") return "Pendiente";
-  if (status === "credit") return "Crédito";
-  if (status === "credit_paid") return "Crédito pagado";
-  if (status === "cancelled") return "Cancelada";
-  if (status === "partially_cancelled") return "Cancelada parcial";
-  if (status === "devuelta") return "Devuelta";
-  if (status === "devuelta_parcial") return "Devolución parcial";
-  return "Venta";
-};
+const getSaleId = (row) => row?.sale_id || row?.venta_id;
+
+const canCancel = (row) =>
+  [
+    "sale_paid",
+    "sale_paid_mixed",
+    "pending_sale",
+    "pending_initial_payment",
+    "pending_payment",
+  ].includes(row?.row_type);
+
+const canReturn = (row) =>
+  ["sale_paid", "sale_paid_mixed", "credit_sale_paid"].includes(row?.row_type);
 
 export default function HistorialPOSTable({
   rows = [],
@@ -160,105 +133,70 @@ export default function HistorialPOSTable({
   onCancelar,
   onDevolver,
 }) {
-  const renderCliente = (cliente) => {
-    if (!cliente) {
-      return (
-        <Typography variant="body2" color="text.secondary">
-          Sin cliente
-        </Typography>
-      );
-    }
-
-    return (
-      <Stack spacing={0.2}>
-        <Typography variant="body2" fontWeight={700}>
-          {cliente.nombre_alias || "Cliente"}
-        </Typography>
-
-        {cliente.telefono ? (
-          <Typography variant="caption" color="text.secondary">
-            {cliente.telefono}
-          </Typography>
-        ) : null}
-      </Stack>
-    );
-  };
-
   const renderActions = (row) => {
-    const ventaId = row.venta_id;
-    const status = getRealStatus(row);
-
-    const puedeCancelar =
-      row.rowType === "venta" &&
-      ![
-        "cancelled",
-        "partially_cancelled",
-        "devuelta",
-        "devuelta_parcial",
-        "credit_paid",
-      ].includes(status);
-
-    const puedeDevolver =
-      row.rowType === "venta" &&
-      ["paid", "credit_paid", "partially_cancelled"].includes(status);
+    const saleId = getSaleId(row);
+    const hasSale = Boolean(saleId);
 
     return (
-      <Stack
-        direction="row"
-        spacing={0.3}
-        justifyContent="center"
-        flexWrap="wrap"
-      >
-        <Tooltip title="Ticket">
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={() => onTicket?.(ventaId)}
-          >
-            <PrintIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+        {hasSale ? (
+          <>
+            <Tooltip title="Ticket">
+              <IconButton size="small" onClick={() => onTicket?.(saleId)}>
+                <PrintRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
 
-        <Tooltip title="Detalles">
-          <IconButton
-            size="small"
-            color="secondary"
-            onClick={() => onDetalles?.(ventaId)}
-          >
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+            <Tooltip title="Detalles">
+              <IconButton size="small" onClick={() => onDetalles?.(saleId)}>
+                <VisibilityRoundedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </>
+        ) : null}
 
         <Tooltip title="Cliente">
           <IconButton
             size="small"
-            color="inherit"
-            onClick={() => onCliente?.(row)}
+            onClick={() =>
+              onCliente?.({
+                ventaId: getSaleId(row),
+                clienteActualId:
+                  row?.client_id ||
+                  row?.cliente_id ||
+                  row?.client?.id ||
+                  row?.cliente?.id ||
+                  row?.venta?.client_id ||
+                  row?.venta?.cliente_id ||
+                  row?.venta?.client?.id ||
+                  row?.venta?.cliente?.id ||
+                  null,
+              })
+            }
           >
-            <PersonOutlineIcon fontSize="small" />
+            <PersonOutlineRoundedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-
-        {puedeCancelar ? (
+        {hasSale && canCancel(row) ? (
           <Tooltip title="Cancelar">
             <IconButton
               size="small"
               color="error"
-              onClick={() => onCancelar?.(ventaId)}
+              onClick={() => onCancelar?.(saleId)}
             >
-              <CancelIcon fontSize="small" />
+              <CancelRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         ) : null}
 
-        {puedeDevolver ? (
+        {hasSale && canReturn(row) ? (
           <Tooltip title="Devolver">
             <IconButton
               size="small"
               color="info"
-              onClick={() => onDevolver?.(ventaId)}
+              onClick={() => onDevolver?.(saleId)}
             >
-              <AutorenewIcon fontSize="small" />
+              <AutorenewRoundedIcon fontSize="small" />
             </IconButton>
           </Tooltip>
         ) : null}
@@ -266,79 +204,94 @@ export default function HistorialPOSTable({
     );
   };
 
-  const renderEstado = (row) => {
-    const status = getRealStatus(row);
-    const pendiente = isPendienteStatus(status);
+  const renderMovement = (row) => {
+    const cfg = getConfig(row);
 
     return (
-      <Stack spacing={0.25}>
-        <Typography variant="body2" fontWeight={800}>
-          {getLabel(status)}
-        </Typography>
+      <Stack direction="row" spacing={1.2} alignItems="center">
+        <Avatar
+          sx={{
+            width: 38,
+            height: 38,
+            bgcolor: `${cfg.color}.50`,
+            color: `${cfg.color}.main`,
+            border: "1px solid",
+            borderColor: `${cfg.color}.100`,
+          }}
+        >
+          {React.cloneElement(cfg.icon, { fontSize: "small" })}
+        </Avatar>
 
-        {pendiente ? (
-          <Typography variant="caption" color="warning.dark" fontWeight={800}>
-            No se suma a totales de pago
+        <Box>
+          <Typography fontWeight={900} fontSize={14}>
+            {row.label || cfg.label}
           </Typography>
-        ) : null}
 
-        {status === "cancelled" ? (
-          <Typography variant="caption" color="error.main" fontWeight={800}>
-            Venta cancelada
+          <Typography variant="caption" color="text.secondary">
+            {getSaleId(row)
+              ? `Ticket #${getSaleId(row)}`
+              : "Movimiento de cuenta"}
           </Typography>
-        ) : null}
-
-        {status === "partially_cancelled" ? (
-          <Typography variant="caption" color="error.main" fontWeight={800}>
-            Cancelación parcial
-          </Typography>
-        ) : null}
-
-        {status === "devuelta" || status === "devuelta_parcial" ? (
-          <Typography variant="caption" color="info.main" fontWeight={800}>
-            Venta con devolución
-          </Typography>
-        ) : null}
-
-        {row.motivo && row.motivo !== "—" ? (
-          <Typography
-            variant="caption"
-            color="text.secondary"
-            title={row.motivo}
-            sx={{
-              maxWidth: 210,
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-          >
-            Motivo: {row.motivo}
-          </Typography>
-        ) : null}
+        </Box>
       </Stack>
     );
   };
 
+  const renderClient = (row) => (
+    <Box>
+      <Typography fontWeight={800} fontSize={13}>
+        {getClientName(row)}
+      </Typography>
+
+      {getPhone(row) ? (
+        <Typography variant="caption" color="text.secondary">
+          {getPhone(row)}
+        </Typography>
+      ) : (
+        <Typography variant="caption" color="text.secondary">
+          Sin teléfono
+        </Typography>
+      )}
+    </Box>
+  );
+
+  const renderPayment = (row) => (
+    <Stack spacing={0.2}>
+      <Typography fontWeight={900}>{money(getAmount(row))}</Typography>
+
+      <Typography variant="caption" color="text.secondary">
+        {row?.payment?.method_label || row?.payment?.method || "Sin método"}
+      </Typography>
+
+      {row?.payment?.referencia ? (
+        <Typography variant="caption" color="text.secondary">
+          Ref. {row.payment.referencia}
+        </Typography>
+      ) : null}
+    </Stack>
+  );
+
   if (isMobile) {
     return (
-      <Stack spacing={1.2}>
+      <Stack spacing={1.5}>
         {rows.map((row) => {
-          const status = getRealStatus(row);
-          const color = getColor(status);
-          const bg = getBg(status);
+          const cfg = getConfig(row);
 
           return (
             <Card
               key={row.id}
+              elevation={0}
               sx={{
-                borderRadius: 3,
-                bgcolor: bg,
+                borderRadius: 4,
                 border: "1px solid",
-                borderColor: getBorder(color),
+                borderColor: "divider",
+                background:
+                  "linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.92))",
+                boxShadow: "0 14px 38px rgba(15,23,42,.07)",
               }}
             >
-              <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 } }}>
-                <Stack spacing={1}>
+              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+                <Stack spacing={1.5}>
                   <Stack
                     direction="row"
                     justifyContent="space-between"
@@ -346,33 +299,34 @@ export default function HistorialPOSTable({
                   >
                     <Chip
                       size="small"
-                      color={color}
-                      label={getLabel(status)}
-                      sx={{ fontWeight: 700 }}
+                      color={cfg.color}
+                      label={row.label || cfg.label}
+                      sx={{ fontWeight: 900, borderRadius: 2 }}
                     />
 
                     <Typography variant="caption" color="text.secondary">
-                      {formatFecha(row.fecha)}
+                      {formatHora(row.date || row.fecha)}
                     </Typography>
                   </Stack>
 
-                  <Typography variant="body2" fontWeight={800}>
-                    Venta #{row.venta_id}
-                  </Typography>
+                  {renderMovement(row)}
 
-                  <Typography variant="h6" fontWeight={800}>
-                    {money(row.total)}
-                  </Typography>
-
-                  <Box>{renderCliente(row.cliente)}</Box>
-
-                  <Typography variant="body2">{row.pago || "—"}</Typography>
-
-                  <Box>{renderEstado(row)}</Box>
-
-                  <Stack direction="row" justifyContent="flex-end">
-                    {renderActions(row)}
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="flex-end"
+                  >
+                    {renderClient(row)}
+                    <Box textAlign="right">{renderPayment(row)}</Box>
                   </Stack>
+
+                  {row.motivo ? (
+                    <Typography variant="caption" color="text.secondary">
+                      Motivo: {row.motivo}
+                    </Typography>
+                  ) : null}
+
+                  {renderActions(row)}
                 </Stack>
               </CardContent>
             </Card>
@@ -386,90 +340,96 @@ export default function HistorialPOSTable({
     <Paper
       elevation={0}
       sx={{
-        borderRadius: 3,
+        borderRadius: 5,
         overflow: "hidden",
         border: "1px solid",
         borderColor: "divider",
+        boxShadow: "0 18px 45px rgba(15,23,42,.08)",
       }}
     >
       <Box sx={{ overflowX: "auto" }}>
-        <Table size="small">
+        <Table>
           <TableHead>
-            <TableRow sx={{ bgcolor: "#fafafa" }}>
-              <TableCell>
-                <strong>Tipo</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Venta</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Fecha</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Total</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Cliente</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Pago</strong>
-              </TableCell>
-              <TableCell>
-                <strong>Estado / Motivo</strong>
-              </TableCell>
-              <TableCell align="center">
-                <strong>Acciones</strong>
-              </TableCell>
+            <TableRow
+              sx={{
+                bgcolor: "grey.50",
+                "& th": {
+                  py: 1.8,
+                  fontSize: 12,
+                  color: "text.secondary",
+                  textTransform: "uppercase",
+                  letterSpacing: ".06em",
+                  fontWeight: 900,
+                  borderBottom: "1px solid",
+                  borderColor: "divider",
+                },
+              }}
+            >
+              <TableCell>Movimiento</TableCell>
+              <TableCell>Fecha</TableCell>
+              <TableCell>Cliente</TableCell>
+              <TableCell>Pago / Importe</TableCell>
+              <TableCell>Saldo</TableCell>
+              <TableCell align="right">Acciones</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {rows.map((row) => {
-              const status = getRealStatus(row);
-              const color = getColor(status);
-              const bg = getBg(status);
+            {rows.map((row) => (
+              <TableRow
+                key={row.id}
+                hover
+                sx={{
+                  "& td": {
+                    py: 1.6,
+                    borderColor: "rgba(148,163,184,.18)",
+                  },
+                }}
+              >
+                <TableCell>{renderMovement(row)}</TableCell>
 
-              return (
-                <TableRow key={row.id} hover sx={{ bgcolor: bg }}>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      color={color}
-                      label={getLabel(status)}
-                      sx={{ fontWeight: 700 }}
-                    />
-                  </TableCell>
+                <TableCell>
+                  <Typography fontWeight={800} fontSize={13}>
+                    {formatFecha(row.date || row.fecha)}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatHora(row.date || row.fecha)}
+                  </Typography>
+                </TableCell>
 
-                  <TableCell>#{row.venta_id}</TableCell>
-                  <TableCell>{formatFecha(row.fecha)}</TableCell>
+                <TableCell>{renderClient(row)}</TableCell>
 
-                  <TableCell sx={{ fontWeight: 700 }}>
-                    {money(row.total)}
-                  </TableCell>
+                <TableCell>{renderPayment(row)}</TableCell>
 
-                  <TableCell>{renderCliente(row.cliente)}</TableCell>
-
-                  <TableCell>
-                    <Typography
-                      variant="body2"
-                      title={row.pago || "—"}
-                      sx={{
-                        maxWidth: 220,
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                      }}
-                    >
-                      {row.pago || "—"}
+                <TableCell>
+                  {"remaining_amount" in row ? (
+                    <>
+                      <Typography fontWeight={800} fontSize={13}>
+                        Restante: {money(row.remaining_amount)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Total: {money(row.total_amount)}
+                      </Typography>
+                    </>
+                  ) : "balance_after" in row ? (
+                    <>
+                      <Typography fontWeight={800} fontSize={13}>
+                        Saldo: {money(row.balance_after)}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Antes: {money(row.balance_before)}
+                      </Typography>
+                    </>
+                  ) : (
+                    <Typography variant="caption" color="text.secondary">
+                      —
                     </Typography>
-                  </TableCell>
+                  )}
+                </TableCell>
 
-                  <TableCell>{renderEstado(row)}</TableCell>
-
-                  <TableCell align="center">{renderActions(row)}</TableCell>
-                </TableRow>
-              );
-            })}
+                <TableCell align="right">{renderActions(row)}</TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </Box>

@@ -1,145 +1,110 @@
 // ModalDevolucionExtendido.jsx
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Button, Typography, TextField, Box, Grid, Tabs, Tab,
-  Alert, Checkbox, FormControlLabel, Paper, InputAdornment,
-  IconButton
+  Alert,
+  Avatar,
+  Box,
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Stack,
+  TextField,
+  Typography,
 } from "@mui/material";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import SearchIcon from "@mui/icons-material/Search";
-import CloseIcon from "@mui/icons-material/Close";
+import { alpha, useTheme } from "@mui/material/styles";
+
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import AssignmentReturnRoundedIcon from "@mui/icons-material/AssignmentReturnRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+
 import axiosClient from "../config/axiosClientPOS";
 import { showError, showSuccess } from "../utils/alerts";
 
-export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuccess }) {
-  const [productosVenta, setProductosVenta] = useState([]);
-  const [productosDisponibles, setProductosDisponibles] = useState([]);
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [sustitutos, setSustitutos] = useState({});
-  const [motivo, setMotivo] = useState("");
-  const [tab, setTab] = useState("parcial"); // "total" | "parcial" | "cambio"
-  const [loading, setLoading] = useState(false);
-  const [busqueda, setBusqueda] = useState("");
+export default function ModalDevolucionExtendido({
+  open,
+  onClose,
+  ventaId,
+  onSuccess,
+}) {
+  const theme = useTheme();
 
-  // Reset al abrir
+  const [productosVenta, setProductosVenta] = useState([]);
+  const [motivo, setMotivo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [loadingDatos, setLoadingDatos] = useState(false);
+
   useEffect(() => {
     if (!open) return;
-    resetCampos();
-    cargarDatos();
-  }, [open]);
 
-  const resetCampos = () => {
-    setSelectedIds([]);
-    setSustitutos({});
     setMotivo("");
-    setTab("parcial");
-    setBusqueda("");
-  };
+    setProductosVenta([]);
+    setLoading(false);
+    cargarDatos();
+  }, [open, ventaId]);
 
   const cargarDatos = async () => {
+    if (!ventaId) return;
+
+    setLoadingDatos(true);
+
     try {
-      // Ítems de la venta (solo los "vendido")
       const ventaResp = await axiosClient.get(`/ventas/${ventaId}/items`);
       const items = Array.isArray(ventaResp.data) ? ventaResp.data : [];
-      setProductosVenta(items.filter((p) => (p.estado || "vendido") === "vendido"));
 
-      // Inventario para búsqueda (tipo=venta fuerza stock>0 en el backend)
-      const invResp = await axiosClient.get(`/productos/buscar`, { params: { tipo: "venta" } });
-      const lista = invResp.data?.productos ?? []; // el backend responde { ok, productos }
-      setProductosDisponibles(Array.isArray(lista) ? lista : []);
-    } catch (e) {
-      console.error(e);
-      showError("Error al cargar datos de la venta o inventario.");
+      setProductosVenta(
+        items.filter((p) => (p.estado || "vendido") === "vendido")
+      );
+    } catch (error) {
+      showError("Error al cargar los productos de la venta.");
+    } finally {
+      setLoadingDatos(false);
     }
   };
 
-  const toggleSeleccion = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((pid) => pid !== id) : [...prev, id]
-    );
+  const handleClose = () => {
+    if (loading) return;
+    onClose?.();
   };
-
-  const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
-    if (!q) return productosDisponibles.slice(0, 50);
-    return productosDisponibles.filter((p) =>
-      (p.name || "").toLowerCase().includes(q) ||
-      (p.sku || "").toLowerCase().includes(q)
-    );
-  }, [busqueda, productosDisponibles]);
 
   const handleSubmit = async () => {
-    if (tab !== "total" && selectedIds.length === 0) {
-      showError("Selecciona al menos un producto.");
+    if (!motivo.trim()) {
+      showError("Debe ingresar el motivo del reembolso.");
       return;
     }
-    if (!motivo.trim()) {
-      showError("El motivo es obligatorio.");
+
+    if (!productosVenta.length) {
+      showError("No hay productos disponibles para reembolsar.");
       return;
     }
 
     setLoading(true);
+
     try {
-      // Determinar endpoint según la operación
-      const url =
-        tab === "total"
-          ? `/devoluciones/${ventaId}/reembolso-total`
-          : tab === "cambio"
-          ? `/devoluciones/${ventaId}/cambio-parcial`
-          : `/devoluciones/${ventaId}/reembolso-parcial`;
+      const items = productosVenta.map((p) => ({
+        sale_item_id: p.id,
+        cantidad: p.quantity,
+        accion: "reembolso",
+      }));
 
-      // Construir items
-      let items = [];
-      if (tab === "total") {
-        items = productosVenta.map((p) => ({
-          sale_item_id: p.id,
-          cantidad: p.quantity,
-          accion: "reembolso",
-        }));
-      } else if (tab === "parcial") {
-        items = selectedIds
-          .map((id) => {
-            const base = productosVenta.find((p) => p.id === id);
-            if (!base) return null;
-            return {
-              sale_item_id: id,
-              cantidad: base.quantity,
-              accion: "reembolso",
-            };
-          })
-          .filter(Boolean);
-      } else if (tab === "cambio") {
-        items = selectedIds
-          .map((id) => {
-            const base = productosVenta.find((p) => p.id === id);
-            if (!base) return null;
-            const s = sustitutos[id];
-            if (!s?.producto_nuevo_id) {
-              throw new Error("Falta seleccionar el producto sustituto.");
-            }
-            return {
-              sale_item_id: id,
-              cantidad: base.quantity,
-              accion: "cambio_producto",
-              producto_nuevo_id: s.producto_nuevo_id,
-              cantidad_nueva: 1, // ajusta si tu lógica requiere otra cantidad
-            };
-          })
-          .filter(Boolean);
-      }
+      await axiosClient.post(`/devoluciones/${ventaId}/reembolso-total`, {
+        motivo: motivo.trim(),
+        items,
+      });
 
-      await axiosClient.post(url, { motivo, items });
-
-      showSuccess("Operación registrada correctamente.");
-      onSuccess?.(); // refresca la vista padre (re-cargar ventas)
-      onClose();
-    } catch (e) {
-      console.error(e);
+      showSuccess("Reembolso total registrado correctamente.");
+      onSuccess?.();
+      onClose?.();
+    } catch (error) {
       const msg =
-        e?.response?.data?.details ||
-        e?.response?.data?.message ||
-        "Error al registrar la operación.";
+        error?.response?.data?.details ||
+        error?.response?.data?.message ||
+        "Error al registrar el reembolso total.";
+
       showError(msg);
     } finally {
       setLoading(false);
@@ -147,161 +112,192 @@ export default function ModalDevolucionExtendido({ open, onClose, ventaId, onSuc
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>
-        <Alert icon={<WarningAmberIcon />} severity="warning" sx={{ mb: 1 }}>
-          Cancelar / Devolver Venta
-        </Alert>
-        <Typography>
-          Estás gestionando una operación sobre la venta <strong>#{ventaId}</strong>.
-        </Typography>
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullWidth
+      maxWidth="sm"
+      PaperProps={{
+        sx: {
+          borderRadius: 4,
+          overflow: "hidden",
+          boxShadow: "0 24px 80px rgba(15, 23, 42, 0.25)",
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          p: 0,
+          background:
+            theme.palette.mode === "dark"
+              ? "linear-gradient(135deg, #111827 0%, #1f2937 100%)"
+              : "linear-gradient(135deg, #fff7ed 0%, #ffffff 100%)",
+        }}
+      >
+        <Box sx={{ p: 3 }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Avatar
+              sx={{
+                width: 48,
+                height: 48,
+                bgcolor: alpha(theme.palette.warning.main, 0.14),
+                color: theme.palette.warning.main,
+              }}
+            >
+              <AssignmentReturnRoundedIcon />
+            </Avatar>
+
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography fontWeight={900} fontSize={20}>
+                Reembolso total de venta
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Registre la devolución completa de la venta seleccionada.
+              </Typography>
+            </Box>
+
+            <Button
+              onClick={handleClose}
+              disabled={loading}
+              sx={{
+                minWidth: 40,
+                width: 40,
+                height: 40,
+                borderRadius: 2,
+                color: "text.secondary",
+              }}
+            >
+              <CloseRoundedIcon />
+            </Button>
+          </Stack>
+        </Box>
       </DialogTitle>
 
-      <DialogContent dividers>
-        <Tabs
-          value={tab}
-          onChange={(e, val) => { setTab(val); setSelectedIds([]); setSustitutos({}); }}
-          centered
-          textColor="primary"
-          indicatorColor="primary"
-          sx={{ mb: 2 }}
-        >
-          <Tab value="total" label="REEMBOLSO TOTAL" />
-          {/* <Tab value="parcial" label="DEVOLUCIÓN PARCIAL" /> */}
-          {/* <Tab value="cambio" label="CAMBIO DE PRODUCTO" /> */}
-        </Tabs>
+      <Divider />
 
-        {(tab === "parcial" || tab === "cambio") && (
-          <>
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Selecciona los productos:
-            </Typography>
+      <DialogContent sx={{ p: 3 }}>
+        <Stack spacing={2.5}>
+          <Alert
+            severity="warning"
+            icon={<WarningAmberRoundedIcon />}
+            sx={{
+              borderRadius: 3,
+              alignItems: "center",
+              border: `1px solid ${alpha(theme.palette.warning.main, 0.25)}`,
+              bgcolor: alpha(theme.palette.warning.main, 0.08),
+            }}
+          >
+            Está a punto de registrar un <strong>reembolso total</strong> para
+            la venta <strong>#{ventaId || "N/A"}</strong>.
+          </Alert>
 
-            <Grid container spacing={2}>
-              {productosVenta.map((p) => (
-                <Grid item xs={12} sm={6} md={4} key={p.id}>
-                  <Paper
-                    elevation={3}
-                    sx={{
-                      p: 2,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      border: selectedIds.includes(p.id) ? "2px solid #1976d2" : "1px solid #ccc",
-                      borderRadius: 2,
-                      cursor: "pointer",
-                      transition: "0.2s",
-                    }}
-                    onClick={() => toggleSeleccion(p.id)}
-                  >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={selectedIds.includes(p.id)}
-                          onChange={() => toggleSeleccion(p.id)}
-                          color="primary"
-                        />
-                      }
-                      label={
-                        <Box textAlign="center">
-                          <Typography fontWeight="bold">{p.nombre || p.name}</Typography>
-                          <Typography variant="body2">Cantidad: x{p.quantity}</Typography>
-                        </Box>
-                      }
-                      sx={{ width: "100%", justifyContent: "center" }}
-                    />
+          <Box
+            sx={{
+              border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+              borderRadius: 3,
+              p: 2,
+              bgcolor:
+                theme.palette.mode === "dark"
+                  ? alpha(theme.palette.common.white, 0.03)
+                  : alpha(theme.palette.grey[100], 0.8),
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <ReceiptLongRoundedIcon
+                sx={{ color: "text.secondary", mt: 0.3 }}
+              />
 
-                    {/* {tab === "cambio" && selectedIds.includes(p.id) && (
-                      <>
-                        <TextField
-                          label="Buscar producto (nombre o SKU)"
-                          value={busqueda}
-                          onChange={(e) => setBusqueda(e.target.value)}
-                          fullWidth
-                          InputProps={{
-                            endAdornment: (
-                              <InputAdornment position="end">
-                                <IconButton onClick={() => setBusqueda("")}>
-                                  {busqueda ? <CloseIcon /> : <SearchIcon />}
-                                </IconButton>
-                              </InputAdornment>
-                            ),
-                          }}
-                          sx={{ mt: 2, mb: 1 }}
-                        />
+              <Box>
+                <Typography fontWeight={800} mb={0.5}>
+                  Detalle de la operación
+                </Typography>
 
-                        <Box
-                          sx={{
-                            maxHeight: 220,
-                            overflowY: "auto",
-                            border: "1px solid #ccc",
-                            borderRadius: 1,
-                            width: "100%",
-                            mt: 1,
-                          }}
-                        >
-                          {filtrados.map((prod) => {
-                            const active = sustitutos[p.id]?.producto_nuevo_id === prod.id;
-                            return (
-                              <Box
-                                key={prod.id}
-                                sx={{
-                                  px: 2,
-                                  py: 1,
-                                  cursor: "pointer",
-                                  backgroundColor: active ? "#e3f2fd" : "white",
-                                  borderBottom: "1px solid #eee",
-                                  "&:hover": { backgroundColor: "#f5f5f5" },
-                                }}
-                                onClick={() =>
-                                  setSustitutos((prev) => ({
-                                    ...prev,
-                                    [p.id]: { ...prev[p.id], producto_nuevo_id: prod.id },
-                                  }))
-                                }
-                              >
-                                <Typography variant="body2">
-                                  {prod.name} · SKU: {prod.sku || "—"} · Stock: {prod.stock} · ${Number(prod.price || 0).toFixed(2)}
-                                </Typography>
-                              </Box>
-                            );
-                          })}
-                        </Box>
-                      </>
-                    )} */}
-                  </Paper>
-                </Grid>
-              ))}
-            </Grid>
-          </>
-        )}
+                <Typography variant="body2" color="text.secondary">
+                  El reembolso total aplicará sobre todos los productos vendidos
+                  de esta venta. Esta acción puede afectar reportes, historial,
+                  cortes e inventario relacionado.
+                </Typography>
 
-        <TextField
-          label="Motivo"
-          value={motivo}
-          onChange={(e) => setMotivo(e.target.value)}
-          fullWidth
-          multiline
-          rows={3}
-          sx={{ mt: 3 }}
-        />
+                <Typography
+                  variant="body2"
+                  sx={{ mt: 1, fontWeight: 800 }}
+                  color="text.primary"
+                >
+                  Productos incluidos:{" "}
+                  {loadingDatos ? "Cargando..." : productosVenta.length}
+                </Typography>
+              </Box>
+            </Stack>
+          </Box>
+
+          <TextField
+            fullWidth
+            required
+            label="Motivo del reembolso"
+            placeholder="Ejemplo: Solicitud del cliente, error en venta, producto no entregado..."
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            multiline
+            minRows={4}
+            disabled={loading}
+            inputProps={{ maxLength: 500 }}
+            helperText={`${motivo.length}/500 caracteres`}
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 3,
+              },
+            }}
+          />
+        </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ justifyContent: "space-between", px: 3, py: 2 }}>
-        <Button onClick={onClose} color="primary">CERRAR</Button>
+      <DialogActions
+        sx={{
+          p: 3,
+          pt: 0,
+          gap: 1,
+          flexDirection: { xs: "column-reverse", sm: "row" },
+        }}
+      >
         <Button
-          variant="contained"
-          color={tab === "cambio" ? "info" : "error"}
-          onClick={handleSubmit}
+          fullWidth
+          variant="outlined"
+          onClick={handleClose}
           disabled={loading}
+          sx={{
+            borderRadius: 2.5,
+            py: 1.2,
+            fontWeight: 800,
+          }}
         >
-          {loading
-            ? "Procesando..."
-            : tab === "cambio"
-            ? "CAMBIAR PRODUCTOS"
-            : tab === "total"
-            ? "REEMBOLSO TOTAL"
-            : "DEVOLVER PRODUCTOS"}
+          Cerrar
+        </Button>
+
+        <Button
+          fullWidth
+          variant="contained"
+          color="warning"
+          onClick={handleSubmit}
+          disabled={loading || loadingDatos || !ventaId}
+          startIcon={
+            loading ? (
+              <CircularProgress size={18} color="inherit" />
+            ) : (
+              <AssignmentReturnRoundedIcon />
+            )
+          }
+          sx={{
+            borderRadius: 2.5,
+            py: 1.2,
+            fontWeight: 900,
+            color: "#fff",
+            boxShadow: `0 12px 30px ${alpha(
+              theme.palette.warning.main,
+              0.32
+            )}`,
+          }}
+        >
+          {loading ? "Procesando..." : "Confirmar reembolso total"}
         </Button>
       </DialogActions>
     </Dialog>
