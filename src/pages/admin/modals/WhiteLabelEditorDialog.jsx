@@ -19,6 +19,8 @@ import {
   Alert,
   Paper,
   IconButton,
+  FormControlLabel,
+  Switch,
 } from "@mui/material";
 import { useTheme, alpha } from "@mui/material/styles";
 
@@ -69,9 +71,7 @@ function ImagePreviewCard({ label, url, type = "logo" }) {
       }}
     >
       <Stack spacing={1}>
-        <Typography sx={{ fontWeight: 900, fontSize: 13 }}>
-          {label}
-        </Typography>
+        <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{label}</Typography>
 
         <Box
           sx={{
@@ -194,6 +194,7 @@ export default function WhiteLabelEditorDialog({
     instagram_url: "",
     tiktok_url: "",
     is_active: true,
+    pagination_enabled: true,
   });
 
   const fillForm = useCallback((s) => {
@@ -216,6 +217,8 @@ export default function WhiteLabelEditorDialog({
       instagram_url: v.instagram_url || "",
       tiktok_url: v.tiktok_url || "",
       is_active: typeof v.is_active === "boolean" ? v.is_active : true,
+      pagination_enabled:
+        typeof v.pagination_enabled === "boolean" ? v.pagination_enabled : true,
     });
   }, []);
 
@@ -296,8 +299,12 @@ export default function WhiteLabelEditorDialog({
 
     if (!form.site_name.trim()) {
       return alertFromAxiosError(
-        { response: { data: { message: "El nombre del sitio es obligatorio." } } },
-        "Falta información"
+        {
+          response: {
+            data: { message: "El nombre del sitio es obligatorio." },
+          },
+        },
+        "Falta información",
       );
     }
 
@@ -310,7 +317,7 @@ export default function WhiteLabelEditorDialog({
             },
           },
         },
-        "Falta información"
+        "Falta información",
       );
     }
 
@@ -322,6 +329,7 @@ export default function WhiteLabelEditorDialog({
       category_query_key: (form.category_query_key || "cat").trim() || "cat",
       landing_mode: (form.landing_mode || "default").trim() || "default",
       is_active: !!form.is_active,
+      pagination_enabled: form.pagination_enabled,
     };
 
     setSaving(true);
@@ -329,9 +337,15 @@ export default function WhiteLabelEditorDialog({
       let data;
 
       if (isCreate) {
-        ({ data } = await axiosClient.post("/admin/white-label/sites", payload));
+        ({ data } = await axiosClient.post(
+          "/admin/white-label/sites",
+          payload,
+        ));
       } else {
-        ({ data } = await axiosClient.put(`/admin/white-label/site/${siteId}`, payload));
+        ({ data } = await axiosClient.put(
+          `/admin/white-label/site/${siteId}`,
+          payload,
+        ));
       }
 
       const s = data?.site ?? data?.data ?? null;
@@ -361,11 +375,12 @@ export default function WhiteLabelEditorDialog({
         {
           response: {
             data: {
-              message: "Primero guarda el sitio para generar el ID y luego sube la imagen.",
+              message:
+                "Primero guarda el sitio para generar el ID y luego sube la imagen.",
             },
           },
         },
-        "Primero guarda"
+        "Primero guarda",
       );
     }
 
@@ -457,7 +472,9 @@ export default function WhiteLabelEditorDialog({
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography sx={{ fontWeight: 1000, fontSize: 18, lineHeight: 1.1 }}>
+            <Typography
+              sx={{ fontWeight: 1000, fontSize: 18, lineHeight: 1.1 }}
+            >
               {isCreate
                 ? "Crear sitio de Marca Blanca"
                 : `Editar sitio: ${site?.site_name || `#${siteId}`}`}
@@ -602,6 +619,42 @@ export default function WhiteLabelEditorDialog({
                 placeholder="Ej: Encuentra lo que necesitas"
               />
             </Section>
+
+            <Paper
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                border: `1px solid ${alpha("#000", 0.08)}`,
+                p: 2,
+                bgcolor: "#fff",
+              }}
+            >
+              <Stack spacing={1}>
+                <Typography sx={{ fontWeight: 900 }}>
+                  Configuración de catálogo
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary">
+                  Controla si la tienda utilizará paginación o cargará todos los
+                  productos.
+                </Typography>
+
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={Boolean(form.pagination_enabled)}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          pagination_enabled: e.target.checked,
+                        }))
+                      }
+                    />
+                  }
+                  label="Activar paginado"
+                />
+              </Stack>
+            </Paper>
 
             <Section
               title="URLs"
@@ -792,7 +845,8 @@ export default function WhiteLabelEditorDialog({
                     border: `1px solid ${alpha("#000", 0.08)}`,
                   }}
                 >
-                  Tip: al subir una nueva imagen se mostrará aquí mismo como vista previa.
+                  Tip: al subir una nueva imagen se mostrará aquí mismo como
+                  vista previa.
                 </Alert>
               </Stack>
             </Section>
