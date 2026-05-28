@@ -9,7 +9,7 @@ const adminNavItems = [
   // { path: "/admin/inventario", label: "🏬 Inventario" },
   { path: "/admin/pos", label: "🏬 Punto de Venta" },
   { path: "/admin/reportes", label: "📓 Reportes" },
-  // { path: "/admin/compra", label: "📦Entradas Producto" },
+  { path: "/admin/compra", label: "📦Entradas Producto" },
 
   { path: "/admin/ticket", label: "📄Personaliza tu Ticket"},
   

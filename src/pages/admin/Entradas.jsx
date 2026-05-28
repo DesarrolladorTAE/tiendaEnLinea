@@ -1,309 +1,531 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Button,
+  Card,
+  CardContent,
+  Chip,
+  Container,
   IconButton,
-  TextField,
+  Stack,
+  Tooltip,
   Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Autocomplete,
-  Paper,
-  MenuItem,
+  alpha,
 } from "@mui/material";
-import { AddCircle, RemoveCircle } from "@mui/icons-material";
-import axiosClient from "../../config/axiosClient";
+
+import {
+  AddRounded,
+  ArrowBackRounded,
+  HistoryRounded,
+  Inventory2Rounded,
+  LocalShippingRounded,
+  ReceiptLongRounded,
+} from "@mui/icons-material";
+
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "react-hot-toast";
 
+import axiosClient from "../../config/axiosClient";
+import { useAdminUi } from "../../context/AdminUiContext";
+
+import SupplierModal from "../../components/restocks/SupplierModal";
+import RestockEntryModal from "../../components/restocks/RestockEntryModal";
+import ProductRestockHistory from "../../components/restocks/ProductRestockHistory";
+import LowStockProductsPanel from "../../components/restocks/LowStockProductsPanel";
+import RestockHistoryTable from "../../components/restocks/RestockHistoryTable";
+
+import InventoryDetailModal from "../../components/inventory/InventoryDetailModal";
+
+const COLORS = {
+  accent: "#f9b233",
+  black: "#000000",
+};
+
+const money = (n) =>
+  Number(n || 0).toLocaleString("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  });
+
 export default function StockEntryForm() {
-  const [uuidInvoice, setUuidInvoice] = useState("");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [params] = useSearchParams();
+
+  const { selectedBranch, setSelectedBranch, setHideLayout } = useAdminUi();
+
+  const branchFromNav = location.state?.branch ?? null;
+  const branchIdFromUrl = params.get("branch_id");
+
+  const activeBranch = useMemo(() => {
+    if (branchFromNav?.id) return branchFromNav;
+    if (selectedBranch?.id) return selectedBranch;
+    if (branchIdFromUrl) return { id: Number(branchIdFromUrl) };
+    return null;
+  }, [branchFromNav, selectedBranch, branchIdFromUrl]);
+
+  const [supplierOpen, setSupplierOpen] = useState(false);
+  const [restockOpen, setRestockOpen] = useState(false);
+
+  const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
-  const [lines, setLines] = useState([
-    { id: Date.now(), product: null, product_code: "", unit_price: 0, quantity: 1 },
-  ]);
-  const [loading, setLoading] = useState(false);
-  const [loadingProducts, setLoadingProducts] = useState(false);
+
   const [stockHistory, setStockHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  const [loadingProducts, setLoadingProducts] = useState(false);
 
-  const fetchHistory = async () => {
+  const [lowStock, setLowStock] = useState(null);
+  const [loadingLowStock, setLoadingLowStock] = useState(true);
+  const [minStock, setMinStock] = useState(20);
+
+  const [productHistoryOpen, setProductHistoryOpen] = useState(false);
+
+  const [movementDetailOpen, setMovementDetailOpen] = useState(false);
+  const [movementDetail, setMovementDetail] = useState(null);
+
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailItem, setDetailItem] = useState(null);
+  const [detailScope, setDetailScope] = useState("global");
+  const [detailWarehouseId, setDetailWarehouseId] = useState(null);
+
+  useEffect(() => {
+    setHideLayout(false);
+  }, [setHideLayout]);
+
+  useEffect(() => {
+    if (branchFromNav?.id) {
+      setSelectedBranch(branchFromNav);
+    }
+  }, [branchFromNav, setSelectedBranch]);
+
+  useEffect(() => {
+    if (!activeBranch?.id) {
+      navigate("/admin/sucursales");
+    }
+  }, [activeBranch?.id, navigate]);
+
+  const fetchProducts = useCallback(async () => {
+    if (!activeBranch?.id) return;
+
+    try {
+      setLoadingProducts(true);
+
+      const { data } = await axiosClient.get(
+        `/admin/branches/${activeBranch.id}/products`
+      );
+
+      setProducts(Array.isArray(data) ? data : []);
+    } catch {
+      setProducts([]);
+    } finally {
+      setLoadingProducts(false);
+    }
+  }, [activeBranch?.id]);
+
+  const fetchSuppliers = useCallback(async () => {
+    if (!activeBranch?.id) return;
+
+    try {
+      const { data } = await axiosClient.get("/restocks/suppliers", {
+        params: {
+          branch_id: activeBranch.id,
+        },
+      });
+
+      setSuppliers(Array.isArray(data) ? data : []);
+    } catch {
+      setSuppliers([]);
+    }
+  }, [activeBranch?.id]);
+
+  const fetchStockHistory = useCallback(async () => {
+    if (!activeBranch?.id) return;
+
     try {
       setLoadingHistory(true);
-      const { data } = await axiosClient.get("/admin/restocks");
-      setStockHistory(data);
-    } catch (error) {
-      toast.error("Error al cargar historial de entradas.");
+
+      const { data } = await axiosClient.get("/restocks", {
+        params: {
+          branch_id: activeBranch.id,
+          per_page: 1000,
+        },
+      });
+
+      setStockHistory(Array.isArray(data?.data) ? data.data : []);
+    } catch {
+      toast.error("Error al cargar historial.");
+      setStockHistory([]);
     } finally {
       setLoadingHistory(false);
     }
-  };
+  }, [activeBranch?.id]);
 
-  const debounceRef = useRef(null);
+  const fetchLowStock = useCallback(async () => {
+    if (!activeBranch?.id) return;
 
-  const fetchProducts = (searchTerm) => {
-    if (!searchTerm || searchTerm.length < 2) return;
-    setLoadingProducts(true);
+    try {
+      setLoadingLowStock(true);
 
-    axiosClient
-      .get("/admin/buscar/producto", { params: { search: searchTerm } })
-      .then((res) => {
-        // console.log("📦 Productos recibidos:", res.data);
-        setProducts(res.data);
-      })
-      .catch(console.error)
-      .finally(() => setLoadingProducts(false));
-  };
-
-  const addLine = () => {
-    setLines((prev) => [
-      ...prev,
-      { id: Date.now(), product: null, product_code: "", unit_price: 0, quantity: 1 },
-    ]);
-  };
-
-  const removeLine = (id) => {
-    setLines((prev) => prev.filter((l) => l.id !== id));
-  };
-
-  const updateLine = (id, updates) => {
-    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!uuidInvoice) return toast.error("Ingresa el UUID de la factura.");
-
-    const items = lines
-      .filter((l) => l.product_code && l.quantity > 0)
-      .map((l) => {
-        const base = {
-          product_id: l.product?.id,
-          variation_size_id: l.variation_size_id || null,
-          unit_price: l.unit_price,
-          quantity: l.quantity,
-        };
-
-        if (l.product?.has_variations) {
-          const selected = l.product.variations?.find((v) => v.code === l.product_code);
-          if (selected) {
-            base.color = selected.color;
-            base.size = selected.size;
-          }
-        }
-
-        return base;
+      const { data } = await axiosClient.get("/restocks/low-stock", {
+        params: {
+          branch_id: activeBranch.id,
+          min_stock: minStock || 20,
+        },
       });
 
-    if (items.length === 0) return toast.error("Agrega al menos un producto con cantidad válida.");
+      setLowStock(data);
+    } catch {
+      setLowStock(null);
+    } finally {
+      setLoadingLowStock(false);
+    }
+  }, [activeBranch?.id, minStock]);
 
-    // console.log("🧾 Payload a enviar:", {
-    //   uuid_invoice: uuidInvoice,
-    //   items,
-    // });
+  useEffect(() => {
+    if (!activeBranch?.id) return;
 
-    setLoading(true);
+    fetchProducts();
+    fetchSuppliers();
+    fetchStockHistory();
+    fetchLowStock();
+  }, [
+    activeBranch?.id,
+    fetchProducts,
+    fetchSuppliers,
+    fetchStockHistory,
+    fetchLowStock,
+  ]);
 
-    await toast.promise(
-      axiosClient.post("/admin/restocks", {
-        uuid_invoice: uuidInvoice,
-        items,
-      }),
-      {
-        loading: "Registrando entrada...",
-        success: "Entrada de stock registrada correctamente.",
-        error: (err) => err?.response?.data?.message || "Error al guardar.",
-      }
-    );
+  const downloadLowStockReport = (type) => {
+    if (!activeBranch?.id) return;
 
-    setUuidInvoice("");
-    setLines([{ id: Date.now(), product: null, product_code: "", unit_price: 0, quantity: 1 }]);
-    setLoading(false);
-    fetchHistory();
+    const url = `/restocks/low-stock/report/${type}?branch_id=${
+      activeBranch.id
+    }&min_stock=${minStock || 20}`;
+
+    window.open(url, "_blank");
   };
 
+  const openDetail = (item) => {
+    setDetailItem({
+      item_type: item.item_type,
+      product_id: item.product_id,
+      variant_id: item.variant_id,
+    });
+
+    setDetailScope(item.scope || "global");
+    setDetailWarehouseId(item.warehouse_id || null);
+    setDetailOpen(true);
+  };
+
+  const refreshAll = () => {
+    fetchSuppliers();
+    fetchStockHistory();
+    fetchLowStock();
+  };
+
+  const openMovementDetail = (entry) => {
+    setMovementDetail(entry);
+    setMovementDetailOpen(true);
+  };
+
+  const renderHistoryCard = (entry) => (
+    <Card
+      key={entry.id}
+      elevation={0}
+      sx={{
+        borderRadius: 2.5,
+        border: `1px solid ${alpha("#000", 0.08)}`,
+      }}
+    >
+      <CardContent
+        sx={{
+          p: 1.5,
+          display: "flex",
+          gap: 1.5,
+          alignItems: "center",
+          flexWrap: "wrap",
+        }}
+      >
+        <Box
+          sx={{
+            width: 46,
+            height: 46,
+            borderRadius: 2,
+            bgcolor: alpha(COLORS.accent, 0.22),
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          <ReceiptLongRounded />
+        </Box>
+
+        <Box sx={{ flex: 1, minWidth: 240 }}>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Typography sx={{ fontWeight: 900 }}>
+              {entry.product?.name || "Producto"}
+            </Typography>
+
+            <Chip size="small" label={entry.created_at || "-"} />
+
+            <Chip
+              size="small"
+              label={entry.uuid_invoice || entry.folio || "Sin factura"}
+            />
+          </Stack>
+
+          <Typography variant="body2" color="text.secondary">
+            Proveedor: {entry.supplier || "No asignado"} • Cantidad:{" "}
+            <b>{entry.quantity}</b> • Costo: <b>{money(entry.unit_price)}</b>
+          </Typography>
+
+          <Typography variant="caption" color="text.secondary">
+            Stock anterior: {entry.previous_stock ?? "-"} • Stock nuevo:{" "}
+            {entry.new_stock ?? "-"} • Subtotal: {money(entry.subtotal)}
+          </Typography>
+        </Box>
+
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={() => openMovementDetail(entry)}
+          sx={{
+            borderRadius: 2,
+            fontWeight: 800,
+            textTransform: "none",
+          }}
+        >
+          Detalle
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
   return (
-    <Paper sx={{ p: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        Registrar entradas de stock
-      </Typography>
-      <Box component="form" onSubmit={handleSubmit} noValidate>
-        <TextField
-          label="UUID o Folio Identificador de la Factura"
-          value={uuidInvoice}
-          onChange={(e) => setUuidInvoice(e.target.value)}
-          fullWidth
-          required
-        />
+    <Box
+      sx={{
+        bgcolor: "#fff",
+        minHeight: "100vh",
+        py: 3,
+      }}
+    >
+      <Container maxWidth="xl">
+        <Stack spacing={1.5} sx={{ mb: 2.25 }}>
+          <Stack direction="row" spacing={1.2} alignItems="center">
+            <Box
+              sx={{
+                width: 44,
+                height: 44,
+                borderRadius: 2,
+                bgcolor: alpha(COLORS.accent, 0.22),
+                border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Inventory2Rounded sx={{ color: COLORS.black }} />
+            </Box>
 
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Producto</TableCell>
-              <TableCell>Variación</TableCell>
-              <TableCell>Código</TableCell>
-              <TableCell>Precio Unitario</TableCell>
-              <TableCell>Cantidad</TableCell>
-              <TableCell align="center">Acciones</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {lines.map((line, idx) => (
-              <TableRow key={line.id}>
-                <TableCell sx={{ minWidth: 300 }}>
-                  <Autocomplete
-                    value={line.product}
-                    onChange={(_, p) => {
-                      updateLine(line.id, {
-                        product: p || null,
-                        product_code: p?.code || "",
-                      });
-                    }}
-                    onInputChange={(_, inputValue) => {
-                      if (debounceRef.current) clearTimeout(debounceRef.current);
-                      debounceRef.current = setTimeout(() => {
-                        fetchProducts(inputValue);
-                      }, 400);
-                    }}
-                    options={products}
-                    getOptionLabel={(p) => p.name}
-                    renderInput={(params) => (
-                      <TextField {...params} label="Nombre del producto" size="small" />
-                    )}
-                    loading={loadingProducts}
-                  />
-                </TableCell>
+            <Box sx={{ flex: 1 }}>
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 900,
+                  color: COLORS.black,
+                }}
+              >
+                Entradas de Productos
+              </Typography>
 
-                <TableCell sx={{ minWidth: 200 }}>
-                  {line.product?.has_variations && Array.isArray(line.product.variations) ? (
-                    <TextField
-                      select
-                      fullWidth
-                      size="small"
-                      label="Seleccionar variación"
-                      value={line.variation_size_id || ""}
-                      onChange={(e) => {
-                        const selected = line.product.variations.find(
-                          (v) => v.variation_size_id === parseInt(e.target.value)
-                        );
-                        if (selected) {
-                          updateLine(line.id, {
-                            variation_size_id: selected.variation_size_id,
-                          });
-                        }
+              <Typography variant="caption" color="text.secondary">
+                {activeBranch?.name
+                  ? `Sucursal activa: ${activeBranch.name}`
+                  : activeBranch?.id
+                    ? `Sucursal activa: #${activeBranch.id}`
+                    : "Seleccione una sucursal"}
+              </Typography>
+            </Box>
+
+            <Tooltip title="Cambiar sucursal">
+              <IconButton
+                onClick={() => navigate("/admin/sucursales")}
+                sx={{
+                  borderRadius: 2,
+                  border: `1px solid ${alpha("#000", 0.08)}`,
+                }}
+              >
+                <ArrowBackRounded />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+
+          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+            <Button
+              onClick={() => setRestockOpen(true)}
+              variant="contained"
+              startIcon={<AddRounded />}
+              sx={{
+                bgcolor: COLORS.black,
+                borderRadius: 2,
+                fontWeight: 900,
+                textTransform: "none",
+              }}
+            >
+              Registrar abastecimiento
+            </Button>
+
+            <Button
+              onClick={() => setSupplierOpen(true)}
+              variant="outlined"
+              startIcon={<LocalShippingRounded />}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 900,
+                textTransform: "none",
+              }}
+            >
+              Nuevo proveedor
+            </Button>
+
+            <Button
+              variant="outlined"
+              startIcon={<HistoryRounded />}
+              onClick={() => setProductHistoryOpen(true)}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 900,
+                textTransform: "none",
+              }}
+            >
+              Consultar historial por producto
+            </Button>
+
+            <Chip
+              icon={<HistoryRounded />}
+              label={`${stockHistory.length} movimiento(s)`}
+              sx={{
+                height: 40,
+                fontWeight: 900,
+                bgcolor: alpha(COLORS.accent, 0.22),
+              }}
+            />
+          </Stack>
+        </Stack>
+
+        <Stack
+          direction={{ xs: "column", lg: "row" }}
+          spacing={2}
+          alignItems="flex-start"
+        >
+          <Stack spacing={2} sx={{ flex: 1, width: "100%" }}>
+            <Card
+              elevation={0}
+              sx={{
+                borderRadius: 3,
+                border: `1px solid ${alpha("#000", 0.08)}`,
+              }}
+            >
+              <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
+                <Stack
+                  direction={{
+                    xs: "column",
+                    md: "row",
+                  }}
+                  spacing={1}
+                  justifyContent="space-between"
+                  alignItems={{
+                    xs: "stretch",
+                    md: "center",
+                  }}
+                  sx={{ mb: 1.5 }}
+                >
+                  <Box>
+                    <Typography
+                      sx={{
+                        fontWeight: 900,
+                        color: COLORS.black,
                       }}
                     >
-                      {line.product.variations.map((v) => (
-                        <MenuItem key={v.variation_size_id} value={v.variation_size_id}>
-                          {v.label}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  ) : (
-                    <Typography color="text.secondary" fontSize={14}>
-                      Sin variaciones
+                      Historial General de Movimientos
                     </Typography>
-                  )}
-                </TableCell>
 
-                <TableCell>
-                  <TextField
-                    value={line.product_code}
-                    size="small"
-                    slotProps={{ htmlInput: { readOnly: true } }}
-                  />
-                </TableCell>
+                    <Typography variant="caption" color="text.secondary">
+                      Se muestran todos los movimientos registrados.
+                    </Typography>
+                  </Box>
+                </Stack>
 
-                <TableCell sx={{ maxWidth: 170 }}>
-                  <TextField
-                    type="number"
-                    value={line.unit_price}
-                    onChange={(e) =>
-                      updateLine(line.id, { unit_price: parseFloat(e.target.value) })
-                    }
-                    slotProps={{ htmlInput: { min: 0 } }}
-                    size="small"
-                  />
-                </TableCell>
+                <RestockHistoryTable
+                  rows={stockHistory}
+                  loading={loadingHistory}
+                  onOpenDetail={openMovementDetail}
+                />
+              </CardContent>
+            </Card>
+          </Stack>
 
-                <TableCell sx={{ maxWidth: 170 }}>
-                  <TextField
-                    type="number"
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(line.id, { quantity: parseInt(e.target.value, 10) })
-                    }
-                    slotProps={{ htmlInput: { min: 0 } }}
-                    size="small"
-                  />
-                </TableCell>
+          <LowStockProductsPanel
+            lowStock={lowStock}
+            loadingLowStock={loadingLowStock}
+            minStock={minStock}
+            setMinStock={setMinStock}
+            onSearch={fetchLowStock}
+            onDownloadReport={downloadLowStockReport}
+            onOpenDetail={openDetail}
+          />
+        </Stack>
 
-                <TableCell align="center">
-                  <IconButton onClick={() => removeLine(line.id)} disabled={lines.length === 1}>
-                    <RemoveCircle />
-                  </IconButton>
-                  {idx === lines.length - 1 && (
-                    <IconButton onClick={addLine}>
-                      <AddCircle />
-                    </IconButton>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <SupplierModal
+          open={supplierOpen}
+          onClose={() => setSupplierOpen(false)}
+          branchId={activeBranch?.id}
+          onSaved={() => {
+            setSupplierOpen(false);
+            fetchSuppliers();
+          }}
+        />
 
-        <Box sx={{ mt: 2, textAlign: "right" }}>
-          <Button type="submit" variant="contained" disabled={loading}>
-            {loading ? "Guardando..." : "Registrar entrada"}
-          </Button>
-        </Box>
-      </Box>
+        <RestockEntryModal
+          open={restockOpen}
+          onClose={() => setRestockOpen(false)}
+          branchId={activeBranch?.id}
+          suppliers={suppliers}
+          onSaved={() => {
+            setRestockOpen(false);
+            refreshAll();
+          }}
+        />
 
-      <Box sx={{ mt: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Historial de entradas de stock
-        </Typography>
+        <RestockEntryModal
+          open={movementDetailOpen}
+          onClose={() => {
+            setMovementDetailOpen(false);
+            setMovementDetail(null);
+          }}
+          branchId={activeBranch?.id}
+          suppliers={suppliers}
+          readOnly
+          movement={movementDetail}
+        />
 
-        {loadingHistory ? (
-          <Typography variant="body2" color="text.secondary">
-            Cargando historial...
-          </Typography>
-        ) : stockHistory.length === 0 ? (
-          <Typography variant="body2" color="text.secondary">
-            No hay registros aún.
-          </Typography>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Fecha</TableCell>
-                <TableCell>ID Factura</TableCell>
-                <TableCell>Producto</TableCell>
-                <TableCell>Precio Unitario</TableCell>
-                <TableCell>Cantidad</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {stockHistory.map((entry, index) => (
-                <TableRow key={index}>
-                  <TableCell>{new Date(entry.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell>{entry.uuid_invoice}</TableCell>
-                  <TableCell>{entry.product?.name || "-"}</TableCell>
-                  <TableCell>{Number(entry.unit_price || 0).toFixed(2)}</TableCell>
-                  <TableCell>{entry.quantity}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Box>
-    </Paper>
+        <ProductRestockHistory
+          open={productHistoryOpen}
+          onClose={() => setProductHistoryOpen(false)}
+          branchId={activeBranch?.id}
+          products={products}
+          loadingProducts={loadingProducts}
+          renderHistoryCard={renderHistoryCard}
+        />
+
+        <InventoryDetailModal
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+          item={detailItem}
+          scope={detailScope}
+          warehouseId={detailWarehouseId}
+        />
+      </Container>
+    </Box>
   );
 }
