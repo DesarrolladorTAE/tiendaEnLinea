@@ -119,7 +119,7 @@ export default function LowStockProductsPanel({
 
           <Box sx={{ flex: 1 }}>
             <Typography sx={{ fontWeight: 950 }}>
-              Productos por reabastecer
+              Productos por Reabastecer
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Lista completa con scroll y detalle.

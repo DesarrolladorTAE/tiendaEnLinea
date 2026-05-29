@@ -109,3 +109,18 @@ export const alertFromAxiosError = (
   if (data) return showApiErrors(data, fallback);
   return showError(fallback + (err?.message ? `: ${err.message}` : ""));
 };
+export const showToastSuccess = (
+  title = "Operación realizada correctamente"
+) => {
+  return Swal.fire({
+    icon: "success",
+    title,
+    toast: true,
+    position: "top-end",
+    showConfirmButton: false,
+    timer: 1800,
+    timerProgressBar: true,
+    backdrop: false,
+    customClass: { popup: "swal-popup-override" },
+  });
+};

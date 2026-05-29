@@ -33,7 +33,7 @@ import RestockEntryModal from "../../components/restocks/RestockEntryModal";
 import ProductRestockHistory from "../../components/restocks/ProductRestockHistory";
 import LowStockProductsPanel from "../../components/restocks/LowStockProductsPanel";
 import RestockHistoryTable from "../../components/restocks/RestockHistoryTable";
-
+import SupplierRestockHistory from "../../components/restocks/SupplierRestockHistory";
 import InventoryDetailModal from "../../components/inventory/InventoryDetailModal";
 
 const COLORS = {
@@ -89,6 +89,8 @@ export default function StockEntryForm() {
   const [detailScope, setDetailScope] = useState("global");
   const [detailWarehouseId, setDetailWarehouseId] = useState(null);
 
+  const [supplierHistoryOpen, setSupplierHistoryOpen] = useState(false);
+
   useEffect(() => {
     setHideLayout(false);
   }, [setHideLayout]);
@@ -112,10 +114,14 @@ export default function StockEntryForm() {
       setLoadingProducts(true);
 
       const { data } = await axiosClient.get(
-        `/admin/branches/${activeBranch.id}/products`
+        `/admin/branches/${activeBranch.id}/products-with-variants`,
       );
 
-      setProducts(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data)
+        ? data
+        : data?.products || data?.data || [];
+
+      setProducts(list);
     } catch {
       setProducts([]);
     } finally {
@@ -133,7 +139,11 @@ export default function StockEntryForm() {
         },
       });
 
-      setSuppliers(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data)
+        ? data
+        : data?.suppliers || data?.data || [];
+
+      setSuppliers(list);
     } catch {
       setSuppliers([]);
     }
@@ -372,7 +382,7 @@ export default function StockEntryForm() {
                 textTransform: "none",
               }}
             >
-              Registrar abastecimiento
+              Registrar Entrada
             </Button>
 
             <Button
@@ -385,7 +395,7 @@ export default function StockEntryForm() {
                 textTransform: "none",
               }}
             >
-              Nuevo proveedor
+              Nuevo Proveedor
             </Button>
 
             <Button
@@ -398,7 +408,20 @@ export default function StockEntryForm() {
                 textTransform: "none",
               }}
             >
-              Consultar historial por producto
+              Historial por Producto
+            </Button>
+
+            <Button
+              variant="outlined"
+              startIcon={<LocalShippingRounded />}
+              onClick={() => setSupplierHistoryOpen(true)}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 900,
+                textTransform: "none",
+              }}
+            >
+              Historial por Proveedor
             </Button>
 
             <Chip
@@ -481,7 +504,6 @@ export default function StockEntryForm() {
           onClose={() => setSupplierOpen(false)}
           branchId={activeBranch?.id}
           onSaved={() => {
-            setSupplierOpen(false);
             fetchSuppliers();
           }}
         />
@@ -495,6 +517,14 @@ export default function StockEntryForm() {
             setRestockOpen(false);
             refreshAll();
           }}
+        />
+
+        <SupplierRestockHistory
+          open={supplierHistoryOpen}
+          onClose={() => setSupplierHistoryOpen(false)}
+          branchId={activeBranch?.id}
+          suppliers={suppliers}
+          renderHistoryCard={renderHistoryCard}
         />
 
         <RestockEntryModal
