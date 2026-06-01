@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -6,6 +6,7 @@ import {
   Card,
   CardContent,
   Chip,
+  CircularProgress,
   Divider,
   IconButton,
   Stack,
@@ -21,6 +22,9 @@ import {
   WarningAmberRounded,
 } from "@mui/icons-material";
 
+import axiosClient from "../../config/axiosClient";
+import { alertFromAxiosError } from "../../utils/alerts";
+
 const COLORS = {
   accent: "#f9b233",
   black: "#000000",
@@ -33,9 +37,11 @@ export default function LowStockProductsPanel({
   minStock,
   setMinStock,
   onSearch,
-  onDownloadReport,
   onOpenDetail,
 }) {
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingExcel, setDownloadingExcel] = useState(false);
+
   const lowStockItems = useMemo(() => {
     const productsRows = lowStock?.products || [];
     const variants = lowStock?.variants || [];
@@ -94,6 +100,86 @@ export default function LowStockProductsPanel({
     ];
   }, [lowStock]);
 
+  const buildReportParams = () => {
+    const params = new URLSearchParams();
+
+    if (minStock !== "" && minStock !== null && minStock !== undefined) {
+      params.append("min_stock", String(minStock));
+    }
+
+    return params.toString();
+  };
+
+  const downloadPdf = async () => {
+    try {
+      setDownloadingPdf(true);
+
+      const query = buildReportParams();
+
+      const response = await axiosClient.get(
+        `/restocks/reports/low-stock/pdf?${query}`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.download = `productos-por-restablecer-min-${minStock || 20}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      alertFromAxiosError(error, "No se pudo descargar el PDF de productos por restablecer.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const downloadExcel = async () => {
+    try {
+      setDownloadingExcel(true);
+
+      const query = buildReportParams();
+
+      const response = await axiosClient.get(
+        `/restocks/reports/low-stock/excel?${query}`,
+        {
+          responseType: "blob",
+        }
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.download = `productos-por-restablecer-min-${minStock || 20}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      alertFromAxiosError(error, "No se pudo descargar el Excel de productos por restablecer.");
+    } finally {
+      setDownloadingExcel(false);
+    }
+  };
+
   return (
     <Card
       elevation={0}
@@ -145,6 +231,7 @@ export default function LowStockProductsPanel({
             <Button
               variant="contained"
               onClick={onSearch}
+              disabled={loadingLowStock}
               sx={{
                 bgcolor: COLORS.black,
                 borderRadius: 2,
@@ -152,44 +239,62 @@ export default function LowStockProductsPanel({
                 textTransform: "none",
               }}
             >
-              Buscar
+              {loadingLowStock ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : (
+                "Buscar"
+              )}
             </Button>
           </Stack>
 
-          {lowStockItems.length > 20 && (
-            <Stack direction="row" spacing={1}>
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<TableChartRounded />}
-                onClick={() => onDownloadReport("excel")}
-                sx={{ borderRadius: 2, fontWeight: 900, textTransform: "none" }}
-              >
-                Excel
-              </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={
+                downloadingExcel ? (
+                  <CircularProgress size={18} />
+                ) : (
+                  <TableChartRounded />
+                )
+              }
+              onClick={downloadExcel}
+              disabled={downloadingExcel || loadingLowStock}
+              sx={{ borderRadius: 2, fontWeight: 900, textTransform: "none" }}
+            >
+              {downloadingExcel ? "Descargando..." : "Excel"}
+            </Button>
 
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<PictureAsPdfRounded />}
-                onClick={() => onDownloadReport("pdf")}
-                sx={{
-                  borderRadius: 2,
-                  fontWeight: 900,
-                  textTransform: "none",
-                  color: COLORS.danger,
-                  borderColor: alpha(COLORS.danger, 0.4),
-                }}
-              >
-                PDF
-              </Button>
-            </Stack>
-          )}
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={
+                downloadingPdf ? (
+                  <CircularProgress size={18} />
+                ) : (
+                  <PictureAsPdfRounded />
+                )
+              }
+              onClick={downloadPdf}
+              disabled={downloadingPdf || loadingLowStock}
+              sx={{
+                borderRadius: 2,
+                fontWeight: 900,
+                textTransform: "none",
+                color: COLORS.danger,
+                borderColor: alpha(COLORS.danger, 0.4),
+              }}
+            >
+              {downloadingPdf ? "Descargando..." : "PDF"}
+            </Button>
+          </Stack>
 
           <Divider />
 
           {loadingLowStock ? (
-            <Typography color="text.secondary">Cargando bajo stock...</Typography>
+            <Typography color="text.secondary">
+              Cargando bajo stock...
+            </Typography>
           ) : lowStockItems.length === 0 ? (
             <Alert severity="success" sx={{ borderRadius: 2 }}>
               No hay productos por debajo del mínimo.
@@ -224,7 +329,11 @@ export default function LowStockProductsPanel({
                           {item.name}
                         </Typography>
 
-                        <Typography variant="caption" color="text.secondary" noWrap>
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          noWrap
+                        >
                           {item.type}
                           {item.sku ? ` • SKU: ${item.sku}` : ""}
                           {item.warehouse ? ` • ${item.warehouse}` : ""}

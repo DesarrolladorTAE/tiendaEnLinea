@@ -24,6 +24,8 @@ import {
   LocalShippingRounded,
   SearchRounded,
   TuneRounded,
+  PictureAsPdfRounded,
+  TableChartRounded,
 } from "@mui/icons-material";
 
 import axiosClient from "../../config/axiosClient";
@@ -97,6 +99,87 @@ export default function SupplierRestockHistory({
       setLoading(false);
     }
   }, [branchId, supplier?.id, filterType, from, to]);
+
+  const buildReportParams = () => {
+    const params = new URLSearchParams();
+
+    params.append("branch_id", branchId);
+    params.append("supplier_id", supplier.id);
+
+    if (filterType === "range") {
+      if (from) params.append("from", from);
+      if (to) params.append("to", to);
+    }
+
+    return params.toString();
+  };
+  const downloadSupplierPdf = async () => {
+    if (!branchId || !supplier?.id) return;
+
+    try {
+      const query = buildReportParams();
+
+      const response = await axiosClient.get(
+        `/restocks/reports/supplier/pdf?${query}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.download = `historial-proveedor-${supplier.name}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      alertFromAxiosError(error, "No se pudo descargar el PDF.");
+    }
+  };
+
+  const downloadSupplierExcel = async () => {
+    if (!branchId || !supplier?.id) return;
+
+    try {
+      const query = buildReportParams();
+
+      const response = await axiosClient.get(
+        `/restocks/reports/supplier/excel?${query}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.download = `historial-proveedor-${supplier?.name || "proveedor"}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      alertFromAxiosError(
+        error,
+        "No se pudo descargar el Excel del proveedor.",
+      );
+    }
+  };
 
   useEffect(() => {
     if (open && supplier?.id) fetchHistory();
@@ -205,9 +288,7 @@ export default function SupplierRestockHistory({
                 options={suppliers || []}
                 fullWidth
                 getOptionLabel={(s) =>
-                  s?.name
-                    ? `${s.name}${s.phone ? ` • ${s.phone}` : ""}`
-                    : ""
+                  s?.name ? `${s.name}${s.phone ? ` • ${s.phone}` : ""}` : ""
                 }
                 isOptionEqualToValue={(option, value) =>
                   Number(option?.id) === Number(value?.id)
@@ -284,6 +365,42 @@ export default function SupplierRestockHistory({
                     "Consultar"
                   )}
                 </Button>
+
+                <Button
+                  variant="contained"
+                  onClick={downloadSupplierPdf}
+                  disabled={!supplier}
+                  startIcon={<PictureAsPdfRounded />}
+                  sx={{
+                    borderRadius: 2,
+                    fontWeight: 900,
+                    textTransform: "none",
+                    bgcolor: "#b91c1c",
+                    color: "#fff",
+                    minWidth: 120,
+                    "&:hover": { bgcolor: "#991b1b" },
+                  }}
+                >
+                  PDF
+                </Button>
+
+                <Button
+                  variant="contained"
+                  onClick={downloadSupplierExcel}
+                  disabled={!supplier}
+                  startIcon={<TableChartRounded />}
+                  sx={{
+                    borderRadius: 2,
+                    fontWeight: 900,
+                    textTransform: "none",
+                    bgcolor: "#15803d",
+                    color: "#fff",
+                    minWidth: 120,
+                    "&:hover": { bgcolor: "#166534" },
+                  }}
+                >
+                  Excel
+                </Button>
               </Stack>
             </Stack>
           </Paper>
@@ -330,7 +447,11 @@ export default function SupplierRestockHistory({
               ) : loading ? (
                 <Stack alignItems="center" sx={{ py: 5 }}>
                   <CircularProgress />
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ mt: 1 }}
+                  >
                     Cargando historial del proveedor...
                   </Typography>
                 </Stack>

@@ -78,6 +78,15 @@ const getProductVariants = (product) => {
   return Array.isArray(variants) ? variants : [];
 };
 
+const safeFileName = (value = "producto") =>
+  String(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+
 export default function ProductRestockHistory({
   open,
   onClose,
@@ -94,6 +103,8 @@ export default function ProductRestockHistory({
 
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   const [filterType, setFilterType] = useState("all");
   const [from, setFrom] = useState("");
@@ -133,6 +144,102 @@ export default function ProductRestockHistory({
     }
   }, [branchId, product?.id, variant?.id, filterType, from, to]);
 
+  const buildReportParams = () => {
+    const params = new URLSearchParams();
+
+    params.append("branch_id", String(branchId));
+    params.append("product_id", String(product.id));
+
+    if (variant?.id) {
+      params.append("product_variant_id", String(variant.id));
+    }
+
+    if (filterType === "range") {
+      if (from) params.append("from", from);
+      if (to) params.append("to", to);
+    }
+
+    return params.toString();
+  };
+
+  const downloadPdf = async () => {
+    if (!branchId || !product?.id) return;
+
+    try {
+      setExportingPdf(true);
+
+      const query = buildReportParams();
+
+      const response = await axiosClient.get(
+        `/restocks/reports/product/pdf?${query}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.download = `historial-producto-${safeFileName(
+        product?.name || "producto",
+      )}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      alertFromAxiosError(error, "No se pudo descargar el PDF.");
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
+  const exportExcel = async () => {
+    if (!branchId || !product?.id) return;
+
+    try {
+      setExportingExcel(true);
+
+      const query = buildReportParams();
+
+      const response = await axiosClient.get(
+        `/restocks/reports/product/excel?${query}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      const fileURL = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = fileURL;
+      link.download = `historial-producto-${safeFileName(
+        product?.name || "producto",
+      )}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+
+      link.remove();
+      window.URL.revokeObjectURL(fileURL);
+    } catch (error) {
+      alertFromAxiosError(error, "No se pudo descargar el Excel del producto.");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   useEffect(() => {
     if (open && product?.id) fetchHistory();
 
@@ -143,6 +250,8 @@ export default function ProductRestockHistory({
       setFilterType("all");
       setFrom("");
       setTo("");
+      setExportingPdf(false);
+      setExportingExcel(false);
     }
   }, [open, product?.id, variant?.id, fetchHistory]);
 
@@ -150,39 +259,6 @@ export default function ProductRestockHistory({
     setProduct(value);
     setVariant(null);
     setHistory([]);
-  };
-
-  const exportExcel = () => {
-    if (!branchId || !product?.id) return;
-
-    const params = new URLSearchParams({
-      branch_id: String(branchId),
-      product_id: String(product.id),
-    });
-
-    if (variant?.id) params.append("product_variant_id", String(variant.id));
-    if (filterType === "range" && from) params.append("from", from);
-    if (filterType === "range" && to) params.append("to", to);
-
-    window.open(
-      `/restocks/product-history/excel?${params.toString()}`,
-      "_blank",
-    );
-  };
-
-  const openPdf = () => {
-    if (!branchId || !product?.id) return;
-
-    const params = new URLSearchParams({
-      branch_id: String(branchId),
-      product_id: String(product.id),
-    });
-
-    if (variant?.id) params.append("product_variant_id", String(variant.id));
-    if (filterType === "range" && from) params.append("from", from);
-    if (filterType === "range" && to) params.append("to", to);
-
-    window.open(`/restocks/product-history/pdf?${params.toString()}`, "_blank");
   };
 
   return (
@@ -419,22 +495,34 @@ export default function ProductRestockHistory({
               <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
                 <Button
                   variant="outlined"
-                  startIcon={<PictureAsPdfRounded />}
-                  onClick={openPdf}
-                  disabled={!product}
+                  startIcon={
+                    exportingPdf ? (
+                      <CircularProgress size={18} />
+                    ) : (
+                      <PictureAsPdfRounded />
+                    )
+                  }
+                  onClick={downloadPdf}
+                  disabled={!product || exportingPdf}
                   sx={btnOutlinedSx}
                 >
-                  Abrir PDF
+                  {exportingPdf ? "Descargando..." : "Descargar PDF"}
                 </Button>
 
                 <Button
                   variant="outlined"
-                  startIcon={<TableChartRounded />}
+                  startIcon={
+                    exportingExcel ? (
+                      <CircularProgress size={18} />
+                    ) : (
+                      <TableChartRounded />
+                    )
+                  }
                   onClick={exportExcel}
-                  disabled={!product}
+                  disabled={!product || exportingExcel}
                   sx={btnOutlinedSx}
                 >
-                  Descargar Excel
+                  {exportingExcel ? "Descargando..." : "Descargar Excel"}
                 </Button>
               </Stack>
             </Stack>

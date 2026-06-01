@@ -1,48 +1,63 @@
 // src/components/admin/productForm/sections/InventoryDiscountSection.jsx
 import React from "react";
+import { Link } from "react-router-dom";
 import ProductField from "../../../admin/ProductField";
 import SatFields from "../SatFields";
 
-/**
- * Sección: 📦 Inventario y Descuento
- * - Muestra Stock SOLO si NO hay variantes
- * - Incluye SatFields
- * - Muestra offerEnd SOLO si discount > 0
- *
- * Props:
- *  - register, errors, watch, setValue (react-hook-form)
- *  - hasVariants (boolean)
- */
 export default function InventoryDiscountSection({
   register,
   errors,
   watch,
   setValue,
   hasVariants,
-  control, // ✅ nuevo
+  control,
+  isEdit = false,
 }) {
   const discount = watch("discount");
 
   return (
     <div className="row">
       {!hasVariants && (
-        <ProductField
-          label="Stock"
-          name="stock"
-          type="number"
-          register={register}
-          errors={errors}
-          validation={{ required: "El stock es obligatorio (si no usas variantes)" }}
-        />
+        <div className="col-md-4 mb-3">
+          <label className="form-label">Stock</label>
+
+          <input
+            type="number"
+            className="form-control bg-secondary border-secondary text-light"
+            readOnly={isEdit}
+            placeholder={isEdit ? "Se actualiza desde entradas" : "Stock"}
+            {...register("stock", {
+              required: !isEdit
+                ? "El stock es obligatorio (si no usas variantes)"
+                : false,
+            })}
+          />
+
+          {errors?.stock && (
+            <small className="text-danger">{errors.stock.message}</small>
+          )}
+
+          {isEdit && (
+            <small className="text-warning d-block mt-1">
+              ⚠️ El stock solo se puede cambiar al registrar entradas de
+              producto.
+              <br />
+              Dirígete al apartado{" "}
+              <Link to="/admin/compra" className="text-info fw-bold">
+                Entradas Producto
+              </Link>
+              .
+            </small>
+          )}
+        </div>
       )}
 
-      {/* ✅ SAT */}
       <SatFields
         register={register}
         setValue={setValue}
         watch={watch}
-        control={control} // ✅ nuevo
-        errors={errors}   // ✅ por si quieres mostrar helperText
+        control={control}
+        errors={errors}
       />
 
       <ProductField
@@ -65,4 +80,3 @@ export default function InventoryDiscountSection({
     </div>
   );
 }
-

@@ -1,21 +1,14 @@
 // src/components/admin/productForm/sections/ProductInfoSection.jsx
 import React from "react";
+import { Link } from "react-router-dom";
 import ProductField from "../../../admin/ProductField";
 
-/**
- * Sección: 🛒 Información del Producto
- * Requiere:
- *  - register, errors, watch, setValue (react-hook-form)
- *  - basePriceStr (string/number) para mostrar precio base
- *  - onRecalculateBase() (fn) para recalcular base_price
- */
 export default function ProductInfoSection({
   register,
   errors,
-  watch,
-  setValue,
   basePriceStr,
   onRecalculateBase,
+  isEdit = false,
 }) {
   return (
     <div className="row">
@@ -44,7 +37,6 @@ export default function ProductInfoSection({
         errors={errors}
       />
 
-      {/* IVA + base_price */}
       <div className="col-md-4 mb-3">
         <label className="form-label" htmlFor="iva">
           Tasa de IVA <span className="text-danger">*</span>
@@ -70,7 +62,6 @@ export default function ProductInfoSection({
           <small className="text-danger">{errors.iva.message}</small>
         )}
 
-        {/* base_price oculto */}
         <input type="hidden" {...register("base_price")} />
 
         <div className="d-flex align-items-center justify-content-between mt-2">
@@ -89,13 +80,32 @@ export default function ProductInfoSection({
         </div>
       </div>
 
-      <ProductField
-        label="Costo de Compra"
-        name="costo_compra"
-        type="text"
-        register={register}
-        errors={errors}
-      />
+      <div className="col-md-4 mb-3">
+        <label className="form-label">Costo de Compra</label>
+
+        <input
+          type="text"
+          className="form-control bg-secondary border-secondary text-light"
+          readOnly={isEdit}
+          placeholder={
+            isEdit ? "Se actualiza desde entradas" : "Costo de compra"
+          }
+          {...register("costo_compra")}
+        />
+
+        {isEdit && (
+          <small className="text-warning d-block mt-1">
+            ⚠️ El costo de compra solo se puede cambiar al registrar entradas de
+            producto.
+            <br />
+            Dirígete al apartado{" "}
+            <Link to="/admin/compra" className="text-info fw-bold">
+              Entradas Producto
+            </Link>
+            .
+          </small>
+        )}
+      </div>
     </div>
   );
 }

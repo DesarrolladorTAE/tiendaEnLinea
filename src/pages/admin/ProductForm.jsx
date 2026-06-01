@@ -77,7 +77,8 @@ export default function ProductForm() {
     setValue,
   });
 
-  if (cargando) return <p className="text-center text-muted">Cargando datos...</p>;
+  if (cargando)
+    return <p className="text-center text-muted">Cargando datos...</p>;
 
   if (!puedeCrear) {
     return (
@@ -107,6 +108,7 @@ export default function ProductForm() {
                 setValue={setValue}
                 basePriceStr={ui.basePriceStr}
                 onRecalculateBase={actions.handleRecalculateBase}
+                isEdit={!!ui.id}
               />
             </AccordionSection>
 
@@ -119,6 +121,7 @@ export default function ProductForm() {
                 watch={watch}
                 setValue={setValue}
                 hasVariants={ui.hasVariants}
+                isEdit={!!ui.id}
               />
             </AccordionSection>
 
@@ -170,7 +173,10 @@ export default function ProductForm() {
 
             {/* 8) Categorías */}
             <AccordionSection title="✅ Categorías">
-              <CategoriesSection control={control} categoriesOptions={ui.categoriesOptions} />
+              <CategoriesSection
+                control={control}
+                categoriesOptions={ui.categoriesOptions}
+              />
             </AccordionSection>
 
             <button type="submit" className="btn btn-success w-100 mt-3">
