@@ -162,7 +162,44 @@ export default function StockEntryForm() {
         },
       });
 
-      setStockHistory(Array.isArray(data?.data) ? data.data : []);
+      const list = Array.isArray(data?.data) ? data.data : [];
+
+      const normalized = list.map((item) => ({
+        ...item,
+
+        // ID real de la entrada/factura
+        restock_invoice_id:
+          item.restock_invoice_id ||
+          item.invoice_id ||
+          item.restock_invoice?.id ||
+          item.invoice?.id ||
+          null,
+
+        // Nombre de entrada
+        invoice_notes:
+          item.invoice_notes ||
+          item.restock_invoice?.notes ||
+          item.invoice?.notes ||
+          "",
+
+        // Descripción de partida
+        line_notes:
+          item.line_notes ||
+          item.restock_notes ||
+          item.description ||
+          item.notes ||
+          "",
+
+        // Fecha
+        invoice_date:
+          item.invoice_date ||
+          item.restock_invoice?.invoice_date ||
+          item.invoice?.invoice_date ||
+          item.created_at ||
+          "",
+      }));
+
+      setStockHistory(normalized);
     } catch {
       toast.error("Error al cargar historial.");
       setStockHistory([]);
@@ -210,9 +247,8 @@ export default function StockEntryForm() {
   const downloadLowStockReport = (type) => {
     if (!activeBranch?.id) return;
 
-    const url = `/restocks/low-stock/report/${type}?branch_id=${
-      activeBranch.id
-    }&min_stock=${minStock || 20}`;
+    const url = `/restocks/low-stock/report/${type}?branch_id=${activeBranch.id
+      }&min_stock=${minStock || 20}`;
 
     window.open(url, "_blank");
   };
@@ -482,7 +518,7 @@ export default function StockEntryForm() {
                 <RestockHistoryTable
                   rows={stockHistory}
                   loading={loadingHistory}
-                  onOpenDetail={openMovementDetail}
+                  // onOpenDetail={openMovementDetail}
                 />
               </CardContent>
             </Card>
