@@ -19,7 +19,6 @@ import {
 import { useTheme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 
 import axiosClient from "../../config/axiosClientPOS";
@@ -90,10 +89,17 @@ export default function CreditPdfViewerModal({
     };
   }, [open, pdfUrl]);
 
+  const normalizePhone = (value) =>
+    String(value || "")
+      .replace(/\D+/g, "")
+      .slice(-10);
+
   const handleOtherPhone = (e) => {
-    const clean = String(e.target.value || "").replace(/\D/g, "").slice(0, 10);
+    const clean = String(e.target.value || "")
+      .replace(/\D/g, "")
+      .slice(0, 10);
+
     setOtherPhone(clean);
-    setPhone?.(clean);
   };
 
   const handleSwitch = (e) => {
@@ -102,19 +108,30 @@ export default function CreditPdfViewerModal({
 
     if (!checked) {
       setOtherPhone("");
-      setPhone?.("");
     }
   };
 
   const handleSend = () => {
-    if (!sendToClient && otherPhone.length !== 10) {
-      showError("Ingresa un número válido de 10 dígitos.");
+    if (typeof onSendWhatsapp !== "function") {
+      showError("No está configurada la función para enviar por WhatsApp.");
       return;
     }
 
-    onSendWhatsapp?.({
+    const targetPhone = sendToClient ? phone : otherPhone;
+    const cleanPhone = normalizePhone(targetPhone);
+
+    if (cleanPhone.length !== 10) {
+      showError(
+        sendToClient
+          ? "El cliente no tiene un número válido registrado."
+          : "Ingresa un número válido de 10 dígitos."
+      );
+      return;
+    }
+
+    onSendWhatsapp({
       es_cliente: sendToClient,
-      phone: sendToClient ? phone : otherPhone,
+      phone: cleanPhone,
     });
   };
 
@@ -129,15 +146,23 @@ export default function CreditPdfViewerModal({
     a.remove();
   };
 
-  const canSend = sendToClient
-    ? String(phone || "").length === 10
-    : otherPhone.length === 10;
+  const clientPhone = normalizePhone(phone);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg" fullScreen={fullScreen}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      fullWidth
+      maxWidth="lg"
+      fullScreen={fullScreen}
+    >
       <DialogTitle sx={{ fontWeight: 900, pr: 6 }}>
         {title}
-        <IconButton onClick={onClose} sx={{ position: "absolute", right: 12, top: 10 }}>
+
+        <IconButton
+          onClick={onClose}
+          sx={{ position: "absolute", right: 12, top: 10 }}
+        >
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -151,9 +176,18 @@ export default function CreditPdfViewerModal({
           }}
         >
           {!isMobile ? (
-            <Box sx={{ borderRight: "1px solid #e5e7eb", position: "relative" }}>
+            <Box
+              sx={{
+                borderRight: "1px solid #e5e7eb",
+                position: "relative",
+              }}
+            >
               {loadingPdf ? (
-                <Stack alignItems="center" justifyContent="center" sx={{ minHeight: 650 }}>
+                <Stack
+                  alignItems="center"
+                  justifyContent="center"
+                  sx={{ minHeight: 650 }}
+                >
                   <CircularProgress />
                   <Typography mt={2}>Cargando PDF...</Typography>
                 </Stack>
@@ -176,7 +210,8 @@ export default function CreditPdfViewerModal({
           ) : (
             <Box sx={{ p: 2 }}>
               <Alert severity="info" sx={{ borderRadius: 2 }}>
-                En móvil no se muestra el visor. Puedes descargar el PDF o enviarlo por WhatsApp.
+                En móvil no se muestra el visor. Puedes descargar el PDF o
+                enviarlo por WhatsApp.
               </Alert>
             </Box>
           )}
@@ -192,7 +227,9 @@ export default function CreditPdfViewerModal({
                   borderColor: sendToClient ? "#22c55e" : "divider",
                 }}
               >
-                <Typography sx={{ fontWeight: 900 }}>Enviar por WhatsApp</Typography>
+                <Typography sx={{ fontWeight: 900 }}>
+                  Enviar por WhatsApp
+                </Typography>
 
                 <FormControlLabel
                   sx={{
@@ -213,16 +250,40 @@ export default function CreditPdfViewerModal({
                   control={
                     <Switch checked={sendToClient} onChange={handleSwitch} />
                   }
-                  label={<Typography sx={{ fontWeight: 900 }}>Enviar al cliente</Typography>}
+                  label={
+                    <Typography sx={{ fontWeight: 900 }}>
+                      Enviar al cliente
+                    </Typography>
+                  }
                 />
 
                 {sendToClient ? (
-                  <Typography variant="body2" sx={{ mt: 1, color: "#166534" }}>
-                    Se enviará al número registrado del cliente.
-                  </Typography>
+                  <Box sx={{ mt: 1 }}>
+                    <Typography variant="body2" sx={{ color: "#166534" }}>
+                      Se enviará al número registrado del cliente.
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        mt: 0.5,
+                        color: clientPhone.length === 10 ? "#166534" : "#b45309",
+                        fontWeight: 800,
+                      }}
+                    >
+                      {clientPhone.length === 10
+                        ? `Número detectado: ${clientPhone}`
+                        : "No se detectó un número válido del cliente."}
+                    </Typography>
+                  </Box>
                 ) : (
                   <>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mb: 1 }}
+                    >
                       Escribe otro número para enviar este documento.
                     </Typography>
 
@@ -240,8 +301,14 @@ export default function CreditPdfViewerModal({
                 <Button
                   fullWidth
                   variant="contained"
-                  startIcon={<WhatsAppIcon />}
-                  disabled={sending || !canSend}
+                  startIcon={
+                    sending ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <WhatsAppIcon />
+                    )
+                  }
+                  disabled={sending}
                   onClick={handleSend}
                   sx={{
                     mt: 1.5,
@@ -268,7 +335,12 @@ export default function CreditPdfViewerModal({
                 Descargar PDF
               </Button>
 
-              <Button fullWidth variant="outlined" color="inherit" onClick={onClose}>
+              <Button
+                fullWidth
+                variant="outlined"
+                color="inherit"
+                onClick={onClose}
+              >
                 Cerrar
               </Button>
             </Stack>

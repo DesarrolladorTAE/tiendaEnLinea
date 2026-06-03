@@ -22,7 +22,7 @@ import AppleIcon from "@mui/icons-material/Apple";
 import BluetoothIcon from "@mui/icons-material/Bluetooth";
 
 import axiosClient from "../../config/axiosClientPOS";
-import { showError } from "../../utils/alerts";
+import { showError, showSuccess } from "../../utils/alerts";
 
 import CreditHistoryHeader from "./CreditHistoryHeader";
 import CreditHistoryTable from "./CreditHistoryTable";
@@ -72,11 +72,7 @@ const APP_META = {
   },
 };
 
-export default function CreditHistoryModal({
-  open,
-  account,
-  onClose,
-}) {
+export default function CreditHistoryModal({ open, account, onClose }) {
   const theme = useTheme();
 
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -101,6 +97,9 @@ export default function CreditHistoryModal({
 
   const [printSetting, setPrintSetting] = useState(null);
 
+  const [sendingStatementWhatsapp, setSendingStatementWhatsapp] =
+    useState(false);
+
   const posLocationId =
     detail?.pos_location_id ||
     account?.pos_location_id ||
@@ -119,7 +118,7 @@ export default function CreditHistoryModal({
       setLoading(true);
 
       const { data } = await axiosClient.get(
-        `/pos/credit-accounts/${account.id}`
+        `/pos/credit-accounts/${account.id}`,
       );
 
       const acc = data?.account || null;
@@ -141,8 +140,7 @@ export default function CreditHistoryModal({
       console.error(e);
 
       showError(
-        e?.response?.data?.message ||
-        "No se pudo cargar el historial."
+        e?.response?.data?.message || "No se pudo cargar el historial.",
       );
     } finally {
       setLoading(false);
@@ -167,7 +165,7 @@ export default function CreditHistoryModal({
       setLoadingConfig(true);
 
       const { data } = await axiosClient.get(
-        `/pos/print-settings/${currentPosLocationId}/payload-config`
+        `/pos/print-settings/${currentPosLocationId}/payload-config`,
       );
 
       setPrintSetting(data || null);
@@ -197,9 +195,7 @@ export default function CreditHistoryModal({
     );
   }, [printSetting]);
 
-  const movementsRaw = Array.isArray(detail?.movements)
-    ? detail.movements
-    : [];
+  const movementsRaw = Array.isArray(detail?.movements) ? detail.movements : [];
 
   const visibleMovements = getVisibleMovements(movementsRaw);
 
@@ -221,21 +217,16 @@ export default function CreditHistoryModal({
         `/pos/credit-accounts/${account.id}/report/excel`,
         {
           responseType: "blob",
-        }
+        },
       );
 
-      const url = window.URL.createObjectURL(
-        new Blob([response.data])
-      );
+      const url = window.URL.createObjectURL(new Blob([response.data]));
 
       const link = document.createElement("a");
 
       link.href = url;
 
-      link.setAttribute(
-        "download",
-        `estado_cuenta_fiado_${account.id}.xlsx`
-      );
+      link.setAttribute("download", `estado_cuenta_fiado_${account.id}.xlsx`);
 
       document.body.appendChild(link);
 
@@ -245,10 +236,7 @@ export default function CreditHistoryModal({
     } catch (e) {
       console.error(e);
 
-      showError(
-        e?.response?.data?.message ||
-        "No se pudo descargar el Excel."
-      );
+      showError(e?.response?.data?.message || "No se pudo descargar el Excel.");
     } finally {
       setBusy(false);
     }
@@ -259,6 +247,44 @@ export default function CreditHistoryModal({
       showError("Implementa aquí tu payload ESC/POS.");
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleSendStatementWhatsapp = async ({ phone: targetPhone } = {}) => {
+    const cleanPhone = normalizePhone(targetPhone || phone);
+
+    if (!account?.id) {
+      showError("No se encontró la cuenta de crédito.");
+      return;
+    }
+
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      showError("Ingresa un número válido de 10 dígitos.");
+      return;
+    }
+
+    try {
+      setSendingStatementWhatsapp(true);
+
+      const { data } = await axiosClient.post(
+        `/pos/credit-accounts/${account.id}/report/whatsapp`,
+        {
+          phone: cleanPhone,
+        },
+      );
+
+      showSuccess(data?.message || "Estado de cuenta enviado por WhatsApp.");
+    } catch (e) {
+      console.error(e);
+
+      showError(
+        e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          e?.response?.data?.details ||
+          "No se pudo enviar el estado de cuenta por WhatsApp.",
+      );
+    } finally {
+      setSendingStatementWhatsapp(false);
     }
   };
 
@@ -279,7 +305,6 @@ export default function CreditHistoryModal({
       >
         <DialogTitle sx={{ fontWeight: 950, pr: 6 }}>
           Historial de crédito
-
           <IconButton
             onClick={onClose}
             sx={{
@@ -330,9 +355,7 @@ export default function CreditHistoryModal({
                 onSendPayload={handleSendStatementPayload}
               />
 
-              <Typography sx={{ fontWeight: 900 }}>
-                Movimientos
-              </Typography>
+              <Typography sx={{ fontWeight: 900 }}>Movimientos</Typography>
 
               {isMobile ? (
                 <CreditHistoryMobileCards
@@ -383,6 +406,8 @@ export default function CreditHistoryModal({
         pdfUrl={`/pos/credit-accounts/${account?.id}/report/pdf`}
         phone={phone}
         setPhone={setPhone}
+        onSendWhatsapp={handleSendStatementWhatsapp}
+        sending={sendingStatementWhatsapp}
         downloadName={`estado_cuenta_fiado_${account?.id}.pdf`}
       />
     </>

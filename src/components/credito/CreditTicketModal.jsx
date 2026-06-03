@@ -13,13 +13,42 @@ import axiosClient from "../../config/axiosClientPOS";
 import { showError, showSuccess } from "../../utils/alerts";
 
 const APP_META = {
-  windows_usb: { label: "Enviar a Windows USB", color: "#1565c0", icon: <ComputerIcon /> },
-  windows_ip: { label: "Enviar a Windows IP", color: "#1976d2", icon: <LanIcon /> },
-  android_usb: { label: "Enviar a Android USB", color: "#2e7d32", icon: <AndroidIcon /> },
-  android_ip: { label: "Enviar a Android IP", color: "#1b5e20", icon: <AndroidIcon /> },
-  ios_ip: { label: "Enviar a iPhone IP", color: "#455a64", icon: <AppleIcon /> },
-  ios_ble: { label: "Enviar a iPhone BLE", color: "#212121", icon: <BluetoothIcon /> },
+  windows_usb: {
+    label: "Enviar a Windows USB",
+    color: "#1565c0",
+    icon: <ComputerIcon />,
+  },
+  windows_ip: {
+    label: "Enviar a Windows IP",
+    color: "#1976d2",
+    icon: <LanIcon />,
+  },
+  android_usb: {
+    label: "Enviar a Android USB",
+    color: "#2e7d32",
+    icon: <AndroidIcon />,
+  },
+  android_ip: {
+    label: "Enviar a Android IP",
+    color: "#1b5e20",
+    icon: <AndroidIcon />,
+  },
+  ios_ip: {
+    label: "Enviar a iPhone IP",
+    color: "#455a64",
+    icon: <AppleIcon />,
+  },
+  ios_ble: {
+    label: "Enviar a iPhone BLE",
+    color: "#212121",
+    icon: <BluetoothIcon />,
+  },
 };
+
+const cleanPhone10 = (value) =>
+  String(value || "")
+    .replace(/\D+/g, "")
+    .slice(-10);
 
 export default function CreditTicketModal({
   open,
@@ -28,13 +57,24 @@ export default function CreditTicketModal({
   phone,
   setPhone,
   onSendWhatsapp,
-  sending,
+  sending = false,
 }) {
   const pdfUrl = sale?.id ? `/v2/sales/${sale.id}/ticket.pdf` : "";
   const posLocationId = sale?.pos_location_id || sale?.posLocation?.id || null;
 
+  const resolvedPhone = useMemo(() => {
+    return cleanPhone10(
+      phone ||
+        sale?.client?.telefono ||
+        sale?.cliente?.telefono ||
+        sale?.client_phone ||
+        ""
+    );
+  }, [phone, sale]);
+
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [sendingPayload, setSendingPayload] = useState(false);
+  const [sendingWhatsappLocal, setSendingWhatsappLocal] = useState(false);
   const [printSetting, setPrintSetting] = useState(null);
 
   useEffect(() => {
@@ -78,11 +118,64 @@ export default function CreditTicketModal({
     );
   }, [printSetting]);
 
+  const handleSendWhatsapp = async ({
+    es_cliente,
+    phone: targetPhone,
+  } = {}) => {
+    if (!sale?.id) {
+      showError("No se encontró la venta.");
+      return;
+    }
+
+    const cleanPhone = cleanPhone10(targetPhone || resolvedPhone);
+
+    if (!cleanPhone || cleanPhone.length !== 10) {
+      showError("Ingresa un número válido de 10 dígitos.");
+      return;
+    }
+
+    if (typeof onSendWhatsapp === "function") {
+      await onSendWhatsapp({
+        es_cliente,
+        phone: cleanPhone,
+      });
+      return;
+    }
+
+    try {
+      setSendingWhatsappLocal(true);
+
+      const { data } = await axiosClient.post(
+        `/sales/${sale.id}/send-whatsapp`,
+        {
+          phone: cleanPhone,
+          es_cliente,
+        }
+      );
+
+      showSuccess(
+        data?.message || "Ticket enviado correctamente por WhatsApp."
+      );
+    } catch (e) {
+      console.error(e);
+      showError(
+        e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          e?.response?.data?.details ||
+          "No se pudo enviar el ticket por WhatsApp."
+      );
+    } finally {
+      setSendingWhatsappLocal(false);
+    }
+  };
+
   const getPrintPayload = async () => {
     const { data } = await axiosClient.get(`/sales/${sale.id}/print-payload`);
 
     if (!data?.ok || !data?.payload) {
-      throw new Error(data?.message || "No se pudo obtener payload de impresión.");
+      throw new Error(
+        data?.message || "No se pudo obtener payload de impresión."
+      );
     }
 
     return data.payload;
@@ -161,7 +254,12 @@ export default function CreditTicketModal({
       const payload = await getPrintPayload();
 
       if (appType === "windows_usb") {
-        const ok = sendToWindows({ ...payload, app_type: appType, transport: "usb" });
+        const ok = sendToWindows({
+          ...payload,
+          app_type: appType,
+          transport: "usb",
+        });
+
         if (!ok) throw new Error("No hay bridge Windows disponible.");
       }
 
@@ -281,10 +379,10 @@ export default function CreditTicketModal({
       onClose={onClose}
       title={`Ticket de venta #${sale?.id || ""}`}
       pdfUrl={pdfUrl}
-      phone={phone}
+      phone={resolvedPhone}
       setPhone={setPhone}
-      onSendWhatsapp={onSendWhatsapp}
-      sending={sending}
+      onSendWhatsapp={handleSendWhatsapp}
+      sending={sending || sendingWhatsappLocal}
       downloadName={`ticket_venta_${sale?.id || ""}.pdf`}
       extraActions={extraActions}
     />
