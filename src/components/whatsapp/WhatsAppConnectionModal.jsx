@@ -19,11 +19,14 @@ import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import { QRCodeCanvas } from "qrcode.react";
 import axiosClient from "../../config/axiosClient";
 
+import { showConfirm, showSuccess, showError } from "../../utils/alerts";
+
 const isConnectedStatus = (status) =>
-  ["CONNECTED", "open", "connected"].includes(String(status || ""));
+  ["CONNECTED", "open", "connected", "OPEN"].includes(String(status || ""));
 
 const formatDate = (value) => {
   if (!value) return "Sin fecha";
@@ -40,7 +43,6 @@ const getRemainingText = (fechaFin) => {
 
   const end = new Date(String(fechaFin).replace(" ", "T"));
   const now = new Date();
-
   const diffMs = end - now;
 
   if (diffMs <= 0) return "Vencido";
@@ -73,16 +75,17 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
   const [loadingConnection, setLoadingConnection] = useState(false);
   const [creating, setCreating] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
   const connected = useMemo(
     () => isConnectedStatus(connection?.status),
-    [connection?.status]
+    [connection?.status],
   );
 
   const remainingText = useMemo(
     () => getRemainingText(addon?.fecha_fin),
-    [addon?.fecha_fin]
+    [addon?.fecha_fin],
   );
 
   const isExpired = remainingText === "Vencido";
@@ -93,7 +96,6 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
 
     try {
       const { data } = await axiosClient.get("/whatsapp-connections");
-
       const list = Array.isArray(data?.data) ? data.data : [];
 
       const active =
@@ -107,7 +109,7 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
       setError(
         e?.response?.data?.message ||
           e?.response?.data?.error ||
-          "No se pudo cargar la conexión actual de WhatsApp."
+          "No se pudo cargar la conexión actual de WhatsApp.",
       );
     } finally {
       setLoadingConnection(false);
@@ -124,11 +126,13 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
       });
 
       setConnection(data.connection);
+
+      showSuccess(data?.message || "Conexión creada correctamente.");
     } catch (e) {
-      setError(
+      showError(
         e?.response?.data?.message ||
           e?.response?.data?.error ||
-          "No se pudo crear la conexión de WhatsApp."
+          "No se pudo crear la conexión de WhatsApp.",
       );
     } finally {
       setCreating(false);
@@ -142,20 +146,62 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
 
     try {
       const { data } = await axiosClient.get(
-        `/whatsapp-connections/${connection.id}/status`
+        `/whatsapp-connections/${connection.id}/status`,
       );
 
       setConnection(data.connection);
     } catch (e) {
-      setError(
+      showError(
         e?.response?.data?.message ||
           e?.response?.data?.error ||
-          "No se pudo consultar el estado de WhatsApp."
+          "No se pudo consultar el estado de WhatsApp.",
       );
     } finally {
       setChecking(false);
     }
   }, [connection?.id, connected]);
+
+  const deleteConnection = async () => {
+    if (!connection?.id) return;
+
+    const confirmed = await showConfirm(
+      "Esta acción eliminará la sesión de WhatsApp actual tanto del sistema como de ChatingBoot.",
+      "Sí, eliminar",
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setDeleting(true);
+
+    try {
+      await axiosClient.delete(`/whatsapp-connections/${connection.id}`);
+
+      await showSuccess("La conexión de WhatsApp fue eliminada correctamente.");
+
+      setConnection(null);
+      await loadConnection();
+    } catch (e) {
+      if (e?.response?.status === 404) {
+        setConnection(null);
+        await loadConnection();
+
+        await showSuccess(
+          "La conexión ya no existía en el sistema. Se actualizó la información.",
+        );
+
+        return;
+      }
+
+      showError(
+        e?.response?.data?.message ||
+          e?.response?.data?.error ||
+          "No se pudo eliminar la conexión de WhatsApp.",
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -179,6 +225,7 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
     setError("");
     setCreating(false);
     setChecking(false);
+    setDeleting(false);
     setLoadingConnection(false);
     onClose?.();
   };
@@ -222,9 +269,7 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
           {error && <Alert severity="error">{error}</Alert>}
 
           {connected && (
-            <Alert severity="success">
-              WhatsApp conectado correctamente.
-            </Alert>
+            <Alert severity="success">WhatsApp conectado correctamente.</Alert>
           )}
 
           <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
@@ -272,7 +317,8 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
                 color="text.secondary"
                 textAlign="center"
               >
-                La conexión se genera automáticamente con el nombre de tu tienda.
+                La conexión se genera automáticamente con el nombre de tu
+                tienda.
               </Typography>
 
               <Divider flexItem />
@@ -286,7 +332,10 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
                 </Stack>
               ) : !connection ? (
                 <>
-                  <Alert severity={isExpired ? "warning" : "info"} sx={{ width: "100%" }}>
+                  <Alert
+                    severity={isExpired ? "warning" : "info"}
+                    sx={{ width: "100%" }}
+                  >
                     {isExpired
                       ? "El complemento está vencido. No se puede generar una nueva conexión."
                       : "No hay una conexión registrada. Puedes generar una nueva conexión QR."}
@@ -383,16 +432,39 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
                     </Stack>
                   )}
 
-                  {!connected && (
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    flexWrap="wrap"
+                    justifyContent="center"
+                  >
+                    {!connected && (
+                      <Button
+                        variant="outlined"
+                        startIcon={<RefreshRoundedIcon />}
+                        onClick={checkStatus}
+                        disabled={checking}
+                      >
+                        {checking ? "Consultando..." : "Actualizar estado"}
+                      </Button>
+                    )}
+
                     <Button
                       variant="outlined"
-                      startIcon={<RefreshRoundedIcon />}
-                      onClick={checkStatus}
-                      disabled={checking}
+                      color="error"
+                      startIcon={
+                        deleting ? (
+                          <CircularProgress size={18} color="inherit" />
+                        ) : (
+                          <DeleteOutlineRoundedIcon />
+                        )
+                      }
+                      onClick={deleteConnection}
+                      disabled={deleting}
                     >
-                      {checking ? "Consultando..." : "Actualizar estado"}
+                      {deleting ? "Eliminando..." : "Eliminar conexión"}
                     </Button>
-                  )}
+                  </Stack>
                 </>
               )}
             </Stack>
@@ -404,6 +476,7 @@ export default function WhatsAppConnectionModal({ open, onClose, addon }) {
         <Button onClick={loadConnection} disabled={loadingConnection}>
           Recargar
         </Button>
+
         <Button onClick={handleClose}>Cerrar</Button>
       </DialogActions>
     </Dialog>
