@@ -114,7 +114,7 @@ export default function StockEntryForm() {
       setLoadingProducts(true);
 
       const { data } = await axiosClient.get(
-        `/admin/branches/${activeBranch.id}/products-with-variants`,
+        `/admin/branches/${activeBranch.id}/products-with-variants`
       );
 
       const list = Array.isArray(data)
@@ -164,40 +164,50 @@ export default function StockEntryForm() {
 
       const list = Array.isArray(data?.data) ? data.data : [];
 
-      const normalized = list.map((item) => ({
-        ...item,
+      const normalized = list.map((item) => {
+        const movementType =
+          item.movement_type ||
+          item.restock_invoice?.movement_type ||
+          item.invoice?.movement_type ||
+          "entrada";
 
-        // ID real de la entrada/factura
-        restock_invoice_id:
-          item.restock_invoice_id ||
-          item.invoice_id ||
-          item.restock_invoice?.id ||
-          item.invoice?.id ||
-          null,
+        return {
+          ...item,
 
-        // Nombre de entrada
-        invoice_notes:
-          item.invoice_notes ||
-          item.restock_invoice?.notes ||
-          item.invoice?.notes ||
-          "",
+          movement_type: movementType,
 
-        // Descripción de partida
-        line_notes:
-          item.line_notes ||
-          item.restock_notes ||
-          item.description ||
-          item.notes ||
-          "",
+          movement_label:
+            item.movement_label ||
+            (movementType === "salida" ? "Salida" : "Entrada"),
 
-        // Fecha
-        invoice_date:
-          item.invoice_date ||
-          item.restock_invoice?.invoice_date ||
-          item.invoice?.invoice_date ||
-          item.created_at ||
-          "",
-      }));
+          restock_invoice_id:
+            item.restock_invoice_id ||
+            item.invoice_id ||
+            item.restock_invoice?.id ||
+            item.invoice?.id ||
+            null,
+
+          invoice_notes:
+            item.invoice_notes ||
+            item.restock_invoice?.notes ||
+            item.invoice?.notes ||
+            "",
+
+          line_notes:
+            item.line_notes ||
+            item.restock_notes ||
+            item.description ||
+            item.notes ||
+            "",
+
+          invoice_date:
+            item.invoice_date ||
+            item.restock_invoice?.invoice_date ||
+            item.invoice?.invoice_date ||
+            item.created_at ||
+            "",
+        };
+      });
 
       setStockHistory(normalized);
     } catch {
@@ -247,8 +257,9 @@ export default function StockEntryForm() {
   const downloadLowStockReport = (type) => {
     if (!activeBranch?.id) return;
 
-    const url = `/restocks/low-stock/report/${type}?branch_id=${activeBranch.id
-      }&min_stock=${minStock || 20}`;
+    const url = `/restocks/low-stock/report/${type}?branch_id=${
+      activeBranch.id
+    }&min_stock=${minStock || 20}`;
 
     window.open(url, "_blank");
   };
@@ -276,77 +287,92 @@ export default function StockEntryForm() {
     setMovementDetailOpen(true);
   };
 
-  const renderHistoryCard = (entry) => (
-    <Card
-      key={entry.id}
-      elevation={0}
-      sx={{
-        borderRadius: 2.5,
-        border: `1px solid ${alpha("#000", 0.08)}`,
-      }}
-    >
-      <CardContent
+  const renderHistoryCard = (entry) => {
+    const movementType = entry.movement_type || "entrada";
+    const isSalida = movementType === "salida";
+
+    return (
+      <Card
+        key={entry.id}
+        elevation={0}
         sx={{
-          p: 1.5,
-          display: "flex",
-          gap: 1.5,
-          alignItems: "center",
-          flexWrap: "wrap",
+          borderRadius: 2.5,
+          border: `1px solid ${alpha("#000", 0.08)}`,
         }}
       >
-        <Box
+        <CardContent
           sx={{
-            width: 46,
-            height: 46,
-            borderRadius: 2,
-            bgcolor: alpha(COLORS.accent, 0.22),
-            display: "grid",
-            placeItems: "center",
+            p: 1.5,
+            display: "flex",
+            gap: 1.5,
+            alignItems: "center",
+            flexWrap: "wrap",
           }}
         >
-          <ReceiptLongRounded />
-        </Box>
+          <Box
+            sx={{
+              width: 46,
+              height: 46,
+              borderRadius: 2,
+              bgcolor: isSalida
+                ? alpha("#d32f2f", 0.12)
+                : alpha(COLORS.accent, 0.22),
+              display: "grid",
+              placeItems: "center",
+            }}
+          >
+            <ReceiptLongRounded color={isSalida ? "error" : "inherit"} />
+          </Box>
 
-        <Box sx={{ flex: 1, minWidth: 240 }}>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Typography sx={{ fontWeight: 900 }}>
-              {entry.product?.name || "Producto"}
+          <Box sx={{ flex: 1, minWidth: 240 }}>
+            <Stack direction="row" spacing={1} flexWrap="wrap">
+              <Typography sx={{ fontWeight: 900 }}>
+                {entry.product?.name || "Producto"}
+              </Typography>
+
+              <Chip
+                size="small"
+                label={isSalida ? "Salida" : "Entrada"}
+                color={isSalida ? "error" : "success"}
+              />
+
+              <Chip size="small" label={entry.created_at || "-"} />
+
+              <Chip
+                size="small"
+                label={entry.uuid_invoice || entry.folio || "Sin documento"}
+              />
+            </Stack>
+
+            <Typography variant="body2" color="text.secondary">
+              {isSalida ? "Motivo" : "Proveedor"}:{" "}
+              {entry.supplier || entry.invoice_notes || "No asignado"} •
+              Cantidad: <b>{entry.quantity}</b> • Costo:{" "}
+              <b>{money(entry.unit_price)}</b>
             </Typography>
 
-            <Chip size="small" label={entry.created_at || "-"} />
+            <Typography variant="caption" color="text.secondary">
+              Stock anterior: {entry.previous_stock ?? "-"} • Stock nuevo:{" "}
+              {entry.new_stock ?? "-"} • Subtotal: {money(entry.subtotal)}
+            </Typography>
+          </Box>
 
-            <Chip
-              size="small"
-              label={entry.uuid_invoice || entry.folio || "Sin factura"}
-            />
-          </Stack>
-
-          <Typography variant="body2" color="text.secondary">
-            Proveedor: {entry.supplier || "No asignado"} • Cantidad:{" "}
-            <b>{entry.quantity}</b> • Costo: <b>{money(entry.unit_price)}</b>
-          </Typography>
-
-          <Typography variant="caption" color="text.secondary">
-            Stock anterior: {entry.previous_stock ?? "-"} • Stock nuevo:{" "}
-            {entry.new_stock ?? "-"} • Subtotal: {money(entry.subtotal)}
-          </Typography>
-        </Box>
-
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={() => openMovementDetail(entry)}
-          sx={{
-            borderRadius: 2,
-            fontWeight: 800,
-            textTransform: "none",
-          }}
-        >
-          Detalle
-        </Button>
-      </CardContent>
-    </Card>
-  );
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={() => openMovementDetail(entry)}
+            sx={{
+              borderRadius: 2,
+              fontWeight: 800,
+              textTransform: "none",
+            }}
+          >
+            Detalle
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <Box
@@ -381,7 +407,7 @@ export default function StockEntryForm() {
                   color: COLORS.black,
                 }}
               >
-                Entradas de Productos
+                Movimientos de Inventario
               </Typography>
 
               <Typography variant="caption" color="text.secondary">
@@ -418,7 +444,7 @@ export default function StockEntryForm() {
                 textTransform: "none",
               }}
             >
-              Registrar Entrada
+              Registrar Movimiento
             </Button>
 
             <Button
@@ -510,7 +536,7 @@ export default function StockEntryForm() {
                     </Typography>
 
                     <Typography variant="caption" color="text.secondary">
-                      Se muestran todos los movimientos registrados.
+                      Se muestran entradas y salidas registradas.
                     </Typography>
                   </Box>
                 </Stack>
@@ -518,7 +544,6 @@ export default function StockEntryForm() {
                 <RestockHistoryTable
                   rows={stockHistory}
                   loading={loadingHistory}
-                  // onOpenDetail={openMovementDetail}
                 />
               </CardContent>
             </Card>

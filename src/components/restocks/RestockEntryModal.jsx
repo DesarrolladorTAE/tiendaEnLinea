@@ -166,6 +166,8 @@ export default function RestockEntryModal({
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
+  const [movementType, setMovementType] = useState("entrada");
+
   const [supplier, setSupplier] = useState(null);
   const [uuidInvoice, setUuidInvoice] = useState("");
   const [folio, setFolio] = useState("");
@@ -186,6 +188,7 @@ export default function RestockEntryModal({
   const debouncedProductSearch = useDebounce(productSearch, 500);
 
   const isReadOnly = Boolean(readOnly);
+  const isSalida = movementType === "salida";
 
   const filteredProducts = useMemo(() => {
     const term = String(debouncedProductSearch || "").toLowerCase().trim();
@@ -204,7 +207,7 @@ export default function RestockEntryModal({
     const subtotal = lines.reduce(
       (acc, line) =>
         acc + Number(line.unit_price || 0) * Number(line.quantity || 0),
-      0,
+      0
     );
 
     return {
@@ -215,6 +218,7 @@ export default function RestockEntryModal({
   }, [lines]);
 
   const resetForm = () => {
+    setMovementType("entrada");
     setSupplier(null);
     setUuidInvoice("");
     setFolio("");
@@ -230,12 +234,10 @@ export default function RestockEntryModal({
     if (!branchId) return;
 
     try {
-      const { data } = await axiosClient.get(
-        `/branches/${branchId}/warehouses`,
-      );
+      const { data } = await axiosClient.get(`/branches/${branchId}/warehouses`);
 
       setWarehouses(
-        Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [],
+        Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
       );
     } catch {
       setWarehouses([]);
@@ -249,10 +251,10 @@ export default function RestockEntryModal({
       setLoadingProducts(true);
 
       const { data } = await axiosClient.get(
-        `/admin/branches/${branchId}/products-with-variants`,
+        `/admin/branches/${branchId}/products-with-variants`
       );
 
-      setProducts(Array.isArray(data) ? data : []);
+      setProducts(Array.isArray(data) ? data : data?.products || data?.data || []);
     } catch {
       setProducts([]);
     } finally {
@@ -274,10 +276,18 @@ export default function RestockEntryModal({
     if (!open) return;
 
     if (isReadOnly && movement) {
+      const currentMovementType =
+        movement?.movement_type ||
+        movement?.restock_invoice?.movement_type ||
+        movement?.invoice?.movement_type ||
+        "entrada";
+
+      setMovementType(currentMovementType);
+
       setSupplier(
         movement?.supplier
           ? { id: movement?.supplier_id || "", name: movement?.supplier }
-          : null,
+          : null
       );
 
       setUuidInvoice(movement?.uuid_invoice || "");
@@ -288,20 +298,26 @@ export default function RestockEntryModal({
         movement?.invoice_notes ||
           movement?.restock_invoice?.notes ||
           movement?.entry_name ||
-          "",
+          ""
       );
 
       setLines([
         {
           id: movement?.id || Date.now(),
           product: movement?.product || null,
-          variant: movement?.product_variant || null,
-          product_variant_id: movement?.product_variant_id || "",
+          variant: movement?.product_variant || movement?.variant || null,
+          product_variant_id:
+            movement?.product_variant_id || movement?.variant?.id || "",
           variation_size_id: movement?.variation_size_id || "",
-          warehouse_id: movement?.warehouse_id || "",
+          warehouse_id:
+            movement?.warehouse_id || movement?.warehouse?.id || "",
           unit_price: Number(movement?.unit_price || 0),
           quantity: Number(movement?.quantity || 0),
-          notes: movement?.line_notes || movement?.description || movement?.notes || "",
+          notes:
+            movement?.line_notes ||
+            movement?.description ||
+            movement?.notes ||
+            "",
         },
       ]);
     }
@@ -313,7 +329,7 @@ export default function RestockEntryModal({
 
   const updateLine = (id, updates) => {
     setLines((prev) =>
-      prev.map((line) => (line.id === id ? { ...line, ...updates } : line)),
+      prev.map((line) => (line.id === id ? { ...line, ...updates } : line))
     );
   };
 
@@ -323,6 +339,36 @@ export default function RestockEntryModal({
     setLines((prev) => prev.filter((line) => line.id !== id));
   };
 
+  const lineRequiresWarehouse = (line) => {
+    const product = line.product;
+
+    if (!product) return false;
+
+    if (Boolean(product?.use_warehouse_inventory)) return true;
+
+    if (
+      Array.isArray(product?.warehouse_inventories) &&
+      product.warehouse_inventories.length > 0
+    ) {
+      return true;
+    }
+
+    if (line.product_variant_id) {
+      const variant = product?.variants?.find(
+        (v) => Number(v.id) === Number(line.product_variant_id)
+      );
+
+      if (
+        Array.isArray(variant?.warehouse_stocks) &&
+        variant.warehouse_stocks.length > 0
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   const getWarehouseOptions = (line) => {
     const product = line.product;
 
@@ -330,7 +376,7 @@ export default function RestockEntryModal({
 
     if (line.product_variant_id) {
       const variant = product?.variants?.find(
-        (v) => Number(v.id) === Number(line.product_variant_id),
+        (v) => Number(v.id) === Number(line.product_variant_id)
       );
 
       if (
@@ -372,6 +418,17 @@ export default function RestockEntryModal({
       return;
     }
 
+    for (const line of lines) {
+      if (!line.product?.id || Number(line.quantity) <= 0) continue;
+
+      if (lineRequiresWarehouse(line) && !line.warehouse_id) {
+        toast.error(
+          `El producto "${line.product?.name || "seleccionado"}" ya maneja inventario por almacén. Selecciona un almacén.`
+        );
+        return;
+      }
+    }
+
     const cleanItems = lines
       .filter((line) => line.product?.id && Number(line.quantity) > 0)
       .map((line) => ({
@@ -392,6 +449,7 @@ export default function RestockEntryModal({
     const formData = new FormData();
 
     formData.append("branch_id", branchId);
+    formData.append("movement_type", movementType);
     formData.append("supplier_id", supplier?.id || "");
     formData.append("uuid_invoice", uuidInvoice || "");
     formData.append("folio", folio || "");
@@ -408,11 +466,11 @@ export default function RestockEntryModal({
       formData.append(`items[${index}][product_id]`, item.product_id);
       formData.append(
         `items[${index}][product_variant_id]`,
-        item.product_variant_id,
+        item.product_variant_id
       );
       formData.append(
         `items[${index}][variation_size_id]`,
-        item.variation_size_id,
+        item.variation_size_id
       );
       formData.append(`items[${index}][warehouse_id]`, item.warehouse_id);
       formData.append(`items[${index}][unit_price]`, item.unit_price);
@@ -428,12 +486,18 @@ export default function RestockEntryModal({
           headers: { "Content-Type": "multipart/form-data" },
         }),
         {
-          loading: "Registrando abastecimiento...",
-          success: "Abastecimiento registrado correctamente.",
+          loading: isSalida
+            ? "Registrando salida..."
+            : "Registrando entrada...",
+          success: isSalida
+            ? "Salida registrada correctamente."
+            : "Entrada registrada correctamente.",
           error: (err) =>
             err?.response?.data?.message ||
-            "Error al registrar abastecimiento.",
-        },
+            (isSalida
+              ? "Error al registrar salida."
+              : "Error al registrar entrada."),
+        }
       );
 
       resetForm();
@@ -475,29 +539,37 @@ export default function RestockEntryModal({
               width: 42,
               height: 42,
               borderRadius: 2,
-              bgcolor: alpha(COLORS.accent, 0.2),
-              border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
+              bgcolor: isSalida
+                ? alpha(COLORS.danger, 0.16)
+                : alpha(COLORS.accent, 0.2),
+              border: `1px solid ${
+                isSalida
+                  ? alpha(COLORS.danger, 0.35)
+                  : alpha(COLORS.accent, 0.35)
+              }`,
               display: "grid",
               placeItems: "center",
               flexShrink: 0,
             }}
           >
-            <Inventory2RoundedIcon sx={{ color: COLORS.black }} />
+            <Inventory2RoundedIcon
+              sx={{ color: isSalida ? COLORS.danger : COLORS.black }}
+            />
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              sx={{ fontWeight: 1000, fontSize: 18, lineHeight: 1.1 }}
-            >
+            <Typography sx={{ fontWeight: 1000, fontSize: 18, lineHeight: 1.1 }}>
               {isReadOnly
                 ? "Detalle del movimiento"
-                : "Registrar abastecimiento"}
+                : isSalida
+                  ? "Registrar salida de inventario"
+                  : "Registrar entrada de inventario"}
             </Typography>
 
             <Typography variant="body2" color="text.secondary">
               {isReadOnly
                 ? "Consulta la información registrada en este movimiento."
-                : "Registra el nombre de la entrada, proveedor, factura, productos, variantes, almacén y cantidades."}
+                : "Registra entradas o salidas de productos, variantes, almacén y cantidades."}
             </Typography>
           </Box>
 
@@ -516,13 +588,40 @@ export default function RestockEntryModal({
       >
         <Stack spacing={1.5}>
           <Section
-            title="Nombre de la entrada"
-            subtitle="Este nombre se guardará en las notas generales de la factura de reabastecimiento."
+            title="Tipo de movimiento"
+            subtitle="Selecciona si este registro aumenta o disminuye inventario."
+            icon={<Inventory2RoundedIcon sx={{ fontSize: 17, color: COLORS.black }} />}
+          >
+            <TextField
+              select
+              label="Tipo de movimiento"
+              value={movementType}
+              onChange={(e) => setMovementType(e.target.value)}
+              fullWidth
+              disabled={isReadOnly}
+              sx={fieldSx}
+            >
+              <MenuItem value="entrada">Entrada</MenuItem>
+              <MenuItem value="salida">Salida</MenuItem>
+            </TextField>
+          </Section>
+
+          <Section
+            title={isSalida ? "Motivo de la salida" : "Nombre de la entrada"}
+            subtitle={
+              isSalida
+                ? "Describe el motivo general de la salida: merma, daño, ajuste, consumo interno, etc."
+                : "Este nombre se guardará en las notas generales de la factura de reabastecimiento."
+            }
             icon={<NotesRoundedIcon sx={{ fontSize: 17, color: COLORS.black }} />}
           >
             <TextField
-              label="Nombre de la entrada"
-              placeholder="Ej. Compra de mercancía mayo 2026"
+              label={isSalida ? "Motivo de la salida" : "Nombre de la entrada"}
+              placeholder={
+                isSalida
+                  ? "Ej. Producto dañado, merma, ajuste de inventario..."
+                  : "Ej. Compra de mercancía mayo 2026"
+              }
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               fullWidth
@@ -539,44 +638,46 @@ export default function RestockEntryModal({
           </Section>
 
           <Section
-            title="Datos de factura o compra"
-            subtitle="Información general del proveedor y comprobante. El proveedor es opcional."
-            icon={
-              <ReceiptLongRoundedIcon
-                sx={{ fontSize: 17, color: COLORS.black }}
-              />
+            title={isSalida ? "Datos del documento" : "Datos de factura o compra"}
+            subtitle={
+              isSalida
+                ? "Puedes registrar un folio interno o referencia de la salida."
+                : "Información general del proveedor y comprobante. El proveedor es opcional."
             }
+            icon={<ReceiptLongRoundedIcon sx={{ fontSize: 17, color: COLORS.black }} />}
           >
             <Stack direction={{ xs: "column", md: "row" }} spacing={1.2}>
-              <Autocomplete
-                value={supplier}
-                onChange={(_, value) => setSupplier(value)}
-                options={suppliers}
-                getOptionLabel={(s) => s?.name || ""}
-                fullWidth
-                disabled={isReadOnly}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Proveedor opcional"
-                    sx={fieldSx}
-                    InputProps={{
-                      ...params.InputProps,
-                      startAdornment: (
-                        <>
-                          <InputAdornment position="start">
-                            <LocalShippingRoundedIcon fontSize="small" />
-                          </InputAdornment>
-                          {params.InputProps.startAdornment}
-                        </>
-                      ),
-                    }}
-                  />
-                )}
-              />
+              {!isSalida && (
+                <Autocomplete
+                  value={supplier}
+                  onChange={(_, value) => setSupplier(value)}
+                  options={suppliers}
+                  getOptionLabel={(s) => s?.name || ""}
+                  fullWidth
+                  disabled={isReadOnly}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Proveedor opcional"
+                      sx={fieldSx}
+                      InputProps={{
+                        ...params.InputProps,
+                        startAdornment: (
+                          <>
+                            <InputAdornment position="start">
+                              <LocalShippingRoundedIcon fontSize="small" />
+                            </InputAdornment>
+                            {params.InputProps.startAdornment}
+                          </>
+                        ),
+                      }}
+                    />
+                  )}
+                />
+              )}
 
               <TextField
-                label="UUID factura"
+                label={isSalida ? "UUID / Referencia" : "UUID factura"}
                 value={uuidInvoice}
                 onChange={(e) => setUuidInvoice(e.target.value)}
                 fullWidth
@@ -594,7 +695,7 @@ export default function RestockEntryModal({
               />
 
               <TextField
-                label="Fecha factura"
+                label={isSalida ? "Fecha salida" : "Fecha factura"}
                 type="date"
                 value={invoiceDate}
                 onChange={(e) => setInvoiceDate(e.target.value)}
@@ -606,15 +707,11 @@ export default function RestockEntryModal({
             </Stack>
           </Section>
 
-          {!isReadOnly && (
+          {!isReadOnly && !isSalida && (
             <Section
               title="Archivos de factura"
               subtitle="Puedes adjuntar PDF y XML de la compra si los tienes disponibles."
-              icon={
-                <AttachFileRoundedIcon
-                  sx={{ fontSize: 17, color: COLORS.black }}
-                />
-              }
+              icon={<AttachFileRoundedIcon sx={{ fontSize: 17, color: COLORS.black }} />}
             >
               <Stack direction={{ xs: "column", md: "row" }} spacing={1.2}>
                 <Button
@@ -679,13 +776,13 @@ export default function RestockEntryModal({
           )}
 
           <Section
-            title="Productos a reabastecer"
-            subtitle="Cada partida puede tener su propia descripción. El costo actualizará el historial si cambió."
-            icon={
-              <WarehouseRoundedIcon
-                sx={{ fontSize: 17, color: COLORS.black }}
-              />
+            title={isSalida ? "Productos a retirar" : "Productos a ingresar"}
+            subtitle={
+              isSalida
+                ? "La cantidad registrada se descontará del stock. No se permite dejar stock negativo."
+                : "Cada partida puede tener su propia descripción. El costo actualizará el historial si cambió."
             }
+            icon={<WarehouseRoundedIcon sx={{ fontSize: 17, color: COLORS.black }} />}
           >
             {!isReadOnly && (
               <Stack
@@ -695,7 +792,7 @@ export default function RestockEntryModal({
                 spacing={1}
               >
                 <Typography variant="caption" color="text.secondary">
-                  Puedes agregar varios productos en una sola entrada.
+                  Puedes agregar varios productos en un solo movimiento.
                 </Typography>
 
                 <Button
@@ -713,6 +810,7 @@ export default function RestockEntryModal({
               {lines.map((line, idx) => {
                 const variantOptions = getVariantOptions(line.product);
                 const warehouseOptions = getWarehouseOptions(line);
+                const requiresWarehouse = lineRequiresWarehouse(line);
                 const lineSubtotal =
                   Number(line.unit_price || 0) * Number(line.quantity || 0);
 
@@ -731,7 +829,9 @@ export default function RestockEntryModal({
                       sx={{
                         px: 1.5,
                         py: 1.1,
-                        bgcolor: alpha(COLORS.accent, 0.1),
+                        bgcolor: isSalida
+                          ? alpha(COLORS.danger, 0.08)
+                          : alpha(COLORS.accent, 0.1),
                         borderBottom: `1px solid ${alpha("#000", 0.07)}`,
                       }}
                     >
@@ -743,6 +843,12 @@ export default function RestockEntryModal({
                             fontWeight: 900,
                             bgcolor: "#fff",
                           }}
+                        />
+
+                        <Chip
+                          size="small"
+                          label={isSalida ? "Salida" : "Entrada"}
+                          color={isSalida ? "error" : "success"}
                         />
 
                         <Box sx={{ flex: 1 }} />
@@ -777,10 +883,7 @@ export default function RestockEntryModal({
 
                     <Box sx={{ p: 1.5 }}>
                       <Stack spacing={1.2}>
-                        <Stack
-                          direction={{ xs: "column", lg: "row" }}
-                          spacing={1.2}
-                        >
+                        <Stack direction={{ xs: "column", lg: "row" }} spacing={1.2}>
                           <Autocomplete
                             value={line.product}
                             onChange={(_, product) => {
@@ -839,7 +942,7 @@ export default function RestockEntryModal({
                                   variant?.purchase_cost ||
                                     variant?.price ||
                                     line.unit_price ||
-                                    0,
+                                    0
                                 ),
                               });
                             }}
@@ -877,10 +980,7 @@ export default function RestockEntryModal({
                           />
                         </Stack>
 
-                        <Stack
-                          direction={{ xs: "column", md: "row" }}
-                          spacing={1.2}
-                        >
+                        <Stack direction={{ xs: "column", md: "row" }} spacing={1.2}>
                           <TextField
                             select
                             fullWidth
@@ -892,9 +992,18 @@ export default function RestockEntryModal({
                               })
                             }
                             disabled={isReadOnly}
+                            required={requiresWarehouse}
+                            helperText={
+                              requiresWarehouse
+                                ? "Este producto ya usa inventario por almacén."
+                                : "Si eliges almacén, el producto quedará ligado a inventario por almacén."
+                            }
                             sx={fieldSx}
                           >
-                            <MenuItem value="">Sin almacén</MenuItem>
+                            {!requiresWarehouse && (
+                              <MenuItem value="">Sin almacén</MenuItem>
+                            )}
+
                             {warehouseOptions.map((warehouse) => (
                               <MenuItem key={warehouse.id} value={warehouse.id}>
                                 {warehouse.name}
@@ -907,7 +1016,7 @@ export default function RestockEntryModal({
                           </TextField>
 
                           <TextField
-                            label="Costo de compra"
+                            label={isSalida ? "Costo referencial" : "Costo de compra"}
                             type="number"
                             value={line.unit_price}
                             onChange={(e) =>
@@ -921,9 +1030,7 @@ export default function RestockEntryModal({
                             sx={fieldSx}
                             InputProps={{
                               startAdornment: (
-                                <InputAdornment position="start">
-                                  $
-                                </InputAdornment>
+                                <InputAdornment position="start">$</InputAdornment>
                               ),
                             }}
                           />
@@ -954,7 +1061,11 @@ export default function RestockEntryModal({
 
                         <TextField
                           label="Descripción de la partida"
-                          placeholder="Ej. Caja dañada, lote especial, entrega parcial, promoción..."
+                          placeholder={
+                            isSalida
+                              ? "Ej. Producto dañado, merma, retiro interno..."
+                              : "Ej. Caja dañada, lote especial, entrega parcial..."
+                          }
                           value={line.notes || ""}
                           onChange={(e) =>
                             updateLine(line.id, { notes: e.target.value })
@@ -975,10 +1086,10 @@ export default function RestockEntryModal({
 
           <Section
             title="Resumen"
-            subtitle="Totales calculados antes de guardar la entrada."
-            icon={
-              <PaidRoundedIcon sx={{ fontSize: 17, color: COLORS.black }} />
-            }
+            subtitle={`Totales calculados antes de guardar la ${
+              isSalida ? "salida" : "entrada"
+            }.`}
+            icon={<PaidRoundedIcon sx={{ fontSize: 17, color: COLORS.black }} />}
           >
             <Stack direction="row" spacing={1} flexWrap="wrap">
               <Chip
@@ -990,15 +1101,23 @@ export default function RestockEntryModal({
                 label={`Total: ${money(totals.total)}`}
                 sx={{
                   fontWeight: 900,
-                  bgcolor: alpha(COLORS.accent, 0.28),
-                  border: `1px solid ${alpha(COLORS.accent, 0.4)}`,
+                  bgcolor: isSalida
+                    ? alpha(COLORS.danger, 0.14)
+                    : alpha(COLORS.accent, 0.28),
+                  border: `1px solid ${
+                    isSalida
+                      ? alpha(COLORS.danger, 0.28)
+                      : alpha(COLORS.accent, 0.4)
+                  }`,
                 }}
               />
             </Stack>
 
             {!isReadOnly && (
               <Typography variant="caption" color="text.secondary">
-                El stock se actualizará al guardar la entrada. Si el costo de compra cambia, se registrará en el historial.
+                {isSalida
+                  ? "El stock se descontará al guardar. No se permite registrar salidas mayores al stock disponible."
+                  : "El stock se actualizará al guardar la entrada. Si el costo de compra cambia, se registrará en el historial."}
               </Typography>
             )}
           </Section>
@@ -1042,7 +1161,11 @@ export default function RestockEntryModal({
               minWidth: 220,
             }}
           >
-            {loading ? "Guardando..." : "Guardar abastecimiento"}
+            {loading
+              ? "Guardando..."
+              : isSalida
+                ? "Guardar salida"
+                : "Guardar entrada"}
           </Button>
         )}
       </DialogActions>
