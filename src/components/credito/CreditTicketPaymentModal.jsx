@@ -51,6 +51,7 @@ export default function CreditTicketPaymentModal({
   const [form, setForm] = useState({
     payment_method: "efectivo",
     reference: "",
+    ultimos_4: "",
     notes: "",
   });
 
@@ -59,11 +60,16 @@ export default function CreditTicketPaymentModal({
   const pendingAmount = Math.max(0, creditAmount - paidAmount);
   const alreadyPaid = pendingAmount <= 0;
 
+  const isCard = form.payment_method === "td" || form.payment_method === "tc";
+  const isTransfer = form.payment_method === "transferencia";
+  const needsReference = isCard || isTransfer;
+
   useEffect(() => {
     if (open) {
       setForm({
         payment_method: "efectivo",
         reference: "",
+        ultimos_4: "",
         notes: "",
       });
     }
@@ -73,11 +79,38 @@ export default function CreditTicketPaymentModal({
     setForm((p) => ({ ...p, [field]: value }));
   };
 
+  const handleMethodChange = (value) => {
+    setForm((p) => ({
+      ...p,
+      payment_method: value,
+      reference: "",
+      ultimos_4: "",
+    }));
+  };
+
   const handleSubmit = async () => {
     if (!account?.id || !sale?.id) return;
 
     if (pendingAmount <= 0) {
       showError("Este ticket ya está liquidado.");
+      return;
+    }
+
+    if (needsReference && !form.reference.trim()) {
+      showError(
+        isTransfer
+          ? "Ingresa la referencia de la transferencia."
+          : "Ingresa la referencia o autorización de la tarjeta."
+      );
+      return;
+    }
+
+    if (needsReference && form.ultimos_4.length !== 4) {
+      showError(
+        isTransfer
+          ? "Ingresa 4 dígitos de referencia para la transferencia."
+          : "Ingresa los últimos 4 dígitos de la tarjeta."
+      );
       return;
     }
 
@@ -89,7 +122,14 @@ export default function CreditTicketPaymentModal({
         {
           amount: pendingAmount,
           payment_method: form.payment_method,
-          reference: form.reference || null,
+          reference:
+            form.payment_method === "efectivo"
+              ? null
+              : form.reference || null,
+          ultimos_4:
+            needsReference
+              ? form.ultimos_4
+              : null,
           notes: form.notes || `Liquidación del ticket #${sale.id}`,
         }
       );
@@ -239,7 +279,7 @@ export default function CreditTicketPaymentModal({
             select
             label="Método de pago"
             value={form.payment_method}
-            onChange={(e) => handleChange("payment_method", e.target.value)}
+            onChange={(e) => handleMethodChange(e.target.value)}
             fullWidth
             disabled={alreadyPaid}
           >
@@ -250,15 +290,52 @@ export default function CreditTicketPaymentModal({
             ))}
           </TextField>
 
-          {form.payment_method !== "efectivo" ? (
-            <TextField
-              label="Referencia"
-              value={form.reference}
-              onChange={(e) => handleChange("reference", e.target.value)}
-              fullWidth
-              disabled={alreadyPaid}
-              placeholder="Folio, autorización o referencia"
-            />
+          {needsReference ? (
+            <>
+              <TextField
+                label={
+                  isTransfer
+                    ? "Referencia de transferencia"
+                    : "Referencia o autorización"
+                }
+                value={form.reference}
+                onChange={(e) => handleChange("reference", e.target.value)}
+                fullWidth
+                disabled={alreadyPaid}
+                placeholder={
+                  isTransfer
+                    ? "Folio, clave de rastreo o referencia bancaria"
+                    : "Folio o autorización de pago"
+                }
+              />
+
+              <TextField
+                label={
+                  isTransfer
+                    ? "4 dígitos de referencia"
+                    : "Últimos 4 dígitos de la tarjeta"
+                }
+                value={form.ultimos_4}
+                onChange={(e) =>
+                  handleChange(
+                    "ultimos_4",
+                    e.target.value.replace(/\D/g, "").slice(0, 4)
+                  )
+                }
+                fullWidth
+                disabled={alreadyPaid}
+                inputProps={{
+                  maxLength: 4,
+                  inputMode: "numeric",
+                  pattern: "[0-9]*",
+                }}
+                helperText={
+                  isTransfer
+                    ? "Puedes usar los últimos 4 dígitos de la referencia bancaria."
+                    : "Obligatorio para pagos con tarjeta."
+                }
+              />
+            </>
           ) : null}
 
           <TextField

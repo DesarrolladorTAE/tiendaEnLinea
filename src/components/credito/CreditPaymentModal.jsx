@@ -42,10 +42,13 @@ export default function CreditPaymentModal({ open, onClose, account, onSaved }) 
     amount: "",
     payment_method: "efectivo",
     reference: "",
+    ultimos_4: "",
     notes: "",
   });
 
   const balance = Number(account?.current_balance || 0);
+  const isCard = form.payment_method === "td" || form.payment_method === "tc";
+  const isTransfer = form.payment_method === "transferencia";
 
   useEffect(() => {
     if (open) {
@@ -54,6 +57,7 @@ export default function CreditPaymentModal({ open, onClose, account, onSaved }) 
         amount: "",
         payment_method: "efectivo",
         reference: "",
+        ultimos_4: "",
         notes: "",
       });
     }
@@ -61,6 +65,15 @@ export default function CreditPaymentModal({ open, onClose, account, onSaved }) 
 
   const handleChange = (field, value) => {
     setForm((p) => ({ ...p, [field]: value }));
+  };
+
+  const handlePaymentMethodChange = (value) => {
+    setForm((p) => ({
+      ...p,
+      payment_method: value,
+      reference: "",
+      ultimos_4: "",
+    }));
   };
 
   const handleToggleFullDebt = (checked) => {
@@ -85,6 +98,7 @@ export default function CreditPaymentModal({ open, onClose, account, onSaved }) 
       amount: "",
       payment_method: "efectivo",
       reference: "",
+      ultimos_4: "",
       notes: "",
     });
   };
@@ -104,15 +118,33 @@ export default function CreditPaymentModal({ open, onClose, account, onSaved }) 
       return;
     }
 
+    if ((isCard || isTransfer) && form.ultimos_4.length !== 4) {
+      showError(
+        isCard
+          ? "Ingresa los últimos 4 dígitos de la tarjeta."
+          : "Ingresa 4 dígitos de referencia para la transferencia."
+      );
+      return;
+    }
+
     setSaving(true);
 
     try {
+      const reference =
+        form.payment_method === "efectivo"
+          ? null
+          : form.reference || form.ultimos_4 || null;
+
       const { data } = await axiosClient.post(
         `/pos/credit-accounts/${account.id}/payments`,
         {
           amount,
           payment_method: form.payment_method,
-          reference: form.reference || null,
+          reference,
+          ultimos_4:
+            isCard || isTransfer
+              ? form.ultimos_4
+              : null,
           notes: form.notes || null,
           pay_full_debt: payFullDebt,
         }
@@ -204,7 +236,7 @@ export default function CreditPaymentModal({ open, onClose, account, onSaved }) 
             select
             label="Método de pago"
             value={form.payment_method}
-            onChange={(e) => handleChange("payment_method", e.target.value)}
+            onChange={(e) => handlePaymentMethodChange(e.target.value)}
             fullWidth
           >
             {METHODS.map((m) => (
@@ -214,13 +246,54 @@ export default function CreditPaymentModal({ open, onClose, account, onSaved }) 
             ))}
           </TextField>
 
-          {form.payment_method !== "efectivo" ? (
+          {isCard ? (
             <TextField
-              label="Referencia"
-              value={form.reference}
-              onChange={(e) => handleChange("reference", e.target.value)}
+              label="Últimos 4 dígitos de la tarjeta"
+              value={form.ultimos_4}
+              onChange={(e) =>
+                handleChange(
+                  "ultimos_4",
+                  e.target.value.replace(/\D/g, "").slice(0, 4)
+                )
+              }
               fullWidth
+              inputProps={{
+                maxLength: 4,
+                inputMode: "numeric",
+                pattern: "[0-9]*",
+              }}
+              helperText="Obligatorio para pagos con tarjeta."
             />
+          ) : null}
+
+          {isTransfer ? (
+            <>
+              <TextField
+                label="Referencia de transferencia"
+                value={form.reference}
+                onChange={(e) => handleChange("reference", e.target.value)}
+                fullWidth
+                helperText="Folio, clave de rastreo o referencia bancaria."
+              />
+
+              <TextField
+                label="4 dígitos de referencia"
+                value={form.ultimos_4}
+                onChange={(e) =>
+                  handleChange(
+                    "ultimos_4",
+                    e.target.value.replace(/\D/g, "").slice(0, 4)
+                  )
+                }
+                fullWidth
+                inputProps={{
+                  maxLength: 4,
+                  inputMode: "numeric",
+                  pattern: "[0-9]*",
+                }}
+                helperText="Se envía para cumplir la validación actual del backend."
+              />
+            </>
           ) : null}
 
           <TextField
