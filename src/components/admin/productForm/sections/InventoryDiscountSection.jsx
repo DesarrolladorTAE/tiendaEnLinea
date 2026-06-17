@@ -23,6 +23,9 @@ export default function InventoryDiscountSection({
 
           <input
             type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
             className="form-control bg-secondary border-secondary text-light"
             readOnly={isEdit}
             placeholder={isEdit ? "Se actualiza desde entradas" : "Stock"}
@@ -30,6 +33,11 @@ export default function InventoryDiscountSection({
               required: !isEdit
                 ? "El stock es obligatorio (si no usas variantes)"
                 : false,
+              valueAsNumber: true,
+              min: {
+                value: 0,
+                message: "El stock no puede ser negativo",
+              },
             })}
           />
 
