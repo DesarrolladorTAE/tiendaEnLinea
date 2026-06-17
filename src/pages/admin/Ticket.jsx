@@ -233,7 +233,9 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
   });
 
   const API_BASE = "https://mitiendaenlineamx.com.mx";
-  const { allowed, loading: gateLoading } = useReglaTaeconta();
+  const { allowed, loading: gateLoading } = useReglaTaeconta(null, {
+    ignorePOS: true,
+  });
   const { selectedBranch } = useAdminUi();
   const branchId = selectedBranch?.id ?? null;
 
@@ -485,7 +487,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
       onClose?.();
     } catch (error) {
       showError(
-        error?.response?.data?.message || "❌ Error al actualizar el ticket."
+        error?.response?.data?.message || "❌ Error al actualizar el ticket.",
       );
     } finally {
       setIsSubmitting(false);
@@ -603,7 +605,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               <Stack direction="row" spacing={1.2} alignItems="center">
                 <ReceiptLongIcon color="primary" />
                 <Typography variant={isMobile ? "h6" : "h5"} fontWeight={800}>
-                  Personaliza tu TIcket 
+                  Personaliza tu TIcket
                 </Typography>
               </Stack>
               <Typography
@@ -611,7 +613,8 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                 color="text.secondary"
                 sx={{ mt: 0.7 }}
               >
-                Personaliza tu ticket con una vista más elegante, clara y moderna.
+                Personaliza tu ticket con una vista más elegante, clara y
+                moderna.
               </Typography>
             </Box>
 
@@ -621,7 +624,6 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
               flexWrap="wrap"
               sx={{ justifyContent: { xs: "flex-start", md: "flex-end" } }}
             >
-
               <Tooltip title="Ver recomendaciones">
                 <IconButton
                   onClick={() => setOpenHelp(true)}
@@ -805,49 +807,33 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                   gap: 1.2,
                 }}
               >
-                <GateTaeconta
-                  fallback={
-                    <Tooltip title="Requiere plan y complemento Taeconta">
-                      <span>
-                        <FormControlLabel
-                          control={<Checkbox checked={false} disabled />}
-                          label="QR factura SAT"
-                          sx={{
-                            m: 0,
-                            px: 1.2,
-                            py: 1,
-                            borderRadius: 2.5,
-                            border: "1px solid",
-                            borderColor: "divider",
-                            width: "100%",
-                            bgcolor: "background.default",
-                          }}
-                        />
-                      </span>
-                    </Tooltip>
-                  }
+                <Tooltip
+                  title={allowed ? "" : "Requiere plan y complemento Taeconta"}
                 >
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        name="qr_factura"
-                        checked={formData.qr_factura}
-                        onChange={handleChange}
-                      />
-                    }
-                    label="QR factura SAT"
-                    sx={{
-                      m: 0,
-                      px: 1.2,
-                      py: 1,
-                      borderRadius: 2.5,
-                      border: "1px solid",
-                      borderColor: "divider",
-                      width: "100%",
-                      bgcolor: "background.default",
-                    }}
-                  />
-                </GateTaeconta>
+                  <span>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          name="qr_factura"
+                          checked={!!formData.qr_factura}
+                          onChange={handleChange}
+                          disabled={!allowed}
+                        />
+                      }
+                      label="QR factura SAT"
+                      sx={{
+                        m: 0,
+                        px: 1.2,
+                        py: 1,
+                        borderRadius: 2.5,
+                        border: "1px solid",
+                        borderColor: "divider",
+                        width: "100%",
+                        bgcolor: "background.default",
+                      }}
+                    />
+                  </span>
+                </Tooltip>
 
                 <FormControlLabel
                   control={
@@ -952,7 +938,7 @@ const TicketEditForm = ({ onClose, onSuccess }) => {
                       disabled={!formData.logo_preview && !formData.logo}
                       onClick={() => {
                         const confirmado = window.confirm(
-                          "¿Eliminar el logo actual?"
+                          "¿Eliminar el logo actual?",
                         );
                         if (confirmado) {
                           setFormData((prev) => ({
