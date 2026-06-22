@@ -63,7 +63,7 @@ export default function POS({ posName, cambiarVista }) {
 
   // ✅ POS LOCATION ID como STATE
   const [posLocationId, setPosLocationId] = useState(
-    Number(localStorage.getItem("POS_LOCATION_ID")) || null
+    Number(localStorage.getItem("POS_LOCATION_ID")) || null,
   );
 
   useEffect(() => {
@@ -113,30 +113,49 @@ export default function POS({ posName, cambiarVista }) {
 
   const cartCount = useMemo(
     () => cart.reduce((acc, it) => acc + (Number(it.quantity) || 0), 0) || 0,
-    [cart]
+    [cart],
   );
 
   // ✅ Descargar PDF del ticket
   useEffect(() => {
-    if (showTicket && ticketData) {
-      (async () => {
-        try {
-          const resp = await axiosClient.get(
-            `/v2/sales/${ticketData.id}/ticket.pdf`,
-            { responseType: "arraybuffer" }
-          );
-          const blob = new Blob([resp.data], { type: "application/pdf" });
-          if (ticketBlobUrl) URL.revokeObjectURL(ticketBlobUrl);
-          setTicketBlobUrl(URL.createObjectURL(blob));
-        } catch (e) {
-          console.error("Error cargando ticket:", e);
+    if (!showTicket || !ticketData?.id) return;
+
+    let alive = true;
+
+    const loadTicket = async () => {
+      try {
+        setTicketBlobUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return "";
+        });
+
+        const resp = await axiosClient.get(
+          `/v2/sales/${ticketData.id}/ticket.pdf`,
+          { responseType: "arraybuffer" },
+        );
+
+        if (!alive) return;
+
+        const blob = new Blob([resp.data], { type: "application/pdf" });
+        const url = URL.createObjectURL(blob);
+
+        setTicketBlobUrl(url);
+      } catch (e) {
+        console.error("Error cargando ticket:", e);
+
+        if (alive) {
           showError("❌ No se pudo previsualizar el ticket.");
           setShowTicket(false);
         }
-      })();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showTicket, ticketData]);
+      }
+    };
+
+    loadTicket();
+
+    return () => {
+      alive = false;
+    };
+  }, [showTicket, ticketData?.id]);
 
   // ✅ Mantener enfoque escáner SOLO desktop
   useEffect(() => {
@@ -160,15 +179,21 @@ export default function POS({ posName, cambiarVista }) {
 
     tryFocus();
     return () => clearTimeout(focusTimeout);
-  }, [scannerEnabled, showTicket, modalDescuentoActivo, isTouchDevice, cartOpen]);
+  }, [
+    scannerEnabled,
+    showTicket,
+    modalDescuentoActivo,
+    isTouchDevice,
+    cartOpen,
+  ]);
 
   // ✅ cuando cambia search o categoría: reset a page 1 y pedir al backend
-useEffect(() => {
-  const next = 1;
-  setPage(next);
-  refetchProducts({ nextPage: next, categoryId: selectedCategoryId });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [search, selectedCategoryId]);
+  useEffect(() => {
+    const next = 1;
+    setPage(next);
+    refetchProducts({ nextPage: next, categoryId: selectedCategoryId });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, selectedCategoryId]);
 
   // ✅ Traer categorías por POS
   useEffect(() => {
@@ -212,7 +237,9 @@ useEffect(() => {
 
   const handleSendTicket = async (phone) => {
     try {
-      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, { phone });
+      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, {
+        phone,
+      });
       showSuccess("✅ Ticket enviado por WhatsApp");
     } catch (e) {
       console.error("Error enviando WhatsApp:", e);
@@ -223,13 +250,15 @@ useEffect(() => {
   const handleCloseTicket = () => {
     setShowTicket(false);
     setTicketData(null);
-    if (ticketBlobUrl) {
-      URL.revokeObjectURL(ticketBlobUrl);
-      setTicketBlobUrl("");
-    }
+
+    setTicketBlobUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return "";
+    });
+
     if (!isTouchDevice) {
       requestAnimationFrame(() =>
-        inputRef.current?.focus({ preventScroll: true })
+        inputRef.current?.focus({ preventScroll: true }),
       );
     }
   };
@@ -251,7 +280,7 @@ useEffect(() => {
 
     if (!isTouchDevice) {
       requestAnimationFrame(() =>
-        inputRef.current?.focus({ preventScroll: true })
+        inputRef.current?.focus({ preventScroll: true }),
       );
     }
   };
@@ -406,7 +435,7 @@ useEffect(() => {
             if (!searchEditable) {
               setSearchEditable(true);
               requestAnimationFrame(() =>
-                e.currentTarget.querySelector("input")?.focus()
+                e.currentTarget.querySelector("input")?.focus(),
               );
             }
           }}
@@ -447,12 +476,14 @@ useEffect(() => {
       >
         {isMdUp ? (
           <Box>
-<CategoriesRail
-  categories={categories}
-  selectedCategoryId={selectedCategoryId}
-  onSelect={(id) => setSelectedCategoryId(id == null ? null : Number(id))}
-  onClear={() => setSelectedCategoryId(null)}
-/>
+            <CategoriesRail
+              categories={categories}
+              selectedCategoryId={selectedCategoryId}
+              onSelect={(id) =>
+                setSelectedCategoryId(id == null ? null : Number(id))
+              }
+              onClear={() => setSelectedCategoryId(null)}
+            />
           </Box>
         ) : null}
 
@@ -489,7 +520,7 @@ useEffect(() => {
                   {selectedCategoryId
                     ? `Categoría: ${
                         categories.find(
-                          (c) => String(c.id) === String(selectedCategoryId)
+                          (c) => String(c.id) === String(selectedCategoryId),
                         )?.name || "Seleccionada"
                       }`
                     : "Todas las categorías"}
@@ -542,14 +573,22 @@ useEffect(() => {
               borderColor: "divider",
             }}
           >
-            <Box display="flex" justifyContent="center" gap={2} alignItems="center">
+            <Box
+              display="flex"
+              justifyContent="center"
+              gap={2}
+              alignItems="center"
+            >
               <Button
                 variant="outlined"
                 disabled={page === 1}
                 onClick={() => {
                   const np = Math.max(1, page - 1);
                   setPage(np);
-                  refetchProducts({ nextPage: np, categoryId: selectedCategoryId });
+                  refetchProducts({
+                    nextPage: np,
+                    categoryId: selectedCategoryId,
+                  });
                 }}
               >
                 Anterior
@@ -565,7 +604,10 @@ useEffect(() => {
                 onClick={() => {
                   const np = Math.min(totalPages, page + 1);
                   setPage(np);
-                  refetchProducts({ nextPage: np, categoryId: selectedCategoryId });
+                  refetchProducts({
+                    nextPage: np,
+                    categoryId: selectedCategoryId,
+                  });
                 }}
               >
                 Siguiente
@@ -614,7 +656,10 @@ useEffect(() => {
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         disableScrollLock
-        ModalProps={{ keepMounted: true }}
+        ModalProps={{
+          keepMounted: true,
+          disableEnforceFocus: true,
+        }}
         PaperProps={{
           sx: isMdUp
             ? {
@@ -627,19 +672,20 @@ useEffect(() => {
                 flexDirection: "column",
               }
             : {
-                height: "100dvh",
-                maxHeight: "100dvh",
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
+                height: "100svh",
+                maxHeight: "100svh",
+                width: "100%",
+                borderTopLeftRadius: 0,
+                borderTopRightRadius: 0,
                 background: "#fff",
-                border: "1px solid",
-                borderColor: "divider",
                 display: "flex",
                 flexDirection: "column",
-                overscrollBehavior: "contain",
+                overflow: "hidden",
+                touchAction: "pan-y",
               },
         }}
       >
+        {/* Header */}
         <Box
           sx={{
             p: 1.25,
@@ -650,15 +696,22 @@ useEffect(() => {
             borderColor: "divider",
             position: "sticky",
             top: 0,
-            zIndex: 2,
+            zIndex: 10,
             background: "#fff",
+            flexShrink: 0,
           }}
         >
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
               Tu orden
             </Typography>
-            <Typography sx={{ fontSize: 12, color: "#6b7280" }}>
+
+            <Typography
+              sx={{
+                fontSize: 12,
+                color: "#6b7280",
+              }}
+            >
               {cartCount} producto(s)
             </Typography>
           </Box>
@@ -668,14 +721,18 @@ useEffect(() => {
           </IconButton>
         </Box>
 
+        {/* Contenido scrollable */}
         <Box
           sx={{
             flex: 1,
             minHeight: 0,
             overflowY: "auto",
+            overflowX: "hidden",
             WebkitOverflowScrolling: "touch",
+            overscrollBehaviorY: "contain",
+            touchAction: "pan-y",
             p: 1.25,
-            pb: 2,
+            pb: "calc(32px + env(safe-area-inset-bottom))",
           }}
         >
           <Cart

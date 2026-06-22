@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import {
   Box,
   Typography,
@@ -51,10 +57,18 @@ const toNumber = (v) => {
 };
 
 const getCartKey = (item) =>
-  String(item?.cart_key ?? item?.cartKey ?? item?.line_id ?? item?.lineId ?? item?.id);
+  String(
+    item?.cart_key ??
+      item?.cartKey ??
+      item?.line_id ??
+      item?.lineId ??
+      item?.id,
+  );
 
 const getBaseProductId = (item) => {
-  const raw = String(item?.product_id ?? item?.base_id ?? item?.baseId ?? item?.id ?? "");
+  const raw = String(
+    item?.product_id ?? item?.base_id ?? item?.baseId ?? item?.id ?? "",
+  );
   const m = raw.match(/^(\d+)(?:-(?:v|w)\d+)?$/);
   return m ? Number(m[1]) : Number(raw) || null;
 };
@@ -169,13 +183,13 @@ export default function CartSidebar({
               behavior: "smooth",
             });
           }
-        } catch { }
+        } catch {}
       };
 
       requestAnimationFrame(doScroll);
       setTimeout(doScroll, 250);
     },
-    [isMobile, kb]
+    [isMobile, kb],
   );
 
   useEffect(() => {
@@ -186,11 +200,12 @@ export default function CartSidebar({
       if (!el) return;
 
       const tag = (el.tagName || "").toLowerCase();
-      if (tag !== "input" && tag !== "textarea" && !el.isContentEditable) return;
+      if (tag !== "input" && tag !== "textarea" && !el.isContentEditable)
+        return;
 
       try {
         el.scrollIntoView({ block: "center", inline: "nearest" });
-      } catch { }
+      } catch {}
       ensureVisible(el);
     };
 
@@ -269,7 +284,9 @@ export default function CartSidebar({
       setLoadingCredit(true);
 
       try {
-        const { data } = await axiosClient.get(`/pos/credit-client/${selectedClient.id}`);
+        const { data } = await axiosClient.get(
+          `/pos/credit-client/${selectedClient.id}`,
+        );
         setCreditAccount(data?.account || null);
       } catch {
         setCreditAccount(null);
@@ -284,10 +301,11 @@ export default function CartSidebar({
   const total = useMemo(
     () =>
       cart.reduce(
-        (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
-        0
+        (sum, item) =>
+          sum + (Number(item.price) || 0) * (Number(item.quantity) || 0),
+        0,
       ),
-    [cart]
+    [cart],
   );
 
   const hasCreditAccount = Boolean(creditAccount?.id);
@@ -316,7 +334,7 @@ export default function CartSidebar({
         const n = toNumber(details[m].amount);
         return acc + (Number.isFinite(n) ? n : 0);
       }, 0),
-    [selected, details]
+    [selected, details],
   );
 
   const cambioUnico =
@@ -351,12 +369,12 @@ export default function CartSidebar({
 
       const original = toNumber(
         item.original_price ??
-        item.price_original ??
-        item.base_price ??
-        item.precio_base ??
-        item.precio_sin_descuento ??
-        item.original ??
-        item.originalPrice
+          item.price_original ??
+          item.base_price ??
+          item.precio_base ??
+          item.precio_sin_descuento ??
+          item.original ??
+          item.originalPrice,
       );
 
       return {
@@ -364,7 +382,9 @@ export default function CartSidebar({
         variant_id: variantId || null,
         quantity: parseFloat(item.quantity),
         unit_price: parseFloat(item.price),
-        original_price: Number.isFinite(original) ? +original : parseFloat(item.price),
+        original_price: Number.isFinite(original)
+          ? +original
+          : parseFloat(item.price),
         discount_percent: parseFloat(item.discount || 0),
         warehouse_id: item.warehouse_id ?? null,
         worker_id: item.worker_id ?? null,
@@ -421,7 +441,7 @@ export default function CartSidebar({
 
       if (!isUnlimitedCredit && total > availableCredit) {
         return showError(
-          `El cliente no tiene crédito suficiente. Disponible: $${availableCredit.toFixed(2)}`
+          `El cliente no tiene crédito suficiente. Disponible: $${availableCredit.toFixed(2)}`,
         );
       }
     }
@@ -435,7 +455,9 @@ export default function CartSidebar({
         payments = [];
       } else {
         if (!pendingAdvancePayment) {
-          return showError("Selecciona o registra el anticipo de la venta pendiente.");
+          return showError(
+            "Selecciona o registra el anticipo de la venta pendiente.",
+          );
         }
 
         payments = [pendingAdvancePayment];
@@ -498,7 +520,9 @@ export default function CartSidebar({
           if (CARDLIKE.includes(m)) {
             if (!referencia?.trim() || (ultimos4 || "").length !== 4) {
               const label = METHODS.find((x) => x.key === m)?.label || m;
-              return showError(`Completa referencia y últimos 4 para ${label}.`);
+              return showError(
+                `Completa referencia y últimos 4 para ${label}.`,
+              );
             }
           }
         }
@@ -509,7 +533,7 @@ export default function CartSidebar({
 
         if (sumaValida + 0.00001 < total) {
           return showError(
-            `Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(2)}.`
+            `Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(2)}.`,
           );
         }
 
@@ -544,11 +568,17 @@ export default function CartSidebar({
 
       is_pending_sale: creditSale ? true : pendingSale,
       pending_has_advance: creditSale ? false : pendingHasAdvance,
-      pending_due_at: creditSale ? creditAccount?.payment_due_date || null : pendingDueAt,
-      pending_note: creditSale ? "Venta registrada a fiado desde POS." : pendingNote,
+      pending_due_at: creditSale
+        ? creditAccount?.payment_due_date || null
+        : pendingDueAt,
+      pending_note: creditSale
+        ? "Venta registrada a fiado desde POS."
+        : pendingNote,
 
       is_credit_sale: creditSale,
-      credit_due_at: creditSale ? creditAccount?.payment_due_date || null : null,
+      credit_due_at: creditSale
+        ? creditAccount?.payment_due_date || null
+        : null,
     };
 
     try {
@@ -670,8 +700,8 @@ export default function CartSidebar({
     selected
       .map((m) => toNumber(details[m].amount))
       .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
-    0.00001 <
-    total;
+      0.00001 <
+      total;
 
   const disableConfirm =
     cart.length === 0 ||
@@ -689,13 +719,11 @@ export default function CartSidebar({
     boxShadow: variant === "desktop" ? "0 10px 30px rgba(0,0,0,0.06)" : "none",
     ...(isMobile
       ? {
-        height: "100%",
-        maxHeight: "100%",
-        overflowY: "auto",
-        WebkitOverflowScrolling: "touch",
-        overscrollBehavior: "contain",
-        paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
-      }
+          height: "auto",
+          maxHeight: "none",
+          overflow: "visible",
+          paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
+        }
       : {}),
   };
 
@@ -723,13 +751,24 @@ export default function CartSidebar({
   return (
     <>
       <Box sx={rootSx}>
-        <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 1,
+          }}
+        >
           <Stack direction="row" spacing={1} alignItems="center">
             <ShoppingCartRoundedIcon fontSize="small" />
             <Typography variant="h6" sx={{ fontWeight: 900 }}>
               Carrito!
             </Typography>
-            <Chip size="small" label={`${cart.length} item${cart.length === 1 ? "" : "s"}`} sx={{ ml: 0.5 }} />
+            <Chip
+              size="small"
+              label={`${cart.length} item${cart.length === 1 ? "" : "s"}`}
+              sx={{ ml: 0.5 }}
+            />
           </Stack>
 
           <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
@@ -768,7 +807,9 @@ export default function CartSidebar({
             }
             label={
               <Box>
-                <Typography sx={{ fontWeight: 900 }}>Venta pendiente</Typography>
+                <Typography sx={{ fontWeight: 900 }}>
+                  Venta pendiente
+                </Typography>
                 <Typography variant="caption" color="text.secondary">
                   Actívalo si el cliente no pagará completo por ahora.
                 </Typography>
@@ -798,11 +839,24 @@ export default function CartSidebar({
                   <Box
                     key={cartKey}
                     component="li"
-                    sx={{ py: 1.2, borderBottom: "1px solid", borderColor: "divider" }}
+                    sx={{
+                      py: 1.2,
+                      borderBottom: "1px solid",
+                      borderColor: "divider",
+                    }}
                   >
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
+                      spacing={1}
+                    >
                       <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 700 }} noWrap>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 700 }}
+                          noWrap
+                        >
                           {item.display_name || item.name}
                         </Typography>
 
@@ -812,9 +866,16 @@ export default function CartSidebar({
                           </Typography>
                         )}
 
-                        <Typography variant="caption" color="text.secondary" display="block">
-                          ${Number(item.price || 0).toFixed(2)} c/u · Subtotal: $
-                          {(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                        <Typography
+                          variant="caption"
+                          color="text.secondary"
+                          display="block"
+                        >
+                          ${Number(item.price || 0).toFixed(2)} c/u · Subtotal:
+                          $
+                          {(
+                            Number(item.price || 0) * Number(item.quantity || 0)
+                          ).toFixed(2)}
                         </Typography>
 
                         {!loadingWorkers && posWorkers.length > 0 && (
@@ -825,15 +886,24 @@ export default function CartSidebar({
                               setCart((prev) =>
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
-                                    ? { ...prod, worker_id: workerId, worker: workerObj }
-                                    : prod
-                                )
+                                    ? {
+                                        ...prod,
+                                        worker_id: workerId,
+                                        worker: workerObj,
+                                      }
+                                    : prod,
+                                ),
                               );
                             }}
                           />
                         )}
 
-                        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          sx={{ mt: 1 }}
+                        >
                           <IconButton
                             size="small"
                             onClick={() => {
@@ -841,9 +911,14 @@ export default function CartSidebar({
                                 setCart((prev) =>
                                   prev.map((prod) =>
                                     getCartKey(prod) === cartKey
-                                      ? { ...prod, quantity: Math.floor(Number(prod.quantity)) - 1 }
-                                      : prod
-                                  )
+                                      ? {
+                                          ...prod,
+                                          quantity:
+                                            Math.floor(Number(prod.quantity)) -
+                                            1,
+                                        }
+                                      : prod,
+                                  ),
                                 );
                               } else {
                                 onRemove(cartKey);
@@ -870,12 +945,15 @@ export default function CartSidebar({
                                   prev.map((prod) =>
                                     getCartKey(prod) === cartKey
                                       ? {
-                                        ...prod,
-                                        inputValue: val,
-                                        quantity: val === "" || val === "." ? 0 : parseFloat(val),
-                                      }
-                                      : prod
-                                  )
+                                          ...prod,
+                                          inputValue: val,
+                                          quantity:
+                                            val === "" || val === "."
+                                              ? 0
+                                              : parseFloat(val),
+                                        }
+                                      : prod,
+                                  ),
                                 );
                               }
                             }}
@@ -883,12 +961,15 @@ export default function CartSidebar({
                               setCart((prev) =>
                                 prev
                                   .map((prod) =>
-                                    getCartKey(prod) === cartKey ? { ...prod, inputValue: undefined } : prod
+                                    getCartKey(prod) === cartKey
+                                      ? { ...prod, inputValue: undefined }
+                                      : prod,
                                   )
                                   .filter((prod) => {
-                                    if (getCartKey(prod) !== cartKey) return true;
+                                    if (getCartKey(prod) !== cartKey)
+                                      return true;
                                     return Number(prod.quantity || 0) > 0;
-                                  })
+                                  }),
                               );
                             }}
                           />
@@ -899,9 +980,13 @@ export default function CartSidebar({
                               setCart((prev) =>
                                 prev.map((prod) =>
                                   getCartKey(prod) === cartKey
-                                    ? { ...prod, quantity: Math.floor(Number(prod.quantity)) + 1 }
-                                    : prod
-                                )
+                                    ? {
+                                        ...prod,
+                                        quantity:
+                                          Math.floor(Number(prod.quantity)) + 1,
+                                      }
+                                    : prod,
+                                ),
                               );
                             }}
                           >
@@ -925,7 +1010,11 @@ export default function CartSidebar({
                         </Tooltip>
 
                         <Tooltip title="Eliminar">
-                          <IconButton size="small" onClick={() => onRemove(cartKey)} color="error">
+                          <IconButton
+                            size="small"
+                            onClick={() => onRemove(cartKey)}
+                            color="error"
+                          >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -950,13 +1039,21 @@ export default function CartSidebar({
                     />
                   )}
 
-                  <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 1 }}>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    sx={{ mt: 1 }}
+                  >
                     <Button
                       variant="outlined"
                       startIcon={<PersonAddAlt1RoundedIcon />}
                       onClick={handleOpenQuickClient}
                       fullWidth={isMobile}
-                      sx={{ borderRadius: 2, textTransform: "none", fontWeight: 800 }}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 800,
+                      }}
                     >
                       Crear cliente rápido
                     </Button>
@@ -967,7 +1064,11 @@ export default function CartSidebar({
                         color="inherit"
                         onClick={() => setSelectedClient(null)}
                         fullWidth={isMobile}
-                        sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontWeight: 700,
+                        }}
                       >
                         Quitar cliente
                       </Button>
@@ -1007,7 +1108,9 @@ export default function CartSidebar({
                       }
                       label={
                         <Box>
-                          <Typography sx={{ fontWeight: 900 }}>Venta a Crédito</Typography>
+                          <Typography sx={{ fontWeight: 900 }}>
+                            Venta a Crédito
+                          </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {loadingCredit
                               ? "Validando cuenta de fiado..."
@@ -1040,7 +1143,11 @@ export default function CartSidebar({
 
                 {!pendingSale && !creditSale && (
                   <Box sx={{ mt: 1.5 }}>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 800 }} gutterBottom>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 800 }}
+                      gutterBottom
+                    >
                       Método(s) de pago (máx. 3)
                     </Typography>
 
@@ -1055,16 +1162,30 @@ export default function CartSidebar({
                             sx={{
                               p: 1.25,
                               border: "1px solid",
-                              borderColor: isChecked ? "primary.main" : "divider",
+                              borderColor: isChecked
+                                ? "primary.main"
+                                : "divider",
                               borderRadius: 2,
-                              background: isChecked ? "rgba(25,118,210,0.04)" : "#fff",
+                              background: isChecked
+                                ? "rgba(25,118,210,0.04)"
+                                : "#fff",
                               transition: "all 120ms ease",
                             }}
                           >
                             <FormGroup>
                               <FormControlLabel
-                                control={<Checkbox checked={isChecked} onChange={() => toggleMethod(key)} size="small" />}
-                                label={<Typography sx={{ fontWeight: 700 }}>{label}</Typography>}
+                                control={
+                                  <Checkbox
+                                    checked={isChecked}
+                                    onChange={() => toggleMethod(key)}
+                                    size="small"
+                                  />
+                                }
+                                label={
+                                  <Typography sx={{ fontWeight: 700 }}>
+                                    {label}
+                                  </Typography>
+                                }
                               />
                             </FormGroup>
 
@@ -1079,20 +1200,33 @@ export default function CartSidebar({
                                         fullWidth
                                         margin="dense"
                                         value={cashReceived}
-                                        onChange={(e) => setCashReceived(e.target.value)}
+                                        onChange={(e) =>
+                                          setCashReceived(e.target.value)
+                                        }
                                         {...inputCommon}
-                                        inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
+                                        inputProps={{
+                                          inputMode: "decimal",
+                                          pattern: "[0-9]*[.,]?[0-9]*",
+                                        }}
                                       />
                                       {cambioUnico > 0 && (
-                                        <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{ mt: 0.5, fontWeight: 900 }}
+                                        >
                                           Cambio: ${cambioUnico.toFixed(2)}
                                         </Typography>
                                       )}
                                     </>
                                   ) : (
                                     <>
-                                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                        Se cobrará el total con <strong>{label}</strong>.
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{ mb: 1 }}
+                                      >
+                                        Se cobrará el total con{" "}
+                                        <strong>{label}</strong>.
                                       </Typography>
 
                                       <Stack spacing={1.2}>
@@ -1101,7 +1235,11 @@ export default function CartSidebar({
                                           fullWidth
                                           margin="dense"
                                           value={d.referencia || ""}
-                                          onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                          onChange={(e) =>
+                                            setDetail(key, {
+                                              referencia: e.target.value,
+                                            })
+                                          }
                                           {...inputCommon}
                                         />
 
@@ -1126,7 +1264,9 @@ export default function CartSidebar({
                                                 letterSpacing: 1,
                                               }}
                                             >
-                                              **** **** **** {d.ultimos4?.padEnd(4, "_") || "____"}
+                                              **** **** ****{" "}
+                                              {d.ultimos4?.padEnd(4, "_") ||
+                                                "____"}
                                             </Typography>
 
                                             <TextField
@@ -1137,7 +1277,9 @@ export default function CartSidebar({
                                               margin="dense"
                                               value={d.ultimos4 || ""}
                                               onChange={(e) => {
-                                                const v = String(e.target.value || "")
+                                                const v = String(
+                                                  e.target.value || "",
+                                                )
                                                   .replace(/\D/g, "")
                                                   .slice(0, 4);
                                                 setDetail(key, { ultimos4: v });
@@ -1164,17 +1306,28 @@ export default function CartSidebar({
                                           label="Monto"
                                           type="text"
                                           value={d.amount || ""}
-                                          onChange={(e) => setDetail(key, { amount: e.target.value })}
+                                          onChange={(e) =>
+                                            setDetail(key, {
+                                              amount: e.target.value,
+                                            })
+                                          }
                                           fullWidth
                                           margin="dense"
                                           {...inputCommon}
-                                          inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
+                                          inputProps={{
+                                            inputMode: "decimal",
+                                            pattern: "[0-9]*[.,]?[0-9]*",
+                                          }}
                                         />
 
                                         <TextField
                                           label="Referencia"
                                           value={d.referencia || ""}
-                                          onChange={(e) => setDetail(key, { referencia: e.target.value })}
+                                          onChange={(e) =>
+                                            setDetail(key, {
+                                              referencia: e.target.value,
+                                            })
+                                          }
                                           fullWidth
                                           margin="dense"
                                           {...inputCommon}
@@ -1185,7 +1338,9 @@ export default function CartSidebar({
                                           type="tel"
                                           value={d.ultimos4 || ""}
                                           onChange={(e) => {
-                                            const v = String(e.target.value || "")
+                                            const v = String(
+                                              e.target.value || "",
+                                            )
                                               .replace(/\D/g, "")
                                               .slice(0, 4);
                                             setDetail(key, { ultimos4: v });
@@ -1208,11 +1363,18 @@ export default function CartSidebar({
                                         label="Monto"
                                         type="text"
                                         value={d.amount || ""}
-                                        onChange={(e) => setDetail(key, { amount: e.target.value })}
+                                        onChange={(e) =>
+                                          setDetail(key, {
+                                            amount: e.target.value,
+                                          })
+                                        }
                                         fullWidth
                                         margin="dense"
                                         {...inputCommon}
-                                        inputProps={{ inputMode: "decimal", pattern: "[0-9]*[.,]?[0-9]*" }}
+                                        inputProps={{
+                                          inputMode: "decimal",
+                                          pattern: "[0-9]*[.,]?[0-9]*",
+                                        }}
                                       />
                                     )}
                                   </>
@@ -1228,10 +1390,14 @@ export default function CartSidebar({
                       <Box sx={{ mt: 1.5 }}>
                         <Divider sx={{ mb: 1 }} />
                         <Typography variant="body2" color="text.secondary">
-                          Suma de pagos: <strong>${sumSelected.toFixed(2)}</strong>
+                          Suma de pagos:{" "}
+                          <strong>${sumSelected.toFixed(2)}</strong>
                         </Typography>
                         {cambioMulti > 0 && (
-                          <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 900 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ mt: 0.5, fontWeight: 900 }}
+                          >
                             Cambio: ${cambioMulti.toFixed(2)}
                           </Typography>
                         )}
@@ -1251,24 +1417,38 @@ export default function CartSidebar({
                       bgcolor: "rgba(255,152,0,0.08)",
                     }}
                   >
-                    <Typography sx={{ fontWeight: 900 }}>Anticipo registrado</Typography>
+                    <Typography sx={{ fontWeight: 900 }}>
+                      Anticipo registrado
+                    </Typography>
 
                     <Typography variant="body2" color="text.secondary">
                       Método: <strong>{pendingAdvancePayment.method}</strong>
                     </Typography>
 
                     <Typography variant="body2" color="text.secondary">
-                      Anticipo: <strong>${Number(pendingAdvancePayment.amount || 0).toFixed(2)}</strong>
+                      Anticipo:{" "}
+                      <strong>
+                        ${Number(pendingAdvancePayment.amount || 0).toFixed(2)}
+                      </strong>
                     </Typography>
 
                     <Typography variant="body2" color="text.secondary">
                       Restante:{" "}
-                      <strong>${Math.max(0, total - Number(pendingAdvancePayment.amount || 0)).toFixed(2)}</strong>
+                      <strong>
+                        $
+                        {Math.max(
+                          0,
+                          total - Number(pendingAdvancePayment.amount || 0),
+                        ).toFixed(2)}
+                      </strong>
                     </Typography>
 
                     {pendingDueAt && (
                       <Typography variant="body2" color="text.secondary">
-                        Fecha compromiso: <strong>{new Date(pendingDueAt).toLocaleString("es-MX")}</strong>
+                        Fecha compromiso:{" "}
+                        <strong>
+                          {new Date(pendingDueAt).toLocaleString("es-MX")}
+                        </strong>
                       </Typography>
                     )}
 
@@ -1305,7 +1485,9 @@ export default function CartSidebar({
                       bgcolor: "rgba(255,152,0,0.08)",
                     }}
                   >
-                    <Typography sx={{ fontWeight: 900 }}>Venta pendiente sin anticipo</Typography>
+                    <Typography sx={{ fontWeight: 900 }}>
+                      Venta pendiente sin anticipo
+                    </Typography>
 
                     <Typography variant="body2" color="text.secondary">
                       Total pendiente: <strong>${total.toFixed(2)}</strong>
@@ -1313,7 +1495,10 @@ export default function CartSidebar({
 
                     {pendingDueAt && (
                       <Typography variant="body2" color="text.secondary">
-                        Fecha compromiso: <strong>{new Date(pendingDueAt).toLocaleString("es-MX")}</strong>
+                        Fecha compromiso:{" "}
+                        <strong>
+                          {new Date(pendingDueAt).toLocaleString("es-MX")}
+                        </strong>
                       </Typography>
                     )}
 
@@ -1341,7 +1526,9 @@ export default function CartSidebar({
 
                 <Button
                   variant="contained"
-                  color={creditSale ? "primary" : pendingSale ? "warning" : "success"}
+                  color={
+                    creditSale ? "primary" : pendingSale ? "warning" : "success"
+                  }
                   disabled={disableConfirm}
                   onClick={processCheckout}
                   fullWidth
@@ -1420,7 +1607,12 @@ export default function CartSidebar({
         }}
       />
 
-      <Dialog open={openQuickClient} onClose={handleCloseQuickClient} fullWidth maxWidth="xs">
+      <Dialog
+        open={openQuickClient}
+        onClose={handleCloseQuickClient}
+        fullWidth
+        maxWidth="xs"
+      >
         <DialogTitle sx={{ fontWeight: 900 }}>Crear cliente rápido</DialogTitle>
 
         <DialogContent dividers>
@@ -1471,7 +1663,11 @@ export default function CartSidebar({
             onClick={handleSaveQuickClient}
             disabled={savingQuickClient}
             sx={{ textTransform: "none", fontWeight: 800 }}
-            startIcon={savingQuickClient ? <CircularProgress size={18} color="inherit" /> : null}
+            startIcon={
+              savingQuickClient ? (
+                <CircularProgress size={18} color="inherit" />
+              ) : null
+            }
           >
             {savingQuickClient ? "Guardando..." : "Crear cliente"}
           </Button>

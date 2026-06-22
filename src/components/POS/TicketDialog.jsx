@@ -1,20 +1,18 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  CircularProgress,
-  Box,
-  Typography,
-  IconButton,
-  Divider,
-  useMediaQuery,
   Alert,
+  Box,
+  Button,
   Chip,
+  CircularProgress,
+  Divider,
+  IconButton,
+  TextField,
+  Typography,
+  useMediaQuery,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import WhatsAppIcon from "@mui/icons-material/WhatsApp";
@@ -25,43 +23,43 @@ import AppleIcon from "@mui/icons-material/Apple";
 import BluetoothIcon from "@mui/icons-material/Bluetooth";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
-import { useTheme } from "@mui/material/styles";
-import { showSuccess, showError } from "../../utils/alerts";
+
 import axiosClientPOS from "../../config/axiosClientPOS";
+import { showSuccess, showError } from "../../utils/alerts";
 
 const APP_META = {
   windows_usb: {
-    label: "Enviar a Windows USB",
+    label: "Windows USB",
     color: "#1565c0",
     icon: <ComputerIcon fontSize="small" />,
   },
   windows_ip: {
-    label: "Enviar a Windows IP",
+    label: "Windows IP",
     color: "#1976d2",
     icon: <LanIcon fontSize="small" />,
   },
   android_usb: {
-    label: "Enviar a Android USB",
+    label: "Android USB",
     color: "#2e7d32",
     icon: <AndroidIcon fontSize="small" />,
   },
   android_ip: {
-    label: "Enviar a Android IP",
+    label: "Android IP",
     color: "#1b5e20",
     icon: <AndroidIcon fontSize="small" />,
   },
   ios_ip: {
-    label: "Enviar a iPhone IP",
+    label: "iPhone IP",
     color: "#455a64",
     icon: <AppleIcon fontSize="small" />,
   },
   ios_ble: {
-    label: "Enviar a iPhone BLE",
+    label: "iPhone BLE",
     color: "#212121",
     icon: <BluetoothIcon fontSize="small" />,
   },
   whatsapp: {
-    label: "Payload WhatsApp",
+    label: "WhatsApp",
     color: "#25D366",
     icon: <WhatsAppIcon fontSize="small" />,
   },
@@ -76,17 +74,20 @@ export default function TicketDialog({
   posLocationId,
 }) {
   const theme = useTheme();
-
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
-  const [phone, setPhone] = useState("");
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  const [phone, setPhone] = useState("");
   const [loadingSend, setLoadingSend] = useState(false);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [sendingPayload, setSendingPayload] = useState(false);
   const [printSetting, setPrintSetting] = useState(null);
   const [autoSent, setAutoSent] = useState(false);
 
-  const digitsOnly = (v) => (v || "").replace(/\D/g, "").slice(0, 10);
+  const digitsOnly = (v) =>
+    String(v || "")
+      .replace(/\D/g, "")
+      .slice(0, 10);
   const isValidPhone = /^\d{10}$/.test(phone);
 
   const meta = useMemo(() => {
@@ -107,22 +108,25 @@ export default function TicketDialog({
     );
   }, [printSetting]);
 
+  const isBusy = loadingSend || sendingPayload || loadingConfig;
+
   const canSendPayload =
     Boolean(printSetting?.enabled && printSetting?.app_type) &&
-    !loadingConfig &&
-    !sendingPayload &&
-    !loadingSend;
+    !isBusy &&
+    Boolean(sale?.id);
 
   useEffect(() => {
-    if (open) {
-      setPhone("");
-      setLoadingSend(false);
-      setLoadingConfig(false);
-      setSendingPayload(false);
-      setPrintSetting(null);
-      setAutoSent(false);
-      loadPayloadConfig();
-    }
+    if (!open) return;
+
+    setPhone("");
+    setLoadingSend(false);
+    setLoadingConfig(false);
+    setSendingPayload(false);
+    setPrintSetting(null);
+    setAutoSent(false);
+
+    loadPayloadConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, sale?.id, posLocationId]);
 
   useEffect(() => {
@@ -131,6 +135,7 @@ export default function TicketDialog({
       sale?.id &&
       printSetting?.enabled &&
       printSetting?.auto_send_payload &&
+      printSetting?.app_type &&
       printSetting?.app_type !== "whatsapp" &&
       !autoSent &&
       !sendingPayload
@@ -138,7 +143,8 @@ export default function TicketDialog({
       setAutoSent(true);
       handleConfiguredPayload();
     }
-  }, [open, sale?.id, printSetting]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, sale?.id, printSetting?.enabled, printSetting?.app_type]);
 
   const handleClose = () => {
     setPhone("");
@@ -157,7 +163,7 @@ export default function TicketDialog({
 
     try {
       const { data } = await axiosClientPOS.get(
-        `/pos/print-settings/${posLocationId}/payload-config`
+        `/pos/print-settings/${posLocationId}/payload-config`,
       );
 
       setPrintSetting(data || null);
@@ -195,10 +201,14 @@ export default function TicketDialog({
   };
 
   const getPrintPayload = async () => {
-    const { data } = await axiosClientPOS.get(`/sales/${sale.id}/print-payload`);
+    const { data } = await axiosClientPOS.get(
+      `/sales/${sale.id}/print-payload`,
+    );
 
     if (!data?.ok || !data?.payload) {
-      throw new Error(data?.message || "No se pudo obtener payload de impresión");
+      throw new Error(
+        data?.message || "No se pudo obtener payload de impresión",
+      );
     }
 
     return data.payload;
@@ -206,20 +216,18 @@ export default function TicketDialog({
 
   const getPrinterConfig = async () => {
     if (!posLocationId) {
-      throw new Error("❌ No se encontró el POS actual.");
+      throw new Error("No se encontró el POS actual.");
     }
 
     const { data: ticket } = await axiosClientPOS.get(
-      `/pos/ticket-config/${posLocationId}`
+      `/pos/ticket-config/${posLocationId}`,
     );
 
     const printerIp = String(ticket?.printer_ip || "").trim();
     const printerPort = Number(ticket?.printer_port || 0);
 
     if (!printerIp || !printerPort) {
-      throw new Error(
-        "Configura primero la IP y el puerto de la impresora en la sucursal correspondiente."
-      );
+      throw new Error("Configura primero la IP y el puerto de la impresora.");
     }
 
     return { printerIp, printerPort };
@@ -227,13 +235,11 @@ export default function TicketDialog({
 
   const sendToWindows = (payload) => {
     if (typeof window.sendPrintPayloadToWindows === "function") {
-      return window.sendPrintPayloadToWindows(payload);
+      window.sendPrintPayloadToWindows(payload);
+      return true;
     }
 
-    if (
-      window.chrome?.webview?.postMessage &&
-      typeof window.chrome.webview.postMessage === "function"
-    ) {
+    if (window.chrome?.webview?.postMessage) {
       window.chrome.webview.postMessage(JSON.stringify(payload));
       return true;
     }
@@ -252,16 +258,16 @@ export default function TicketDialog({
 
   const sendToFlutter = async (request) => {
     if (!window.flutter_inappwebview?.callHandler) {
-      throw new Error("No hay bridge Flutter disponible en este dispositivo.");
+      throw new Error("No hay bridge Flutter disponible.");
     }
 
     const resp = await window.flutter_inappwebview.callHandler(
       "printTicket",
-      request
+      request,
     );
 
     if (!resp?.ok) {
-      throw new Error(resp?.message || "No se pudo imprimir desde la aplicación.");
+      throw new Error(resp?.message || "No se pudo imprimir desde la app.");
     }
 
     return true;
@@ -291,7 +297,10 @@ export default function TicketDialog({
           transport: "usb",
         });
 
-        if (!ok) throw new Error("No hay bridge de Windows disponible.");
+        if (!ok) {
+          showError("Windows USB solo funciona desde la app de escritorio.");
+          return;
+        }
       }
 
       if (appType === "windows_ip") {
@@ -305,7 +314,10 @@ export default function TicketDialog({
           port: printerPort,
         });
 
-        if (!ok) throw new Error("No hay bridge de Windows disponible.");
+        if (!ok) {
+          showError("Windows IP solo funciona desde la app de escritorio.");
+          return;
+        }
       }
 
       if (appType === "android_usb") {
@@ -315,7 +327,12 @@ export default function TicketDialog({
           transport: "usb",
         });
 
-        if (!ok) throw new Error("No hay bridge Android USB disponible.");
+        if (!ok) {
+          showError(
+            "Android USB solo funciona desde la app Android instalada, no desde el navegador.",
+          );
+          return;
+        }
       }
 
       if (appType === "android_ip" || appType === "ios_ip") {
@@ -343,11 +360,11 @@ export default function TicketDialog({
       }
 
       if (appType === "whatsapp") {
-        showError("WhatsApp se envía desde el botón verde de WhatsApp.");
+        showError("WhatsApp se envía desde el botón verde.");
         return;
       }
 
-      showSuccess(`🖨️ ${meta.label} correctamente.`);
+      showSuccess(`🖨️ Enviado a ${meta.label}.`);
     } catch (err) {
       console.error("Error payload configurado:", err);
       showError(`❌ ${err?.message || "No se pudo enviar el payload."}`);
@@ -358,60 +375,95 @@ export default function TicketDialog({
 
   if (!open) return null;
 
-  const isBusy = loadingSend || sendingPayload || loadingConfig;
-
   const buttonBaseSx = {
-    minHeight: { xs: 44, sm: 46 },
-    fontSize: { xs: "0.88rem", sm: "0.9rem", md: "0.86rem" },
-    fontWeight: 700,
-    px: 1.2,
-    py: 1,
-    borderRadius: 1.8,
-    whiteSpace: "normal",
-    lineHeight: 1.15,
-    textAlign: "center",
+    minHeight: { xs: 42, sm: 44 },
+    fontSize: { xs: "0.78rem", sm: "0.9rem" },
+    fontWeight: 900,
+    px: { xs: 1, sm: 1.5 },
+    py: 0.9,
+    borderRadius: 2,
     textTransform: "none",
+    lineHeight: 1.1,
     "& .MuiButton-startIcon": {
-      marginRight: 0.75,
-      marginLeft: 0,
+      mr: { xs: 0.5, sm: 0.8 },
     },
   };
 
-  const content = (
-    <>
-      <Box
-        sx={{
-          flex: 1,
-          p: { xs: 1.5, sm: 2, md: 2.5 },
-          display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
-        }}
-      >
+  const ticketPreview = (
+    <Box
+      sx={{
+        width: "100%",
+        flex: "1 1 auto",
+        minHeight: 0,
+        height: "100%",
+        borderRadius: { xs: 1.5, sm: 2.5 },
+        overflow: "hidden",
+        border: "1px solid",
+        borderColor: "divider",
+        bgcolor: "#fff",
+      }}
+    >
+      {!ticketUrl ? (
         <Box
           sx={{
-            width: "100%",
-            borderRadius: 2,
-            overflow: "hidden",
-            border: "1px solid",
-            borderColor: "divider",
+            height: "100%",
+            minHeight: 180,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "column",
+            gap: 1.5,
             bgcolor: "#fff",
-            mb: 2,
-            flexShrink: 0,
           }}
         >
-          <iframe
-            src={ticketUrl}
-            width="100%"
-            height={isDesktop ? "430" : "520"}
-            title="Ticket preview"
-            style={{ border: "none", display: "block" }}
-          />
+          <CircularProgress />
+          <Typography sx={{ fontWeight: 900, color: "#6b7280" }}>
+            Cargando ticket...
+          </Typography>
         </Box>
+      ) : (
+        <iframe
+          src={ticketUrl}
+          width="100%"
+          height="100%"
+          title="Ticket preview"
+          style={{
+            border: "none",
+            display: "block",
+            background: "#fff",
+          }}
+        />
+      )}
+    </Box>
+  );
+
+  const content = (
+    <Box
+      sx={{
+        height: { xs: "100%", lg: "auto" },
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+        bgcolor: "background.default",
+      }}
+    >
+      <Box
+        sx={{
+          flex: "1 1 auto",
+          minHeight: 0,
+          p: { xs: 1, sm: 1.5, md: 2 },
+          display: "grid",
+          gridTemplateRows: "minmax(180px, 1fr) auto",
+          gap: { xs: 0.75, sm: 1.5 },
+          overflow: "hidden",
+        }}
+      >
+        {ticketPreview}
 
         <TextField
           label="Número WhatsApp"
           fullWidth
+          size={isMobile ? "small" : "medium"}
           value={phone}
           onChange={(e) => setPhone(digitsOnly(e.target.value))}
           placeholder="5512345678"
@@ -420,148 +472,171 @@ export default function TicketDialog({
             inputMode: "numeric",
             pattern: "\\d{10}",
           }}
-          helperText="Ingresa 10 dígitos (MX)."
+          helperText="Ingresa 10 dígitos."
         />
       </Box>
 
       <Divider />
 
-      <Box sx={{ p: { xs: 1.5, sm: 2, md: 2.5 } }}>
-        <Box sx={{ width: "100%" }}>
-          <Box
+      <Box
+        sx={{
+          p: { xs: 1, sm: 1.5, md: 2 },
+          flexShrink: 0,
+          bgcolor: "background.paper",
+          pb: { xs: "max(12px, env(safe-area-inset-bottom))", sm: 1.5 },
+        }}
+      >
+        {loadingConfig ? (
+          <Alert severity="info" sx={{ borderRadius: 2, mb: 1 }}>
+            Cargando conectividad...
+          </Alert>
+        ) : printSetting?.enabled ? (
+          <Chip
+            size={isMobile ? "small" : "medium"}
+            label={`Conectado: ${meta.label}`}
             sx={{
-              mb: 1.4,
-              display: "flex",
-              flexDirection: "column",
-              gap: 1,
+              mb: 1,
+              maxWidth: "100%",
+              fontWeight: 900,
+              bgcolor: `${meta.color}18`,
+              color: meta.color,
             }}
-          >
-            {loadingConfig ? (
-              <Alert severity="info" sx={{ borderRadius: 2 }}>
-                Cargando configuración de conectividad...
-              </Alert>
-            ) : printSetting?.enabled ? (
-              <Chip
-                label={`Conectividad configurada: ${meta.label}`}
-                sx={{
-                  alignSelf: "flex-start",
-                  fontWeight: 800,
-                  bgcolor: `${meta.color}18`,
-                  color: meta.color,
-                }}
-              />
-            ) : (
-              <Alert severity="warning" sx={{ borderRadius: 2 }}>
-                No hay conectividad configurada para este punto de venta.
-              </Alert>
-            )}
-          </Box>
+          />
+        ) : (
+          <Alert severity="warning" sx={{ borderRadius: 2, mb: 1 }}>
+            No hay conectividad configurada.
+          </Alert>
+        )}
 
-          <Box
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr 1fr", sm: "1fr 1fr" },
+            gap: { xs: 0.8, sm: 1 },
+          }}
+        >
+          <Button
+            onClick={handleConfiguredPayload}
+            disabled={!canSendPayload}
+            variant="contained"
+            fullWidth
+            startIcon={
+              sendingPayload || loadingConfig ? (
+                <CircularProgress size={17} color="inherit" />
+              ) : (
+                meta.icon
+              )
+            }
             sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-              gap: 1.2,
-            }}
-          >
-            <Button
-              onClick={handleConfiguredPayload}
-              disabled={!canSendPayload}
-              variant="contained"
-              fullWidth
-              startIcon={
-                sendingPayload || loadingConfig ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  meta.icon
-                )
-              }
-              sx={{
-                ...buttonBaseSx,
+              ...buttonBaseSx,
+              bgcolor: meta.color,
+              boxShadow: `0 10px 22px ${meta.color}36`,
+              "&:hover": {
                 bgcolor: meta.color,
-                boxShadow: `0 10px 24px ${meta.color}44`,
-                "&:hover": {
-                  bgcolor: meta.color,
-                  filter: "brightness(.92)",
-                },
-                "&.Mui-disabled": {
-                  bgcolor: "#d1d5db",
-                  color: "#6b7280",
-                  boxShadow: "none",
-                },
-              }}
-            >
-              {sendingPayload || loadingConfig ? "Procesando..." : meta.label}
-            </Button>
+                filter: "brightness(.92)",
+              },
+              "&.Mui-disabled": {
+                bgcolor: "#d1d5db",
+                color: "#6b7280",
+                boxShadow: "none",
+              },
+            }}
+          >
+            {sendingPayload || loadingConfig ? "..." : meta.label}
+          </Button>
 
-            <Button
-              onClick={handleSend}
-              disabled={!isValidPhone || isBusy}
-              fullWidth
-              variant="contained"
-              color="success"
-              startIcon={
-                loadingSend ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <WhatsAppIcon fontSize="small" />
-                )
-              }
-              sx={buttonBaseSx}
-            >
-              {loadingSend ? "Enviando..." : "Enviar WhatsApp"}
-            </Button>
+          <Button
+            onClick={handleSend}
+            disabled={!isValidPhone || isBusy}
+            fullWidth
+            variant="contained"
+            color="success"
+            startIcon={
+              loadingSend ? (
+                <CircularProgress size={17} color="inherit" />
+              ) : (
+                <WhatsAppIcon fontSize="small" />
+              )
+            }
+            sx={buttonBaseSx}
+          >
+            {loadingSend ? "..." : "WhatsApp"}
+          </Button>
 
-            <Button
-              onClick={handleClose}
-              disabled={isBusy}
-              fullWidth
-              color="inherit"
-              variant="outlined"
-              sx={{
-                ...buttonBaseSx,
-                gridColumn: { xs: "auto", sm: "1 / -1" },
-              }}
-            >
-              Cerrar
-            </Button>
-          </Box>
+          <Button
+            onClick={handleClose}
+            disabled={isBusy}
+            fullWidth
+            color="inherit"
+            variant="outlined"
+            sx={{
+              ...buttonBaseSx,
+              gridColumn: "1 / -1",
+            }}
+          >
+            Cerrar
+          </Button>
         </Box>
       </Box>
-    </>
+    </Box>
   );
 
   if (isDesktop) {
     return (
-      <Dialog
-        open={open}
-        onClose={handleClose}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            overflow: "hidden",
-            width: "100%",
-            maxWidth: 760,
-          },
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1400,
+          bgcolor: "rgba(15,23,42,.45)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: 2,
         }}
       >
-        <DialogTitle
+        <Box
           sx={{
-            fontWeight: 700,
-            fontSize: { sm: "1.1rem", lg: "1.2rem" },
+            width: "100%",
+            maxWidth: 760,
+            maxHeight: "92vh",
+            bgcolor: "background.paper",
+            borderRadius: 3,
+            overflow: "hidden",
+            boxShadow: "0 24px 80px rgba(0,0,0,.25)",
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          Ticket #{sale?.id}
-        </DialogTitle>
+          <Box
+            sx={{
+              px: 2,
+              py: 1.5,
+              display: "flex",
+              alignItems: "center",
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              flexShrink: 0,
+            }}
+          >
+            <Typography
+              sx={{
+                flex: 1,
+                fontWeight: 900,
+                fontSize: "1.1rem",
+              }}
+            >
+              Ticket #{sale?.id || ""}
+            </Typography>
 
-        <DialogContent dividers sx={{ p: 0 }}>
-          {content}
-        </DialogContent>
+            <IconButton onClick={handleClose}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
 
-        <DialogActions sx={{ display: "none" }} />
-      </Dialog>
+          <Box sx={{ minHeight: 0, overflow: "hidden" }}>{content}</Box>
+        </Box>
+      </Box>
     );
   }
 
@@ -570,29 +645,30 @@ export default function TicketDialog({
       sx={{
         position: "fixed",
         inset: 0,
-        zIndex: 1400,
+        zIndex: 1600,
         bgcolor: "background.default",
         display: "flex",
         flexDirection: "column",
         width: "100vw",
         height: "100dvh",
+        overflow: "hidden",
       }}
     >
       <Box
         sx={{
           px: 1,
-          py: 1,
+          py: 0.75,
           display: "flex",
           alignItems: "center",
           gap: 1,
           borderBottom: "1px solid",
           borderColor: "divider",
           bgcolor: "background.paper",
-          minHeight: 64,
+          minHeight: { xs: 54, sm: 60 },
           flexShrink: 0,
         }}
       >
-        <IconButton onClick={handleClose}>
+        <IconButton onClick={handleClose} size="small">
           <ArrowBackIcon />
         </IconButton>
 
@@ -600,14 +676,14 @@ export default function TicketDialog({
           variant="h6"
           sx={{
             flex: 1,
-            fontWeight: 700,
-            fontSize: { xs: "1rem", sm: "1.1rem" },
+            fontWeight: 900,
+            fontSize: { xs: "0.98rem", sm: "1.08rem" },
           }}
         >
-          Ticket #{sale?.id}
+          Ticket #{sale?.id || ""}
         </Typography>
 
-        <IconButton onClick={handleClose}>
+        <IconButton onClick={handleClose} size="small">
           <CloseIcon />
         </IconButton>
       </Box>
@@ -616,10 +692,7 @@ export default function TicketDialog({
         sx={{
           flex: 1,
           minHeight: 0,
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "background.default",
+          overflow: "hidden",
         }}
       >
         {content}
