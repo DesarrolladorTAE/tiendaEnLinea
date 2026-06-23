@@ -15,7 +15,11 @@ import CheckoutPayModal from "./checkout/CheckoutPayModal";
 
 const API_BASE = "https://mitiendaenlineamx.com.mx/api";
 
-export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug }) {
+export default function WhatsAppFloatingButton({
+  storePhone,
+  storeId,
+  storeSlug,
+}) {
   const items = useSelector((state) => state.whatsappCart.items || []);
   const dispatch = useDispatch();
 
@@ -40,7 +44,9 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
     (async () => {
       try {
         // 1) bootstrap
-        const boot = await axios.get(`${API_BASE}/public/tienda/${storeSlug}/bootstrap`);
+        const boot = await axios.get(
+          `${API_BASE}/public/tienda/${storeSlug}/bootstrap`,
+        );
         if (!alive) return;
 
         const id = boot?.data?.id_store ?? boot?.data?.store_id ?? null;
@@ -58,7 +64,9 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
         }
 
         // 2) fallback /sitio
-        const sitio = await axios.get(`${API_BASE}/public/tienda/${storeSlug}/sitio`);
+        const sitio = await axios.get(
+          `${API_BASE}/public/tienda/${storeSlug}/sitio`,
+        );
         if (!alive) return;
 
         const store = sitio?.data?.store || {};
@@ -73,19 +81,36 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
     };
   }, [storeSlug]); // ✅ NO dependas de resolvedStoreId aquí
 
-  const normalizePhone = (phone) => {
+  const USA_STORE_IDS = [451];
+
+  const normalizePhone = (phone, currentStoreId) => {
     const clean = String(phone || "").replace(/\D/g, "");
+
+    const isUsStore = USA_STORE_IDS.includes(Number(currentStoreId));
+
+    // 🇺🇸 Estados Unidos / Canadá
+    if (isUsStore) {
+      if (clean.startsWith("1")) return clean;
+      if (clean.length === 10) return `1${clean}`;
+      return clean;
+    }
+
+    // 🇲🇽 México por defecto
     if (clean.startsWith("52")) return clean;
     if (clean.length === 10) return `52${clean}`;
+
     return clean;
   };
 
-  const normalizedPhone = useMemo(() => normalizePhone(storePhone), [storePhone]);
+  const normalizedPhone = useMemo(
+    () => normalizePhone(storePhone, resolvedStoreId),
+    [storePhone, resolvedStoreId],
+  );
 
   const total = useMemo(() => {
     return items.reduce(
       (sum, it) => sum + (Number(it.price) || 0) * (Number(it.qty ?? 1) || 1),
-      0
+      0,
     );
   }, [items]);
 
@@ -110,7 +135,7 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
 
   const itemsCount = useMemo(
     () => items.reduce((a, it) => a + (Number(it.qty ?? 1) || 1), 0),
-    [items]
+    [items],
   );
 
   const messageLines = useMemo(() => {
@@ -130,7 +155,7 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
         const attrsTxt = attrs ? ` | Características: ${attrs}` : "";
 
         return `${idx + 1}. ${qty} × ${title}${wh}${attrsTxt} — MX$${price.toFixed(
-          2
+          2,
         )} c/u = MX$${lineTotal.toFixed(2)}`;
       })
       .join("\n");
@@ -138,14 +163,14 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
 
   const whatsappMessage = useMemo(() => {
     return `Hola, me interesa comprar en ${storeName}:\n\n${messageLines}\n\nTotal: MX$${total.toFixed(
-      2
+      2,
     )}`;
   }, [messageLines, total, storeName]);
 
   const whatsappUrl = useMemo(() => {
     if (!normalizedPhone || items.length === 0) return null;
     return `https://api.whatsapp.com/send?phone=${normalizedPhone}&text=${encodeURIComponent(
-      whatsappMessage
+      whatsappMessage,
     )}`;
   }, [normalizedPhone, whatsappMessage, items.length]);
 
@@ -209,9 +234,7 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
                 gap: 8,
               }}
             >
-              <strong style={{ fontSize: 14 }}>
-                Tu pedido ({itemsCount})
-              </strong>
+              <strong style={{ fontSize: 14 }}>Tu pedido ({itemsCount})</strong>
 
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button
@@ -242,13 +265,19 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
             </div>
 
             {/* items */}
-            <div style={{ maxHeight: 260, overflowY: "auto", padding: "8px 14px" }}>
+            <div
+              style={{ maxHeight: 260, overflowY: "auto", padding: "8px 14px" }}
+            >
               {items.map((item, idx) => {
                 const qty = Number(item.qty ?? 1) || 1;
                 const price = Number(item.price || 0);
                 const lineTotal = qty * price;
 
-                const title = (item.display_name || item.name || "Producto").trim();
+                const title = (
+                  item.display_name ||
+                  item.name ||
+                  "Producto"
+                ).trim();
                 const attrs = formatAttrs(item.meta);
 
                 return (
@@ -261,7 +290,9 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
                       gap: 8,
                       padding: "8px 0",
                       borderBottom:
-                        idx !== items.length - 1 ? "1px dashed rgba(0,0,0,.06)" : "none",
+                        idx !== items.length - 1
+                          ? "1px dashed rgba(0,0,0,.06)"
+                          : "none",
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
@@ -281,19 +312,41 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
 
                       {/* ✅ detalles: almacén + atributos */}
                       {(item.warehouse_name || attrs) && (
-                        <div style={{ fontSize: 11, color: "#6b7280", marginBottom: 6 }}>
+                        <div
+                          style={{
+                            fontSize: 11,
+                            color: "#6b7280",
+                            marginBottom: 6,
+                          }}
+                        >
                           {item.warehouse_name ? (
-                            <span>Almacén: <b>{item.warehouse_name}</b></span>
+                            <span>
+                              Almacén: <b>{item.warehouse_name}</b>
+                            </span>
                           ) : null}
-                          {item.warehouse_name && attrs ? <span> • </span> : null}
-                          {attrs ? <span>Características: <b>{attrs}</b></span> : null}
+                          {item.warehouse_name && attrs ? (
+                            <span> • </span>
+                          ) : null}
+                          {attrs ? (
+                            <span>
+                              Características: <b>{attrs}</b>
+                            </span>
+                          ) : null}
                         </div>
                       )}
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
+                      >
                         <button
                           onClick={() =>
-                            dispatch(decrementItemQty({ cart_key: item.cart_key }))
+                            dispatch(
+                              decrementItemQty({ cart_key: item.cart_key }),
+                            )
                           }
                           style={{
                             width: 28,
@@ -316,7 +369,7 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
                               setItemQty({
                                 cart_key: item.cart_key,
                                 qty: Math.max(0, Number(e.target.value)),
-                              })
+                              }),
                             )
                           }
                           style={{
@@ -330,7 +383,9 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
 
                         <button
                           onClick={() =>
-                            dispatch(incrementItemQty({ cart_key: item.cart_key }))
+                            dispatch(
+                              incrementItemQty({ cart_key: item.cart_key }),
+                            )
                           }
                           style={{
                             width: 28,
@@ -347,12 +402,18 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
                     </div>
 
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 12, color: "#666" }}>MX${price.toFixed(2)} c/u</div>
-                      <div style={{ fontSize: 13, fontWeight: 700 }}>MX${lineTotal.toFixed(2)}</div>
+                      <div style={{ fontSize: 12, color: "#666" }}>
+                        MX${price.toFixed(2)} c/u
+                      </div>
+                      <div style={{ fontSize: 13, fontWeight: 700 }}>
+                        MX${lineTotal.toFixed(2)}
+                      </div>
                     </div>
 
                     <button
-                      onClick={() => dispatch(removeFromWhatsappCart(item.cart_key))}
+                      onClick={() =>
+                        dispatch(removeFromWhatsappCart(item.cart_key))
+                      }
                       style={{
                         border: "none",
                         background: "transparent",
@@ -384,7 +445,12 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
             </div>
 
             {/* acciones */}
-            <div style={{ padding: "12px 14px", borderTop: "1px solid rgba(0,0,0,.06)" }}>
+            <div
+              style={{
+                padding: "12px 14px",
+                borderTop: "1px solid rgba(0,0,0,.06)",
+              }}
+            >
               <button
                 onClick={() => setPayOpen(true)}
                 className="btn btn-dark shadow"
@@ -421,7 +487,8 @@ export default function WhatsAppFloatingButton({ storePhone, storeId, storeSlug 
               </button>
 
               <div style={{ marginTop: 8, fontSize: 11, color: "#777" }}>
-                Tu pedido se procesa por la tienda. Si pagas aquí, la confirmación suele ser más rápida.
+                Tu pedido se procesa por la tienda. Si pagas aquí, la
+                confirmación suele ser más rápida.
               </div>
             </div>
           </div>
