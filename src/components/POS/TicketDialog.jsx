@@ -248,12 +248,19 @@ export default function TicketDialog({
   };
 
   const sendToAndroidUsb = (payload) => {
-    if (window.AndroidPrintBridge?.print) {
-      window.AndroidPrintBridge.print(JSON.stringify(payload));
+    if (!window.AndroidPrintBridge?.print) {
+      return false;
+    }
+
+    const response = window.AndroidPrintBridge.print(JSON.stringify(payload));
+
+    if (response === true || response === "true") {
       return true;
     }
 
-    return false;
+    throw new Error(
+      response || "La app Android recibió el ticket, pero no pudo imprimir.",
+    );
   };
 
   const sendToFlutter = async (request) => {
@@ -335,7 +342,22 @@ export default function TicketDialog({
         }
       }
 
-      if (appType === "android_ip" || appType === "ios_ip") {
+      if (appType === "android_ip") {
+        const ok = sendToAndroidUsb({
+          ...payload,
+          app_type: appType,
+          transport: "tcp",
+        });
+
+        if (!ok) {
+          showError(
+            "Android IP solo funciona desde la app Android instalada, no desde el navegador.",
+          );
+          return;
+        }
+      }
+
+      if (appType === "ios_ip") {
         const { printerIp, printerPort } = await getPrinterConfig();
 
         await sendToFlutter({
@@ -389,14 +411,14 @@ export default function TicketDialog({
     },
   };
 
-  const ticketPreview = (
+  const ticketPreview = isDesktop ? (
     <Box
       sx={{
         width: "100%",
         flex: "1 1 auto",
         minHeight: 0,
         height: "100%",
-        borderRadius: { xs: 1.5, sm: 2.5 },
+        borderRadius: 2.5,
         overflow: "hidden",
         border: "1px solid",
         borderColor: "divider",
@@ -407,7 +429,7 @@ export default function TicketDialog({
         <Box
           sx={{
             height: "100%",
-            minHeight: 180,
+            minHeight: 260,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -435,7 +457,7 @@ export default function TicketDialog({
         />
       )}
     </Box>
-  );
+  ) : null;
 
   const content = (
     <Box
@@ -453,12 +475,12 @@ export default function TicketDialog({
           minHeight: 0,
           p: { xs: 1, sm: 1.5, md: 2 },
           display: "grid",
-          gridTemplateRows: "minmax(180px, 1fr) auto",
+          gridTemplateRows: isDesktop ? "minmax(360px, 1fr) auto" : "auto",
           gap: { xs: 0.75, sm: 1.5 },
           overflow: "hidden",
         }}
       >
-        {ticketPreview}
+        {isDesktop && ticketPreview}
 
         <TextField
           label="Número WhatsApp"

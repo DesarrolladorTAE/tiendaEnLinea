@@ -139,7 +139,6 @@ export default function ModalTicketVenta({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, ventaId, posLocationId]);
 
-
   if (!ventaId) return null;
 
   const handleNumeroChange = (e) => {
@@ -154,7 +153,7 @@ export default function ModalTicketVenta({
 
     try {
       const { data } = await axiosClientPOS.get(
-        `/pos/print-settings/${posLocationId}/payload-config`
+        `/pos/print-settings/${posLocationId}/payload-config`,
       );
 
       setPrintSetting(data || null);
@@ -167,10 +166,14 @@ export default function ModalTicketVenta({
   };
 
   const getPrintPayload = async () => {
-    const { data } = await axiosClientPOS.get(`/sales/${ventaId}/print-payload`);
+    const { data } = await axiosClientPOS.get(
+      `/sales/${ventaId}/print-payload`,
+    );
 
     if (!data?.ok || !data?.payload) {
-      throw new Error(data?.message || "No se pudo obtener payload de impresión");
+      throw new Error(
+        data?.message || "No se pudo obtener payload de impresión",
+      );
     }
 
     return data.payload;
@@ -182,7 +185,7 @@ export default function ModalTicketVenta({
     }
 
     const { data: ticket } = await axiosClientPOS.get(
-      `/pos/ticket-config/${posLocationId}`
+      `/pos/ticket-config/${posLocationId}`,
     );
 
     const printerIp = String(ticket?.printer_ip || "").trim();
@@ -190,7 +193,7 @@ export default function ModalTicketVenta({
 
     if (!printerIp || !printerPort) {
       throw new Error(
-        "Configura primero la IP y el puerto de la impresora en el ticket de la sucursal."
+        "Configura primero la IP y el puerto de la impresora en el ticket de la sucursal.",
       );
     }
 
@@ -246,11 +249,13 @@ export default function ModalTicketVenta({
 
     const resp = await window.flutter_inappwebview.callHandler(
       "printTicket",
-      request
+      request,
     );
 
     if (!resp?.ok) {
-      throw new Error(resp?.message || "No se pudo imprimir desde la aplicación.");
+      throw new Error(
+        resp?.message || "No se pudo imprimir desde la aplicación.",
+      );
     }
 
     return true;
@@ -323,10 +328,30 @@ export default function ModalTicketVenta({
           transport: "usb",
         });
 
-        if (!ok) throw new Error("No hay bridge Android USB disponible.");
+        if (!ok) {
+          showError(
+            "Android USB solo funciona desde la app Android instalada, no desde el navegador.",
+          );
+          return;
+        }
       }
 
-      if (appType === "android_ip" || appType === "ios_ip") {
+      if (appType === "android_ip") {
+        const ok = sendToAndroidUsb({
+          ...payload,
+          app_type: appType,
+          transport: "tcp",
+        });
+
+        if (!ok) {
+          showError(
+            "Android IP solo funciona desde la app Android instalada, no desde el navegador.",
+          );
+          return;
+        }
+      }
+
+      if (appType === "ios_ip") {
         const { printerIp, printerPort } = await getPrinterConfig();
 
         await sendToFlutter({
@@ -439,7 +464,11 @@ export default function ModalTicketVenta({
               )
             ) : (
               <Box>
-                <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1.5 }}>
+                <Typography
+                  variant="subtitle1"
+                  fontWeight={700}
+                  sx={{ mb: 1.5 }}
+                >
                   Datos del ticket
                 </Typography>
 
@@ -468,8 +497,8 @@ export default function ModalTicketVenta({
                     QR:{" "}
                     {previewText(
                       payloadPreview.qrText ||
-                      payloadPreview.qrs?.[0]?.text ||
-                      "—"
+                        payloadPreview.qrs?.[0]?.text ||
+                        "—",
                     )}
                     {"\n\n"}
                     {previewText(payloadPreview.textAfterQr)}
@@ -507,8 +536,8 @@ export default function ModalTicketVenta({
                   </Typography>
 
                   <Typography variant="body2" color="text.secondary">
-                    El botón se muestra según la configuración guardada del punto
-                    de venta.
+                    El botón se muestra según la configuración guardada del
+                    punto de venta.
                   </Typography>
                 </Box>
 
@@ -534,7 +563,9 @@ export default function ModalTicketVenta({
                       sx={{
                         alignSelf: "flex-start",
                         fontWeight: 800,
-                        bgcolor: printSetting?.enabled ? `${meta.color}18` : "#f3f4f6",
+                        bgcolor: printSetting?.enabled
+                          ? `${meta.color}18`
+                          : "#f3f4f6",
                         color: printSetting?.enabled ? meta.color : "#6b7280",
                       }}
                     />
@@ -556,9 +587,13 @@ export default function ModalTicketVenta({
                         try {
                           setSendingPayload(true);
                           await handleEnviarWhatsapp();
-                          showSuccess("Ticket enviado por WhatsApp correctamente.");
+                          showSuccess(
+                            "Ticket enviado por WhatsApp correctamente.",
+                          );
                         } catch (error) {
-                          showError(error?.message || "No se pudo enviar por WhatsApp.");
+                          showError(
+                            error?.message || "No se pudo enviar por WhatsApp.",
+                          );
                         } finally {
                           setSendingPayload(false);
                         }

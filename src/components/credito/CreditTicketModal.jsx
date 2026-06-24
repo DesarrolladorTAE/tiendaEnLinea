@@ -68,7 +68,7 @@ export default function CreditTicketModal({
         sale?.client?.telefono ||
         sale?.cliente?.telefono ||
         sale?.client_phone ||
-        ""
+        "",
     );
   }, [phone, sale]);
 
@@ -85,7 +85,7 @@ export default function CreditTicketModal({
         setLoadingConfig(true);
 
         const { data } = await axiosClient.get(
-          `/pos/print-settings/${posLocationId}/payload-config`
+          `/pos/print-settings/${posLocationId}/payload-config`,
         );
 
         setPrintSetting(data || null);
@@ -150,11 +150,11 @@ export default function CreditTicketModal({
         {
           phone: cleanPhone,
           es_cliente,
-        }
+        },
       );
 
       showSuccess(
-        data?.message || "Ticket enviado correctamente por WhatsApp."
+        data?.message || "Ticket enviado correctamente por WhatsApp.",
       );
     } catch (e) {
       console.error(e);
@@ -162,7 +162,7 @@ export default function CreditTicketModal({
         e?.response?.data?.error ||
           e?.response?.data?.message ||
           e?.response?.data?.details ||
-          "No se pudo enviar el ticket por WhatsApp."
+          "No se pudo enviar el ticket por WhatsApp.",
       );
     } finally {
       setSendingWhatsappLocal(false);
@@ -174,7 +174,7 @@ export default function CreditTicketModal({
 
     if (!data?.ok || !data?.payload) {
       throw new Error(
-        data?.message || "No se pudo obtener payload de impresión."
+        data?.message || "No se pudo obtener payload de impresión.",
       );
     }
 
@@ -187,7 +187,7 @@ export default function CreditTicketModal({
     }
 
     const { data: ticket } = await axiosClient.get(
-      `/pos/ticket-config/${posLocationId}`
+      `/pos/ticket-config/${posLocationId}`,
     );
 
     const printerIp = String(ticket?.printer_ip || "").trim();
@@ -229,7 +229,7 @@ export default function CreditTicketModal({
 
     const resp = await window.flutter_inappwebview.callHandler(
       "printTicket",
-      request
+      request,
     );
 
     if (!resp?.ok) {
@@ -284,10 +284,30 @@ export default function CreditTicketModal({
           transport: "usb",
         });
 
-        if (!ok) throw new Error("No hay bridge Android USB disponible.");
+        if (!ok) {
+          showError(
+            "Android USB solo funciona desde la app Android instalada, no desde el navegador.",
+          );
+          return;
+        }
       }
 
-      if (appType === "android_ip" || appType === "ios_ip") {
+      if (appType === "android_ip") {
+        const ok = sendToAndroidUsb({
+          ...payload,
+          app_type: appType,
+          transport: "tcp",
+        });
+
+        if (!ok) {
+          showError(
+            "Android IP solo funciona desde la app Android instalada, no desde el navegador.",
+          );
+          return;
+        }
+      }
+
+      if (appType === "ios_ip") {
         const { printerIp, printerPort } = await getPrinterConfig();
 
         await sendToFlutter({
