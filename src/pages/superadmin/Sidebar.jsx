@@ -13,7 +13,6 @@ const Sidebar = () => {
   const handleLogout = () => {
     sessionStorage.removeItem("SUPERADMIN_TOKEN");
     navigate("/login-register");
-    
   };
 
   return (
@@ -27,19 +26,25 @@ const Sidebar = () => {
           alt="SuperAdmin"
           style={{ maxWidth: "208px" }}
         />
-        <ul className="nav flex-column">
-          {superadminNavItems.map((item) => (
-            <li className="nav-item mb-2" key={item.path}>
-              <Link
-                to={`/panel/${item.path}`}
-                className={`nav-link ${
-                  isActive(item.path) ? "text-warning" : "text-white"
-                }`}
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
+
+        <ul className="nav flex-column mt-3">
+          {superadminNavItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <li className="nav-item mb-2" key={item.path}>
+                <Link
+                  to={`/panel/${item.path}`}
+                  className={`nav-link d-flex align-items-center gap-2 ${
+                    isActive(item.path) ? "text-warning" : "text-white"
+                  }`}
+                >
+                  {Icon && <Icon fontSize="small" />}
+                  <span>{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </div>
 

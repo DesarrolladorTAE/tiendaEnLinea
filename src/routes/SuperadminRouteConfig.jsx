@@ -6,20 +6,20 @@ const Dashboard = lazy(() => import("../pages/superadmin/Dashboard"));
 const Vista = lazy(() => import("../pages/superadmin/VistaSuscripcionesSuperAdmin"));
 const Notificaciones = lazy(() => import("../pages/superadmin/Notificaciones"));
 const Banners = lazy(() => import("../pages/superadmin/Banners"));
-// const Usuarios = lazy(() => import("../pages/superadmin/Usuarios"));
 const Tiendas = lazy(() => import("../pages/superadmin/Tiendas"));
-// const Soporte = lazy(() => import("../pages/superadmin/Soporte"));
 const VentasSA = lazy(() => import("../pages/superadmin/VentasSA"));
 
+const AppVersionsPage = lazy(() =>
+  import("../pages/superadmin/AppVersionsPage")
+);
 
 export const superadminRouteConfig = [
   { path: "", element: <Navigate to="dashboard" replace /> },
   { path: "dashboard", element: <Dashboard /> },
   { path: "suscripciones", element: <Vista /> },
   { path: "notificaciones", element: <Notificaciones /> },
-  // { path: "usuarios", element: <Usuarios /> },
   { path: "tiendas", element: <Tiendas /> },
   { path: "ventas", element: <VentasSA /> },
   { path: "banners", element: <Banners /> },
-  // { path: "soporte", element: <Soporte /> }
+  { path: "app-versiones", element: <AppVersionsPage /> },
 ];
