@@ -64,6 +64,28 @@ const safeDateFrom = (val) => {
   const d = new Date(val);
   return isValidDate(d) ? d : null;
 };
+const puedeFacturarPorCierreMensual72h = (row) => {
+  const raw = row?.fechaISO ?? row?.created_at ?? row?.fecha;
+  const fechaVenta = safeDateFrom(raw);
+
+  if (!fechaVenta) return false;
+
+  const ahora = new Date();
+
+  const cierreMes = new Date(
+    fechaVenta.getFullYear(),
+    fechaVenta.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+  );
+
+  const limite = new Date(cierreMes);
+  limite.setHours(limite.getHours() + 72);
+
+  return ahora <= limite;
+};
 
 const fmtDay = (yyyyMMdd) => {
   const d = safeDateFrom(yyyyMMdd);
@@ -75,7 +97,7 @@ const fmtDay = (yyyyMMdd) => {
       month: "long",
       year: "numeric",
       timeZone: "America/Mexico_City",
-    }).format(d)
+    }).format(d),
   );
 };
 
@@ -111,7 +133,11 @@ const chipPago = (tipoPago) => {
     case "efectivo":
       return { label: "Efectivo", color: "success", variant: "outlined" };
     case "tc":
-      return { label: "Tarjeta crédito", color: "primary", variant: "outlined" };
+      return {
+        label: "Tarjeta crédito",
+        color: "primary",
+        variant: "outlined",
+      };
     case "td":
       return { label: "Tarjeta débito", color: "primary", variant: "outlined" };
     case "transferencia":
@@ -125,6 +151,7 @@ const chipStatus = (row) => {
   const status = String(row?.invoice_status || "").toLowerCase();
   const hasError = !!row?.error_message;
 
+  // ✅ Ya facturada
   if (status === "timbrada") {
     return {
       label: row?.invoice_status_name || "Facturada",
@@ -134,15 +161,27 @@ const chipStatus = (row) => {
     };
   }
 
+  // ✅ Mes anterior pero aún puede facturarse
+  if (row?.fuera_de_rango && puedeFacturarPorCierreMensual72h(row)) {
+    return {
+      label: "72 hrs disponibles",
+      color: "info",
+      variant: "filled",
+      clickable: false,
+    };
+  }
+
+  // ✅ Ya no entra en las 72 horas
   if (row?.fuera_de_rango) {
     return {
-      label: "Fuera de rango",
+      label: "Fuera de plazo",
       color: "default",
       variant: "filled",
       clickable: false,
     };
   }
 
+  // ✅ Error de timbrado
   if (status === "error" || hasError) {
     return {
       label: row?.invoice_status_name || "Error al facturar",
@@ -152,6 +191,7 @@ const chipStatus = (row) => {
     };
   }
 
+  // ✅ Pendiente
   return {
     label: row?.invoice_status_name || "Pendiente",
     color: "warning",
@@ -269,9 +309,7 @@ function WhatsappSelector({ row, onEnviarWhatsapp, dense = false }) {
         label="WhatsApp"
         onChange={handleChange}
         startAdornment={
-          <WhatsAppIcon
-            sx={{ fontSize: 18, mr: 0.8, color: "success.main" }}
-          />
+          <WhatsAppIcon sx={{ fontSize: 18, mr: 0.8, color: "success.main" }} />
         }
       >
         <MenuItem value="pdf" disabled={!pdfDisponible}>
@@ -331,7 +369,7 @@ export default function SalesTable({
 
   const totalDia = useMemo(
     () => rowsShown.reduce((acc, r) => acc + parseMoney(r.total), 0),
-    [rowsShown]
+    [rowsShown],
   );
 
   const handleOpenError = (row) => {
@@ -351,6 +389,8 @@ export default function SalesTable({
     const cliente = getClienteNombre(row);
     const facturada = row.facturable === false && !row?.fuera_de_rango;
     const fueraDeRango = !!row?.fuera_de_rango;
+    const puedeUsarMargen72h = puedeFacturarPorCierreMensual72h(row);
+    const bloqueadaPorRango = fueraDeRango && !puedeUsarMargen72h;
     const puedeVerDocumentos = !!row?.puede_ver_documentos;
 
     return (
@@ -456,7 +496,9 @@ export default function SalesTable({
               label={status.label}
               color={status.color}
               variant={status.variant}
-              onClick={status.clickable ? () => handleOpenError(row) : undefined}
+              onClick={
+                status.clickable ? () => handleOpenError(row) : undefined
+              }
               sx={{
                 fontWeight: 700,
                 maxWidth: "100%",
@@ -486,7 +528,7 @@ export default function SalesTable({
                 dense
               />
             </Stack>
-          ) : fueraDeRango ? (
+          ) : bloqueadaPorRango ? (
             <Chip
               icon={<LockClockRoundedIcon />}
               label="No facturable por mes anterior"
@@ -551,7 +593,12 @@ export default function SalesTable({
                 : "linear-gradient(180deg,#fafbff,#fff)",
           }}
         >
-          <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1}
+            flexWrap="wrap"
+          >
             <Tooltip title="Día anterior">
               <span>
                 <IconButton
@@ -584,10 +631,10 @@ export default function SalesTable({
                 loading
                   ? "Cargando…"
                   : viewAll
-                  ? "Todos los registros"
-                  : hasDays
-                  ? fmtDay(dayKey)
-                  : "Sin registros"
+                    ? "Todos los registros"
+                    : hasDays
+                      ? fmtDay(dayKey)
+                      : "Sin registros"
               }
               sx={{ fontWeight: 800 }}
             />
@@ -601,7 +648,12 @@ export default function SalesTable({
             )}
           </Stack>
 
-          <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap">
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1}
+            flexWrap="wrap"
+          >
             <Button
               size="small"
               variant={viewAll ? "contained" : "outlined"}
@@ -750,14 +802,31 @@ export default function SalesTable({
                 {loading ? (
                   Array.from({ length: 6 }).map((_, i) => (
                     <TableRow key={`sk-${i}`}>
-                      <TableCell><Skeleton variant="text" width={80} /></TableCell>
-                      <TableCell><Skeleton variant="text" width={140} /></TableCell>
-                      <TableCell><Skeleton variant="text" width={140} /></TableCell>
-                      <TableCell><Skeleton variant="rounded" width={120} height={28} /></TableCell>
-                      <TableCell align="right"><Skeleton variant="text" width={80} /></TableCell>
-                      <TableCell><Skeleton variant="text" width={120} /></TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width={80} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width={140} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width={140} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="rounded" width={120} height={28} />
+                      </TableCell>
+                      <TableCell align="right">
+                        <Skeleton variant="text" width={80} />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton variant="text" width={120} />
+                      </TableCell>
                       <TableCell align="center">
-                        <Skeleton variant="rounded" width={220} height={32} sx={{ mx: "auto" }} />
+                        <Skeleton
+                          variant="rounded"
+                          width={220}
+                          height={32}
+                          sx={{ mx: "auto" }}
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -767,6 +836,10 @@ export default function SalesTable({
                     const status = chipStatus(r);
                     const cliente = getClienteNombre(r);
                     const fueraDeRango = !!r?.fuera_de_rango;
+                    const puedeUsarMargen72h =
+                      puedeFacturarPorCierreMensual72h(r);
+                    const bloqueadaPorRango =
+                      fueraDeRango && !puedeUsarMargen72h;
                     const puedeVerDocumentos = !!r?.puede_ver_documentos;
 
                     return (
@@ -784,7 +857,8 @@ export default function SalesTable({
                       >
                         <TableCell
                           sx={{
-                            fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+                            fontFamily:
+                              "ui-monospace, SFMono-Regular, Menlo, monospace",
                             fontWeight: 700,
                           }}
                         >
@@ -803,7 +877,11 @@ export default function SalesTable({
                             label={status.label}
                             color={status.color}
                             variant={status.variant}
-                            onClick={status.clickable ? () => handleOpenError(r) : undefined}
+                            onClick={
+                              status.clickable
+                                ? () => handleOpenError(r)
+                                : undefined
+                            }
                             sx={{
                               fontWeight: 700,
                               cursor: status.clickable ? "pointer" : "default",
@@ -847,7 +925,7 @@ export default function SalesTable({
                                 dense={dense}
                               />
                             </Stack>
-                          ) : fueraDeRango ? (
+                          ) : bloqueadaPorRango ? (
                             <Chip
                               icon={<LockClockRoundedIcon />}
                               label="Mes anterior / bloqueada"
@@ -914,7 +992,9 @@ export default function SalesTable({
           <Stack direction="row" spacing={1} alignItems="center">
             <IconButton
               size="small"
-              onClick={() => setDayIndex((i) => Math.min(i + 1, days.length - 1))}
+              onClick={() =>
+                setDayIndex((i) => Math.min(i + 1, days.length - 1))
+              }
               disabled={!hasDays || dayIndex >= days.length - 1 || viewAll}
             >
               <ChevronLeftIcon />
@@ -962,7 +1042,8 @@ export default function SalesTable({
                 fontSize: "0.95rem",
               })}
             >
-              {errorRow?.error_message || "No hay detalle del error disponible."}
+              {errorRow?.error_message ||
+                "No hay detalle del error disponible."}
             </Box>
 
             {!!errorRow?.error_history?.length && (

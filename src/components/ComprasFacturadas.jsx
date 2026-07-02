@@ -113,7 +113,7 @@ export default function ComprasSuscripcionesView({
               ? data
               : Array.isArray(data?.data)
                 ? data.data
-                : []
+                : [],
           );
         }
       } catch {
@@ -178,7 +178,7 @@ export default function ComprasSuscripcionesView({
             timbrado_at: extra.timbrado_at || new Date().toISOString(),
           },
         };
-      })
+      }),
     );
   };
 
@@ -216,7 +216,26 @@ export default function ComprasSuscripcionesView({
 
   const onChangeMes = (e) => setMes(e.target.value);
   const onChangeFolio = (e) => setFolio(e.target.value);
-  const onSearch = () => { };
+  const onSearch = () => {};
+  const puedeFacturarMesAnteriorEn72Horas = (fechaVentaISO) => {
+    const ahora = new Date();
+
+    const fechaVenta = new Date(fechaVentaISO);
+
+    const ultimoDiaMesVenta = new Date(
+      fechaVenta.getFullYear(),
+      fechaVenta.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+    );
+
+    const limite72Horas = new Date(ultimoDiaMesVenta);
+    limite72Horas.setHours(limite72Horas.getHours() + 72);
+
+    return ahora <= limite72Horas;
+  };
 
   const onFacturar = (row) => {
     if (!allowed) {
@@ -226,18 +245,18 @@ export default function ComprasSuscripcionesView({
       return;
     }
 
-    if (row?.fuera_de_rango) {
-      showError(
-        "Venta fuera de rango",
-        {
-          html: "Esta venta pertenece a un mes anterior y ya no puede facturarse. Solo se permite consultar los documentos de las ventas ya timbradas.",
-        }
-      );
+    if (row?.invoice_status === "timbrada") {
+      showError("Esta venta ya está facturada.");
       return;
     }
 
-    if (row?.facturable === false) {
-      showError("Esta venta ya está facturada.");
+    if (
+      row?.fuera_de_rango &&
+      !puedeFacturarMesAnteriorEn72Horas(row.fechaISO)
+    ) {
+      showError("Venta fuera de rango", {
+        html: "Esta venta pertenece a un mes anterior y ya no entra dentro del margen de 72 horas posteriores al cierre del mes.",
+      });
       return;
     }
 
@@ -269,8 +288,9 @@ export default function ComprasSuscripcionesView({
 
     if (!docUrl) {
       showError(
-        `Esta venta no tiene ${tipoDocumento === "xml" ? "XML" : "PDF"
-        } disponible.`
+        `Esta venta no tiene ${
+          tipoDocumento === "xml" ? "XML" : "PDF"
+        } disponible.`,
       );
       return;
     }
@@ -318,8 +338,7 @@ export default function ComprasSuscripcionesView({
         payload.nombre_alias = cliente_nuevo.nombre_alias || "";
         payload.rfc = cliente_nuevo.rfc || "";
         payload.razon_social = cliente_nuevo.razon_social || "";
-        payload.codigo_postal_fiscal =
-          cliente_nuevo.codigo_postal_fiscal || "";
+        payload.codigo_postal_fiscal = cliente_nuevo.codigo_postal_fiscal || "";
         payload.regimen_codigo = cliente_nuevo.regimen_codigo || "";
         payload.email = cliente_nuevo.email || "";
         payload.telefono = cliente_nuevo.telefono || "";
@@ -327,14 +346,14 @@ export default function ComprasSuscripcionesView({
 
       const { data: resp } = await axiosClient.post(
         `/pos/facturacion/ventas/${ventaId}/timbrar`,
-        payload
+        payload,
       );
 
       if (resp?.ok === false) {
         showAlert(
           "Error al timbrar",
           resp?.message || "No fue posible facturar.",
-          false
+          false,
         );
         return;
       }
@@ -356,26 +375,26 @@ export default function ComprasSuscripcionesView({
           ? clientes.find((c) => String(c.id) === String(cliente_id)) || null
           : cliente_nuevo
             ? {
-              id: null,
-              nombre_alias:
-                cliente_nuevo?.nombre_alias ||
-                cliente_nuevo?.razon_social ||
-                null,
-              razon_social: cliente_nuevo?.razon_social || null,
-              rfc: cliente_nuevo?.rfc || null,
-              codigo_postal_fiscal:
-                cliente_nuevo?.codigo_postal_fiscal || null,
-              regimen_codigo: cliente_nuevo?.regimen_codigo || null,
-              email: cliente_nuevo?.email || null,
-              telefono: cliente_nuevo?.telefono || null,
-            }
+                id: null,
+                nombre_alias:
+                  cliente_nuevo?.nombre_alias ||
+                  cliente_nuevo?.razon_social ||
+                  null,
+                razon_social: cliente_nuevo?.razon_social || null,
+                rfc: cliente_nuevo?.rfc || null,
+                codigo_postal_fiscal:
+                  cliente_nuevo?.codigo_postal_fiscal || null,
+                regimen_codigo: cliente_nuevo?.regimen_codigo || null,
+                email: cliente_nuevo?.email || null,
+                telefono: cliente_nuevo?.telefono || null,
+              }
             : null,
       });
 
       showAlert(
         "Venta timbrada ✅",
         `La venta ${ventaId} fue facturada correctamente.`,
-        true
+        true,
       );
 
       setOpenFacturar(false);
@@ -446,13 +465,11 @@ export default function ComprasSuscripcionesView({
           .map((p) =>
             p
               .split("\n")
-              .map((line) =>
-                line.replace(/</g, "&lt;").replace(/>/g, "&gt;")
-              )
-              .join("<br>")
+              .map((line) => line.replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+              .join("<br>"),
           )
           .join(
-            '<hr style="border:none;height:1px;background:#eee;margin:12px 0;" />'
+            '<hr style="border:none;height:1px;background:#eee;margin:12px 0;" />',
           );
 
         showError(undefined, { html });
@@ -474,8 +491,8 @@ export default function ComprasSuscripcionesView({
         month: "long",
         year: "numeric",
       }).format(
-        new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)) - 1, 1)
-      )
+        new Date(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)) - 1, 1),
+      ),
     )}`;
 
   return (
@@ -486,13 +503,13 @@ export default function ComprasSuscripcionesView({
         background:
           theme.palette.mode === "dark"
             ? `linear-gradient(180deg, ${alpha("#0b1220", 0.96)} 0%, ${alpha(
-              "#111827",
-              0.98
-            )} 100%)`
+                "#111827",
+                0.98,
+              )} 100%)`
             : `linear-gradient(180deg, ${alpha("#f8fbff", 1)} 0%, ${alpha(
-              "#eef4ff",
-              1
-            )} 100%)`,
+                "#eef4ff",
+                1,
+              )} 100%)`,
       }}
     >
       <Box sx={{ maxWidth: 1500, mx: "auto" }}>
@@ -508,19 +525,19 @@ export default function ComprasSuscripcionesView({
             background:
               theme.palette.mode === "dark"
                 ? `linear-gradient(135deg, ${alpha(
-                  theme.palette.primary.main,
-                  0.12
-                )} 0%, ${alpha("#0f172a", 0.94)} 60%, ${alpha(
-                  "#111827",
-                  0.98
-                )} 100%)`
+                    theme.palette.primary.main,
+                    0.12,
+                  )} 0%, ${alpha("#0f172a", 0.94)} 60%, ${alpha(
+                    "#111827",
+                    0.98,
+                  )} 100%)`
                 : `linear-gradient(135deg, ${alpha(
-                  theme.palette.primary.main,
-                  0.12
-                )} 0%, ${alpha("#ffffff", 0.96)} 55%, ${alpha(
-                  "#f6faff",
-                  1
-                )} 100%)`,
+                    theme.palette.primary.main,
+                    0.12,
+                  )} 0%, ${alpha("#ffffff", 0.96)} 55%, ${alpha(
+                    "#f6faff",
+                    1,
+                  )} 100%)`,
             boxShadow: `0 16px 40px ${alpha(theme.palette.common.black, 0.08)}`,
           }}
         >
@@ -609,7 +626,8 @@ export default function ComprasSuscripcionesView({
                 }}
               >
                 Consulta ventas del mes actual, filtra rápidamente por folio y
-                genera facturas de forma más ordenada y profesional desde tu POS.
+                genera facturas de forma más ordenada y profesional desde tu
+                POS.
               </Typography>
             </Box>
 
@@ -654,7 +672,7 @@ export default function ComprasSuscripcionesView({
                   minWidth: { xs: "100%", sm: "auto" },
                   boxShadow: `0 10px 25px ${alpha(
                     theme.palette.success.main,
-                    0.24
+                    0.24,
                   )}`,
                 }}
               >
