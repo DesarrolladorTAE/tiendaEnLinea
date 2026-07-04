@@ -23,6 +23,7 @@ import CableRoundedIcon from "@mui/icons-material/CableRounded";
 import AutoModeRoundedIcon from "@mui/icons-material/AutoModeRounded";
 import axiosClientPOS from "../../config/axiosClientPOS";
 import { showSuccess, showError } from "../../utils/alerts";
+import PosAvailableApps from "./PosAvailableApps";
 
 const APP_OPTIONS = [
   { value: "windows_usb", label: "Windows USB" },
@@ -409,7 +410,7 @@ export default function PosLocationPrintSettings({ cambiarVista, posLocationId }
                 </Paper>
               </Grid>
             </Grid>
-
+            <PosAvailableApps />
             <Button
               fullWidth={isMobile}
               variant="contained"

@@ -3,7 +3,6 @@ import {
   alpha,
   Box,
   Button,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -21,9 +20,10 @@ import {
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import AppsRoundedIcon from "@mui/icons-material/AppsRounded";
-import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import NotesRoundedIcon from "@mui/icons-material/NotesRounded";
 import InsertDriveFileRoundedIcon from "@mui/icons-material/InsertDriveFileRounded";
+
+import AppVersionCompatibility from "./AppVersionCompatibility";
 
 const BRAND = {
   orange: "#ff5a1f",
@@ -45,6 +45,8 @@ export default function AppVersionFormDialog({
   onSave,
 }) {
   const selectedFileName = useMemo(() => form.file?.name || "", [form.file]);
+
+  const appName = apps[0]?.name || "MTELMX POS";
 
   return (
     <Dialog
@@ -92,7 +94,11 @@ export default function AppVersionFormDialog({
               </Typography>
 
               <Typography color="text.secondary">
-                Registra aplicación, plataforma, compatibilidad y archivo instalador.
+                Registra plataforma, compatibilidad y archivo instalador para{" "}
+                <Box component="span" fontWeight={900} color="text.primary">
+                  {appName}
+                </Box>
+                .
               </Typography>
             </Box>
           </Stack>
@@ -137,27 +143,43 @@ export default function AppVersionFormDialog({
               <Box>
                 <Typography fontWeight={900}>Datos principales</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Define a qué aplicación pertenece esta versión.
+                  Captura la versión, plataforma y fecha de lanzamiento.
                 </Typography>
               </Box>
             </Stack>
 
             <Grid container spacing={2} sx={{ mt: 0.5 }}>
-              <Grid item xs={12} md={6}>
-                <TextField
-                  select
-                  fullWidth
-                  required
-                  label="Aplicación"
-                  value={form.app_id}
-                  onChange={(e) => onChange("app_id", e.target.value)}
+              <Grid item xs={12} md={4}>
+                <Box
+                  sx={{
+                    height: "100%",
+                    minHeight: 56,
+                    px: 2,
+                    py: 1,
+                    borderRadius: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.2,
+                    border: "1px solid",
+                    borderColor: "divider",
+                    bgcolor: alpha(BRAND.amber, 0.08),
+                  }}
                 >
-                  {apps.map((app) => (
-                    <MenuItem key={app.id} value={app.id}>
-                      {app.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
+                  <AppsRoundedIcon fontSize="small" sx={{ color: BRAND.orange }} />
+
+                  <Box>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ lineHeight: 1 }}
+                    >
+                      Aplicación
+                    </Typography>
+                    <Typography fontWeight={900} sx={{ lineHeight: 1.2 }}>
+                      {appName}
+                    </Typography>
+                  </Box>
+                </Box>
               </Grid>
 
               <Grid item xs={12} md={3}>
@@ -171,7 +193,7 @@ export default function AppVersionFormDialog({
                 />
               </Grid>
 
-              <Grid item xs={12} md={3}>
+              <Grid item xs={12} md={2.5}>
                 <TextField
                   select
                   fullWidth
@@ -188,7 +210,7 @@ export default function AppVersionFormDialog({
                 </TextField>
               </Grid>
 
-              <Grid item xs={12} md={5}>
+              <Grid item xs={12} md={2.5}>
                 <TextField
                   fullWidth
                   type="date"
@@ -199,11 +221,12 @@ export default function AppVersionFormDialog({
                 />
               </Grid>
 
-              <Grid item xs={12} md={7}>
+              <Grid item xs={12}>
                 <Box
                   sx={{
-                    height: "100%",
+                    width: "fit-content",
                     px: 2,
+                    py: 0.7,
                     borderRadius: 2,
                     display: "flex",
                     alignItems: "center",
@@ -215,6 +238,7 @@ export default function AppVersionFormDialog({
                   }}
                 >
                   <FormControlLabel
+                    sx={{ m: 0 }}
                     control={
                       <Switch
                         checked={form.is_active}
@@ -236,63 +260,11 @@ export default function AppVersionFormDialog({
             </Grid>
           </Box>
 
-          <Box
-            sx={{
-              p: 2.5,
-              borderRadius: 3,
-              bgcolor: "#fff",
-              border: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 2 }}>
-              <Box
-                sx={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 1.5,
-                  display: "grid",
-                  placeItems: "center",
-                  bgcolor: alpha(BRAND.amber, 0.16),
-                  border: `1px solid ${alpha(BRAND.amber, 0.45)}`,
-                }}
-              >
-                <PrintRoundedIcon fontSize="small" />
-              </Box>
-
-              <Box>
-                <Typography fontWeight={900}>Compatibilidad</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Selecciona los tipos de impresora compatibles.
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {printerTypes.map((printer) => {
-                const selected = form.printer_type_ids.includes(printer.id);
-
-                return (
-                  <Chip
-                    key={printer.id}
-                    label={printer.name}
-                    onClick={() => onTogglePrinterType(printer.id)}
-                    sx={{
-                      mb: 1,
-                      fontWeight: 800,
-                      borderRadius: 2,
-                      border: "1px solid",
-                      borderColor: selected
-                        ? alpha(BRAND.orange, 0.45)
-                        : "divider",
-                      bgcolor: selected ? alpha(BRAND.orange, 0.1) : "#fff",
-                      color: selected ? BRAND.orange : "text.primary",
-                    }}
-                  />
-                );
-              })}
-            </Stack>
-          </Box>
+          <AppVersionCompatibility
+            form={form}
+            printerTypes={printerTypes}
+            onTogglePrinterType={onTogglePrinterType}
+          />
 
           <Box
             sx={{
@@ -454,5 +426,6 @@ export default function AppVersionFormDialog({
         </Button>
       </DialogActions>
     </Dialog>
+  
   );
 }

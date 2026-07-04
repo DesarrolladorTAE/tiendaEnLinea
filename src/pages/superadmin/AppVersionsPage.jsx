@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Alert,
   Box,
@@ -7,18 +7,10 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  FormControlLabel,
-  Grid,
   IconButton,
   MenuItem,
   Pagination,
   Stack,
-  Switch,
   TextField,
   Typography,
   alpha,
@@ -28,8 +20,6 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
-import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import AndroidRoundedIcon from "@mui/icons-material/AndroidRounded";
 import AppleIcon from "@mui/icons-material/Apple";
 import DesktopWindowsRoundedIcon from "@mui/icons-material/DesktopWindowsRounded";
@@ -49,7 +39,6 @@ const BRAND = {
   orange: "#ff5a1f",
   amber: "#ffb52e",
   dark: "#151515",
-  soft: "#fff7ed",
 };
 
 const initialForm = {
@@ -69,7 +58,11 @@ const platforms = [
     label: "Android",
     icon: <AndroidRoundedIcon fontSize="small" />,
   },
-  { value: "ios", label: "iOS", icon: <AppleIcon fontSize="small" /> },
+  {
+    value: "ios",
+    label: "iOS",
+    icon: <AppleIcon fontSize="small" />,
+  },
   {
     value: "windows",
     label: "Windows",
@@ -118,12 +111,24 @@ export default function AppVersionsPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
 
-  const selectedFileName = useMemo(() => form.file?.name || "", [form.file]);
-
   const loadCatalogs = async () => {
-    const res = await appVersionService.getCatalogs();
-    setApps(res.data.apps || []);
-    setPrinterTypes(res.data.printer_types || []);
+    try {
+      const res = await appVersionService.getCatalogs();
+      const catalogApps = res.data.apps || [];
+
+      setApps(catalogApps);
+      setPrinterTypes(res.data.printer_types || []);
+
+      if (catalogApps.length === 1) {
+        setForm((prev) => ({
+          ...prev,
+          app_id: catalogApps[0].id,
+        }));
+      }
+    } catch (error) {
+      console.error(error);
+      alertFromAxiosError(error, "No se pudieron cargar los catálogos.");
+    }
   };
 
   const loadItems = async () => {
@@ -141,7 +146,7 @@ export default function AppVersionsPage() {
       });
     } catch (error) {
       console.error(error);
-      alert("No se pudieron cargar las versiones.");
+      alertFromAxiosError(error, "No se pudieron cargar las versiones.");
     } finally {
       setLoading(false);
     }
@@ -155,9 +160,17 @@ export default function AppVersionsPage() {
     loadItems();
   }, [filters]);
 
+  const resolveDefaultAppId = () => {
+    if (apps.length === 1) return apps[0].id;
+    return "";
+  };
+
   const handleOpenCreate = () => {
     setEditing(null);
-    setForm(initialForm);
+    setForm({
+      ...initialForm,
+      app_id: resolveDefaultAppId(),
+    });
     setOpen(true);
   };
 
@@ -165,7 +178,7 @@ export default function AppVersionsPage() {
     setEditing(item);
 
     setForm({
-      app_id: item.app_id || item.app?.id || "",
+      app_id: item.app_id || item.app?.id || resolveDefaultAppId(),
       version: item.version || "",
       platform: item.platform || "android",
       release_date: item.release_date?.substring(0, 10) || "",
@@ -180,9 +193,13 @@ export default function AppVersionsPage() {
 
   const handleClose = () => {
     if (saving) return;
+
     setOpen(false);
     setEditing(null);
-    setForm(initialForm);
+    setForm({
+      ...initialForm,
+      app_id: resolveDefaultAppId(),
+    });
   };
 
   const handleChange = (field, value) => {
@@ -253,8 +270,8 @@ export default function AppVersionsPage() {
 
   const handleDelete = async (item) => {
     const ok = await showConfirm(
-      `¿Eliminar la versión ${item.version} de ${item.app?.name || "la app"}?`,
-      "Sí, eliminar",
+      `¿Eliminar la versión ${item.version} de ${item.app?.name || "MTELMX POS"}?`,
+      "Sí, eliminar"
     );
 
     if (!ok) return;
@@ -314,13 +331,14 @@ export default function AppVersionsPage() {
             <Box>
               <Chip
                 icon={<AppsRoundedIcon />}
-                label="Panel superadmin"
+                label="MTELMX POS"
                 size="small"
                 sx={{
                   mb: 1.5,
                   color: "#fff",
                   bgcolor: "rgba(255,255,255,.12)",
                   border: "1px solid rgba(255,255,255,.18)",
+                  fontWeight: 800,
                 }}
               />
 
@@ -330,10 +348,10 @@ export default function AppVersionsPage() {
                 sx={{
                   letterSpacing: "-.03em",
                   fontSize: { xs: 28, md: 36 },
-                  color: "rgba(255,255,255,.72)",
+                  color: "rgba(255,255,255,.92)",
                 }}
               >
-                Versiones de aplicaciones
+                Control de versiones
               </Typography>
 
               <Typography
@@ -353,6 +371,7 @@ export default function AppVersionsPage() {
               size="large"
               startIcon={<AddRoundedIcon />}
               onClick={handleOpenCreate}
+              disabled={apps.length === 0}
               sx={{
                 borderRadius: 999,
                 px: 3,
@@ -372,6 +391,21 @@ export default function AppVersionsPage() {
         </CardContent>
       </Card>
 
+      {apps.length === 0 && (
+        <Alert
+          severity="warning"
+          sx={{
+            mb: 3,
+            borderRadius: 3,
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          No hay una aplicación activa registrada. Crea o activa MTELMX POS para
+          poder registrar versiones.
+        </Alert>
+      )}
+
       <Card
         elevation={0}
         sx={{
@@ -389,7 +423,7 @@ export default function AppVersionsPage() {
               gridTemplateColumns: {
                 xs: "1fr",
                 sm: "1fr 1fr",
-                md: "2fr 1.4fr 1.2fr 1fr",
+                md: "2fr 1.2fr 1fr",
               },
               gap: 2,
               alignItems: "center",
@@ -407,27 +441,6 @@ export default function AppVersionsPage() {
                 }))
               }
             />
-
-            <TextField
-              select
-              fullWidth
-              label="App"
-              value={filters.app_id}
-              onChange={(e) =>
-                setFilters((prev) => ({
-                  ...prev,
-                  app_id: e.target.value,
-                  page: 1,
-                }))
-              }
-            >
-              <MenuItem value="">Todas las apps</MenuItem>
-              {apps.map((app) => (
-                <MenuItem key={app.id} value={app.id}>
-                  {app.name}
-                </MenuItem>
-              ))}
-            </TextField>
 
             <TextField
               select
@@ -543,7 +556,7 @@ export default function AppVersionsPage() {
                           sx={{ mb: 1 }}
                         >
                           <Chip
-                            label={item.app?.name || "Sin app"}
+                            label={item.app?.name || "MTELMX POS"}
                             size="small"
                             sx={{
                               bgcolor: BRAND.dark,
@@ -602,7 +615,7 @@ export default function AppVersionsPage() {
                             ))
                           ) : (
                             <Chip
-                              label="Sin tipo de impresora"
+                              label="Sin método de impresión"
                               variant="outlined"
                               size="small"
                             />
@@ -639,7 +652,7 @@ export default function AppVersionsPage() {
                         <Button
                           variant="outlined"
                           startIcon={<DownloadRoundedIcon />}
-                          href={item.file_url}
+                          href={`https://mitiendaenlineamx.com.mx/api/pos/apps/download/${item.id}`}
                           target="_blank"
                           sx={{
                             borderRadius: 999,
@@ -652,7 +665,7 @@ export default function AppVersionsPage() {
                             },
                           }}
                         >
-                          Archivo
+                          Descargar
                         </Button>
                       )}
 
@@ -723,7 +736,6 @@ export default function AppVersionsPage() {
         onTogglePrinterType={handleTogglePrinterType}
         onSave={handleSave}
       />
-      
     </Box>
   );
 }
