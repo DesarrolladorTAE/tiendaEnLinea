@@ -18,7 +18,13 @@ import CategoriesSection from "../../components/admin/productForm/sections/Categ
 import VariantsSection from "../../components/admin/productForm/sections/VariantsSection";
 import LocationsProductSection from "../../components/admin/productForm/sections/LocationsProductSection";
 
+import { useAuth } from "../../context/AuthContext";
+
 export default function ProductForm() {
+  const { permissions } = useAuth();
+
+  const canEditPurchaseCost = Boolean(permissions?.can_edit_purchase_cost);
+
   const {
     register,
     control,
@@ -109,6 +115,7 @@ export default function ProductForm() {
                 basePriceStr={ui.basePriceStr}
                 onRecalculateBase={actions.handleRecalculateBase}
                 isEdit={!!ui.id}
+                canEditPurchaseCost={canEditPurchaseCost}
               />
             </AccordionSection>
 
