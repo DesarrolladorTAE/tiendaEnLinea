@@ -9,6 +9,7 @@ export default function ProductInfoSection({
   basePriceStr,
   onRecalculateBase,
   isEdit = false,
+  canEditPurchaseCost = false,
 }) {
   return (
     <div className="row">
@@ -86,25 +87,33 @@ export default function ProductInfoSection({
         <input
           type="text"
           className="form-control bg-secondary border-secondary text-light"
-          readOnly={isEdit}
+          readOnly={isEdit && !canEditPurchaseCost}
           placeholder={
-            isEdit ? "Se actualiza desde entradas" : "Costo de compra"
+            isEdit && !canEditPurchaseCost
+              ? "Se actualiza desde entradas"
+              : "Costo de compra"
           }
           {...register("costo_compra")}
         />
 
-        {isEdit && (
-          <small className="text-warning d-block mt-1">
-            ⚠️ El costo de compra solo se puede cambiar al registrar entradas de
-            producto.
-            <br />
-            Dirígete al apartado{" "}
-            <Link to="/admin/compra" className="text-info fw-bold">
-              Entradas Producto
-            </Link>
-            .
-          </small>
-        )}
+        {isEdit &&
+          (canEditPurchaseCost ? (
+            <small className="text-success d-block mt-1">
+              ✔️ Esta tienda tiene permiso para modificar el costo de compra
+              directamente desde el producto.
+            </small>
+          ) : (
+            <small className="text-warning d-block mt-1">
+              ⚠️ El costo de compra solo se puede cambiar al registrar entradas
+              de producto.
+              <br />
+              Dirígete al apartado{" "}
+              <Link to="/admin/compra" className="text-info fw-bold">
+                Entradas Producto
+              </Link>
+              .
+            </small>
+          ))}
       </div>
     </div>
   );
