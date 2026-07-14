@@ -33,6 +33,7 @@ import AppleIcon from "@mui/icons-material/Apple";
 import BluetoothIcon from "@mui/icons-material/Bluetooth";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 
 import axiosClient from "../config/axiosClientPOS";
 import { showError, showSuccess } from "../utils/alerts";
@@ -95,11 +96,10 @@ export default function TicketPreviewSendModal({
   const [sendingPayload, setSendingPayload] = useState(false);
   const [printSetting, setPrintSetting] = useState(null);
 
+  const [downloadingTicket, setDownloadingTicket] = useState(false);
+
   const clientPhone =
-    sale?.client?.telefono ||
-    sale?.client?.phone ||
-    sale?.telefono ||
-    "";
+    sale?.client?.telefono || sale?.client?.phone || sale?.telefono || "";
 
   const finalPhone = sendMode === "client" ? clientPhone : customPhone;
 
@@ -149,8 +149,6 @@ export default function TicketPreviewSendModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, sale?.id, posLocationId]);
 
-
-
   const loadTicket = async () => {
     try {
       setLoadingPdf(true);
@@ -181,7 +179,7 @@ export default function TicketPreviewSendModal({
       setLoadingConfig(true);
 
       const { data } = await axiosClient.get(
-        `/pos/print-settings/${posLocationId}/payload-config`
+        `/pos/print-settings/${posLocationId}/payload-config`,
       );
 
       setPrintSetting(data || null);
@@ -193,7 +191,10 @@ export default function TicketPreviewSendModal({
     }
   };
 
-  const cleanPhone = (value) => String(value || "").replace(/\D/g, "").slice(0, 10);
+  const cleanPhone = (value) =>
+    String(value || "")
+      .replace(/\D/g, "")
+      .slice(0, 10);
 
   const handleSendWhatsApp = async () => {
     const phone = cleanPhone(finalPhone);
@@ -232,7 +233,9 @@ export default function TicketPreviewSendModal({
     const { data } = await axiosClient.get(`/sales/${sale.id}/print-payload`);
 
     if (!data?.ok || !data?.payload) {
-      throw new Error(data?.message || "No se pudo obtener payload de impresión.");
+      throw new Error(
+        data?.message || "No se pudo obtener payload de impresión.",
+      );
     }
 
     return data.payload;
@@ -244,7 +247,7 @@ export default function TicketPreviewSendModal({
     }
 
     const { data: ticket } = await axiosClient.get(
-      `/pos/ticket-config/${posLocationId}`
+      `/pos/ticket-config/${posLocationId}`,
     );
 
     const printerIp = String(ticket?.printer_ip || "").trim();
@@ -252,7 +255,7 @@ export default function TicketPreviewSendModal({
 
     if (!printerIp || !printerPort) {
       throw new Error(
-        "Configura primero la IP y el puerto de la impresora en la sucursal correspondiente."
+        "Configura primero la IP y el puerto de la impresora en la sucursal correspondiente.",
       );
     }
 
@@ -288,11 +291,13 @@ export default function TicketPreviewSendModal({
 
     const resp = await window.flutter_inappwebview.callHandler(
       "printTicket",
-      request
+      request,
     );
 
     if (!resp?.ok) {
-      throw new Error(resp?.message || "No se pudo imprimir desde la aplicación.");
+      throw new Error(
+        resp?.message || "No se pudo imprimir desde la aplicación.",
+      );
     }
 
     return true;
@@ -406,6 +411,67 @@ export default function TicketPreviewSendModal({
     textTransform: "none",
     fontWeight: 900,
     minHeight: 46,
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!sale?.id) {
+      showError("No se encontró la venta.");
+      return;
+    }
+
+    try {
+      setDownloadingTicket(true);
+
+      let downloadUrl = ticketUrl;
+      let shouldRevokeUrl = false;
+
+      // Si todavía no está disponible el PDF cargado,
+      // lo solicitamos nuevamente al backend.
+      if (!downloadUrl) {
+        const response = await axiosClient.get(
+          `/v2/sales/${sale.id}/ticket.pdf`,
+          {
+            responseType: "blob",
+          },
+        );
+
+        const blob = new Blob([response.data], {
+          type: response.headers?.["content-type"] || "application/pdf",
+        });
+
+        downloadUrl = URL.createObjectURL(blob);
+        shouldRevokeUrl = true;
+      }
+
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = `ticket-venta-${sale.id}.pdf`;
+      link.style.display = "none";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      if (shouldRevokeUrl) {
+        setTimeout(() => {
+          URL.revokeObjectURL(downloadUrl);
+        }, 1000);
+      }
+
+      showSuccess("Ticket descargado correctamente.");
+    } catch (error) {
+      console.error("Error descargando ticket:", error);
+
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "No se pudo descargar el ticket.";
+
+      showError(message);
+    } finally {
+      setDownloadingTicket(false);
+    }
   };
 
   const sidePanel = (
@@ -545,6 +611,22 @@ export default function TicketPreviewSendModal({
       >
         Abrir / imprimir PDF
       </Button>
+
+      <Button
+        variant="outlined"
+        startIcon={
+          downloadingTicket ? (
+            <CircularProgress size={18} color="inherit" />
+          ) : (
+            <DownloadRoundedIcon />
+          )
+        }
+        onClick={handleDownloadPdf}
+        disabled={downloadingTicket || loadingPdf || !sale?.id}
+        sx={buttonBaseSx}
+      >
+        {downloadingTicket ? "Descargando..." : "Descargar ticket"}
+      </Button>
     </Stack>
   );
 
@@ -576,7 +658,9 @@ export default function TicketPreviewSendModal({
           }}
         />
       ) : (
-        <Typography color="text.secondary">No se pudo cargar el ticket.</Typography>
+        <Typography color="text.secondary">
+          No se pudo cargar el ticket.
+        </Typography>
       )}
     </Box>
   );
@@ -650,7 +734,6 @@ export default function TicketPreviewSendModal({
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="lg">
       <DialogTitle sx={{ fontWeight: 950 }}>
         Ticket venta #{sale?.id}
-
         <IconButton
           onClick={handleClose}
           sx={{ position: "absolute", right: 12, top: 10 }}

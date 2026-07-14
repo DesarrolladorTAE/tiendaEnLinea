@@ -25,6 +25,8 @@ import BluetoothIcon from "@mui/icons-material/Bluetooth";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+
 import axiosClientPOS from "../config/axiosClientPOS";
 import { showSuccess, showError } from "../utils/alerts";
 
@@ -81,6 +83,8 @@ export default function ModalTicketVenta({
   const [printSetting, setPrintSetting] = useState(null);
 
   const [sendingPayload, setSendingPayload] = useState(false);
+
+  const [downloadingTicket, setDownloadingTicket] = useState(false);
 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -389,6 +393,53 @@ export default function ModalTicketVenta({
     return String(value).trim();
   };
 
+  const handleDescargarTicket = async () => {
+    if (!ventaId) {
+      showError("No se encontró la venta.");
+      return;
+    }
+
+    setDownloadingTicket(true);
+
+    try {
+      const response = await axiosClientPOS.get(
+        `/sales/${ventaId}/ticket.pdf`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const contentType =
+        response.headers?.["content-type"] || "application/pdf";
+
+      const blob = new Blob([response.data], {
+        type: contentType,
+      });
+
+      const objectUrl = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `ticket-venta-${ventaId}.pdf`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(objectUrl);
+
+      showSuccess("Ticket descargado correctamente.");
+    } catch (error) {
+      console.error("Error descargando ticket:", error);
+
+      showError(
+        error?.response?.data?.message || "No se pudo descargar el ticket.",
+      );
+    } finally {
+      setDownloadingTicket(false);
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -664,6 +715,27 @@ export default function ModalTicketVenta({
                 )}
               </Stack>
             </Paper>
+            <Button
+              variant="outlined"
+              startIcon={
+                downloadingTicket ? (
+                  <CircularProgress size={18} color="inherit" />
+                ) : (
+                  <DownloadRoundedIcon />
+                )
+              }
+              onClick={handleDescargarTicket}
+              disabled={downloadingTicket || !ventaId}
+              fullWidth
+              sx={{
+                minHeight: 48,
+                borderRadius: 3,
+                fontWeight: 900,
+                textTransform: "none",
+              }}
+            >
+              {downloadingTicket ? "Descargando..." : "Descargar ticket"}
+            </Button>
 
             <Button
               onClick={onClose}

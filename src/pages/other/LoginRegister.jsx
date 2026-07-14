@@ -51,6 +51,8 @@ const LoginRegister = () => {
   const [storeLogin, setStoreLogin] = useState({ login: "", password: "" });
   const [showResetModal, setShowResetModal] = useState(false);
 
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
+
   const pressTimerRef = useRef(null);
 
   // referencia para hacer scroll al formulario de registro
@@ -357,12 +359,27 @@ const LoginRegister = () => {
 
             {/* FORM */}
             <main className="col-form">
-              <div className="text-center mb-3">
-                <img
+              {/* CABECERA LOGO + CERTIFICACIÓN */}
+              <Box
+                sx={{
+                  position: "relative",
+                  width: "100%",
+                  mb: 3,
+                  minHeight: {
+                    xs: 105,
+                    sm: 120,
+                  },
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                {/* LOGO PRINCIPAL */}
+                <Box
+                  component="img"
                   src="/assets/logoc.png"
                   alt="Logo de la tienda"
-                  className="img-fluid auth-logo"
-                  style={{ maxWidth: "260px", cursor: "pointer" }}
+                  className="auth-logo"
                   onMouseDown={() => {
                     pressTimerRef.current = setTimeout(
                       () => setShowStoreLoginModal(true),
@@ -370,12 +387,14 @@ const LoginRegister = () => {
                     );
                   }}
                   onMouseUp={() => {
-                    if (pressTimerRef.current)
+                    if (pressTimerRef.current) {
                       clearTimeout(pressTimerRef.current);
+                    }
                   }}
                   onMouseLeave={() => {
-                    if (pressTimerRef.current)
+                    if (pressTimerRef.current) {
                       clearTimeout(pressTimerRef.current);
+                    }
                   }}
                   onTouchStart={() => {
                     pressTimerRef.current = setTimeout(
@@ -384,11 +403,139 @@ const LoginRegister = () => {
                     );
                   }}
                   onTouchEnd={() => {
-                    if (pressTimerRef.current)
+                    if (pressTimerRef.current) {
                       clearTimeout(pressTimerRef.current);
+                    }
+                  }}
+                  sx={{
+                    width: "100%",
+                    maxWidth: {
+                      xs: "220px",
+                      sm: "260px",
+                    },
+                    height: "auto",
+                    objectFit: "contain",
+                    cursor: "pointer",
+                    display: "block",
                   }}
                 />
-              </div>
+
+                {/* CERTIFICACIÓN SUPERIOR DERECHA */}
+                <Box
+                  component="button"
+                  type="button"
+                  onClick={() => setShowCertificateModal(true)}
+                  aria-label="Ver certificado de Empresa Guerrerense"
+                  sx={{
+                    position: "absolute",
+                    top: {
+                      xs: -10,
+                      sm: -25,
+                    },
+                    right: {
+                      xs: -4,
+                      sm: 0,
+                    },
+                    p: 0,
+                    border: "none",
+                    bgcolor: "transparent",
+                    cursor: "pointer",
+                    zIndex: 2,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 0.7,
+                      py: 0.55,
+                      px: 0.8,
+                      borderRadius: "999px",
+                      border: "1px solid rgba(213, 0, 83, 0.20)",
+                      bgcolor: "rgba(255,255,255,0.94)",
+                      boxShadow: "0 5px 16px rgba(0,0,0,0.09)",
+                      backdropFilter: "blur(8px)",
+                      transition: "all 0.25s ease",
+
+                      "&:hover": {
+                        transform: "translateY(-2px) scale(1.02)",
+                        borderColor: "rgba(213, 0, 83, 0.45)",
+                        boxShadow: "0 9px 22px rgba(213, 0, 83, 0.14)",
+                      },
+                    }}
+                  >
+                    {/* MINIATURA */}
+                    <Box
+                      sx={{
+                        width: {
+                          xs: 28,
+                          sm: 34,
+                        },
+                        height: {
+                          xs: 28,
+                          sm: 34,
+                        },
+                        borderRadius: "70%",
+                        overflow: "hidden",
+                        flexShrink: 0,
+                        bgcolor: "#fff",
+                        border: "1.5px solid #d50053",
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src="/assets/images/certificado.png"
+                        alt="Empresa Guerrerense Certificada"
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "88% 82%",
+                          display: "block",
+                        }}
+                      />
+                    </Box>
+
+                    {/* TEXTO */}
+                    <Box
+                      sx={{
+                        textAlign: "left",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: {
+                            xs: "0.48rem",
+                            sm: "0.56rem",
+                          },
+                          fontWeight: 700,
+                          color: "text.secondary",
+                          lineHeight: 1,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.2px",
+                        }}
+                      >
+                        Empresa Guerrerense
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize: {
+                            xs: "0.6rem",
+                            sm: "0.7rem",
+                          },
+                          fontWeight: 900,
+                          color: "#d50053",
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        Certificada
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
 
               <div className="text-center mb-3">
                 <Button
@@ -561,6 +708,279 @@ const LoginRegister = () => {
               Ingresar
             </Button>
           </form>
+        </Box>
+      </Modal>
+
+      <Modal
+        open={showCertificateModal}
+        onClose={() => setShowCertificateModal(false)}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          p: {
+            xs: 1,
+            md: 2,
+          },
+        }}
+      >
+        <Box
+          sx={{
+            width: "100%",
+            maxWidth: 1050,
+
+            // En móvil permitimos que el modal use casi toda la pantalla
+            maxHeight: {
+              xs: "98vh",
+              md: "92vh",
+            },
+
+            bgcolor: "background.paper",
+            borderRadius: {
+              xs: "16px",
+              md: "24px",
+            },
+            boxShadow: 24,
+            overflow: "hidden",
+            outline: "none",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {/* CABECERA */}
+          <Box
+            sx={{
+              px: {
+                xs: 1.5,
+                md: 3,
+              },
+              py: {
+                xs: 1,
+                md: 2,
+              },
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+              borderBottom: "1px solid",
+              borderColor: "divider",
+              flexShrink: 0,
+            }}
+          >
+            <Box>
+              <Typography
+                sx={{
+                  fontSize: {
+                    xs: "0.9rem",
+                    md: "1.2rem",
+                  },
+                  fontWeight: 900,
+                  color: "#d50053",
+                  lineHeight: 1.2,
+                }}
+              >
+                Empresa Guerrerense Certificada
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontSize: {
+                    xs: "0.72rem",
+                    md: "0.82rem",
+                  },
+                  color: "text.secondary",
+                }}
+              >
+                Folio 2026-027
+              </Typography>
+            </Box>
+
+            <Button
+              type="button"
+              onClick={() => setShowCertificateModal(false)}
+              sx={{
+                minWidth: "auto",
+                px: {
+                  xs: 1,
+                  md: 2,
+                },
+                fontSize: {
+                  xs: "0.75rem",
+                  md: "0.875rem",
+                },
+                textTransform: "none",
+                fontWeight: 800,
+              }}
+            >
+              Cerrar
+            </Button>
+          </Box>
+
+          {/* CONTENIDO */}
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            {/* INFORMACIÓN DE CERTIFICACIÓN */}
+            <Box
+              sx={{
+                px: {
+                  xs: 2,
+                  md: 5,
+                },
+                pt: {
+                  xs: 1.5,
+                  md: 2.5,
+                },
+                pb: {
+                  xs: 1.5,
+                  md: 2.5,
+                },
+                flexShrink: 0,
+                bgcolor: "background.paper",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: {
+                    xs: "0.88rem",
+                    md: "1.15rem",
+                  },
+                  fontWeight: 900,
+                  color: "text.primary",
+                  mb: 0.8,
+                  lineHeight: 1.25,
+                }}
+              >
+                Tecnologías Administrativas Elad, S. de R.L. de C.V.
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontSize: {
+                    xs: "0.76rem",
+                    md: "0.9rem",
+                  },
+                  fontWeight: 700,
+                  color: "#d50053",
+                  mb: {
+                    xs: 0.8,
+                    md: 1.2,
+                  },
+                  lineHeight: 1.4,
+                }}
+              >
+                🏢 Consultoría Tecnológica Certificada
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontSize: {
+                    xs: "0.72rem",
+                    md: "0.88rem",
+                  },
+                  lineHeight: 1.5,
+                  color: "text.secondary",
+                  mb: 0.7,
+                }}
+              >
+                📜 Certificado de Empresa Guerrerense | Folio: 2026-027
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontSize: {
+                    xs: "0.7rem",
+                    md: "0.88rem",
+                  },
+                  lineHeight: 1.5,
+                  color: "text.secondary",
+                }}
+              >
+                ⚖️ Avalado por la Secretaría de Fomento y Desarrollo Económico
+                conforme a la Ley de Fomento Económico, Inversión y Desarrollo
+                del Estado de Guerrero.
+              </Typography>
+            </Box>
+
+            {/* SEPARADOR */}
+            <Box
+              sx={{
+                mx: {
+                  xs: 2,
+                  md: 5,
+                },
+                borderTop: "1px solid",
+                borderColor: "divider",
+              }}
+            />
+
+            {/* CERTIFICADO */}
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+
+                px: {
+                  xs: 1.5,
+                  md: 5,
+                },
+                pt: {
+                  xs: 1.5,
+                  md: 2.5,
+                },
+                pb: {
+                  xs: 1.5,
+                  md: 3,
+                },
+
+                bgcolor: "#f7f8fa",
+
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Box
+                component="img"
+                src="/assets/images/certificado.png"
+                alt="Certificado de Empresa Guerrerense"
+                sx={{
+                  display: "block",
+
+                  width: {
+                    xs: "100%",
+                    md: "82%",
+                  },
+
+                  maxWidth: "820px",
+
+                  height: "auto",
+
+                  maxHeight: {
+                    xs: "45vh",
+                    md: "48vh",
+                  },
+
+                  objectFit: "contain",
+
+                  borderRadius: {
+                    xs: "10px",
+                    md: "14px",
+                  },
+
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.14)",
+
+                  bgcolor: "#fff",
+                }}
+              />
+            </Box>
+          </Box>
         </Box>
       </Modal>
     </>

@@ -7,6 +7,7 @@ import LanIcon from "@mui/icons-material/Lan";
 import AndroidIcon from "@mui/icons-material/Android";
 import AppleIcon from "@mui/icons-material/Apple";
 import BluetoothIcon from "@mui/icons-material/Bluetooth";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 
 import CreditPdfViewerModal from "./CreditPdfViewerModal";
 import axiosClient from "../../config/axiosClientPOS";
@@ -76,6 +77,8 @@ export default function CreditTicketModal({
   const [sendingPayload, setSendingPayload] = useState(false);
   const [sendingWhatsappLocal, setSendingWhatsappLocal] = useState(false);
   const [printSetting, setPrintSetting] = useState(null);
+
+  const [downloadingTicket, setDownloadingTicket] = useState(false);
 
   useEffect(() => {
     if (!open || !sale?.id || !posLocationId) return;
@@ -340,6 +343,60 @@ export default function CreditTicketModal({
     }
   };
 
+  const handleDownloadTicket = async () => {
+    if (!sale?.id) {
+      showError("No se encontró la venta.");
+      return;
+    }
+
+    try {
+      setDownloadingTicket(true);
+
+      const response = await axiosClient.get(
+        `/v2/sales/${sale.id}/ticket.pdf`,
+        {
+          responseType: "blob",
+        },
+      );
+
+      const contentType =
+        response.headers?.["content-type"] || "application/pdf";
+
+      const blob = new Blob([response.data], {
+        type: contentType,
+      });
+
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = objectUrl;
+      link.download = `ticket_venta_${sale.id}.pdf`;
+      link.style.display = "none";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      setTimeout(() => {
+        URL.revokeObjectURL(objectUrl);
+      }, 1000);
+
+      showSuccess("Ticket descargado correctamente.");
+    } catch (error) {
+      console.error("Error descargando ticket:", error);
+
+      const message =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.response?.data?.details ||
+        "No se pudo descargar el ticket.";
+
+      showError(message);
+    } finally {
+      setDownloadingTicket(false);
+    }
+  };
+
   const extraActions = (
     <Stack spacing={1}>
       {loadingConfig ? (
@@ -377,6 +434,7 @@ export default function CreditTicketModal({
           sendingPayload ||
           loadingConfig ||
           sending ||
+          downloadingTicket ||
           !printSetting?.enabled ||
           !printSetting?.app_type
         }
@@ -385,10 +443,35 @@ export default function CreditTicketModal({
           fontWeight: 900,
           minHeight: 44,
           bgcolor: meta.color,
-          "&:hover": { bgcolor: meta.color, filter: "brightness(.92)" },
+          "&:hover": {
+            bgcolor: meta.color,
+            filter: "brightness(.92)",
+          },
         }}
       >
         {sendingPayload || loadingConfig ? "Procesando..." : meta.label}
+      </Button>
+
+      <Button
+        fullWidth
+        variant="outlined"
+        startIcon={
+          downloadingTicket ? (
+            <CircularProgress size={18} color="inherit" />
+          ) : (
+            <DownloadRoundedIcon />
+          )
+        }
+        onClick={handleDownloadTicket}
+        disabled={downloadingTicket || sendingPayload || sending || !sale?.id}
+        sx={{
+          textTransform: "none",
+          fontWeight: 900,
+          minHeight: 44,
+          borderRadius: 3,
+        }}
+      >
+        {downloadingTicket ? "Descargando..." : "Descargar ticket"}
       </Button>
     </Stack>
   );
