@@ -85,11 +85,15 @@ export function normalizeVariantsForBackend(rawVariants = []) {
         name: v.name ? toStrTrimOrEmpty(v.name) : null,
         price: v.price === "" || v.price == null ? null : Number(v.price),
         purchase_cost:
-          v.purchase_cost === "" || v.purchase_cost == null ? null : Number(v.purchase_cost),
+          v.purchase_cost === "" || v.purchase_cost == null
+            ? null
+            : Number(v.purchase_cost),
         stock: Number.isFinite(stockNum) ? stockNum : 0,
 
         image: v.image instanceof File ? v.image : null,
-        image_existing: !(v.image instanceof File) ? v.image_existing || v.image || null : null,
+        image_existing: !(v.image instanceof File)
+          ? v.image_existing || v.image || null
+          : null,
 
         is_active: String(v.is_active) === "false" ? 0 : 1,
 
@@ -108,7 +112,8 @@ export function normalizeVariantsForBackend(rawVariants = []) {
         Number(v.stock ?? 0) >= 0 ||
         (Array.isArray(v.attributes) && v.attributes.length > 0) ||
         v.image instanceof File ||
-        (typeof v.image_existing === "string" && v.image_existing.trim() !== "") ||
+        (typeof v.image_existing === "string" &&
+          v.image_existing.trim() !== "") ||
         (Array.isArray(v.warehouse_stocks) && v.warehouse_stocks.length > 0);
 
       return hasAny;
@@ -193,7 +198,9 @@ export function mapBackendVariantsToForm(backendVariants = []) {
 function deriveWarehouseInventoriesFromVariants(product) {
   const useWh = Boolean(product?.use_warehouse_inventory);
   const variants = Array.isArray(product?.variants) ? product.variants : [];
-  const base = Array.isArray(product?.warehouse_inventories) ? product.warehouse_inventories : [];
+  const base = Array.isArray(product?.warehouse_inventories)
+    ? product.warehouse_inventories
+    : [];
 
   if (!useWh) return base;
   if (base.length > 0) return base;
@@ -270,7 +277,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       .sort((a, b) => String(a.name).localeCompare(String(b.name)))
       .forEach((p) => {
         const kids = (byParent.get(p.id) ?? []).sort((a, b) =>
-          String(a.name).localeCompare(String(b.name))
+          String(a.name).localeCompare(String(b.name)),
         );
 
         if (kids.length) {
@@ -312,11 +319,16 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
   };
 
   const mapSelectedCats = (catsFromApi) => {
-    const base = (catsFromApi || []).map((c) => ({ value: c.id, label: c.name }));
+    const base = (catsFromApi || []).map((c) => ({
+      value: c.id,
+      label: c.name,
+    }));
     if (!categoriesOptions?.length) return base;
 
     return (catsFromApi || []).map((c) => {
-      const found = categoriesOptions.find((o) => Number(o.value) === Number(c.id));
+      const found = categoriesOptions.find(
+        (o) => Number(o.value) === Number(c.id),
+      );
       return found ?? { value: c.id, label: c.name };
     });
   };
@@ -360,11 +372,13 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     }
 
     const priceFromApi =
-      product.price !== null && product.price !== undefined ? Number(product.price).toFixed(2) : "";
+      product.price !== null && product.price !== undefined
+        ? Number(product.price).toFixed(2)
+        : "";
 
     const basePriceFromApi =
       product.base_price !== null && product.base_price !== undefined
-        ? Number(product.base_price).toFixed(2)
+        ? Number(product.base_price).toFixed(6)
         : "";
 
     const loadedVariants = Array.isArray(product.variants)
@@ -396,7 +410,10 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       // SAT
       costo_compra: product.purchase_cost?.toString() || "",
       unidad_medida: product.unidad_medida_id
-        ? { value: Number(product.unidad_medida_id), label: product.unidad_medida_texto || "" }
+        ? {
+            value: Number(product.unidad_medida_id),
+            label: product.unidad_medida_texto || "",
+          }
         : null,
       unidad_medida_id: product.unidad_medida_id || "",
       unidad_medida_texto: product.unidad_medida_texto || "",
@@ -410,7 +427,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       use_warehouse_inventory: Boolean(product.use_warehouse_inventory),
       // OJO: si el backend manda qty/price/purchase_cost en warehouse_inventories,
       // aquí se respetan; si no manda, igual funciona con solo warehouse_id.
-      warehouse_inventories: Array.isArray(warehouseInventories) ? warehouseInventories : [],
+      warehouse_inventories: Array.isArray(warehouseInventories)
+        ? warehouseInventories
+        : [],
       branch_id: product.branch_id ?? branchId ?? "",
 
       options: product.options || [],
@@ -448,7 +467,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
   // price lo controla el usuario, base_price es el calculado.
   // =========================================================
   useEffect(() => {
-    const nuevoBase = (price / (1 + (iva || 0))).toFixed(2);
+    const nuevoBase = (price / (1 + (iva || 0))).toFixed(6);
     if (nuevoBase !== basePriceStr) setValue("base_price", nuevoBase);
   }, [price, iva, basePriceStr, setValue]);
 
@@ -456,8 +475,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
   const handleRecalculateBase = () => {
     const currentPrice = parseFloat(watch("price") || "0");
     const ivaValue = watch("iva");
-    const ivaNum = ivaValue === "null" || ivaValue === "" ? 0 : parseFloat(ivaValue) || 0;
-    const newBase = (currentPrice / (1 + (ivaNum || 0))).toFixed(2);
+    const ivaNum =
+      ivaValue === "null" || ivaValue === "" ? 0 : parseFloat(ivaValue) || 0;
+    const newBase = (currentPrice / (1 + (ivaNum || 0))).toFixed(6);
     setValue("base_price", newBase);
   };
 
@@ -466,18 +486,24 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     try {
       const useWh = Boolean(data.use_warehouse_inventory);
 
-      const variantsPayloadPreview = normalizeVariantsForBackend(data.variants || []);
+      const variantsPayloadPreview = normalizeVariantsForBackend(
+        data.variants || [],
+      );
       const hasVariantsPayload = variantsPayloadPreview.length > 0;
 
       // ✅ SIN variantes: valida warehouse_product_stocks (qty)
       if (useWh && !hasVariantsPayload) {
         const stock = Number(data.stock || 0);
-        const rows = Array.isArray(data.warehouse_inventories) ? data.warehouse_inventories : [];
+        const rows = Array.isArray(data.warehouse_inventories)
+          ? data.warehouse_inventories
+          : [];
 
         const ids = rows.map((r) => String(r?.warehouse_id || "").trim());
 
         if (!rows.length) {
-          showError("❌ Inventario por almacenes activo: agrega al menos un almacén.");
+          showError(
+            "❌ Inventario por almacenes activo: agrega al menos un almacén.",
+          );
           return;
         }
         if (ids.some((x) => !x)) {
@@ -503,7 +529,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
         const sum = rows.reduce((acc, r) => acc + (Number(r?.qty) || 0), 0);
         if (sum !== stock) {
-          showError(`❌ La suma por almacén (${sum}) debe ser igual al stock global (${stock}).`);
+          showError(
+            `❌ La suma por almacén (${sum}) debe ser igual al stock global (${stock}).`,
+          );
           return;
         }
       }
@@ -512,10 +540,14 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       if (useWh && hasVariantsPayload) {
         for (let i = 0; i < variantsPayloadPreview.length; i++) {
           const v = variantsPayloadPreview[i];
-          const rows = Array.isArray(v.warehouse_stocks) ? v.warehouse_stocks : [];
+          const rows = Array.isArray(v.warehouse_stocks)
+            ? v.warehouse_stocks
+            : [];
 
           if (!rows.length) {
-            showError(`❌ La variante #${i + 1} no tiene inventario por almacén.`);
+            showError(
+              `❌ La variante #${i + 1} no tiene inventario por almacén.`,
+            );
             return;
           }
 
@@ -546,7 +578,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
           if (sum !== vStock) {
             showError(
-              `❌ Variante #${i + 1}: la suma por almacén (${sum}) debe ser igual al stock de la variante (${vStock}).`
+              `❌ Variante #${i + 1}: la suma por almacén (${sum}) debe ser igual al stock de la variante (${vStock}).`,
             );
             return;
           }
@@ -570,7 +602,8 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       formData.append("shortDescription", data.shortDescription);
       formData.append("fullDescription", data.fullDescription);
 
-      if (data.iva === "null" || data.iva === "") formData.append("iva", "null");
+      if (data.iva === "null" || data.iva === "")
+        formData.append("iva", "null");
       else formData.append("iva", data.iva);
 
       // =========================================================
@@ -578,34 +611,43 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       // En edición, recalcula si cambió price O cambió IVA.
       // Nunca tocar "price" automáticamente.
       // =========================================================
-      const ivaNumber = data.iva === "null" || data.iva === "" ? 0 : parseFloat(data.iva) || 0;
+      const ivaNumber =
+        data.iva === "null" || data.iva === "" ? 0 : parseFloat(data.iva) || 0;
       const priceNumber = parseFloat(data.price || "0");
 
       let basePriceToSend;
 
       if (!id) {
-        basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
+        basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(6);
       } else {
         const initialPriceFixed =
-          initialPrice !== null && initialPrice !== undefined ? Number(initialPrice).toFixed(2) : null;
+          initialPrice !== null && initialPrice !== undefined
+            ? Number(initialPrice).toFixed(2)
+            : null;
 
-        const currentPriceFixed = Number.isFinite(priceNumber) ? priceNumber.toFixed(2) : "0.00";
+        const currentPriceFixed = Number.isFinite(priceNumber)
+          ? priceNumber.toFixed(2)
+          : "0.00";
 
-        const priceChanged = initialPriceFixed === null ? true : currentPriceFixed !== initialPriceFixed;
+        const priceChanged =
+          initialPriceFixed === null
+            ? true
+            : currentPriceFixed !== initialPriceFixed;
 
-        const ivaOriginalNum = ivaOriginal === null ? null : Number(ivaOriginal);
+        const ivaOriginalNum =
+          ivaOriginal === null ? null : Number(ivaOriginal);
         const ivaChanged =
           ivaOriginalNum === null
             ? !(data.iva === "null" || data.iva === "") // antes EXENTO y ya no
             : Number(ivaNumber) !== ivaOriginalNum;
 
         if (priceChanged || ivaChanged) {
-          basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(2);
+          basePriceToSend = (priceNumber / (1 + ivaNumber)).toFixed(6);
         } else {
           basePriceToSend =
             initialBasePrice !== null && initialBasePrice !== undefined
-              ? Number(initialBasePrice).toFixed(2)
-              : data.base_price || "0";
+              ? Number(initialBasePrice).toFixed(6)
+              : data.base_price || "0.000000";
         }
       }
 
@@ -613,7 +655,10 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       formData.append("visible", data.visible ? "1" : "0");
 
       if (data.offerEnd && Number(data.discount) > 0) {
-        const formattedOfferEnd = new Date(data.offerEnd).toISOString().slice(0, 19).replace("T", " ");
+        const formattedOfferEnd = new Date(data.offerEnd)
+          .toISOString()
+          .slice(0, 19)
+          .replace("T", " ");
         formData.append("offerEnd", formattedOfferEnd);
       }
 
@@ -621,7 +666,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       formData.append("purchase_cost", data.costo_compra?.toString() || "0");
       formData.append(
         "unidad_medida_id",
-        data.unidad_medida?.value ? String(data.unidad_medida.value) : data.unidad_medida_id || ""
+        data.unidad_medida?.value
+          ? String(data.unidad_medida.value)
+          : data.unidad_medida_id || "",
       );
       formData.append("clave_producto_sat", data.clave_producto_servicio || "");
       formData.append("clave_unidad_sat", data.clave_unidad || "");
@@ -629,7 +676,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       // categorías
       if (data.category?.length) {
         const expandedIds = expandSelectedCategories(data.category);
-        expandedIds.forEach((cid) => formData.append("category[]", String(cid)));
+        expandedIds.forEach((cid) =>
+          formData.append("category[]", String(cid)),
+        );
       }
 
       // tags
@@ -646,16 +695,20 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       const variantsPayload = variantsPayloadPreview;
       const hasVariantsPayload2 = variantsPayload.length > 0;
 
-      if (!hasVariantsPayload2) formData.append("stock", data.stock?.toString() || "0");
+      if (!hasVariantsPayload2)
+        formData.append("stock", data.stock?.toString() || "0");
       else formData.append("stock", "0");
 
-      if (hasVariantsPayload2) appendFormData(formData, "variants", variantsPayload);
+      if (hasVariantsPayload2)
+        appendFormData(formData, "variants", variantsPayload);
 
       // multi-warehouse
       formData.append("use_warehouse_inventory", useWh ? "1" : "0");
 
       if (useWh) {
-        const rows = Array.isArray(data.warehouse_inventories) ? data.warehouse_inventories : [];
+        const rows = Array.isArray(data.warehouse_inventories)
+          ? data.warehouse_inventories
+          : [];
 
         // ✅ SIN variantes → warehouse_product_stocks (qty/price/purchase_cost + opcionales)
         // ✅ CON variantes → aquí solo mandamos warehouses activos (warehouse_id)
@@ -682,7 +735,8 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
           })
           .filter(Boolean);
 
-        if (clean.length) appendFormData(formData, "warehouse_inventories", clean);
+        if (clean.length)
+          appendFormData(formData, "warehouse_inventories", clean);
       }
 
       // request
@@ -706,7 +760,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     } catch (error) {
       console.error("❌ Error en la API:", error.response?.data || error);
       if (error.response?.data?.errors) {
-        showError(`❌ Error en la API:\n${JSON.stringify(error.response.data.errors, null, 2)}`);
+        showError(
+          `❌ Error en la API:\n${JSON.stringify(error.response.data.errors, null, 2)}`,
+        );
       } else {
         showError("Error de conexión con el servidor.");
       }
@@ -724,7 +780,16 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       imageFiles,
       branchId,
     }),
-    [id, isEdit, hasVariants, basePriceStr, categoriesOptions, warehouses, imageFiles, branchId]
+    [
+      id,
+      isEdit,
+      hasVariants,
+      basePriceStr,
+      categoriesOptions,
+      warehouses,
+      imageFiles,
+      branchId,
+    ],
   );
 
   const actions = useMemo(
@@ -733,7 +798,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       handleRecalculateBase,
       onSubmit,
     }),
-    [handleRecalculateBase]
+    [handleRecalculateBase],
   );
 
   return { ui, actions };

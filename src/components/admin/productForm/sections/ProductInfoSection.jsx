@@ -68,7 +68,7 @@ export default function ProductInfoSection({
         <div className="d-flex align-items-center justify-content-between mt-2">
           <p className="text-info mb-0">
             Precio Base (SIN IVA):{" "}
-            <strong>${Number(basePriceStr || 0).toFixed(2)} MXN</strong>
+            <strong>${Number(basePriceStr || 0).toFixed(6)} MXN</strong>
           </p>
 
           <button

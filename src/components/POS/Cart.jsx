@@ -37,6 +37,7 @@ import ModalCambioDescuento from "./ModalCambioDescuento";
 import ItemWorkerAssign from "./ItemWorkerAssign";
 import SaleClientAssign from "./SaleClientAssign";
 import PendingSaleModal from "./PendingSaleModal";
+import IsrRetentionPreview from "./IsrRetentionPreview";
 
 import { showError } from "../../utils/alerts";
 import axiosClient from "../../config/axiosClientPOS";
@@ -108,6 +109,8 @@ export default function CartSidebar({
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [selectedClient, setSelectedClient] = useState(null);
+
+  const [retentionInfo, setRetentionInfo] = useState(null);
 
   const [openQuickClient, setOpenQuickClient] = useState(false);
   const [savingQuickClient, setSavingQuickClient] = useState(false);
@@ -298,6 +301,10 @@ export default function CartSidebar({
     loadCreditAccount();
   }, [selectedClient?.id]);
 
+  const handleRetentionChange = useCallback((info) => {
+    setRetentionInfo(info);
+  }, []);
+
   const total = useMemo(
     () =>
       cart.reduce(
@@ -307,6 +314,18 @@ export default function CartSidebar({
       ),
     [cart],
   );
+
+  const appliesIsrRetention = Boolean(retentionInfo?.applies_retention);
+
+  const isrRetentionTotal = appliesIsrRetention
+    ? Number(retentionInfo?.calculation?.isr_retention_total || 0)
+    : 0;
+
+  const payableTotal = appliesIsrRetention
+    ? Number(retentionInfo?.calculation?.net_total_amount ?? total)
+    : total;
+
+  const payableTotalRounded = Number(payableTotal.toFixed(2));
 
   const hasCreditAccount = Boolean(creditAccount?.id);
   const creditActive = Boolean(creditAccount?.is_active);
@@ -1038,6 +1057,12 @@ export default function CartSidebar({
                       loading={loadingClients}
                     />
                   )}
+
+                  <IsrRetentionPreview
+                    clientId={selectedClient?.id ?? null}
+                    totalAmount={total}
+                    onChange={handleRetentionChange}
+                  />
 
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
