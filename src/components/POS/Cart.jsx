@@ -325,7 +325,9 @@ export default function CartSidebar({
     ? Number(retentionInfo?.calculation?.net_total_amount ?? total)
     : total;
 
-  const payableTotalRounded = Number(payableTotal.toFixed(2));
+  const amountToPay = Number(payableTotal.toFixed(6));
+
+  const payableTotalRounded = Number(payableTotal.toFixed(6));
 
   const hasCreditAccount = Boolean(creditAccount?.id);
   const creditActive = Boolean(creditAccount?.is_active);
@@ -340,7 +342,7 @@ export default function CartSidebar({
     Boolean(selectedClient?.id) &&
     hasCreditAccount &&
     creditActive &&
-    (isUnlimitedCredit || availableCredit >= total);
+    (isUnlimitedCredit || availableCredit >= amountToPay);
 
   const setDetail = (k, patch) =>
     setDetails((prev) => ({ ...prev, [k]: { ...prev[k], ...patch } }));
