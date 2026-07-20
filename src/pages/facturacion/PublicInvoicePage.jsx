@@ -95,6 +95,45 @@ function formatDate(value) {
   }).format(date);
 }
 
+function getYearMonthInMexico(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City",
+    year: "numeric",
+    month: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+
+  if (!year || !month) {
+    return null;
+  }
+
+  return `${year}-${month}`;
+}
+
+function formatBillingMonth(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("es-MX", {
+    timeZone: "America/Mexico_City",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
 function normalizeClientToForm(client) {
   if (!client) return EMPTY_FORM;
 
@@ -184,6 +223,47 @@ export default function PublicInvoicePage() {
   const yaFacturada =
     saleData?.invoice_status === "timbrada" || invoice?.status === "timbrada";
 
+  const saleMonth = useMemo(
+    () => getYearMonthInMexico(saleData?.created_at),
+    [saleData?.created_at],
+  );
+
+  const currentMonth = useMemo(() => getYearMonthInMexico(new Date()), []);
+
+  const perteneceAlMesActual =
+    Boolean(saleMonth) && Boolean(currentMonth) && saleMonth === currentMonth;
+
+  const facturacionBloqueadaPorMes =
+    Boolean(saleData) && !yaFacturada && !perteneceAlMesActual;
+
+  const fiscalTotals = useMemo(() => {
+    const grossTotal = Number(saleData?.total_amount || 0);
+    const ivaTotal = Number(saleData?.iva_total || 0);
+
+    const isrRetentionTotal = Number(saleData?.isr_retention_total || 0);
+
+    const hasIsrRetention =
+      Boolean(saleData?.isr_retention_applied) && isrRetentionTotal > 0;
+
+    const subtotal = Math.max(0, grossTotal - ivaTotal);
+
+    const netTotal = hasIsrRetention
+      ? Number(
+          saleData?.net_total_amount ??
+            Math.max(0, grossTotal - isrRetentionTotal),
+        )
+      : grossTotal;
+
+    return {
+      subtotal,
+      ivaTotal,
+      grossTotal,
+      isrRetentionTotal,
+      hasIsrRetention,
+      netTotal,
+    };
+  }, [saleData]);
+
   const saleItems = useMemo(() => saleData?.items || [], [saleData]);
 
   const previewValidation = useMemo(() => {
@@ -250,7 +330,25 @@ export default function PublicInvoicePage() {
     if (token) loadSale(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
   async function handlePreview(formData) {
+    if (facturacionBloqueadaPorMes) {
+      const message = `Esta venta pertenece a ${formatBillingMonth(
+        saleData?.created_at,
+      )}. Solo se pueden facturar ventas del mes actual.`;
+
+      setError(message);
+
+      showApiErrors(
+        {
+          mensaje: message,
+        },
+        "Periodo de facturación cerrado",
+      );
+
+      return;
+    }
+
     try {
       setPreviewLoading(true);
       setError("");
@@ -291,6 +389,23 @@ export default function PublicInvoicePage() {
   }
 
   async function handleTimbrar(formData) {
+    if (facturacionBloqueadaPorMes) {
+      const message = `Esta venta pertenece a ${formatBillingMonth(
+        saleData?.created_at,
+      )}. El periodo permitido para facturar esta venta ya terminó.`;
+
+      setError(message);
+
+      showApiErrors(
+        {
+          mensaje: message,
+        },
+        "No es posible facturar",
+      );
+
+      return;
+    }
+
     try {
       setTimbrando(true);
       setError("");
@@ -538,6 +653,33 @@ export default function PublicInvoicePage() {
             </Alert>
           )}
 
+          {facturacionBloqueadaPorMes && (
+            <Alert
+              severity="error"
+              icon={<CalendarMonthRoundedIcon />}
+              sx={{
+                borderRadius: 3,
+                alignItems: "flex-start",
+              }}
+            >
+              <Typography fontWeight={800}>
+                Esta venta ya no puede facturarse desde este portal
+              </Typography>
+
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                La venta fue realizada en{" "}
+                <strong>{formatBillingMonth(saleData?.created_at)}</strong> y
+                actualmente solo se permite facturar ventas correspondientes al
+                mes en curso.
+              </Typography>
+
+              <Typography variant="body2" sx={{ mt: 0.7 }}>
+                Comunícate directamente con la tienda para solicitar atención
+                sobre esta venta.
+              </Typography>
+            </Alert>
+          )}
+
           <Grid
             container
             spacing={{ xs: 2, md: 3 }}
@@ -592,23 +734,121 @@ export default function PublicInvoicePage() {
                           borderColor: "divider",
                         }}
                       >
-                        <Typography variant="body2" color="text.secondary">
-                          Total pagado
-                        </Typography>
-                        <Typography
-                          variant="h4"
-                          fontWeight={900}
-                          sx={{ mt: 0.5 }}
-                        >
-                          {money(saleData?.total_amount)}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ mt: 0.6 }}
-                        >
-                          IVA: {money(saleData?.iva_total)}
-                        </Typography>
+                        <Stack spacing={1.1}>
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            spacing={2}
+                          >
+                            <Typography variant="body2" color="text.secondary">
+                              Subtotal
+                            </Typography>
+
+                            <Typography variant="body2" fontWeight={700}>
+                              {money(fiscalTotals.subtotal)}
+                            </Typography>
+                          </Stack>
+
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            spacing={2}
+                          >
+                            <Typography variant="body2" color="text.secondary">
+                              IVA
+                            </Typography>
+
+                            <Typography variant="body2" fontWeight={700}>
+                              {money(fiscalTotals.ivaTotal)}
+                            </Typography>
+                          </Stack>
+
+                          {fiscalTotals.hasIsrRetention && (
+                            <>
+                              <Divider />
+
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                spacing={2}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                >
+                                  Total de la venta
+                                </Typography>
+
+                                <Typography variant="body2" fontWeight={700}>
+                                  {money(fiscalTotals.grossTotal)}
+                                </Typography>
+                              </Stack>
+
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                spacing={2}
+                              >
+                                <Typography
+                                  variant="body2"
+                                  sx={{ color: "warning.dark" }}
+                                >
+                                  Retención ISR (1.25%)
+                                </Typography>
+
+                                <Typography
+                                  variant="body2"
+                                  fontWeight={800}
+                                  sx={{ color: "warning.dark" }}
+                                >
+                                  -{money(fiscalTotals.isrRetentionTotal)}
+                                </Typography>
+                              </Stack>
+                            </>
+                          )}
+
+                          <Divider />
+
+                          <Stack
+                            direction="row"
+                            justifyContent="space-between"
+                            alignItems="flex-end"
+                            spacing={2}
+                          >
+                            <Box>
+                              <Typography
+                                variant="body2"
+                                color="text.secondary"
+                              >
+                                {fiscalTotals.hasIsrRetention
+                                  ? "Total neto pagado"
+                                  : "Total pagado"}
+                              </Typography>
+
+                              {fiscalTotals.hasIsrRetention && (
+                                <Typography
+                                  variant="caption"
+                                  color="text.secondary"
+                                >
+                                  Total después de aplicar la retención
+                                </Typography>
+                              )}
+                            </Box>
+
+                            <Typography
+                              variant="h4"
+                              fontWeight={900}
+                              sx={{
+                                fontSize: {
+                                  xs: "1.55rem",
+                                  sm: "2rem",
+                                },
+                              }}
+                            >
+                              {money(fiscalTotals.netTotal)}
+                            </Typography>
+                          </Stack>
+                        </Stack>
                       </Box>
                     </Stack>
                   </CardContent>
@@ -815,187 +1055,209 @@ export default function PublicInvoicePage() {
                       mx: "auto",
                     }}
                   >
-                    <Stack spacing={2}>
-                      <Controller
-                        name="rfc"
-                        control={control}
-                        rules={{
-                          required: "El RFC es obligatorio",
-                          minLength: {
-                            value: 12,
-                            message: "El RFC parece incompleto",
-                          },
-                        }}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="RFC"
-                            error={!!errors.rfc}
-                            helperText={errors.rfc?.message}
-                            onChange={(e) =>
-                              field.onChange(e.target.value.toUpperCase())
-                            }
-                            sx={fieldSx()}
-                          />
-                        )}
-                      />
+                    <Box
+                      component="fieldset"
+                      disabled={yaFacturada || facturacionBloqueadaPorMes}
+                      sx={{
+                        p: 0,
+                        m: 0,
+                        border: 0,
+                        minWidth: 0,
+                        opacity:
+                          yaFacturada || facturacionBloqueadaPorMes ? 0.65 : 1,
+                      }}
+                    >
+                      <Stack spacing={2}>
+                        <Controller
+                          name="rfc"
+                          control={control}
+                          rules={{
+                            required: "El RFC es obligatorio",
+                            minLength: {
+                              value: 12,
+                              message: "El RFC parece incompleto",
+                            },
+                          }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              fullWidth
+                              label="RFC"
+                              error={!!errors.rfc}
+                              helperText={errors.rfc?.message}
+                              onChange={(e) =>
+                                field.onChange(e.target.value.toUpperCase())
+                              }
+                              sx={fieldSx()}
+                            />
+                          )}
+                        />
 
-                      <Controller
-                        name="razon_social"
-                        control={control}
-                        rules={{ required: "La razón social es obligatoria" }}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="Razón social"
-                            error={!!errors.razon_social}
-                            helperText={errors.razon_social?.message}
-                            sx={fieldSx()}
-                          />
-                        )}
-                      />
+                        <Controller
+                          name="razon_social"
+                          control={control}
+                          rules={{ required: "La razón social es obligatoria" }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              fullWidth
+                              label="Razón social"
+                              error={!!errors.razon_social}
+                              helperText={errors.razon_social?.message}
+                              sx={fieldSx()}
+                            />
+                          )}
+                        />
 
-                      <Controller
-                        name="codigo_postal_fiscal"
-                        control={control}
-                        rules={{
-                          required: "El código postal fiscal es obligatorio",
-                          pattern: {
-                            value: /^\d{5}$/,
-                            message: "Debe ser un código postal de 5 dígitos",
-                          },
-                        }}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="Código postal fiscal"
-                            error={!!errors.codigo_postal_fiscal}
-                            helperText={errors.codigo_postal_fiscal?.message}
-                            sx={fieldSx()}
-                          />
-                        )}
-                      />
+                        <Controller
+                          name="codigo_postal_fiscal"
+                          control={control}
+                          rules={{
+                            required: "El código postal fiscal es obligatorio",
+                            pattern: {
+                              value: /^\d{5}$/,
+                              message: "Debe ser un código postal de 5 dígitos",
+                            },
+                          }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              fullWidth
+                              label="Código postal fiscal"
+                              error={!!errors.codigo_postal_fiscal}
+                              helperText={errors.codigo_postal_fiscal?.message}
+                              sx={fieldSx()}
+                            />
+                          )}
+                        />
 
-                      <Controller
-                        name="regimen_codigo"
-                        control={control}
-                        rules={{ required: "El régimen fiscal es obligatorio" }}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            select
-                            fullWidth
-                            label="Régimen fiscal"
-                            error={!!errors.regimen_codigo}
-                            helperText={errors.regimen_codigo?.message}
-                            sx={fieldSx()}
-                          >
-                            <MenuItem value="">Selecciona una opción</MenuItem>
-                            {REGIMENES.map((item) => (
-                              <MenuItem key={item.value} value={item.value}>
-                                {item.label}
+                        <Controller
+                          name="regimen_codigo"
+                          control={control}
+                          rules={{
+                            required: "El régimen fiscal es obligatorio",
+                          }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              select
+                              fullWidth
+                              label="Régimen fiscal"
+                              error={!!errors.regimen_codigo}
+                              helperText={errors.regimen_codigo?.message}
+                              sx={fieldSx()}
+                            >
+                              <MenuItem value="">
+                                Selecciona una opción
                               </MenuItem>
-                            ))}
-                          </TextField>
-                        )}
-                      />
+                              {REGIMENES.map((item) => (
+                                <MenuItem key={item.value} value={item.value}>
+                                  {item.label}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                        />
 
-                      <Controller
-                        name="email"
-                        control={control}
-                        rules={{
-                          required: "El correo electrónico es obligatorio",
-                          pattern: {
-                            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                            message: "Ingresa un correo válido",
-                          },
-                        }}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            type="email"
-                            label="Correo electrónico"
-                            error={!!errors.email}
-                            helperText={errors.email?.message}
-                            sx={fieldSx()}
-                          />
-                        )}
-                      />
+                        <Controller
+                          name="email"
+                          control={control}
+                          rules={{
+                            required: "El correo electrónico es obligatorio",
+                            pattern: {
+                              value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                              message: "Ingresa un correo válido",
+                            },
+                          }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              fullWidth
+                              type="email"
+                              label="Correo electrónico"
+                              error={!!errors.email}
+                              helperText={errors.email?.message}
+                              sx={fieldSx()}
+                            />
+                          )}
+                        />
 
-                      <Controller
-                        name="telefono"
-                        control={control}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            fullWidth
-                            label="Teléfono"
-                            sx={fieldSx()}
-                          />
-                        )}
-                      />
+                        <Controller
+                          name="telefono"
+                          control={control}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              fullWidth
+                              label="Teléfono"
+                              sx={fieldSx()}
+                            />
+                          )}
+                        />
 
-                      <Controller
-                        name="uso_cfdi"
-                        control={control}
-                        rules={{ required: "El uso CFDI es obligatorio" }}
-                        render={({ field }) => (
-                          <TextField
-                            {...field}
-                            select
-                            fullWidth
-                            label="Uso CFDI"
-                            error={!!errors.uso_cfdi}
-                            helperText={errors.uso_cfdi?.message}
-                            sx={fieldSx()}
-                          >
-                            {USOS_CFDI.map((item) => (
-                              <MenuItem key={item.value} value={item.value}>
-                                {item.label}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        )}
-                      />
-                    </Stack>
-
-                    {!yaFacturada && (
-                      <Stack
-                        direction={{ xs: "column", sm: "row" }}
-                        spacing={2}
-                        sx={{ mt: 3 }}
-                      >
-                        <Button
-                          fullWidth
-                          variant="outlined"
-                          onClick={handleSubmit(handlePreview)}
-                          disabled={previewLoading || timbrando}
-                          sx={{ borderRadius: 3, py: 1.25 }}
-                        >
-                          {previewLoading
-                            ? "Generando vista previa..."
-                            : "Vista previa"}
-                        </Button>
-
-                        <Button
-                          fullWidth
-                          variant="contained"
-                          onClick={handleSubmit(handleTimbrar)}
-                          disabled={
-                            timbrando ||
-                            !previewData ||
-                            !previewValidation.valid
-                          }
-                          sx={{ borderRadius: 3, py: 1.25 }}
-                        >
-                          {timbrando ? "Timbrando..." : "Facturar"}
-                        </Button>
+                        <Controller
+                          name="uso_cfdi"
+                          control={control}
+                          rules={{ required: "El uso CFDI es obligatorio" }}
+                          render={({ field }) => (
+                            <TextField
+                              {...field}
+                              select
+                              fullWidth
+                              label="Uso CFDI"
+                              error={!!errors.uso_cfdi}
+                              helperText={errors.uso_cfdi?.message}
+                              sx={fieldSx()}
+                            >
+                              {USOS_CFDI.map((item) => (
+                                <MenuItem key={item.value} value={item.value}>
+                                  {item.label}
+                                </MenuItem>
+                              ))}
+                            </TextField>
+                          )}
+                        />
                       </Stack>
-                    )}
+
+                      {!yaFacturada && (
+                        <Stack
+                          direction={{ xs: "column", sm: "row" }}
+                          spacing={2}
+                          sx={{ mt: 3 }}
+                        >
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            onClick={handleSubmit(handlePreview)}
+                            disabled={
+                              previewLoading ||
+                              timbrando ||
+                              facturacionBloqueadaPorMes
+                            }
+                            sx={{ borderRadius: 3, py: 1.25 }}
+                          >
+                            {previewLoading
+                              ? "Generando vista previa..."
+                              : "Vista previa"}
+                          </Button>
+
+                          <Button
+                            fullWidth
+                            variant="contained"
+                            onClick={handleSubmit(handleTimbrar)}
+                            disabled={
+                              timbrando ||
+                              facturacionBloqueadaPorMes ||
+                              !previewData ||
+                              !previewValidation.valid
+                            }
+                            sx={{ borderRadius: 3, py: 1.25 }}
+                          >
+                            {timbrando ? "Timbrando..." : "Facturar"}
+                          </Button>
+                        </Stack>
+                      )}
+                    </Box>
                   </Box>
 
                   {previewData && !yaFacturada && (
@@ -1040,6 +1302,84 @@ export default function PublicInvoicePage() {
                           unidad SAT. Corrige eso antes de facturar.
                         </Alert>
                       )}
+
+                      <Box
+                        sx={{
+                          mb: 2,
+                          p: 2,
+                          borderRadius: 3,
+                          bgcolor: "#f8fafc",
+                          border: "1px solid",
+                          borderColor: "divider",
+                        }}
+                      >
+                        <Stack spacing={1}>
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography color="text.secondary">
+                              Subtotal sin IVA
+                            </Typography>
+                            <Typography fontWeight={700}>
+                              {money(
+                                previewData?.subtotal_sin_iva ??
+                                  Number(previewData?.total_venta || 0) -
+                                    Number(previewData?.total_iva || 0),
+                              )}
+                            </Typography>
+                          </Stack>
+
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography color="text.secondary">IVA</Typography>
+                            <Typography fontWeight={700}>
+                              {money(previewData?.total_iva)}
+                            </Typography>
+                          </Stack>
+
+                          {previewData?.aplica_retencion_isr_resico && (
+                            <>
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                              >
+                                <Typography color="text.secondary">
+                                  Total de la venta
+                                </Typography>
+                                <Typography fontWeight={700}>
+                                  {money(previewData?.total_venta)}
+                                </Typography>
+                              </Stack>
+
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                              >
+                                <Typography sx={{ color: "warning.dark" }}>
+                                  Retención ISR (1.25%)
+                                </Typography>
+                                <Typography
+                                  fontWeight={800}
+                                  sx={{ color: "warning.dark" }}
+                                >
+                                  -{money(previewData?.total_retencion_isr)}
+                                </Typography>
+                              </Stack>
+                            </>
+                          )}
+
+                          <Divider />
+
+                          <Stack direction="row" justifyContent="space-between">
+                            <Typography fontWeight={800}>
+                              Total a facturar
+                            </Typography>
+                            <Typography fontWeight={900}>
+                              {money(
+                                previewData?.total_neto ??
+                                  previewData?.total_venta,
+                              )}
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      </Box>
 
                       <Stack spacing={1.5}>
                         {previewData.items?.map((item) => {

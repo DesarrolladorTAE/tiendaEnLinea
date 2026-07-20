@@ -19,7 +19,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [selectedSize, setSelectedSize] = useState({});
 
   const [posLocationId, setPosLocationId] = useState(
-    Number(localStorage.getItem("POS_LOCATION_ID")) || null
+    Number(localStorage.getItem("POS_LOCATION_ID")) || null,
   );
 
   useEffect(() => {
@@ -57,7 +57,12 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
         setProducts(Array.isArray(data?.products) ? data.products : []);
         setMeta(
-          data?.meta || { page: nextPage, per_page: perPage, total: 0, last_page: 1 }
+          data?.meta || {
+            page: nextPage,
+            per_page: perPage,
+            total: 0,
+            last_page: 1,
+          },
         );
         setPage(nextPage);
       } catch (e) {
@@ -67,7 +72,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         setPage(1);
       }
     },
-    [posLocationId, search]
+    [posLocationId, search],
   );
 
   useEffect(() => {
@@ -138,7 +143,10 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         const currentQty = idx >= 0 ? Number(prev[idx].quantity || 0) : 0;
 
         const stockDisponible = Number(
-          item.stock_available ?? item.stockDisponible ?? item.available_stock ?? Infinity
+          item.stock_available ??
+            item.stockDisponible ??
+            item.available_stock ??
+            Infinity,
         );
         const nextQty = currentQty + 1;
 
@@ -157,7 +165,10 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
               quantity: item.quantity ? Number(item.quantity) : 1,
               display_name: item.display_name || item.name,
               original_price:
-                item.original_price ?? item.price_original ?? item.original ?? item.price,
+                item.original_price ??
+                item.price_original ??
+                item.original ??
+                item.price,
               price: Number(item.price || 0),
             },
           ];
@@ -171,7 +182,10 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           cart_key: key,
           quantity: nextQty,
           display_name:
-            item.display_name || item.name || copy[idx].display_name || copy[idx].name,
+            item.display_name ||
+            item.name ||
+            copy[idx].display_name ||
+            copy[idx].name,
           original_price:
             item.original_price ??
             item.price_original ??
@@ -197,15 +211,21 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       const stockDisponible = Number(getAvailableStock(product)) || 0;
       const unitPrice = Number(product?.price ?? 0);
 
-      const existing = prevCart.find((i) => String(i.cart_key ?? i.id) === String(key));
+      const existing = prevCart.find(
+        (i) => String(i.cart_key ?? i.id) === String(key),
+      );
       if (existing) {
-        const nuevaCantidad = Number((Number(existing.quantity || 0) + 1).toFixed(2));
+        const nuevaCantidad = Number(
+          (Number(existing.quantity || 0) + 1).toFixed(2),
+        );
         if (nuevaCantidad > stockDisponible) {
           showError("⚠️ Stock insuficiente.");
           return prevCart;
         }
         return prevCart.map((i) =>
-          String(i.cart_key ?? i.id) === String(key) ? { ...i, quantity: nuevaCantidad } : i
+          String(i.cart_key ?? i.id) === String(key)
+            ? { ...i, quantity: nuevaCantidad }
+            : i,
         );
       }
 
@@ -235,12 +255,16 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const handleDecrease = (cartKey) => {
     const key = String(cartKey);
     setCart((prev) => {
-      const index = prev.findIndex((item) => String(item.cart_key ?? item.id) === key);
+      const index = prev.findIndex(
+        (item) => String(item.cart_key ?? item.id) === key,
+      );
       if (index === -1) return prev;
 
       const updated = [...prev];
       if (Number(updated[index].quantity) > 1) {
-        updated[index].quantity = Number((Number(updated[index].quantity) - 1).toFixed(2));
+        updated[index].quantity = Number(
+          (Number(updated[index].quantity) - 1).toFixed(2),
+        );
         return updated;
       }
       return prev.filter((item) => String(item.cart_key ?? item.id) !== key);
@@ -249,9 +273,11 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
   const handleRemove = (cartKey) => {
     const key = String(cartKey);
-    setCart((prev) => prev.filter((item) => String(item.cart_key ?? item.id) !== key));
+    setCart((prev) =>
+      prev.filter((item) => String(item.cart_key ?? item.id) !== key),
+    );
   };
-  
+
   const handleCheckout = useCallback(
     async (checkoutPayloadFromCart) => {
       if (!cart || cart.length === 0) return;
@@ -262,16 +288,25 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
       const items = sourceItems.map((item) => ({
         product_id: Number(
-          item.product_id ?? String(item.cart_key ?? item.id).split("-v")[0]
+          item.product_id ?? String(item.cart_key ?? item.id).split("-v")[0],
         ),
+
         variant_id: item.variant_id != null ? Number(item.variant_id) : null,
-        quantity: Number(item.quantity),
-        unit_price: Number(item.unit_price ?? item.price),
+
+        quantity: Number(item.quantity).toFixed(3),
+
+        unit_price: Number(item.unit_price ?? item.price).toFixed(6),
+
         original_price: Number(
-          item.original_price ?? item.price_original ?? item.price
-        ),
-        discount_percent: Number(item.discount_percent ?? item.discount ?? 0),
+          item.original_price ?? item.price_original ?? item.price,
+        ).toFixed(6),
+
+        discount_percent: Number(
+          item.discount_percent ?? item.discount ?? 0,
+        ).toFixed(2),
+
         warehouse_id: item.warehouse_id ?? null,
+
         worker_id: item.worker_id ?? null,
       }));
 
@@ -284,34 +319,34 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       const rawCashReceived =
         eff?.cash_received ?? eff?.efectivo_recibido ?? eff?.recibido ?? null;
 
-      const totalAmount = +Number(
-        checkoutPayloadFromCart?.total_amount ?? 0
-      ).toFixed(2);
+      const totalAmount = Number(
+        checkoutPayloadFromCart?.total_amount ?? 0,
+      ).toFixed(6);
 
-      const cashReceived =
-        rawCashReceived != null && Number.isFinite(Number(rawCashReceived))
-          ? +Number(rawCashReceived).toFixed(2)
-          : null;
+      const normalizedPayments = payments.map((payment) => ({
+        ...payment,
 
-      const normalizedPayments = payments.map((p) => {
-        if (p?.method !== "efectivo") return p;
-        return cashReceived != null ? { ...p, amount: cashReceived } : p;
-      });
+        amount: Number(payment?.amount ?? 0).toFixed(6),
+      }));
 
       const payload = {
         total_amount: totalAmount,
         client_id: checkoutPayloadFromCart?.client_id ?? null,
+
         items,
         payments: normalizedPayments,
 
-        // Datos de venta pendiente
         is_pending_sale: checkoutPayloadFromCart?.is_pending_sale ?? false,
-        pending_has_advance: checkoutPayloadFromCart?.pending_has_advance ?? false,
+
+        pending_has_advance:
+          checkoutPayloadFromCart?.pending_has_advance ?? false,
+
         pending_due_at: checkoutPayloadFromCart?.pending_due_at ?? null,
+
         pending_note: checkoutPayloadFromCart?.pending_note ?? "",
 
-        // Datos de venta a fiado
         is_credit_sale: checkoutPayloadFromCart?.is_credit_sale ?? false,
+
         credit_due_at: checkoutPayloadFromCart?.credit_due_at ?? null,
       };
 
@@ -337,7 +372,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         showError("❌ Error al cobrar. Revisa productos o stock.");
       }
     },
-    [cart, refetchProducts, setCart, setTicketData, setShowTicket]
+    [cart, refetchProducts, setCart, setTicketData, setShowTicket],
   );
 
   return {

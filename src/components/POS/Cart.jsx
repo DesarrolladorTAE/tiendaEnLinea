@@ -327,7 +327,7 @@ export default function CartSidebar({
 
   const amountToPay = Number(payableTotal.toFixed(6));
 
-  const payableTotalRounded = Number(payableTotal.toFixed(6));
+  // const payableTotalRounded = Number(payableTotal.toFixed(6));
 
   const hasCreditAccount = Boolean(creditAccount?.id);
   const creditActive = Boolean(creditAccount?.is_active);
@@ -360,14 +360,14 @@ export default function CartSidebar({
 
   const cambioUnico =
     selectedCount === 1 && selected[0] === "efectivo"
-      ? Math.max(0, (toNumber(cashReceived) || 0) - total)
+      ? Math.max(0, (toNumber(cashReceived) || 0) - amountToPay)
       : 0;
 
   const hasCashInMulti = selectedCount >= 2 && selected.includes("efectivo");
 
   const cambioMulti =
-    selectedCount >= 2 && sumSelected > total && hasCashInMulti
-      ? +(sumSelected - total).toFixed(2)
+    selectedCount >= 2 && sumSelected > amountToPay && hasCashInMulti
+      ? Number((sumSelected - amountToPay).toFixed(6))
       : 0;
 
   const toggleMethod = (m) => {
@@ -386,6 +386,7 @@ export default function CartSidebar({
   const buildItemsPayload = () =>
     cart.map((item) => {
       const baseId = getBaseProductId(item);
+
       const variantId = getVariantId(item);
 
       const original = toNumber(
@@ -398,16 +399,34 @@ export default function CartSidebar({
           item.originalPrice,
       );
 
+      const quantity = toNumber(item.quantity);
+
+      const unitPrice = toNumber(item.price);
+
+      const discount = toNumber(item.discount || 0);
+
       return {
         product_id: baseId,
         variant_id: variantId || null,
-        quantity: parseFloat(item.quantity),
-        unit_price: parseFloat(item.price),
+
+        quantity: Number.isFinite(quantity) ? quantity.toFixed(3) : "0.000",
+
+        unit_price: Number.isFinite(unitPrice)
+          ? unitPrice.toFixed(6)
+          : "0.000000",
+
         original_price: Number.isFinite(original)
-          ? +original
-          : parseFloat(item.price),
-        discount_percent: parseFloat(item.discount || 0),
+          ? original.toFixed(6)
+          : Number.isFinite(unitPrice)
+            ? unitPrice.toFixed(6)
+            : "0.000000",
+
+        discount_percent: Number.isFinite(discount)
+          ? discount.toFixed(2)
+          : "0.00",
+
         warehouse_id: item.warehouse_id ?? null,
+
         worker_id: item.worker_id ?? null,
       };
     });
@@ -460,7 +479,7 @@ export default function CartSidebar({
         return showError("La cuenta de fiado del cliente está desactivada.");
       }
 
-      if (!isUnlimitedCredit && total > availableCredit) {
+      if (!isUnlimitedCredit && amountToPay > availableCredit) {
         return showError(
           `El cliente no tiene crédito suficiente. Disponible: $${availableCredit.toFixed(2)}`,
         );
@@ -494,20 +513,16 @@ export default function CartSidebar({
             return showError("Ingresa un monto de efectivo válido.");
           }
 
-          if (recibido + 0.00001 < total) {
-            return showError("El efectivo recibido no cubre el total.");
+          if (recibido + 0.000001 < amountToPay) {
+            return showError("El efectivo recibido no cubre el total a pagar.");
           }
 
-          const aplicado = Math.min(recibido, total);
-          const r = +recibido.toFixed(2);
+          const recibido6 = recibido.toFixed(6);
 
           payments = [
             {
               method: "efectivo",
-              amount: +aplicado.toFixed(2),
-              recibido: r,
-              cash_received: r,
-              efectivo_recibido: r,
+              amount: recibido6,
             },
           ];
         } else {
@@ -523,7 +538,7 @@ export default function CartSidebar({
           payments = [
             {
               method: m,
-              amount: +total.toFixed(2),
+              amount: amountToPay.toFixed(6),
               referencia: referencia.trim(),
               ...(CARDLIKE.includes(m) ? { ultimos_4: ultimos4 } : {}),
             },
@@ -552,51 +567,56 @@ export default function CartSidebar({
           .map((m) => toNumber(details[m].amount))
           .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
 
-        if (sumaValida + 0.00001 < total) {
+        if (sumaValida + 0.000001 < amountToPay) {
           return showError(
-            `Los pagos no cubren el total. Faltan $${(total - sumaValida).toFixed(2)}.`,
+            `Los pagos no cubren el total. Faltan $${Math.max(
+              0,
+              amountToPay - sumaValida,
+            ).toFixed(2)}.`,
           );
         }
 
         payments = selected.map((m) => {
           const { amount, referencia, ultimos4 } = details[m];
-          const val = toNumber(amount);
 
-          const p = { method: m, amount: +val.toFixed(2) };
+          const value = toNumber(amount);
+
+          const payment = {
+            method: m,
+            amount: value.toFixed(6),
+          };
 
           if (CARDLIKE.includes(m)) {
-            p.referencia = (referencia || "").trim();
-            p.ultimos_4 = ultimos4 || "";
+            payment.referencia = (referencia || "").trim();
+
+            payment.ultimos_4 = ultimos4 || "";
           }
 
-          if (m === "efectivo") {
-            const r = +val.toFixed(2);
-            p.recibido = r;
-            p.cash_received = r;
-            p.efectivo_recibido = r;
-          }
-
-          return p;
+          return payment;
         });
       }
     }
 
     const data = {
-      total_amount: +total.toFixed(2),
+      total_amount: total.toFixed(6),
       client_id: selectedClient?.id ?? null,
       items: buildItemsPayload(),
       payments,
 
       is_pending_sale: creditSale ? true : pendingSale,
+
       pending_has_advance: creditSale ? false : pendingHasAdvance,
+
       pending_due_at: creditSale
         ? creditAccount?.payment_due_date || null
         : pendingDueAt,
+
       pending_note: creditSale
         ? "Venta registrada a fiado desde POS."
         : pendingNote,
 
       is_credit_sale: creditSale,
+
       credit_due_at: creditSale
         ? creditAccount?.payment_due_date || null
         : null,
@@ -714,15 +734,15 @@ export default function CartSidebar({
     selectedCount === 1 &&
     selected[0] === "efectivo" &&
     (!Number.isFinite(toNumber(cashReceived)) ||
-      toNumber(cashReceived) + 0.00001 < total);
+      toNumber(cashReceived) + 0.000001 < amountToPay);
 
   const multiInvalid =
     selectedCount >= 2 &&
     selected
-      .map((m) => toNumber(details[m].amount))
-      .reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0) +
-      0.00001 <
-      total;
+      .map((method) => toNumber(details[method].amount))
+      .reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0) +
+      0.000001 <
+      amountToPay;
 
   const disableConfirm =
     cart.length === 0 ||
@@ -792,7 +812,19 @@ export default function CartSidebar({
             />
           </Stack>
 
-          <Typography sx={{ fontWeight: 900 }}>${total.toFixed(2)}</Typography>
+          <Stack alignItems="flex-end" spacing={0}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ fontWeight: 700 }}
+            >
+              {appliesIsrRetention ? "A recibir" : "Total"}
+            </Typography>
+
+            <Typography sx={{ fontWeight: 900 }}>
+              ${amountToPay.toFixed(2)}
+            </Typography>
+          </Stack>
         </Box>
 
         <Box
@@ -1047,7 +1079,8 @@ export default function CartSidebar({
 
               <Box sx={{ pt: 1.5 }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
-                  Total: ${total.toFixed(2)}
+                  {appliesIsrRetention ? "Total a recibir" : "Total"}: $
+                  {amountToPay.toFixed(2)}
                 </Typography>
 
                 <Box sx={{ mt: 1.2 }}>
@@ -1154,16 +1187,24 @@ export default function CartSidebar({
                     />
 
                     {creditSale && (
-                      <Chip
-                        size="small"
-                        color="primary"
-                        sx={{ mt: 1, fontWeight: 800 }}
-                        label={
-                          creditAccount?.payment_due_date
-                            ? `Fecha de pago: ${String(creditAccount.payment_due_date).slice(0, 10)}`
-                            : "Sin fecha límite"
-                        }
-                      />
+                      <Stack spacing={0.7} sx={{ mt: 1 }}>
+                        <Chip
+                          size="small"
+                          color="primary"
+                          sx={{ fontWeight: 800 }}
+                          label={
+                            creditAccount?.payment_due_date
+                              ? `Fecha de pago: ${String(
+                                  creditAccount.payment_due_date,
+                                ).slice(0, 10)}`
+                              : "Sin fecha límite"
+                          }
+                        />
+
+                        <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                          Monto a crédito: ${amountToPay.toFixed(2)}
+                        </Typography>
+                      </Stack>
                     )}
                   </Box>
                 )}
@@ -1252,8 +1293,11 @@ export default function CartSidebar({
                                         color="text.secondary"
                                         sx={{ mb: 1 }}
                                       >
-                                        Se cobrará el total con{" "}
-                                        <strong>{label}</strong>.
+                                        Se cobrarán{" "}
+                                        <strong>
+                                          ${amountToPay.toFixed(2)}
+                                        </strong>{" "}
+                                        con <strong>{label}</strong>.
                                       </Typography>
 
                                       <Stack spacing={1.2}>
@@ -1465,7 +1509,8 @@ export default function CartSidebar({
                         $
                         {Math.max(
                           0,
-                          total - Number(pendingAdvancePayment.amount || 0),
+                          amountToPay -
+                            Number(pendingAdvancePayment.amount || 0),
                         ).toFixed(2)}
                       </strong>
                     </Typography>
@@ -1517,7 +1562,8 @@ export default function CartSidebar({
                     </Typography>
 
                     <Typography variant="body2" color="text.secondary">
-                      Total pendiente: <strong>${total.toFixed(2)}</strong>
+                      Total pendiente:
+                      <strong>${amountToPay.toFixed(2)}</strong>
                     </Typography>
 
                     {pendingDueAt && (
@@ -1570,10 +1616,10 @@ export default function CartSidebar({
                   {submittingSale
                     ? "Procesando..."
                     : creditSale
-                      ? "Guardar venta a Credito"
+                      ? `Guardar crédito $${amountToPay.toFixed(2)}`
                       : pendingSale
-                        ? "Guardar venta pendiente"
-                        : "Confirmar pago"}
+                        ? `Guardar pendiente $${amountToPay.toFixed(2)}`
+                        : `Cobrar $${amountToPay.toFixed(2)}`}
                 </Button>
               </Box>
             </Box>
@@ -1600,7 +1646,7 @@ export default function CartSidebar({
 
       <PendingSaleModal
         open={openPendingModal}
-        total={total}
+        total={amountToPay}
         startInAdvance={editingAdvance}
         initialPayment={pendingAdvancePayment}
         initialDueAt={pendingDueAt}
