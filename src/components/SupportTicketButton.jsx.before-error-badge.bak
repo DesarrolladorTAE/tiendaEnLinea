@@ -1,0 +1,48 @@
+import React from "react";
+import { MdSupportAgent } from "react-icons/md";
+import { useLocation, useNavigate } from "react-router-dom";
+
+const buttonStyle = {
+  position: "fixed",
+  bottom: "90px",
+  right: "20px",
+  zIndex: 9999,
+  backgroundColor: "#23388B",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: "50%",
+  width: "60px",
+  height: "60px",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+  cursor: "pointer",
+};
+
+const SupportTicketButton = () => {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  if (!pathname.startsWith("/admin")) {
+    return null;
+  }
+
+  const handleClick = () => {
+    navigate("/admin/reportes?abrir_soporte=1");
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      style={buttonStyle}
+      title="Reportar un problema"
+      aria-label="Reportar un problema"
+    >
+      <MdSupportAgent size={30} />
+    </button>
+  );
+};
+
+export default SupportTicketButton;

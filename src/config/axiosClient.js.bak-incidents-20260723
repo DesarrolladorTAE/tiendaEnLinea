@@ -1,0 +1,119 @@
+import axios from "axios";
+
+const SUPPORT_ERROR_STORAGE_KEY = "LAST_SUPPORT_HTTP_ERROR";
+const SUPPORT_ERROR_EVENT = "support:http-error";
+
+const axiosClient = axios.create({
+  baseURL: "https://mitiendaenlineamx.com.mx/api/",
+  headers: {
+    Accept: "application/json",
+  },
+});
+
+axiosClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("AUTH_TOKEN");
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
+  return config;
+});
+
+axiosClient.interceptors.response.use(
+  (res) => res,
+
+  (err) => {
+    const status = err.response?.status ?? null;
+    const data = err.response?.data;
+
+    // Conserva la bandera interna existente.
+    const skipAuthRedirect =
+      err?.config?.__skipAuthRedirect === true;
+
+    const rawUrl = String(err?.config?.url || "");
+    const requestPath = rawUrl.split("?")[0];
+
+    const method = String(
+      err?.config?.method || "GET"
+    ).toUpperCase();
+
+    // Flujos de autenticación que no deben registrarse
+    // como errores técnicos de soporte.
+    const isAuthFlow =
+      rawUrl.includes("/login-store") ||
+      rawUrl.includes("/registro/enviar-codigo") ||
+      rawUrl.includes("/registro/verificar");
+
+    const mustRedirectToRenew =
+      status === 403 &&
+      data?.access_valid === false &&
+      !skipAuthRedirect &&
+      !isAuthFlow;
+
+    const shouldCaptureError =
+      !isAuthFlow &&
+      !mustRedirectToRenew &&
+      (status === null || status >= 400);
+
+    if (
+      shouldCaptureError &&
+      typeof window !== "undefined"
+    ) {
+      const rawMessage =
+        data?.message ||
+        data?.error ||
+        err.message;
+
+      const message =
+        typeof rawMessage === "string" &&
+        rawMessage.trim()
+          ? rawMessage
+          : "Ocurrió un error al comunicarse con el servidor.";
+
+      const supportError = {
+        status: status ?? "NETWORK",
+        message,
+        method,
+        endpoint: requestPath || "No disponible",
+        page: window.location.pathname,
+        occurred_at: new Date().toISOString(),
+      };
+
+      try {
+        sessionStorage.setItem(
+          SUPPORT_ERROR_STORAGE_KEY,
+          JSON.stringify(supportError)
+        );
+
+        window.dispatchEvent(
+          new CustomEvent(SUPPORT_ERROR_EVENT, {
+            detail: supportError,
+          })
+        );
+      } catch (storageError) {
+        console.warn(
+          "No fue posible guardar el error para soporte:",
+          storageError
+        );
+      }
+    }
+
+    if (mustRedirectToRenew) {
+      window.location.href = "/renovar";
+    }
+
+    // Se conserva comentado el comportamiento original.
+    // if (
+    //   status === 401 &&
+    //   !skipAuthRedirect &&
+    //   !isAuthFlow
+    // ) {
+    //   window.location.href = "/login-register";
+    // }
+
+    return Promise.reject(err);
+  }
+);
+
+export default axiosClient;

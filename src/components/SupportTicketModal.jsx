@@ -1,0 +1,1875 @@
+import React, { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
+
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  IconButton,
+  InputAdornment,
+  MenuItem,
+  Stack,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+
+import AttachFileIcon from "@mui/icons-material/AttachFile";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import CloseIcon from "@mui/icons-material/Close";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
+import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SendIcon from "@mui/icons-material/Send";
+import TitleIcon from "@mui/icons-material/Title";
+
+import axiosClient from "../config/axiosClient";
+import axiosClientPOS from "../config/axiosClientPOS";
+
+const SUPPORT_ERROR_STORAGE_KEY = "LAST_SUPPORT_HTTP_ERROR";
+
+const SUPPORT_ERROR_EVENT = "support:http-error";
+
+const BRAND_COLORS = {
+  dark: "#111111",
+  gold: "#c79a00",
+  goldLight: "#f2cf58",
+  blue: "#1f6fd5",
+  light: "#fafafa",
+};
+
+const SUPPORT_SECTIONS = [
+  { value: "productos", label: "Productos" },
+  { value: "almacenes", label: "Almacenes" },
+  { value: "trabajadores", label: "Trabajadores" },
+  { value: "categorias", label: "Categorías" },
+  { value: "punto-de-venta", label: "Punto de Venta" },
+  { value: "reportes", label: "Reportes" },
+  { value: "entradas-producto", label: "Entradas Producto" },
+  { value: "personaliza-tu-ticket", label: "Personaliza tu Ticket" },
+  { value: "sitio-web", label: "Sitio web" },
+  { value: "marca-blanca", label: "Marca blanca" },
+  { value: "complementos", label: "Complementos" },
+  { value: "suscripciones", label: "Suscripciones" },
+  { value: "mi-cuenta", label: "Mi cuenta" },
+];
+
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
+
+const ALLOWED_ATTACHMENT_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "webp",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "txt",
+  "zip",
+]);
+
+const formatFileSize = (bytes) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) {
+    return "0 KB";
+  }
+
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
+
+  const value = bytes / 1024 ** index;
+
+  return `${value.toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
+const getFileExtension = (filename = "") =>
+  filename.split(".").pop()?.toLowerCase() || "";
+
+const fieldSx = {
+  "& .MuiOutlinedInput-root": {
+    borderRadius: 1.5,
+    backgroundColor: "#ffffff",
+    transition: "box-shadow 160ms ease, background-color 160ms ease",
+    "&:hover": {
+      backgroundColor: "#fffef9",
+    },
+    "&.Mui-focused": {
+      boxShadow: "0 0 0 3px rgba(199, 154, 0, 0.10)",
+    },
+    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+      borderColor: BRAND_COLORS.gold,
+      borderWidth: 1,
+    },
+  },
+  "& .MuiInputAdornment-root": {
+    color: "#777777",
+  },
+  "& .MuiFormHelperText-root": {
+    mx: 0.5,
+  },
+};
+
+const initialForm = {
+  section_code: "",
+  priority_id: 1,
+  subject: "",
+  description: "",
+};
+
+const formatDate = (value) => {
+  if (!value) {
+    return "Sin fecha";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString("es-MX");
+};
+
+const readStoredError = () => {
+  try {
+    const storedError = sessionStorage.getItem(SUPPORT_ERROR_STORAGE_KEY);
+
+    return storedError ? JSON.parse(storedError) : null;
+  } catch (error) {
+    console.warn("No fue posible leer el error guardado:", error);
+
+    return null;
+  }
+};
+
+export default function SupportTicketModal({ open, onClose }) {
+  const { pathname } = useLocation();
+
+  const isPosContext =
+    pathname.startsWith("/prueba/pos") || pathname.startsWith("/pos");
+
+  const supportApiClient = isPosContext ? axiosClientPOS : axiosClient;
+
+  const [tab, setTab] = useState(0);
+  const [ticketMode, setTicketMode] = useState("incident");
+
+  const [form, setForm] = useState(initialForm);
+
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState("");
+  const [sendSuccess, setSendSuccess] = useState("");
+
+  const [tickets, setTickets] = useState([]);
+  const [customer, setCustomer] = useState(null);
+  const [meta, setMeta] = useState(null);
+
+  const [loadingTickets, setLoadingTickets] = useState(false);
+
+  const [ticketsError, setTicketsError] = useState("");
+
+  const [incidents, setIncidents] = useState([]);
+
+  const [selectedIncidentId, setSelectedIncidentId] = useState("");
+
+  const [loadingIncidents, setLoadingIncidents] = useState(false);
+
+  const [incidentsError, setIncidentsError] = useState("");
+
+  const [copiedFolio, setCopiedFolio] = useState("");
+
+  const [attachments, setAttachments] = useState([]);
+
+  const [attachmentError, setAttachmentError] = useState("");
+
+  const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
+
+  const attachmentsRef = useRef([]);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  useEffect(
+    () => () => {
+      attachmentsRef.current.forEach((attachment) => {
+        if (attachment.previewUrl) {
+          URL.revokeObjectURL(attachment.previewUrl);
+        }
+      });
+    },
+    [],
+  );
+
+  const clearAttachments = () => {
+    attachmentsRef.current.forEach((attachment) => {
+      if (attachment.previewUrl) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
+    });
+
+    attachmentsRef.current = [];
+    setAttachments([]);
+    setAttachmentError("");
+    setIsDraggingAttachment(false);
+  };
+
+  const addAttachments = (fileList) => {
+    const incomingFiles = Array.from(fileList || []);
+
+    if (incomingFiles.length === 0) {
+      return;
+    }
+
+    setAttachmentError("");
+
+    const availableSlots = MAX_ATTACHMENTS - attachmentsRef.current.length;
+
+    if (availableSlots <= 0) {
+      setAttachmentError(
+        `Solo puedes adjuntar hasta ${MAX_ATTACHMENTS} archivos.`,
+      );
+
+      return;
+    }
+
+    const accepted = [];
+    const rejectedMessages = [];
+
+    incomingFiles.slice(0, availableSlots).forEach((file) => {
+      const extension = getFileExtension(file.name);
+
+      if (!ALLOWED_ATTACHMENT_EXTENSIONS.has(extension)) {
+        rejectedMessages.push(`${file.name}: tipo no permitido.`);
+
+        return;
+      }
+
+      if (file.size > MAX_ATTACHMENT_SIZE) {
+        rejectedMessages.push(`${file.name}: supera 10 MB.`);
+
+        return;
+      }
+
+      const isDuplicate =
+        attachmentsRef.current.some(
+          (attachment) =>
+            attachment.file.name === file.name &&
+            attachment.file.size === file.size &&
+            attachment.file.lastModified === file.lastModified,
+        ) ||
+        accepted.some(
+          (attachment) =>
+            attachment.file.name === file.name &&
+            attachment.file.size === file.size &&
+            attachment.file.lastModified === file.lastModified,
+        );
+
+      if (isDuplicate) {
+        rejectedMessages.push(`${file.name}: ya fue seleccionado.`);
+
+        return;
+      }
+
+      accepted.push({
+        id: `${file.name}-${file.size}-${file.lastModified}-${Math.random()}`,
+        file,
+        previewUrl: file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : "",
+      });
+    });
+
+    if (incomingFiles.length > availableSlots) {
+      rejectedMessages.push(
+        `Solo se agregaron ${availableSlots} archivo(s) porque el límite es ${MAX_ATTACHMENTS}.`,
+      );
+    }
+
+    if (accepted.length > 0) {
+      setAttachments((current) => {
+        const next = [...current, ...accepted];
+        attachmentsRef.current = next;
+
+        return next;
+      });
+    }
+
+    if (rejectedMessages.length > 0) {
+      setAttachmentError(rejectedMessages.join(" "));
+    }
+  };
+
+  const removeAttachment = (attachmentId) => {
+    setAttachments((current) => {
+      const attachment = current.find((item) => item.id === attachmentId);
+
+      if (attachment?.previewUrl) {
+        URL.revokeObjectURL(attachment.previewUrl);
+      }
+
+      const next = current.filter((item) => item.id !== attachmentId);
+
+      attachmentsRef.current = next;
+
+      return next;
+    });
+
+    setAttachmentError("");
+  };
+
+  const handleAttachmentInput = (event) => {
+    addAttachments(event.target.files);
+    event.target.value = "";
+  };
+
+  const handleAttachmentDrop = (event) => {
+    event.preventDefault();
+    setIsDraggingAttachment(false);
+    addAttachments(event.dataTransfer.files);
+  };
+
+  const loadTickets = async () => {
+    setLoadingTickets(true);
+    setTicketsError("");
+
+    try {
+      const response = await supportApiClient.get(
+        "the-business-ticket/tickets",
+        {
+          params: {
+            per_page: 20,
+          },
+        },
+      );
+
+      setTickets(
+        Array.isArray(response.data?.tickets) ? response.data.tickets : [],
+      );
+
+      setCustomer(response.data?.customer || null);
+
+      setMeta(response.data?.meta || null);
+    } catch (error) {
+      setTicketsError(
+        error.response?.data?.message ||
+          "No fue posible consultar los tickets.",
+      );
+    } finally {
+      setLoadingTickets(false);
+    }
+  };
+
+  const applyIncidentToForm = (incident) => {
+    if (!incident) {
+      setTicketMode("new");
+      setSelectedIncidentId("");
+      setForm(initialForm);
+      return;
+    }
+
+    setTicketMode("incident");
+
+    setSelectedIncidentId(incident.incident_id || "");
+
+    const status = incident.status_code || "DESCONOCIDO";
+
+    const occurredAt = incident.last_detected_at
+      ? formatDate(incident.last_detected_at)
+      : "No disponible";
+
+    const occurrences = Number(incident.occurrences ?? 1);
+
+    const automaticDescription = [
+      "Se detecto un error tecnico en Mi Tienda en Linea.",
+      "",
+      `Codigo: ${status}`,
+      `Mensaje: ${incident.message || "No disponible"}`,
+      `Metodo: ${incident.method || "No disponible"}`,
+      `Endpoint: ${incident.endpoint || "No disponible"}`,
+      `Pantalla: ${incident.screen || "No disponible"}`,
+      `Fecha y hora: ${occurredAt}`,
+      `Ocurrencias detectadas: ${occurrences}`,
+      "",
+      "Describe que estabas haciendo cuando ocurrio el error:",
+    ].join("\n");
+
+    setForm({
+      ...initialForm,
+      subject: `Error ${status} en Mi Tienda en Linea`,
+      description: automaticDescription,
+    });
+
+    setTab(0);
+  };
+
+  const loadIncidents = async () => {
+    setLoadingIncidents(true);
+    setIncidentsError("");
+
+    try {
+      const response = await supportApiClient.get(
+        "the-business-ticket/incidents",
+        {
+          params: {
+            limit: 20,
+          },
+        },
+      );
+
+      const nextIncidents = Array.isArray(response.data?.incidents)
+        ? response.data.incidents
+        : [];
+
+      setIncidents(nextIncidents);
+
+      const firstIncident = nextIncidents[0] || null;
+
+      applyIncidentToForm(firstIncident);
+      
+    } catch (error) {
+      setIncidents([]);
+
+      setIncidentsError(
+        error.response?.data?.message ||
+          "No fue posible consultar los incidentes pendientes.",
+      );
+    } finally {
+      setLoadingIncidents(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setSendError("");
+    setSendSuccess("");
+    setIncidentsError("");
+    setSelectedIncidentId("");
+    setForm(initialForm);
+    setTab(0);
+
+    loadTickets();
+    loadIncidents();
+  }, [open, pathname]);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+
+    setForm((current) => ({
+      ...current,
+      [name]: name === "priority_id" ? Number(value) : value,
+    }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    setSending(true);
+    setSendError("");
+    setSendSuccess("");
+    setTicketsError("");
+
+    try {
+      const response = await supportApiClient.post(
+        "the-business-ticket/tickets",
+        {
+          ticket: {
+            section_code: form.section_code,
+            priority_id: form.priority_id,
+            subject: form.subject.trim(),
+            description: form.description.trim(),
+            external_reference: `mitienda-${Date.now()}`,
+
+            ...(ticketMode === "incident" && selectedIncidentId
+              ? {
+                  incident_id: selectedIncidentId,
+                }
+              : {}),
+          },
+        },
+      );
+
+      const folio = response.data?.ticket?.folio || "";
+
+      let attachmentWarning = "";
+
+      if (attachmentsRef.current.length > 0) {
+        if (!folio) {
+          attachmentWarning =
+            "El ticket se creó, pero no fue posible identificar el folio para enviar los archivos.";
+        } else {
+          const formData = new FormData();
+
+          attachmentsRef.current.forEach((attachment) => {
+            formData.append("attachments[]", attachment.file);
+          });
+
+          formData.append(
+            "message",
+            "Evidencia adjunta al crear el ticket desde Mi Tienda en Línea.",
+          );
+
+          try {
+            await supportApiClient.post(
+              `the-business-ticket/tickets/${encodeURIComponent(
+                folio,
+              )}/attachments`,
+              formData,
+            );
+          } catch (attachmentRequestError) {
+            attachmentWarning =
+              attachmentRequestError.response?.data?.message ||
+              "El ticket se creó, pero no fue posible adjuntar la evidencia.";
+          }
+        }
+      }
+
+      setSendSuccess(
+        attachmentWarning
+          ? "El ticket fue creado correctamente."
+          : response.data?.message || "El ticket fue creado correctamente.",
+      );
+
+      setForm(initialForm);
+      clearAttachments();
+
+      sessionStorage.removeItem(SUPPORT_ERROR_STORAGE_KEY);
+
+      window.dispatchEvent(
+        new CustomEvent(SUPPORT_ERROR_EVENT, {
+          detail: null,
+        }),
+      );
+
+      await loadTickets();
+
+      if (attachmentWarning) {
+        setTicketsError(attachmentWarning);
+      }
+
+      setTab(1);
+    } catch (error) {
+      setSendError(
+        error.response?.data?.message || "No fue posible crear el ticket.",
+      );
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCopyTrackingLink = async (trackingUrl, folio) => {
+    if (!trackingUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(trackingUrl);
+
+      setCopiedFolio(folio);
+
+      window.setTimeout(() => {
+        setCopiedFolio((currentFolio) =>
+          currentFolio === folio ? "" : currentFolio,
+        );
+      }, 2000);
+    } catch (error) {
+      console.error("No fue posible copiar el enlace:", error);
+
+      setTicketsError("No fue posible copiar el enlace público.");
+    }
+  };
+
+  const handleClose = () => {
+    if (sending) {
+      return;
+    }
+
+    setSendError("");
+    setSendSuccess("");
+    setCopiedFolio("");
+    clearAttachments();
+
+    onClose();
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      fullWidth
+      maxWidth="lg"
+      PaperProps={{
+        sx: {
+          width: {
+            xs: "calc(100% - 24px)",
+            md: "min(1100px, calc(100% - 48px))",
+          },
+          maxHeight: "calc(100vh - 40px)",
+          borderRadius: 2,
+          overflow: "hidden",
+          boxShadow: "0 18px 50px rgba(0, 0, 0, 0.24)",
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          px: 3,
+          py: 2,
+          color: "#ffffff",
+          backgroundColor: BRAND_COLORS.dark,
+          borderBottom: `2px solid ${BRAND_COLORS.gold}`,
+        }}
+      >
+        <Box>
+          <Typography component="div" variant="h6" fontWeight={700}>
+            Centro de soporte
+          </Typography>
+
+          {customer?.name && (
+            <Typography variant="body2" sx={{ color: BRAND_COLORS.goldLight }}>
+              {customer.name}
+            </Typography>
+          )}
+        </Box>
+
+        <IconButton
+          onClick={handleClose}
+          disabled={sending}
+          aria-label="Cerrar centro de soporte"
+          sx={{
+            color: "#ffffff",
+            "&:hover": {
+              backgroundColor: "rgba(255,255,255,0.10)",
+            },
+          }}
+        >
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      <Tabs
+        value={tab}
+        onChange={(_, newValue) => setTab(newValue)}
+        sx={{
+          px: 3,
+          minHeight: 48,
+          backgroundColor: "#ffffff",
+          borderBottom: "1px solid #ececec",
+          "& .MuiTabs-indicator": {
+            height: 2,
+            backgroundColor: BRAND_COLORS.gold,
+          },
+          "& .MuiTab-root": {
+            minHeight: 48,
+            fontWeight: 700,
+          },
+          "& .Mui-selected": {
+            color: `${BRAND_COLORS.dark} !important`,
+          },
+        }}
+      >
+        <Tab label="Nuevo ticket" />
+
+        <Tab
+          label={
+            meta?.total !== undefined
+              ? `Mis tickets (${meta.total})`
+              : "Mis tickets"
+          }
+        />
+      </Tabs>
+
+      <DialogContent
+        sx={{
+          p: { xs: 2, md: 3 },
+          backgroundColor: BRAND_COLORS.light,
+        }}
+      >
+        {tab === 0 && (
+          <Box
+            component="form"
+            id="support-ticket-form"
+            onSubmit={handleSubmit}
+          >
+            <Stack spacing={2}>
+              {sendError && <Alert severity="error">{sendError}</Alert>}
+
+              {sendSuccess && <Alert severity="success">{sendSuccess}</Alert>}
+
+              <Box
+                sx={{
+                  p: { xs: 2, md: 3 },
+                  border: "1px solid #e2e5e9",
+                  borderTop: `2px solid ${BRAND_COLORS.gold}`,
+                  borderRadius: 1.5,
+                  backgroundColor: "#ffffff",
+                  boxShadow: "0 7px 22px rgba(15, 23, 42, 0.055)",
+                }}
+              >
+                <Stack spacing={2.5}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 1.5,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 42,
+                        height: 42,
+                        flexShrink: 0,
+                        display: "grid",
+                        placeItems: "center",
+                        borderRadius: 1.5,
+                        color: BRAND_COLORS.dark,
+                        backgroundColor: "rgba(199, 154, 0, 0.14)",
+                      }}
+                    >
+                      <HelpOutlineIcon />
+                    </Box>
+
+                    <Box>
+                      <Typography
+                        variant="h6"
+                        fontWeight={800}
+                        sx={{ lineHeight: 1.25 }}
+                      >
+                        ¿En qué podemos ayudarte?
+                      </Typography>
+
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mt: 0.5 }}
+                      >
+                        Selecciona una sección y describe claramente el
+                        problema.
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <TextField
+                    select
+                    label="Tipo de solicitud"
+                    value={ticketMode}
+                    onChange={(event) => {
+                      const nextMode = event.target.value;
+
+                      setTicketMode(nextMode);
+                      setSendError("");
+                      setSendSuccess("");
+
+                      if (nextMode === "new") {
+                        setSelectedIncidentId("");
+                        setForm(initialForm);
+                        return;
+                      }
+
+                      loadIncidents();
+                    }}
+                    fullWidth
+                    disabled={sending}
+                    sx={{
+                      ...fieldSx,
+                      mb: 2,
+                    }}
+                    helperText={
+                      ticketMode === "incident"
+                        ? "Los datos del incidente se cargan automaticamente."
+                        : "Completa los datos para crear una solicitud diferente."
+                    }
+                  >
+                    <MenuItem
+                      value="incident"
+                      disabled={incidents.length === 0}
+                    >
+                      Reportar un incidente pendiente
+                    </MenuItem>
+
+                    <MenuItem value="new">Crear un ticket nuevo</MenuItem>
+                  </TextField>
+
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: {
+                        xs: "1fr",
+                        md: "minmax(250px, 0.85fr) minmax(0, 1.45fr)",
+                      },
+                      gap: 2,
+                      alignItems: "start",
+                    }}
+                  >
+                    <TextField
+                      select
+                      label="Sección"
+                      name="section_code"
+                      value={form.section_code}
+                      onChange={handleChange}
+                      required
+                      fullWidth
+                      disabled={sending}
+                      sx={fieldSx}
+                      helperText="Desliza para ver todas las secciones."
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CategoryOutlinedIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+                      SelectProps={{
+                        MenuProps: {
+                          PaperProps: {
+                            sx: {
+                              maxHeight: 310,
+                              mt: 0.5,
+                              border: "1px solid #e2e5e9",
+                              borderRadius: 1.5,
+                              boxShadow: "0 12px 30px rgba(15, 23, 42, 0.16)",
+                              "&::-webkit-scrollbar": {
+                                width: 8,
+                              },
+                              "&::-webkit-scrollbar-track": {
+                                backgroundColor: "#f3f4f6",
+                              },
+                              "&::-webkit-scrollbar-thumb": {
+                                backgroundColor: BRAND_COLORS.gold,
+                                borderRadius: 8,
+                              },
+                              scrollbarWidth: "thin",
+                              scrollbarColor: `${BRAND_COLORS.gold} #f3f4f6`,
+                            },
+                          },
+                          MenuListProps: {
+                            dense: true,
+                            sx: {
+                              py: 0.75,
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      {SUPPORT_SECTIONS.map((section) => (
+                        <MenuItem
+                          key={section.value}
+                          value={section.value}
+                          sx={{
+                            mx: 0.75,
+                            my: 0.25,
+                            minHeight: 40,
+                            borderRadius: 1,
+                            "&:hover": {
+                              backgroundColor: "rgba(199, 154, 0, 0.08)",
+                            },
+                            "&.Mui-selected": {
+                              backgroundColor: "rgba(199, 154, 0, 0.14)",
+                              fontWeight: 700,
+                            },
+                            "&.Mui-selected:hover": {
+                              backgroundColor: "rgba(199, 154, 0, 0.20)",
+                            },
+                          }}
+                        >
+                          {section.label}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+
+                    <TextField
+                      label="Asunto"
+                      name="subject"
+                      value={form.subject}
+                      onChange={handleChange}
+                      required
+                      fullWidth
+                      disabled={sending}
+                      sx={fieldSx}
+                      helperText={`${form.subject.length}/255 caracteres`}
+                      FormHelperTextProps={{
+                        sx: {
+                          textAlign: "right",
+                        },
+                      }}
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <TitleIcon fontSize="small" />
+                          </InputAdornment>
+                        ),
+                      }}
+                      inputProps={{
+                        maxLength: 255,
+                      }}
+                    />
+                  </Box>
+
+                  <TextField
+                    label="Descripción del problema"
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    required
+                    fullWidth
+                    multiline
+                    minRows={7}
+                    disabled={sending}
+                    sx={fieldSx}
+                    helperText="Incluye qué estabas haciendo, qué ocurrió y qué resultado esperabas."
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment
+                          position="start"
+                          sx={{
+                            alignSelf: "flex-start",
+                            mt: 1.25,
+                          }}
+                        >
+                          <NotesOutlinedIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+
+                  <Box>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: {
+                          xs: "flex-start",
+                          sm: "center",
+                        },
+                        justifyContent: "space-between",
+                        gap: 1,
+                        mb: 1,
+                        flexDirection: {
+                          xs: "column",
+                          sm: "row",
+                        },
+                      }}
+                    >
+                      <Box>
+                        <Typography variant="subtitle2" fontWeight={800}>
+                          Adjuntar evidencia
+                        </Typography>
+
+                        <Typography variant="caption" color="text.secondary">
+                          Opcional. Hasta {MAX_ATTACHMENTS} archivos de 10 MB
+                          cada uno.
+                        </Typography>
+                      </Box>
+
+                      <Chip
+                        size="small"
+                        variant="outlined"
+                        icon={<AttachFileIcon />}
+                        label={`${attachments.length}/${MAX_ATTACHMENTS}`}
+                        sx={{
+                          borderColor:
+                            attachments.length > 0
+                              ? BRAND_COLORS.gold
+                              : "#d1d5db",
+                          backgroundColor: "#ffffff",
+                        }}
+                      />
+                    </Box>
+
+                    {attachmentError && (
+                      <Alert severity="warning" sx={{ mb: 1.5 }}>
+                        {attachmentError}
+                      </Alert>
+                    )}
+
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                          xs: "1fr",
+                          md: "minmax(0, 0.9fr) minmax(0, 1.1fr)",
+                        },
+                        border: "1px solid #e2e5e9",
+                        borderRadius: 1.5,
+                        overflow: "hidden",
+                        backgroundColor: "#ffffff",
+                      }}
+                    >
+                      <Box
+                        onDragEnter={(event) => {
+                          event.preventDefault();
+                          setIsDraggingAttachment(true);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          setIsDraggingAttachment(true);
+                        }}
+                        onDragLeave={(event) => {
+                          event.preventDefault();
+
+                          if (event.currentTarget === event.target) {
+                            setIsDraggingAttachment(false);
+                          }
+                        }}
+                        onDrop={handleAttachmentDrop}
+                        sx={{
+                          minHeight: 210,
+                          p: 2.5,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          textAlign: "center",
+                          borderRight: {
+                            xs: 0,
+                            md: "1px solid #e2e5e9",
+                          },
+                          borderBottom: {
+                            xs: "1px solid #e2e5e9",
+                            md: 0,
+                          },
+                          backgroundColor: isDraggingAttachment
+                            ? "rgba(199, 154, 0, 0.10)"
+                            : "#fffef9",
+                          outline: isDraggingAttachment
+                            ? `2px dashed ${BRAND_COLORS.gold}`
+                            : "2px dashed transparent",
+                          outlineOffset: -8,
+                          transition:
+                            "background-color 160ms ease, outline-color 160ms ease",
+                        }}
+                      >
+                        <Stack spacing={1.25} alignItems="center">
+                          <Box
+                            sx={{
+                              width: 52,
+                              height: 52,
+                              display: "grid",
+                              placeItems: "center",
+                              borderRadius: "50%",
+                              color: BRAND_COLORS.dark,
+                              backgroundColor: "rgba(199, 154, 0, 0.14)",
+                            }}
+                          >
+                            <CloudUploadOutlinedIcon />
+                          </Box>
+
+                          <Typography variant="body2" fontWeight={800}>
+                            Arrastra aquí una foto o archivo
+                          </Typography>
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ maxWidth: 300 }}
+                          >
+                            JPG, PNG, WEBP, PDF, Word, Excel, TXT o ZIP.
+                          </Typography>
+
+                          <Button
+                            component="label"
+                            type="button"
+                            variant="outlined"
+                            disabled={
+                              sending || attachments.length >= MAX_ATTACHMENTS
+                            }
+                            startIcon={<AttachFileIcon />}
+                            sx={{
+                              color: BRAND_COLORS.dark,
+                              borderColor: BRAND_COLORS.gold,
+                              fontWeight: 700,
+                              "&:hover": {
+                                borderColor: BRAND_COLORS.gold,
+                                backgroundColor: "rgba(199, 154, 0, 0.08)",
+                              },
+                            }}
+                          >
+                            Seleccionar archivos
+                            <Box
+                              component="input"
+                              type="file"
+                              hidden
+                              multiple
+                              accept=".jpg,.jpeg,.png,.webp,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                              onChange={handleAttachmentInput}
+                            />
+                          </Button>
+                        </Stack>
+                      </Box>
+
+                      <Box
+                        sx={{
+                          minHeight: 210,
+                          p: 2,
+                          backgroundColor: "#fafafa",
+                        }}
+                      >
+                        <Typography
+                          variant="subtitle2"
+                          fontWeight={800}
+                          sx={{ mb: 1.25 }}
+                        >
+                          Vista previa
+                        </Typography>
+
+                        {attachments.length === 0 ? (
+                          <Box
+                            sx={{
+                              minHeight: 150,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              textAlign: "center",
+                              border: "1px dashed #d1d5db",
+                              borderRadius: 1.5,
+                              backgroundColor: "#ffffff",
+                            }}
+                          >
+                            <Stack
+                              spacing={1}
+                              alignItems="center"
+                              sx={{ px: 2 }}
+                            >
+                              <InsertDriveFileOutlinedIcon
+                                sx={{
+                                  color: "#9ca3af",
+                                  fontSize: 34,
+                                }}
+                              />
+
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                La imagen o información del archivo aparecerá
+                                aquí.
+                              </Typography>
+                            </Stack>
+                          </Box>
+                        ) : (
+                          <Stack
+                            spacing={1}
+                            sx={{
+                              maxHeight: 230,
+                              overflowY: "auto",
+                              pr: 0.5,
+                              "&::-webkit-scrollbar": {
+                                width: 7,
+                              },
+                              "&::-webkit-scrollbar-thumb": {
+                                backgroundColor: "#c7c7c7",
+                                borderRadius: 8,
+                              },
+                              scrollbarWidth: "thin",
+                            }}
+                          >
+                            {attachments.map((attachment) => (
+                              <Box
+                                key={attachment.id}
+                                sx={{
+                                  display: "grid",
+                                  gridTemplateColumns:
+                                    "58px minmax(0, 1fr) auto",
+                                  alignItems: "center",
+                                  gap: 1.25,
+                                  p: 1,
+                                  border: "1px solid #e2e5e9",
+                                  borderRadius: 1.25,
+                                  backgroundColor: "#ffffff",
+                                }}
+                              >
+                                <Box
+                                  sx={{
+                                    width: 58,
+                                    height: 58,
+                                    display: "grid",
+                                    placeItems: "center",
+                                    overflow: "hidden",
+                                    borderRadius: 1,
+                                    backgroundColor: "#f3f4f6",
+                                  }}
+                                >
+                                  {attachment.previewUrl ? (
+                                    <Box
+                                      component="img"
+                                      src={attachment.previewUrl}
+                                      alt={attachment.file.name}
+                                      sx={{
+                                        width: "100%",
+                                        height: "100%",
+                                        objectFit: "cover",
+                                      }}
+                                    />
+                                  ) : (
+                                    <InsertDriveFileOutlinedIcon
+                                      sx={{
+                                        color: BRAND_COLORS.blue,
+                                      }}
+                                    />
+                                  )}
+                                </Box>
+
+                                <Box
+                                  sx={{
+                                    minWidth: 0,
+                                  }}
+                                >
+                                  <Tooltip title={attachment.file.name}>
+                                    <Typography
+                                      variant="body2"
+                                      fontWeight={700}
+                                      noWrap
+                                    >
+                                      {attachment.file.name}
+                                    </Typography>
+                                  </Tooltip>
+
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {formatFileSize(attachment.file.size)}
+                                  </Typography>
+                                </Box>
+
+                                <Tooltip title="Quitar archivo">
+                                  <IconButton
+                                    type="button"
+                                    size="small"
+                                    disabled={sending}
+                                    aria-label={`Quitar ${attachment.file.name}`}
+                                    onClick={() =>
+                                      removeAttachment(attachment.id)
+                                    }
+                                    sx={{
+                                      color: "#b42318",
+                                      "&:hover": {
+                                        backgroundColor:
+                                          "rgba(180, 35, 24, 0.08)",
+                                      },
+                                    }}
+                                  >
+                                    <DeleteOutlineIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            ))}
+                          </Stack>
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      display: "block",
+                      pl: 0.25,
+                    }}
+                  >
+                    Los datos de tu tienda se agregan automáticamente al ticket.
+                  </Typography>
+                </Stack>
+              </Box>
+            </Stack>
+          </Box>
+        )}
+
+        {tab === 1 && (
+          <Stack spacing={2}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography fontWeight={700}>Tickets registrados</Typography>
+
+              <Button
+                type="button"
+                onClick={loadTickets}
+                disabled={loadingTickets}
+                startIcon={
+                  loadingTickets ? (
+                    <CircularProgress size={16} />
+                  ) : (
+                    <RefreshIcon />
+                  )
+                }
+              >
+                Actualizar
+              </Button>
+            </Box>
+
+            {ticketsError && <Alert severity="error">{ticketsError}</Alert>}
+
+            {loadingTickets && tickets.length === 0 ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  py: 5,
+                }}
+              >
+                <CircularProgress />
+              </Box>
+            ) : tickets.length === 0 ? (
+              <Alert severity="info">
+                Esta tienda todavía no tiene tickets.
+              </Alert>
+            ) : (
+              <>
+                {/* Escritorio: tabla compacta y legible */}
+                <TableContainer
+                  sx={{
+                    display: { xs: "none", md: "block" },
+                    maxHeight: 430,
+                    overflowX: "hidden",
+                    border: "1px solid #e2e5e9",
+                    borderRadius: 1.5,
+                    backgroundColor: "#ffffff",
+                    boxShadow: "0 5px 18px rgba(15, 23, 42, 0.05)",
+                  }}
+                >
+                  <Table
+                    stickyHeader
+                    size="small"
+                    aria-label="Tickets registrados"
+                    sx={{
+                      width: "100%",
+                      tableLayout: "fixed",
+                      "& .MuiTableCell-root": {
+                        borderBottom: "1px solid #edf0f2",
+                      },
+                    }}
+                  >
+                    <TableHead>
+                      <TableRow>
+                        <TableCell
+                          sx={{
+                            width: "40%",
+                            py: 1.5,
+                            backgroundColor: "#f5f5f5",
+                            color: BRAND_COLORS.dark,
+                            fontWeight: 800,
+                            borderBottom: `2px solid ${BRAND_COLORS.gold} !important`,
+                          }}
+                        >
+                          Ticket
+                        </TableCell>
+
+                        <TableCell
+                          sx={{
+                            width: "17%",
+                            py: 1.5,
+                            backgroundColor: "#f5f5f5",
+                            color: BRAND_COLORS.dark,
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            borderBottom: `2px solid ${BRAND_COLORS.gold} !important`,
+                          }}
+                        >
+                          Estado / prioridad
+                        </TableCell>
+
+                        <TableCell
+                          sx={{
+                            width: "14%",
+                            py: 1.5,
+                            backgroundColor: "#f5f5f5",
+                            color: BRAND_COLORS.dark,
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            borderBottom: `2px solid ${BRAND_COLORS.gold} !important`,
+                          }}
+                        >
+                          Sección
+                        </TableCell>
+
+                        <TableCell
+                          sx={{
+                            width: "17%",
+                            py: 1.5,
+                            backgroundColor: "#f5f5f5",
+                            color: BRAND_COLORS.dark,
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            borderBottom: `2px solid ${BRAND_COLORS.gold} !important`,
+                          }}
+                        >
+                          Creado
+                        </TableCell>
+
+                        <TableCell
+                          align="right"
+                          sx={{
+                            width: "12%",
+                            py: 1.5,
+                            backgroundColor: "#f5f5f5",
+                            color: BRAND_COLORS.dark,
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                            borderBottom: `2px solid ${BRAND_COLORS.gold} !important`,
+                          }}
+                        >
+                          Acciones
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+
+                    <TableBody>
+                      {tickets.map((ticket) => (
+                        <TableRow
+                          key={ticket.folio}
+                          hover
+                          sx={{
+                            "&:last-child td": {
+                              borderBottom: 0,
+                            },
+                            "&:hover": {
+                              backgroundColor: "rgba(199, 154, 0, 0.035)",
+                            },
+                          }}
+                        >
+                          <TableCell
+                            sx={{
+                              py: 1.5,
+                              pr: 2,
+                              verticalAlign: "top",
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              fontWeight={800}
+                              sx={{
+                                mb: 0.35,
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {ticket.subject}
+                            </Typography>
+
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: "-webkit-box",
+                                overflow: "hidden",
+                                WebkitBoxOrient: "vertical",
+                                WebkitLineClamp: 2,
+                                whiteSpace: "pre-line",
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {ticket.description}
+                            </Typography>
+
+                            <Tooltip title={ticket.folio}>
+                              <Typography
+                                variant="caption"
+                                fontFamily="monospace"
+                                sx={{
+                                  display: "block",
+                                  mt: 0.75,
+                                  color: "#6b7280",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                Folio: {ticket.folio}
+                              </Typography>
+                            </Tooltip>
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              py: 1.5,
+                              verticalAlign: "top",
+                            }}
+                          >
+                            <Stack spacing={0.65} alignItems="flex-start">
+                              <Chip
+                                size="small"
+                                label={ticket.status?.name || "Sin estado"}
+                                sx={{
+                                  maxWidth: "100%",
+                                  backgroundColor:
+                                    ticket.status?.color || undefined,
+                                  color: ticket.status?.color
+                                    ? "#ffffff"
+                                    : undefined,
+                                  fontWeight: 700,
+                                  "& .MuiChip-label": {
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                  },
+                                }}
+                              />
+
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{
+                                  lineHeight: 1.25,
+                                }}
+                              >
+                                Prioridad:{" "}
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    color: BRAND_COLORS.dark,
+                                    fontWeight: 700,
+                                  }}
+                                >
+                                  {ticket.priority?.name || "Sin prioridad"}
+                                </Box>
+                              </Typography>
+                            </Stack>
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              py: 1.5,
+                              verticalAlign: "top",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "inline-flex",
+                                maxWidth: "100%",
+                                px: 1,
+                                py: 0.35,
+                                border: "1px solid #e5e7eb",
+                                borderRadius: 1,
+                                backgroundColor: "#fafafa",
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                fontWeight={700}
+                                sx={{
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {ticket.section?.name || "Sin sección"}
+                              </Typography>
+                            </Box>
+                          </TableCell>
+
+                          <TableCell
+                            sx={{
+                              py: 1.5,
+                              verticalAlign: "top",
+                            }}
+                          >
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                fontSize: "0.78rem",
+                                lineHeight: 1.45,
+                              }}
+                            >
+                              {formatDate(ticket.created_at)}
+                            </Typography>
+                          </TableCell>
+
+                          <TableCell
+                            align="right"
+                            sx={{
+                              py: 1.1,
+                              verticalAlign: "top",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {ticket.tracking_url ? (
+                              <Stack
+                                direction="row"
+                                spacing={0.5}
+                                justifyContent="flex-end"
+                              >
+                                <Tooltip title="Abrir vista pública">
+                                  <IconButton
+                                    component="a"
+                                    href={ticket.tracking_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    size="small"
+                                    aria-label="Abrir vista pública"
+                                    sx={{
+                                      color: BRAND_COLORS.blue,
+                                      border: `1px solid ${BRAND_COLORS.blue}`,
+                                      borderRadius: 1,
+                                      "&:hover": {
+                                        backgroundColor:
+                                          "rgba(31, 111, 213, 0.08)",
+                                      },
+                                    }}
+                                  >
+                                    <OpenInNewIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+
+                                <Tooltip
+                                  title={
+                                    copiedFolio === ticket.folio
+                                      ? "Enlace copiado"
+                                      : "Copiar enlace público"
+                                  }
+                                >
+                                  <IconButton
+                                    type="button"
+                                    size="small"
+                                    aria-label="Copiar enlace público"
+                                    onClick={() =>
+                                      handleCopyTrackingLink(
+                                        ticket.tracking_url,
+                                        ticket.folio,
+                                      )
+                                    }
+                                    sx={{
+                                      color: BRAND_COLORS.dark,
+                                      border: `1px solid ${BRAND_COLORS.gold}`,
+                                      borderRadius: 1,
+                                      backgroundColor:
+                                        copiedFolio === ticket.folio
+                                          ? "rgba(199, 154, 0, 0.14)"
+                                          : "#ffffff",
+                                      "&:hover": {
+                                        backgroundColor:
+                                          "rgba(199, 154, 0, 0.10)",
+                                      },
+                                    }}
+                                  >
+                                    <ContentCopyIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            ) : (
+                              <Typography
+                                variant="caption"
+                                color="text.secondary"
+                              >
+                                Sin enlace
+                              </Typography>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* Móvil y tablet: se conservan las tarjetas */}
+                <Stack
+                  spacing={2}
+                  sx={{
+                    display: { xs: "flex", md: "none" },
+                  }}
+                >
+                  {tickets.map((ticket) => (
+                    <Box
+                      key={ticket.folio}
+                      sx={{
+                        border: "1px solid #e2e5e9",
+                        borderRadius: 1.5,
+                        p: 2,
+                        backgroundColor: "#ffffff",
+                        boxShadow: "0 4px 12px rgba(15, 23, 42, 0.04)",
+                      }}
+                    >
+                      <Stack spacing={1}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: 2,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <Typography fontWeight={700}>
+                            {ticket.subject}
+                          </Typography>
+
+                          <Chip
+                            size="small"
+                            label={ticket.status?.name || "Sin estado"}
+                            sx={{
+                              backgroundColor:
+                                ticket.status?.color || undefined,
+                              color: ticket.status?.color
+                                ? "#ffffff"
+                                : undefined,
+                            }}
+                          />
+                        </Box>
+
+                        <Typography variant="body2" color="text.secondary">
+                          Folio: {ticket.folio}
+                        </Typography>
+
+                        <Typography
+                          variant="body2"
+                          sx={{ whiteSpace: "pre-line" }}
+                        >
+                          {ticket.description}
+                        </Typography>
+
+                        <Divider />
+
+                        <Box
+                          sx={{
+                            display: "flex",
+                            gap: 1,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`Prioridad: ${
+                              ticket.priority?.name || "Sin prioridad"
+                            }`}
+                          />
+
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            label={`Sección: ${
+                              ticket.section?.name || "Sin sección"
+                            }`}
+                          />
+                        </Box>
+
+                        <Typography variant="caption" color="text.secondary">
+                          Creado: {formatDate(ticket.created_at)}
+                        </Typography>
+
+                        {ticket.tracking_url && (
+                          <Box
+                            sx={{
+                              display: "flex",
+                              gap: 1,
+                              flexWrap: "wrap",
+                              pt: 0.5,
+                            }}
+                          >
+                            <Button
+                              component="a"
+                              href={ticket.tracking_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              size="small"
+                              variant="outlined"
+                              startIcon={<OpenInNewIcon />}
+                              sx={{
+                                color: BRAND_COLORS.blue,
+                                borderColor: BRAND_COLORS.blue,
+                                borderWidth: 1,
+                                fontWeight: 700,
+                              }}
+                            >
+                              Vista pública
+                            </Button>
+
+                            <Button
+                              type="button"
+                              size="small"
+                              variant="outlined"
+                              startIcon={<ContentCopyIcon />}
+                              sx={{
+                                color: BRAND_COLORS.dark,
+                                borderColor: BRAND_COLORS.gold,
+                                borderWidth: 1,
+                                fontWeight: 700,
+                              }}
+                              onClick={() =>
+                                handleCopyTrackingLink(
+                                  ticket.tracking_url,
+                                  ticket.folio,
+                                )
+                              }
+                            >
+                              {copiedFolio === ticket.folio
+                                ? "Link copiado"
+                                : "Copiar link"}
+                            </Button>
+                          </Box>
+                        )}
+                      </Stack>
+                    </Box>
+                  ))}
+                </Stack>
+              </>
+            )}
+          </Stack>
+        )}
+      </DialogContent>
+
+      {tab === 0 && (
+        <DialogActions
+          sx={{
+            px: 3,
+            py: 2,
+            backgroundColor: "#ffffff",
+            borderTop: "1px solid #ececec",
+          }}
+        >
+          <Button type="button" onClick={handleClose} disabled={sending}>
+            Cerrar
+          </Button>
+
+          <Button
+            type="submit"
+            form="support-ticket-form"
+            variant="contained"
+            disabled={sending}
+            sx={{
+              backgroundColor: BRAND_COLORS.blue,
+              fontWeight: 700,
+              "&:hover": {
+                backgroundColor: "#195fb8",
+              },
+            }}
+            startIcon={sending ? <CircularProgress size={18} /> : <SendIcon />}
+          >
+            {sending ? "Enviando..." : "Enviar ticket"}
+          </Button>
+        </DialogActions>
+      )}
+    </Dialog>
+  );
+}
