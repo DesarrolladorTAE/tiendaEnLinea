@@ -1,0 +1,44 @@
+:root {
+  --landing-navbar-height: 76px;
+
+  --landing-primary: #f9b233;
+  --landing-secondary: #e94e1b;
+
+  --landing-orange: #f97316;
+  --landing-orange-dark: #e94e1b;
+  --landing-yellow: #f9b233;
+
+  --landing-text: #202020;
+  --landing-text-soft: #555b65;
+  --landing-muted: #71717a;
+
+  --landing-white: #ffffff;
+  --landing-background: #ffffff;
+  --landing-background-soft: #fffaf2;
+
+  --landing-border: rgba(32, 32, 32, 0.1);
+
+  --landing-gradient-primary:
+    linear-gradient(
+      135deg,
+      var(--landing-primary) 0%,
+      var(--landing-secondary) 100%
+    );
+
+  --landing-shadow-small:
+    0 8px 24px rgba(78, 42, 11, 0.08);
+
+  --landing-shadow-medium:
+    0 18px 45px rgba(78, 42, 11, 0.12);
+
+  --landing-shadow-large:
+    0 35px 90px rgba(78, 42, 11, 0.18);
+
+  --landing-container-width: 1240px;
+}
+
+@media (max-width: 768px) {
+  :root {
+    --landing-navbar-height: 68px;
+  }
+}
