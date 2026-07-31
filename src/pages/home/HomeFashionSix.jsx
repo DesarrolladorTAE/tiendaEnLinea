@@ -5,9 +5,9 @@ import axios from "axios";
 
 import SEO from "../../components/seo";
 import HeroSliderFourteen from "../../wrappers/hero-slider/HeroSliderFourteen";
-import SectionTitleWithText from "../../components/section-title/SectionTitleWithText";
+// import SectionTitleWithText from "../../components/section-title/SectionTitleWithText";
 import Catalogo from "../shop/Catalogo";
-import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
+// import BlogFeatured from "../../wrappers/blog-featured/BlogFeatured";
 import TiendaNoDisponible from "../other/TiendaNoDisponible";
 
 const DEFAULTS = {
