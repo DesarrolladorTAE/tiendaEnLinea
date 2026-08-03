@@ -2,37 +2,40 @@
    NAVBAR
 ========================================================== */
 
-body.landing-menu-open {
-  overflow: hidden;
-}
-
 .landing-navbar {
   position: fixed;
-  inset: 0 0 auto;
+  top: 0;
+  right: 0;
+  left: 0;
   z-index: 1000;
+  width: 100%;
   height: var(--landing-navbar-height);
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  box-shadow: none;
   transition:
-    background-color .35s ease,
-    backdrop-filter .35s ease,
-    border-color .35s ease,
-    box-shadow .35s ease;
+    background-color 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    backdrop-filter 240ms ease;
 }
 
 .landing-navbar--transparent {
   background: transparent;
-  border-bottom: 1px solid transparent;
+  border-bottom-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
-.landing-navbar--solid {
-  background: rgba(255,255,255,.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-bottom: 1px solid rgba(0,0,0,.05);
-}
-
-.landing-navbar--scrolled {
-  background: rgba(255,255,255,.97);
-  box-shadow: var(--landing-shadow-small);
+.landing-navbar--solid,
+.landing-navbar--scrolled,
+.landing-navbar--menu-open {
+  background: rgba(255, 255, 255, 0.97);
+  border-bottom-color: rgba(31, 32, 35, 0.08);
+  box-shadow: 0 10px 35px rgba(31, 32, 35, 0.09);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .landing-navbar__container{

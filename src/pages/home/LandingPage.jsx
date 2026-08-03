@@ -34,20 +34,35 @@ export default function LandingPage() {
       left: 0,
       behavior: "auto",
     });
+
+    requestAnimationFrame(() => {
+      setScrolled(window.scrollY > 24);
+    });
   }, [location.pathname]);
 
   const isHome = location.pathname === "/";
+
+  const usesTransparentNavbar =
+    location.pathname === "/" ||
+    location.pathname.startsWith("/contact-landing");
 
   return (
     <div
       className={[
         "landing-root",
-        isHome ? "landing-root--home" : "landing-root--internal",
-      ].join(" ")}
+        isHome
+          ? "landing-root--home"
+          : "landing-root--internal",
+        usesTransparentNavbar
+          ? "landing-root--transparent-navbar"
+          : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
       <Navbar
         scrolled={scrolled}
-        transparent={isHome && !scrolled}
+        transparent={usesTransparentNavbar}
         currentPath={location.pathname}
         onNavigate={navigate}
         onLogin={() => navigate("/login-register")}

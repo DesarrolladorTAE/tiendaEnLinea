@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import "../styles/Navbar.css";
 
 const navigationLinks = [
   {
@@ -32,7 +33,8 @@ export default function Navbar({
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const isTransparent = transparent && !scrolled && !isMenuOpen;
+  const isTransparent =
+    transparent && !scrolled && !isMenuOpen;
 
   useEffect(() => {
     setIsMenuOpen(false);
@@ -53,12 +55,10 @@ export default function Navbar({
   }, []);
 
   useEffect(() => {
-    if (!isMenuOpen) {
-      document.body.classList.remove("landing-menu-open");
-      return;
-    }
-
-    document.body.classList.add("landing-menu-open");
+    document.body.classList.toggle(
+      "landing-menu-open",
+      isMenuOpen
+    );
 
     return () => {
       document.body.classList.remove("landing-menu-open");
@@ -110,9 +110,12 @@ export default function Navbar({
           </button>
 
           <nav
+            id="landing-mobile-navigation"
             className={[
               "landing-navbar__navigation",
-              isMenuOpen ? "landing-navbar__navigation--open" : "",
+              isMenuOpen
+                ? "landing-navbar__navigation--open"
+                : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -141,7 +144,9 @@ export default function Navbar({
                         .filter(Boolean)
                         .join(" ")}
                       onClick={() => handleNavigate(link.path)}
-                      aria-current={isActive ? "page" : undefined}
+                      aria-current={
+                        isActive ? "page" : undefined
+                      }
                     >
                       {link.label}
                     </button>
@@ -178,11 +183,15 @@ export default function Navbar({
             type="button"
             className={[
               "landing-navbar__toggle",
-              isMenuOpen ? "landing-navbar__toggle--open" : "",
+              isMenuOpen
+                ? "landing-navbar__toggle--open"
+                : "",
             ]
               .filter(Boolean)
               .join(" ")}
-            onClick={() => setIsMenuOpen((current) => !current)}
+            onClick={() =>
+              setIsMenuOpen((current) => !current)
+            }
             aria-label={
               isMenuOpen
                 ? "Cerrar menú de navegación"
@@ -202,7 +211,9 @@ export default function Navbar({
         type="button"
         className={[
           "landing-navbar__overlay",
-          isMenuOpen ? "landing-navbar__overlay--visible" : "",
+          isMenuOpen
+            ? "landing-navbar__overlay--visible"
+            : "",
         ]
           .filter(Boolean)
           .join(" ")}

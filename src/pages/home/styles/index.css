@@ -10,3 +10,22 @@
 @import "./Contact.css";
 @import "./Footer.css";
 @import "./ScrollTopButton.css";
+
+.landing-page--contact {
+  min-height: 100svh;
+  background: transparent;
+}
+
+.landing-root--transparent-navbar .landing-main {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+.landing-root--transparent-navbar .landing-page--contact {
+  margin-top: 0;
+  background: transparent;
+}
+
+.landing-root--transparent-navbar .contact-section {
+  margin-top: 0;
+}
