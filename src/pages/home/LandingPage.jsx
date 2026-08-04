@@ -42,9 +42,11 @@ export default function LandingPage() {
 
   const isHome = location.pathname === "/";
 
-  const usesTransparentNavbar =
-    location.pathname === "/" ||
-    location.pathname.startsWith("/contact-landing");
+const usesTransparentNavbar =
+  location.pathname === "/" ||
+  location.pathname.startsWith("/platform") ||
+    location.pathname.startsWith("/features") ||
+  location.pathname.startsWith("/contact");
 
   return (
     <div

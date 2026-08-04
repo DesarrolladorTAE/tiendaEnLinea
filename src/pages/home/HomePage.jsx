@@ -16,7 +16,7 @@ export default function HomePage() {
     <>
       <Hero
         onStart={() => navigate("/login-register")}
-        onDemo={() => navigate("/contact-landing")}
+        onDemo={() => navigate("/contact")}
       />
 
       <Platform preview />

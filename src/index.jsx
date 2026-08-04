@@ -6,6 +6,7 @@ import App from "./App.jsx";
 import { store } from "./store/store.jsx";
 import PersistProvider from "./store/providers/persist-provider.jsx";
 import { AuthProvider } from "./context/AuthContext";
+import "bootstrap-icons/font/bootstrap-icons.css";
 
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";

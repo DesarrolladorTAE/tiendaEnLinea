@@ -19,7 +19,7 @@ const navigationLinks = [
     label: "Planes",
   },
   {
-    path: "/contact-landing",
+    path: "/contact",
     label: "Contacto",
   },
 ];

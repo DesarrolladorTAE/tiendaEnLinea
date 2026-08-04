@@ -794,3 +794,15 @@
     animation-duration: 1.4s;
   }
 }
+
+.contact-info__icon i,
+.contact-form-card__icon i {
+  display: block;
+  color: #ffffff;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.contact-form-card__icon i {
+  font-size: 1.35rem;
+}

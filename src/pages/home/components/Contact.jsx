@@ -12,19 +12,19 @@ const initialFormData = {
 
 const contacts = [
   {
-    icon: "bi-envelope",
+    icon: "bi-envelope-fill",
     title: "Correo electrónico",
     value: "contacto@tecnologiasadministrativas.com",
     href: "mailto:contacto@tecnologiasadministrativas.com",
   },
   {
-    icon: "bi-telephone",
+    icon: "bi-telephone-fill",
     title: "Teléfono",
     value: "+52 (744) 218 8925",
     href: "tel:+527442188925",
   },
   {
-    icon: "bi-geo-alt",
+    icon: "bi-geo-alt-fill",
     title: "Ubicación",
     value: "C. 24 202, Las Cruces, 39770 Acapulco de Juárez, Gro.",
     href: "https://www.google.com/maps/search/?api=1&query=C.+24+202,+Las+Cruces,+39770+Acapulco+de+Juárez,+Gro.",
@@ -196,7 +196,7 @@ const Contact = () => {
                   }
                 >
                   <span className="contact-info__icon" aria-hidden="true">
-                    <i className={`bi ${contact.icon}`}></i>
+                    <i className={`bi ${contact.icon}`} />
                   </span>
 
                   <span className="contact-info__data">
@@ -226,7 +226,7 @@ const Contact = () => {
           <div className="contact-form-card animate-on-scroll">
             <div className="contact-form-card__header">
               <span className="contact-form-card__icon" aria-hidden="true">
-                <i className="bi bi-chat-dots-fill"></i>
+                <i className="bi bi-chat-dots-fill" />
               </span>
 
               <div>
