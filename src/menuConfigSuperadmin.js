@@ -5,6 +5,7 @@ import CardMembershipRoundedIcon from "@mui/icons-material/CardMembershipRounded
 import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
 import PhotoLibraryRoundedIcon from "@mui/icons-material/PhotoLibraryRounded";
 import AndroidRoundedIcon from "@mui/icons-material/AndroidRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
 const superadminNavItems = [
   { path: "dashboard", label: "Dashboard", icon: DashboardRoundedIcon },
@@ -14,6 +15,7 @@ const superadminNavItems = [
   { path: "notificaciones", label: "Notificaciones", icon: NotificationsActiveRoundedIcon },
   { path: "banners", label: "Banners", icon: PhotoLibraryRoundedIcon },
   { path: "app-versiones", label: "Apps POS", icon: AndroidRoundedIcon },
+  {path: "planes", label: "Planes", icon: WorkspacePremiumRoundedIcon,},
 ];
 
 export default superadminNavItems;

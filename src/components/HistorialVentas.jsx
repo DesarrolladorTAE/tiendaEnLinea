@@ -64,7 +64,10 @@ export default function HistorialPOSPage({ cambiarVista }) {
       <Paper
         elevation={0}
         sx={{
-          p: { xs: 2, md: 3 },
+          p: {
+            xs: 2,
+            md: 3,
+          },
           borderRadius: 5,
           border: "1px solid",
           borderColor: "divider",
@@ -74,30 +77,54 @@ export default function HistorialPOSPage({ cambiarVista }) {
         }}
       >
         <Stack
-          direction={{ xs: "column", md: "row" }}
+          direction={{
+            xs: "column",
+            md: "row",
+          }}
           spacing={2}
           justifyContent="space-between"
-          alignItems={{ xs: "stretch", md: "center" }}
+          alignItems={{
+            xs: "stretch",
+            md: "center",
+          }}
         >
           <Box>
             <Typography
               variant="h4"
               fontWeight={950}
-              sx={{ fontSize: { xs: "1.7rem", md: "2.2rem" } }}
+              sx={{
+                fontSize: {
+                  xs: "1.7rem",
+                  md: "2.2rem",
+                },
+              }}
             >
               Historial de Ventas
             </Typography>
 
-            <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography
+              color="text.secondary"
+              sx={{
+                mt: 0.5,
+              }}
+            >
               Movimientos, pagos, créditos, facturas, cancelaciones y
               devoluciones.
             </Typography>
           </Box>
 
           <Stack
-            direction={{ xs: "column", sm: "row" }}
+            direction={{
+              xs: "column",
+              sm: "row",
+            }}
             spacing={1}
-            sx={{ width: { xs: "100%", md: "auto" } }}
+            sx={{
+              width: {
+                xs: "100%",
+                md: "auto",
+              },
+            }}
           >
             <Button
               fullWidth={isMobile}
@@ -175,7 +202,6 @@ export default function HistorialPOSPage({ cambiarVista }) {
                 fontWeight: 900,
                 textTransform: "none",
                 minHeight: 46,
-                // boxShadow: "0 12px 28px rgba(25,118,210,.22)",
               }}
             >
               Facturas
@@ -198,7 +224,10 @@ export default function HistorialPOSPage({ cambiarVista }) {
         loading={loading}
       />
 
-      <HistorialPOSResumen summary={summary} rows={historialRows} />
+      <HistorialPOSResumen
+        summary={summary}
+        rows={historialRows}
+      />
 
       {historialGroups.length > 0 ? (
         <>
@@ -214,29 +243,46 @@ export default function HistorialPOSPage({ cambiarVista }) {
             }}
           >
             <Stack
-              direction={{ xs: "column", sm: "row" }}
+              direction={{
+                xs: "column",
+                sm: "row",
+              }}
               spacing={1}
               justifyContent="space-between"
-              alignItems={{ xs: "flex-start", sm: "center" }}
+              alignItems={{
+                xs: "flex-start",
+                sm: "center",
+              }}
             >
               <Box>
-                <Typography fontWeight={900} fontSize={18}>
+                <Typography
+                  fontWeight={900}
+                  fontSize={18}
+                >
                   {historialGroups[paginaDia]?.label}
                 </Typography>
 
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                >
                   {historialGroups[paginaDia]?.total} movimientos registrados
                 </Typography>
               </Box>
 
               {historialGroups.length > 1 ? (
-                <Stack direction="row" spacing={1}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                >
                   <Button
                     size="small"
                     variant="outlined"
                     disabled={paginaDia <= 0}
                     onClick={() =>
-                      setPaginaDia((prev) => Math.max(prev - 1, 0))
+                      setPaginaDia((prev) =>
+                        Math.max(prev - 1, 0)
+                      )
                     }
                     sx={{
                       borderRadius: 2,
@@ -250,10 +296,15 @@ export default function HistorialPOSPage({ cambiarVista }) {
                   <Button
                     size="small"
                     variant="contained"
-                    disabled={paginaDia >= historialGroups.length - 1}
+                    disabled={
+                      paginaDia >= historialGroups.length - 1
+                    }
                     onClick={() =>
                       setPaginaDia((prev) =>
-                        Math.min(prev + 1, historialGroups.length - 1),
+                        Math.min(
+                          prev + 1,
+                          historialGroups.length - 1
+                        )
                       )
                     }
                     sx={{
@@ -295,14 +346,23 @@ export default function HistorialPOSPage({ cambiarVista }) {
         >
           <Typography
             fontWeight={900}
-            sx={{ fontSize: { xs: "1.1rem", md: "1.3rem" } }}
+            sx={{
+              fontSize: {
+                xs: "1.1rem",
+                md: "1.3rem",
+              },
+            }}
           >
             No hay movimientos disponibles
           </Typography>
 
           <Typography
             color="text.secondary"
-            sx={{ mt: 1, maxWidth: 520, mx: "auto" }}
+            sx={{
+              mt: 1,
+              maxWidth: 520,
+              mx: "auto",
+            }}
           >
             Intente cambiar el rango de fechas o el método de pago para
             visualizar movimientos.
@@ -311,34 +371,34 @@ export default function HistorialPOSPage({ cambiarVista }) {
       )}
 
       <ModalTicketVenta
-        open={!!ticketId}
+        open={Boolean(ticketId)}
         ventaId={ticketId}
         posLocationId={posLocationId}
         onClose={() => setTicketId(null)}
       />
 
       <ModalDetallesVenta
-        open={!!detallesId}
+        open={Boolean(detallesId)}
         ventaId={detallesId}
         onClose={() => setDetallesId(null)}
       />
 
       <ModalCancelarVenta
-        open={!!cancelarId}
+        open={Boolean(cancelarId)}
         ventaId={cancelarId}
         onClose={() => setCancelarId(null)}
         onSuccess={handleFiltrar}
       />
 
       <ModalDevolverVenta
-        open={!!devolverId}
+        open={Boolean(devolverId)}
         ventaId={devolverId}
         onClose={() => setDevolverId(null)}
         onSuccess={handleFiltrar}
       />
 
       <ModalClienteVenta
-        open={!!clienteData}
+        open={Boolean(clienteData)}
         ventaId={clienteData?.ventaId}
         clienteActualId={clienteData?.clienteActualId}
         posLocationId={posLocationId}

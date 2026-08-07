@@ -9,9 +9,9 @@ const Banners = lazy(() => import("../pages/superadmin/Banners"));
 const Tiendas = lazy(() => import("../pages/superadmin/Tiendas"));
 const VentasSA = lazy(() => import("../pages/superadmin/VentasSA"));
 
-const AppVersionsPage = lazy(() =>
-  import("../pages/superadmin/AppVersionsPage")
-);
+const AppVersionsPage = lazy(() => import("../pages/superadmin/AppVersionsPage"));
+const PlanesPage = lazy(() => import("../pages/superadmin/PlanesPage"));
+const PlanEditorPage = lazy(() => import("../pages/superadmin/PlanEditorPage"));
 
 export const superadminRouteConfig = [
   { path: "", element: <Navigate to="dashboard" replace /> },
@@ -22,4 +22,7 @@ export const superadminRouteConfig = [
   { path: "ventas", element: <VentasSA /> },
   { path: "banners", element: <Banners /> },
   { path: "app-versiones", element: <AppVersionsPage /> },
+  { path: "planes", element: <PlanesPage />,},
+  { path: "planes/:id", element: <PlanEditorPage />,},
+  { path: "planes/nuevo", element: <PlanEditorPage />,},
 ];

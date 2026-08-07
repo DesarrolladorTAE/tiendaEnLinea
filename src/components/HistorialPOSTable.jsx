@@ -36,56 +36,79 @@ const rowConfig = {
     color: "success",
     icon: <ReceiptLongRoundedIcon />,
   },
+
   sale_paid_mixed: {
     label: "Pago mixto",
     color: "success",
     icon: <PaymentsRoundedIcon />,
   },
+
   pending_sale: {
     label: "Pendiente",
     color: "warning",
     icon: <PendingActionsRoundedIcon />,
   },
+
   pending_initial_payment: {
     label: "Anticipo inicial",
     color: "warning",
     icon: <PaymentsRoundedIcon />,
   },
+
   pending_payment: {
     label: "Abono pendiente",
     color: "warning",
     icon: <PaymentsRoundedIcon />,
   },
+
   pending_final_payment: {
     label: "Liquidación pendiente",
     color: "success",
     icon: <PaymentsRoundedIcon />,
   },
+
   credit_sale: {
-    label: "Crédito",
+    label: "Venta a crédito",
     color: "primary",
     icon: <CreditCardRoundedIcon />,
   },
+
   credit_sale_paid: {
-    label: "Crédito pagado",
-    color: "primary",
+    label: "Venta a crédito liquidada",
+    color: "success",
     icon: <CreditCardRoundedIcon />,
   },
+
   credit_payment: {
-    label: "Abono crédito",
+    label: "Abono de crédito",
     color: "info",
     icon: <PaymentsRoundedIcon />,
   },
+
   credit_liquidation: {
-    label: "Liquidación crédito",
+    label: "Liquidación total de crédito",
     color: "success",
     icon: <PaymentsRoundedIcon />,
   },
+
+  credit_sale_liquidation: {
+    label: "Venta a crédito liquidada",
+    color: "success",
+    icon: <PaymentsRoundedIcon />,
+  },
+
+  credit_account_liquidation: {
+    label: "Liquidación total de crédito",
+    color: "success",
+    icon: <PaymentsRoundedIcon />,
+  },
+
   cancelacion: {
     label: "Cancelación",
     color: "error",
     icon: <CancelRoundedIcon />,
   },
+
   devolucion: {
     label: "Devolución",
     color: "info",
@@ -106,23 +129,37 @@ const getClientName = (row) =>
   row?.cliente?.razon_social ||
   "Cliente general";
 
-const getPhone = (row) => row?.client?.phone || row?.cliente?.telefono || "";
+const getPhone = (row) =>
+  row?.client?.phone ||
+  row?.cliente?.telefono ||
+  "";
 
-const getAmount = (row) => Number(row?.amount ?? row?.total ?? 0);
+const getAmount = (row) =>
+  Number(
+    row?.amount ??
+      row?.total ??
+      0
+  );
 
-const getSaleId = (row) => row?.sale_id || row?.venta_id;
+const getSaleId = (row) =>
+  row?.sale_id ||
+  row?.venta_id ||
+  null;
 
-const canCancel = (row) =>
+const canCancelSale = (row) =>
   [
     "sale_paid",
     "sale_paid_mixed",
-    "pending_sale",
-    "pending_initial_payment",
-    "pending_payment",
+    "credit_sale_paid",
+    "credit_sale_liquidation",
   ].includes(row?.row_type);
 
 const canReturn = (row) =>
-  ["sale_paid", "sale_paid_mixed", "credit_sale_paid"].includes(row?.row_type);
+  [
+    "sale_paid",
+    "sale_paid_mixed",
+    "credit_sale_paid",
+  ].includes(row?.row_type);
 
 export default function HistorialPOSTable({
   rows = [],
@@ -138,17 +175,28 @@ export default function HistorialPOSTable({
     const hasSale = Boolean(saleId);
 
     return (
-      <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+      <Stack
+        direction="row"
+        spacing={0.5}
+        justifyContent="flex-end"
+        alignItems="center"
+      >
         {hasSale ? (
           <>
             <Tooltip title="Ticket">
-              <IconButton size="small" onClick={() => onTicket?.(saleId)}>
+              <IconButton
+                size="small"
+                onClick={() => onTicket?.(saleId)}
+              >
                 <PrintRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Detalles">
-              <IconButton size="small" onClick={() => onDetalles?.(saleId)}>
+              <IconButton
+                size="small"
+                onClick={() => onDetalles?.(saleId)}
+              >
                 <VisibilityRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -160,7 +208,8 @@ export default function HistorialPOSTable({
             size="small"
             onClick={() =>
               onCliente?.({
-                ventaId: getSaleId(row),
+                ventaId: saleId,
+
                 clienteActualId:
                   row?.client_id ||
                   row?.cliente_id ||
@@ -177,8 +226,9 @@ export default function HistorialPOSTable({
             <PersonOutlineRoundedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        {hasSale && canCancel(row) ? (
-          <Tooltip title="Cancelar">
+
+        {hasSale && canCancelSale(row) ? (
+          <Tooltip title="Cancelar venta">
             <IconButton
               size="small"
               color="error"
@@ -208,26 +258,51 @@ export default function HistorialPOSTable({
     const cfg = getConfig(row);
 
     return (
-      <Stack direction="row" spacing={1.2} alignItems="center">
+      <Stack
+        direction="row"
+        spacing={1.2}
+        alignItems="center"
+      >
         <Avatar
           sx={{
             width: 38,
             height: 38,
-            bgcolor: `${cfg.color}.50`,
-            color: `${cfg.color}.main`,
+
+            bgcolor:
+              cfg.color === "default"
+                ? "grey.100"
+                : `${cfg.color}.50`,
+
+            color:
+              cfg.color === "default"
+                ? "text.secondary"
+                : `${cfg.color}.main`,
+
             border: "1px solid",
-            borderColor: `${cfg.color}.100`,
+
+            borderColor:
+              cfg.color === "default"
+                ? "divider"
+                : `${cfg.color}.100`,
           }}
         >
-          {React.cloneElement(cfg.icon, { fontSize: "small" })}
+          {React.cloneElement(cfg.icon, {
+            fontSize: "small",
+          })}
         </Avatar>
 
         <Box>
-          <Typography fontWeight={900} fontSize={14}>
-            {row.label || cfg.label}
+          <Typography
+            fontWeight={900}
+            fontSize={14}
+          >
+            {row?.label || cfg.label}
           </Typography>
 
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            color="text.secondary"
+          >
             {getSaleId(row)
               ? `Ticket #${getSaleId(row)}`
               : "Movimiento de cuenta"}
@@ -239,16 +314,25 @@ export default function HistorialPOSTable({
 
   const renderClient = (row) => (
     <Box>
-      <Typography fontWeight={800} fontSize={13}>
+      <Typography
+        fontWeight={800}
+        fontSize={13}
+      >
         {getClientName(row)}
       </Typography>
 
       {getPhone(row) ? (
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          color="text.secondary"
+        >
           {getPhone(row)}
         </Typography>
       ) : (
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          color="text.secondary"
+        >
           Sin teléfono
         </Typography>
       )}
@@ -257,19 +341,80 @@ export default function HistorialPOSTable({
 
   const renderPayment = (row) => (
     <Stack spacing={0.2}>
-      <Typography fontWeight={900}>{money(getAmount(row))}</Typography>
+      <Typography fontWeight={900}>
+        {money(getAmount(row))}
+      </Typography>
 
-      <Typography variant="caption" color="text.secondary">
-        {row?.payment?.method_label || row?.payment?.method || "Sin método"}
+      <Typography
+        variant="caption"
+        color="text.secondary"
+      >
+        {row?.payment?.method_label ||
+          row?.payment?.method ||
+          "Sin método"}
       </Typography>
 
       {row?.payment?.referencia ? (
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          color="text.secondary"
+        >
           Ref. {row.payment.referencia}
         </Typography>
       ) : null}
     </Stack>
   );
+
+  const renderBalance = (row) => {
+    if ("remaining_amount" in row) {
+      return (
+        <>
+          <Typography
+            fontWeight={800}
+            fontSize={13}
+          >
+            Restante: {money(row.remaining_amount)}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+          >
+            Total: {money(row.total_amount)}
+          </Typography>
+        </>
+      );
+    }
+
+    if ("balance_after" in row) {
+      return (
+        <>
+          <Typography
+            fontWeight={800}
+            fontSize={13}
+          >
+            Saldo: {money(row.balance_after)}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            color="text.secondary"
+          >
+            Antes: {money(row.balance_before)}
+          </Typography>
+        </>
+      );
+    }
+
+    return (
+      <Typography
+        variant="caption"
+        color="text.secondary"
+      >
+        —
+      </Typography>
+    );
+  };
 
   if (isMobile) {
     return (
@@ -283,29 +428,51 @@ export default function HistorialPOSTable({
               elevation={0}
               sx={{
                 borderRadius: 4,
+
                 border: "1px solid",
                 borderColor: "divider",
+
                 background:
                   "linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.92))",
-                boxShadow: "0 14px 38px rgba(15,23,42,.07)",
+
+                boxShadow:
+                  "0 14px 38px rgba(15,23,42,.07)",
               }}
             >
-              <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+              <CardContent
+                sx={{
+                  p: 2,
+
+                  "&:last-child": {
+                    pb: 2,
+                  },
+                }}
+              >
                 <Stack spacing={1.5}>
                   <Stack
                     direction="row"
                     justifyContent="space-between"
                     alignItems="center"
+                    spacing={1}
                   >
                     <Chip
                       size="small"
                       color={cfg.color}
-                      label={row.label || cfg.label}
-                      sx={{ fontWeight: 900, borderRadius: 2 }}
+                      label={row?.label || cfg.label}
+                      sx={{
+                        fontWeight: 900,
+                        borderRadius: 2,
+                      }}
                     />
 
-                    <Typography variant="caption" color="text.secondary">
-                      {formatHora(row.date || row.fecha)}
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                    >
+                      {formatHora(
+                        row?.date ||
+                          row?.fecha
+                      )}
                     </Typography>
                   </Stack>
 
@@ -315,14 +482,34 @@ export default function HistorialPOSTable({
                     direction="row"
                     justifyContent="space-between"
                     alignItems="flex-end"
+                    spacing={2}
                   >
                     {renderClient(row)}
-                    <Box textAlign="right">{renderPayment(row)}</Box>
+
+                    <Box textAlign="right">
+                      {renderPayment(row)}
+                    </Box>
                   </Stack>
 
-                  {row.motivo ? (
-                    <Typography variant="caption" color="text.secondary">
+                  <Box>
+                    {renderBalance(row)}
+                  </Box>
+
+                  {row?.motivo ? (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                    >
                       Motivo: {row.motivo}
+                    </Typography>
+                  ) : null}
+
+                  {row?.notes ? (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                    >
+                      Nota: {row.notes}
                     </Typography>
                   ) : null}
 
@@ -342,9 +529,12 @@ export default function HistorialPOSTable({
       sx={{
         borderRadius: 5,
         overflow: "hidden",
+
         border: "1px solid",
         borderColor: "divider",
-        boxShadow: "0 18px 45px rgba(15,23,42,.08)",
+
+        boxShadow:
+          "0 18px 45px rgba(15,23,42,.08)",
       }}
     >
       <Box sx={{ overflowX: "auto" }}>
@@ -353,24 +543,53 @@ export default function HistorialPOSTable({
             <TableRow
               sx={{
                 bgcolor: "grey.50",
+
                 "& th": {
                   py: 1.8,
+
                   fontSize: 12,
+
                   color: "text.secondary",
-                  textTransform: "uppercase",
-                  letterSpacing: ".06em",
+
+                  textTransform:
+                    "uppercase",
+
+                  letterSpacing:
+                    ".06em",
+
                   fontWeight: 900,
-                  borderBottom: "1px solid",
-                  borderColor: "divider",
+
+                  borderBottom:
+                    "1px solid",
+
+                  borderColor:
+                    "divider",
                 },
               }}
             >
-              <TableCell>Movimiento</TableCell>
-              <TableCell>Fecha</TableCell>
-              <TableCell>Cliente</TableCell>
-              <TableCell>Pago / Importe</TableCell>
-              <TableCell>Saldo</TableCell>
-              <TableCell align="right">Acciones</TableCell>
+              <TableCell>
+                Movimiento
+              </TableCell>
+
+              <TableCell>
+                Fecha
+              </TableCell>
+
+              <TableCell>
+                Cliente
+              </TableCell>
+
+              <TableCell>
+                Pago / Importe
+              </TableCell>
+
+              <TableCell>
+                Saldo
+              </TableCell>
+
+              <TableCell align="right">
+                Acciones
+              </TableCell>
             </TableRow>
           </TableHead>
 
@@ -382,52 +601,53 @@ export default function HistorialPOSTable({
                 sx={{
                   "& td": {
                     py: 1.6,
-                    borderColor: "rgba(148,163,184,.18)",
+
+                    borderColor:
+                      "rgba(148,163,184,.18)",
                   },
                 }}
               >
-                <TableCell>{renderMovement(row)}</TableCell>
+                <TableCell>
+                  {renderMovement(row)}
+                </TableCell>
 
                 <TableCell>
-                  <Typography fontWeight={800} fontSize={13}>
-                    {formatFecha(row.date || row.fecha)}
+                  <Typography
+                    fontWeight={800}
+                    fontSize={13}
+                  >
+                    {formatFecha(
+                      row?.date ||
+                        row?.fecha
+                    )}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    {formatHora(row.date || row.fecha)}
+
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                  >
+                    {formatHora(
+                      row?.date ||
+                        row?.fecha
+                    )}
                   </Typography>
                 </TableCell>
 
-                <TableCell>{renderClient(row)}</TableCell>
-
-                <TableCell>{renderPayment(row)}</TableCell>
-
                 <TableCell>
-                  {"remaining_amount" in row ? (
-                    <>
-                      <Typography fontWeight={800} fontSize={13}>
-                        Restante: {money(row.remaining_amount)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Total: {money(row.total_amount)}
-                      </Typography>
-                    </>
-                  ) : "balance_after" in row ? (
-                    <>
-                      <Typography fontWeight={800} fontSize={13}>
-                        Saldo: {money(row.balance_after)}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Antes: {money(row.balance_before)}
-                      </Typography>
-                    </>
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">
-                      —
-                    </Typography>
-                  )}
+                  {renderClient(row)}
                 </TableCell>
 
-                <TableCell align="right">{renderActions(row)}</TableCell>
+                <TableCell>
+                  {renderPayment(row)}
+                </TableCell>
+
+                <TableCell>
+                  {renderBalance(row)}
+                </TableCell>
+
+                <TableCell align="right">
+                  {renderActions(row)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
