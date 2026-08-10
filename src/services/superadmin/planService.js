@@ -15,15 +15,10 @@ export const planService = {
     axiosSuperadmin.post(BASE_URL, data),
 
   update: (id, data) =>
-    axiosSuperadmin.put(
-      `${BASE_URL}/${id}`,
-      data
-    ),
+    axiosSuperadmin.put(`${BASE_URL}/${id}`, data),
 
   delete: (id) =>
-    axiosSuperadmin.delete(
-      `${BASE_URL}/${id}`
-    ),
+    axiosSuperadmin.delete(`${BASE_URL}/${id}`),
 
   toggleStatus: (id) =>
     axiosSuperadmin.patch(
@@ -40,10 +35,7 @@ export const planService = {
       `${BASE_URL}/${id}/feature-matrix`
     ),
 
-  updateFeatureMatrix: (
-    id,
-    features
-  ) =>
+  updateFeatureMatrix: (id, features) =>
     axiosSuperadmin.put(
       `${BASE_URL}/${id}/feature-matrix`,
       {
@@ -56,10 +48,7 @@ export const planService = {
       `${BASE_URL}/${id}/addons`
     ),
 
-  updateAddons: (
-    id,
-    addons
-  ) =>
+  updateAddons: (id, addons) =>
     axiosSuperadmin.put(
       `${BASE_URL}/${id}/addons`,
       {
@@ -67,10 +56,7 @@ export const planService = {
       }
     ),
 
-  updatePrices: (
-    id,
-    prices
-  ) =>
+  updatePrices: (id, prices) =>
     axiosSuperadmin.put(
       `${BASE_URL}/${id}/prices`,
       {

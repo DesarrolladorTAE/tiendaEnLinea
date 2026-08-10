@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   Alert,
@@ -8,12 +8,10 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  Divider,
   Stack,
   Tab,
   Tabs,
   Typography,
-  alpha,
 } from "@mui/material";
 
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
@@ -27,11 +25,17 @@ import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { planService } from "../../services/superadmin/planService";
+import { planPriceService } from "../../services/superadmin/planPriceService";
+import { planFeatureValueService } from "../../services/superadmin/planFeatureValueService";
+import { planAddonService } from "../../services/superadmin/planAddonService";
+import { planFeatureService } from "../../services/superadmin/planFeatureService";
 
-import {
-  alertFromAxiosError,
-  showSuccess,
-} from "../../utils/alerts";
+import { alertFromAxiosError, showSuccess } from "../../utils/alerts";
+
+import PlanGeneralTab from "./components/PlanGeneralTab";
+import PlanPricesTab from "./components/PlanPricesTab";
+import PlanFeaturesTab from "./components/PlanFeaturesTab";
+import PlanAddonsTab from "./components/PlanAddonsTab";
 
 const BRAND = {
   orange: "#ff5a1f",
@@ -87,14 +91,20 @@ export default function PlanEditorPage() {
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
-
   const [tab, setTab] = useState("general");
 
   const [plan, setPlan] = useState(emptyPlan);
-
   const [prices, setPrices] = useState([]);
   const [featureMatrix, setFeatureMatrix] = useState([]);
   const [addons, setAddons] = useState([]);
+
+  const [featuresLoaded, setFeaturesLoaded] = useState(false);
+  const [addonsLoaded, setAddonsLoaded] = useState(false);
+
+  const [loadingFeatures, setLoadingFeatures] = useState(false);
+  const [loadingAddons, setLoadingAddons] = useState(false);
+
+  const [creatingFeature, setCreatingFeature] = useState(false);
 
   const title = useMemo(() => {
     if (isNew) {
@@ -102,89 +112,115 @@ export default function PlanEditorPage() {
     }
 
     return plan.display_name || plan.name || "Editar plan";
-  }, [isNew, plan]);
+  }, [isNew, plan.display_name, plan.name]);
 
-  useEffect(() => {
+  const loadPlan = useCallback(async () => {
     if (isNew) {
+      setPlan(emptyPlan);
+      setPrices([]);
+      setLoading(false);
       return;
     }
 
-    loadPlan();
-  }, [id]);
-
-  const loadPlan = async () => {
     try {
       setLoading(true);
 
       const response = await planService.getById(id);
 
-      const data = response?.data?.data ?? response?.data;
+      const data = response?.data?.data ?? response?.data ?? {};
 
       setPlan({
         ...emptyPlan,
         ...data,
       });
 
-      setPrices(data?.prices || []);
+      setPrices(Array.isArray(data?.prices) ? data.prices : []);
     } catch (error) {
       console.error(error);
 
-      alertFromAxiosError(
-        error,
-        "No se pudo cargar la información del plan."
-      );
+      alertFromAxiosError(error, "No se pudo cargar la información del plan.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadFeatures = async () => {
-    if (isNew) return;
-
-    try {
-      const response = await planService.getFeatureMatrix(id);
-
-      const data = response?.data?.data ?? response?.data;
-
-      setFeatureMatrix(data?.categories || []);
-    } catch (error) {
-      console.error(error);
-
-      alertFromAxiosError(
-        error,
-        "No se pudieron cargar las características."
-      );
-    }
-  };
-
-  const loadAddons = async () => {
-    if (isNew) return;
-
-    try {
-      const response = await planService.getAddons(id);
-
-      const data = response?.data?.data ?? response?.data;
-
-      setAddons(data?.addons || []);
-    } catch (error) {
-      console.error(error);
-
-      alertFromAxiosError(
-        error,
-        "No se pudieron cargar los complementos."
-      );
-    }
-  };
+  }, [id, isNew]);
 
   useEffect(() => {
-    if (tab === "features" && featureMatrix.length === 0) {
+    loadPlan();
+  }, [loadPlan]);
+
+  useEffect(() => {
+    setFeaturesLoaded(false);
+    setAddonsLoaded(false);
+    setFeatureMatrix([]);
+    setAddons([]);
+    setTab("general");
+  }, [id]);
+
+  const loadFeatures = useCallback(async () => {
+    if (isNew) {
+      return;
+    }
+
+    try {
+      setLoadingFeatures(true);
+
+      const response = await planFeatureValueService.getMatrix(id);
+
+      const data = response?.data?.data ?? response?.data ?? {};
+
+      setFeatureMatrix(Array.isArray(data?.categories) ? data.categories : []);
+
+      setFeaturesLoaded(true);
+    } catch (error) {
+      console.error(error);
+
+      alertFromAxiosError(error, "No se pudieron cargar las características.");
+    } finally {
+      setLoadingFeatures(false);
+    }
+  }, [id, isNew]);
+
+  const loadAddons = useCallback(async () => {
+    if (isNew) {
+      return;
+    }
+
+    try {
+      setLoadingAddons(true);
+
+      const response = await planAddonService.getMatrix(id);
+
+      const data = response?.data?.data ?? response?.data ?? {};
+
+      setAddons(Array.isArray(data?.addons) ? data.addons : []);
+
+      setAddonsLoaded(true);
+    } catch (error) {
+      console.error(error);
+
+      alertFromAxiosError(error, "No se pudieron cargar los complementos.");
+    } finally {
+      setLoadingAddons(false);
+    }
+  }, [id, isNew]);
+
+  useEffect(() => {
+    if (tab === "features" && !featuresLoaded && !loadingFeatures) {
       loadFeatures();
     }
 
-    if (tab === "addons" && addons.length === 0) {
+    if (tab === "addons" && !addonsLoaded && !loadingAddons) {
       loadAddons();
     }
-  }, [tab]);
+  }, [
+    tab,
+    featuresLoaded,
+    addonsLoaded,
+    loadingFeatures,
+    loadingAddons,
+    loadFeatures,
+    loadAddons,
+  ]);
 
   const handleChange = (field, value) => {
     setPlan((current) => ({
@@ -198,19 +234,32 @@ export default function PlanEditorPage() {
       setSaving(true);
 
       const payload = {
-        name: plan.name,
-        display_name: plan.display_name,
-        subtitle: plan.subtitle || null,
-        description: plan.description || null,
-        badge: plan.badge || null,
-        icon: plan.icon || null,
+        name: plan.name?.trim() || "",
+
+        display_name: plan.display_name?.trim() || "",
+
+        subtitle: plan.subtitle?.trim() || null,
+
+        description: plan.description?.trim() || null,
+
+        badge: plan.badge?.trim() || null,
+
+        icon: plan.icon?.trim() || null,
+
         trial_days: Number(plan.trial_days || 0),
+
         is_active: Boolean(plan.is_active),
+
         is_featured: Boolean(plan.is_featured),
+
         show_on_landing: Boolean(plan.show_on_landing),
-        button_text: plan.button_text || "Más información",
-        button_url: plan.button_url || null,
+
+        button_text: plan.button_text?.trim() || "Más información",
+
+        button_url: plan.button_url?.trim() || null,
+
         background_style: plan.background_style || "light",
+
         sort_order: Number(plan.sort_order || 0),
       };
 
@@ -236,12 +285,239 @@ export default function PlanEditorPage() {
     } catch (error) {
       console.error(error);
 
-      alertFromAxiosError(
-        error,
-        "No se pudo guardar el plan."
-      );
+      alertFromAxiosError(error, "No se pudo guardar el plan.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePriceChange = (index, field, value) => {
+    setPrices((current) =>
+      current.map((price, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...price,
+              [field]: value,
+            }
+          : price,
+      ),
+    );
+  };
+
+  const handleAddPrice = () => {
+    setPrices((current) => [
+      ...current,
+      {
+        id: null,
+        billing_cycle: "monthly",
+        label: "",
+        price: "",
+        months_paid: 1,
+        months_received: 1,
+        is_active: true,
+        sort_order: current.length,
+      },
+    ]);
+  };
+
+  const handleDeletePrice = (index) => {
+    setPrices((current) =>
+      current.filter((_, currentIndex) => currentIndex !== index),
+    );
+  };
+
+  const handleSavePrices = async () => {
+    try {
+      setSaving(true);
+
+      const data = prices.map((price, index) => ({
+        id: price.id || null,
+
+        billing_cycle: price.billing_cycle || "monthly",
+
+        label: price.label?.trim() || null,
+
+        price: Number(price.price || 0),
+
+        months_paid: Number(price.months_paid || 1),
+
+        months_received: Number(price.months_received || 1),
+
+        is_active: price.is_active !== false,
+
+        sort_order: Number(price.sort_order ?? index),
+      }));
+
+      await planPriceService.syncPlanPrices(id, data);
+
+      await showSuccess("Los precios se actualizaron correctamente.");
+
+      await loadPlan();
+    } catch (error) {
+      console.error(error);
+
+      alertFromAxiosError(error, "No se pudieron guardar los precios.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFeatureChange = (categoryIndex, featureIndex, field, value) => {
+    setFeatureMatrix((current) =>
+      current.map((category, currentCategoryIndex) => {
+        if (currentCategoryIndex !== categoryIndex) {
+          return category;
+        }
+
+        return {
+          ...category,
+
+          features: (category.features || []).map(
+            (feature, currentFeatureIndex) => {
+              if (currentFeatureIndex !== featureIndex) {
+                return feature;
+              }
+
+              return {
+                ...feature,
+                [field]: value,
+              };
+            },
+          ),
+        };
+      }),
+    );
+  };
+
+  const handleSaveFeatures = async () => {
+    try {
+      setSaving(true);
+
+      const features = [];
+
+      featureMatrix.forEach((category) => {
+        (category.features || []).forEach((feature) => {
+          features.push({
+            feature_id: feature.feature_id || feature.id,
+
+            included: Boolean(feature.included),
+
+            value:
+              feature.value === "" ||
+              feature.value === undefined ||
+              feature.value === null
+                ? null
+                : feature.value,
+          });
+        });
+      });
+
+      await planFeatureValueService.syncPlanFeatures(id, features);
+
+      await showSuccess("Las características se actualizaron correctamente.");
+
+      await loadFeatures();
+    } catch (error) {
+      console.error(error);
+
+      alertFromAxiosError(error, "No se pudieron guardar las características.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAddonChange = (index, field, value) => {
+    setAddons((current) =>
+      current.map((addon, currentIndex) =>
+        currentIndex === index
+          ? {
+              ...addon,
+              [field]: value,
+            }
+          : addon,
+      ),
+    );
+  };
+
+ const handleCreateFeature = async (feature) => {
+  try {
+    setCreatingFeature(true);
+
+    await planFeatureService.create(feature);
+
+    await showSuccess(
+      "La característica se creó correctamente."
+    );
+
+    await loadFeatures();
+
+    return true;
+  } catch (error) {
+    console.error(error);
+
+    alertFromAxiosError(
+      error,
+      "No se pudo crear la característica."
+    );
+
+    return false;
+  } finally {
+    setCreatingFeature(false);
+  }
+};
+
+  const handleSaveAddons = async () => {
+    try {
+      setSaving(true);
+
+      const data = addons.map((addon) => ({
+        addon_id: addon.addon_id || addon.id,
+
+        availability:
+          addon.availability || (addon.included ? "included" : "available"),
+
+        included: Boolean(addon.included),
+
+        price_override:
+          addon.price_override === "" ||
+          addon.price_override === null ||
+          addon.price_override === undefined
+            ? null
+            : Number(addon.price_override),
+      }));
+
+      await planAddonService.syncPlanAddons(id, data);
+
+      await showSuccess("Los complementos se actualizaron correctamente.");
+
+      await loadAddons();
+    } catch (error) {
+      console.error(error);
+
+      alertFromAxiosError(error, "No se pudieron guardar los complementos.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveCurrentTab = () => {
+    if (saving) {
+      return;
+    }
+
+    switch (tab) {
+      case "prices":
+        return handleSavePrices();
+
+      case "features":
+        return handleSaveFeatures();
+
+      case "addons":
+        return handleSaveAddons();
+
+      case "general":
+      default:
+        return handleSaveGeneral();
     }
   };
 
@@ -254,7 +530,11 @@ export default function PlanEditorPage() {
           minHeight: 500,
         }}
       >
-        <CircularProgress sx={{ color: BRAND.orange }} />
+        <CircularProgress
+          sx={{
+            color: BRAND.orange,
+          }}
+        />
 
         <Typography
           color="text.secondary"
@@ -306,6 +586,18 @@ export default function PlanEditorPage() {
           }}
         />
 
+        <Box
+          sx={{
+            position: "absolute",
+            right: 130,
+            bottom: -100,
+            width: 170,
+            height: 170,
+            borderRadius: "50%",
+            background: "rgba(255,90,31,.08)",
+          }}
+        />
+
         <CardContent
           sx={{
             p: {
@@ -347,6 +639,7 @@ export default function PlanEditorPage() {
               <Typography
                 variant="h4"
                 fontWeight={900}
+                color="white"
                 sx={{
                   letterSpacing: "-.03em",
                   fontSize: {
@@ -370,21 +663,19 @@ export default function PlanEditorPage() {
               </Typography>
             </Box>
 
-            <Stack
-              direction="row"
-              spacing={1.5}
-              flexWrap="wrap"
-              useFlexGap
-            >
+            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
               <Button
                 variant="outlined"
                 startIcon={<ArrowBackRoundedIcon />}
                 onClick={() => navigate("/superadmin/planes")}
+                disabled={saving}
                 sx={{
                   borderRadius: 999,
                   px: 2.5,
                   color: "#fff",
                   borderColor: "rgba(255,255,255,.25)",
+                  fontWeight: 800,
+                  textTransform: "none",
                   "&:hover": {
                     borderColor: "#fff",
                     bgcolor: "rgba(255,255,255,.08)",
@@ -394,26 +685,33 @@ export default function PlanEditorPage() {
                 Volver
               </Button>
 
-              {tab === "general" && (
-                <Button
-                  variant="contained"
-                  startIcon={<SaveRoundedIcon />}
-                  onClick={handleSaveGeneral}
-                  disabled={saving}
-                  sx={{
-                    borderRadius: 999,
-                    px: 3,
-                    bgcolor: BRAND.amber,
-                    color: BRAND.dark,
-                    fontWeight: 900,
-                    "&:hover": {
-                      bgcolor: "#ffc14d",
-                    },
-                  }}
-                >
-                  {saving ? "Guardando..." : "Guardar"}
-                </Button>
-              )}
+              <Button
+                variant="contained"
+                startIcon={
+                  saving ? (
+                    <CircularProgress size={18} color="inherit" />
+                  ) : (
+                    <SaveRoundedIcon />
+                  )
+                }
+                onClick={handleSaveCurrentTab}
+                disabled={saving}
+                sx={{
+                  borderRadius: 999,
+                  px: 3,
+                  bgcolor: BRAND.amber,
+                  color: BRAND.dark,
+                  fontWeight: 900,
+                  textTransform: "none",
+                  boxShadow: "none",
+                  "&:hover": {
+                    bgcolor: "#ffc14d",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                {saving ? "Guardando..." : isNew ? "Crear plan" : "Guardar"}
+              </Button>
             </Stack>
           </Stack>
         </CardContent>
@@ -428,11 +726,18 @@ export default function PlanEditorPage() {
             border: "1px solid",
             borderColor: "divider",
             boxShadow: "0 16px 50px rgba(15,23,42,.06)",
+            overflow: "hidden",
           }}
         >
           <Tabs
             value={tab}
-            onChange={(_, value) => setTab(value)}
+            onChange={(_, value) => {
+              if (saving) {
+                return;
+              }
+
+              setTab(value);
+            }}
             variant="scrollable"
             scrollButtons="auto"
             sx={{
@@ -493,124 +798,77 @@ export default function PlanEditorPage() {
               xs: 2,
               md: 3,
             },
+            "&:last-child": {
+              pb: {
+                xs: 2,
+                md: 3,
+              },
+            },
           }}
         >
           {tab === "general" && (
-            <GeneralTab
-              plan={plan}
-              onChange={handleChange}
-            />
+            <PlanGeneralTab plan={plan} onChange={handleChange} />
           )}
 
           {tab === "prices" && (
-            <PlaceholderSection
-              icon={<PaymentsRoundedIcon />}
-              title="Precios"
-              description="Aquí configuraremos mensual, semestral y anual."
-              count={prices.length}
+            <PlanPricesTab
+              prices={prices}
+              onChange={handlePriceChange}
+              onAdd={handleAddPrice}
+              onDelete={handleDeletePrice}
             />
           )}
 
-          {tab === "features" && (
-            <PlaceholderSection
-              icon={<ChecklistRoundedIcon />}
-              title="Características"
-              description="Aquí editaremos qué incluye, qué limita y qué no incluye este plan."
-              count={featureMatrix.reduce(
-                (total, category) =>
-                  total + (category.features?.length || 0),
-                0
-              )}
-            />
-          )}
+          {tab === "features" &&
+            (loadingFeatures ? (
+              <SectionLoader text="Cargando características..." />
+            ) : (
+              <PlanFeaturesTab
+                categories={featureMatrix}
+                onChange={handleFeatureChange}
+                onCreateFeature={handleCreateFeature}
+                creatingFeature={creatingFeature}
+              />
+            ))}
 
-          {tab === "addons" && (
-            <PlaceholderSection
-              icon={<ExtensionRoundedIcon />}
-              title="Complementos"
-              description="Aquí configuraremos complementos incluidos, disponibles o no disponibles."
-              count={addons.length}
-            />
-          )}
+          {tab === "addons" &&
+            (loadingAddons ? (
+              <SectionLoader text="Cargando complementos..." />
+            ) : (
+              <PlanAddonsTab addons={addons} onChange={handleAddonChange} />
+            ))}
         </CardContent>
       </Card>
     </Box>
   );
 }
 
-function GeneralTab({ plan, onChange }) {
-  return (
-    <Box>
-      <Typography variant="h6" fontWeight={900}>
-        Información general
-      </Typography>
-
-      <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-        Configura cómo se identifica y se presenta el plan.
-      </Typography>
-
-      <Divider sx={{ my: 3 }} />
-
-      <Alert severity="info" sx={{ borderRadius: 3 }}>
-        En el siguiente paso llenaremos aquí los campos editables del plan.
-      </Alert>
-    </Box>
-  );
-}
-
-function PlaceholderSection({
-  icon,
-  title,
-  description,
-  count,
-}) {
+function SectionLoader({ text }) {
   return (
     <Stack
       alignItems="center"
-      textAlign="center"
+      justifyContent="center"
       sx={{
+        minHeight: 300,
         py: 8,
       }}
     >
-      <Box
+      <CircularProgress
+        size={36}
         sx={{
-          width: 70,
-          height: 70,
-          borderRadius: 4,
-          display: "grid",
-          placeItems: "center",
           color: BRAND.orange,
-          bgcolor: alpha(BRAND.orange, 0.09),
-          mb: 2,
-          "& svg": {
-            fontSize: 34,
-          },
         }}
-      >
-        {icon}
-      </Box>
-
-      <Typography variant="h5" fontWeight={900}>
-        {title}
-      </Typography>
+      />
 
       <Typography
         color="text.secondary"
         sx={{
-          mt: 1,
-          maxWidth: 550,
+          mt: 2,
+          fontWeight: 600,
         }}
       >
-        {description}
+        {text}
       </Typography>
-
-      <Chip
-        label={`${count} registros cargados`}
-        sx={{
-          mt: 2,
-          fontWeight: 800,
-        }}
-      />
     </Stack>
   );
 }
