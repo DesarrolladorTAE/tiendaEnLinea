@@ -1,0 +1,2372 @@
+/* ==========================================================
+   PLANS PAGE
+========================================================== */
+
+.plans-page {
+  width: 100%;
+  overflow: hidden;
+  background: #ffffff;
+  color: #1f2023;
+}
+
+
+/* ==========================================================
+   HERO
+   El navbar NO forma parte del hero.
+   El navbar ya ocupa su propio espacio.
+========================================================== */
+
+.plans-hero {
+  position: relative;
+
+  display: flex;
+  align-items: center;
+
+  width: 100%;
+  min-height: 100svh;
+
+  padding-top: var(--landing-navbar-height);
+
+  overflow: hidden;
+
+  background:
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(249, 178, 51, 0.09),
+      transparent 34%
+    ),
+    radial-gradient(
+      circle at 88% 18%,
+      rgba(233, 78, 27, 0.055),
+      transparent 34%
+    ),
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #fffdf9 48%,
+      #fff8f3 74%,
+      #ffffff 100%
+    );
+}
+
+
+/* ==========================================================
+   HERO BACKGROUND
+========================================================== */
+
+.plans-hero__background {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.plans-hero__grid {
+  position: absolute;
+  inset: 0;
+
+  opacity: 0.27;
+
+  background-image:
+    linear-gradient(
+      rgba(31, 32, 35, 0.025) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(31, 32, 35, 0.025) 1px,
+      transparent 1px
+    );
+
+  background-size: 48px 48px;
+
+  mask-image:
+    linear-gradient(
+      to bottom,
+      #000 0%,
+      rgba(0, 0, 0, 0.5) 65%,
+      transparent 100%
+    );
+
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      #000 0%,
+      rgba(0, 0, 0, 0.5) 65%,
+      transparent 100%
+    );
+}
+
+.plans-hero__glow {
+  position: absolute;
+
+  border-radius: 50%;
+
+  filter: blur(120px);
+  opacity: 0.75;
+
+  pointer-events: none;
+}
+
+.plans-hero__glow--one {
+  top: -130px;
+  right: -100px;
+
+  width: 440px;
+  height: 440px;
+
+  background:
+    rgba(249, 178, 51, 0.1);
+}
+
+.plans-hero__glow--two {
+  bottom: -160px;
+  left: -120px;
+
+  width: 430px;
+  height: 430px;
+
+  background:
+    rgba(233, 78, 27, 0.055);
+}
+
+
+/* ==========================================================
+   HERO CONTAINER
+========================================================== */
+
+.plans-hero__container {
+  position: relative;
+  z-index: 2;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 0.95fr)
+    minmax(0, 1.05fr);
+
+  align-items: center;
+
+  gap: clamp(45px, 6vw, 90px);
+
+  width:
+    min(1220px, calc(100% - 40px));
+
+  min-height: calc(
+    100svh - var(--landing-navbar-height)
+  );
+
+  margin: 0 auto;
+
+  padding:
+    clamp(55px, 6vw, 90px)
+    0
+    clamp(75px, 7vw, 105px);
+}
+
+
+/* ==========================================================
+   HERO CONTENT
+========================================================== */
+
+.plans-hero__content {
+  position: relative;
+  z-index: 4;
+
+  max-width: 650px;
+}
+
+.plans-hero__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  margin-bottom: 22px;
+  padding: 9px 14px;
+
+  border:
+    1px solid rgba(233, 78, 27, 0.14);
+
+  border-radius: 999px;
+
+  background:
+    rgba(255, 255, 255, 0.82);
+
+  color: #e94e1b;
+
+  font-size: 0.75rem;
+  font-weight: 850;
+
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+
+  box-shadow:
+    0 12px 30px
+    rgba(126, 70, 13, 0.055);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.plans-hero__eyebrow-dot {
+  flex: 0 0 auto;
+
+  width: 8px;
+  height: 8px;
+
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233,
+      #e94e1b
+    );
+
+  box-shadow:
+    0 0 0 5px
+    rgba(249, 178, 51, 0.13);
+}
+
+
+/* ==========================================================
+   HERO TITLE
+========================================================== */
+
+.plans-hero__title {
+  max-width: 670px;
+
+  margin: 0;
+
+  color: #1f2023;
+
+  font-size:
+    clamp(3.15rem, 5.4vw, 5.6rem);
+
+  font-weight: 850;
+
+  line-height: 0.98;
+
+  letter-spacing: -0.06em;
+
+  text-wrap: balance;
+}
+
+.plans-hero__title span {
+  display: inline;
+
+  color: transparent;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233 0%,
+      #f7941d 45%,
+      #e94e1b 100%
+    );
+
+  background-clip: text;
+  -webkit-background-clip: text;
+
+  -webkit-text-fill-color: transparent;
+}
+
+.plans-hero__description {
+  max-width: 615px;
+
+  margin: 25px 0 0;
+
+  color: #676a72;
+
+  font-size:
+    clamp(1rem, 1.35vw, 1.15rem);
+
+  line-height: 1.72;
+
+  text-wrap: pretty;
+}
+
+
+/* ==========================================================
+   HERO ACTIONS
+========================================================== */
+
+.plans-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 13px;
+
+  margin-top: 31px;
+}
+
+.plans-hero__button {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 9px;
+
+  min-height: 54px;
+
+  padding: 0 23px;
+
+  border-radius: 15px;
+
+  font-family: inherit;
+
+  font-size: 0.86rem;
+  font-weight: 850;
+
+  text-decoration: none;
+
+  cursor: pointer;
+
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.plans-hero__button--primary {
+  border: 0;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233,
+      #e94e1b
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 15px 34px
+      rgba(233, 78, 27, 0.22),
+    0 6px 16px
+      rgba(249, 178, 51, 0.16);
+}
+
+.plans-hero__button--primary:hover {
+  color: #ffffff;
+
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 20px 42px
+      rgba(233, 78, 27, 0.28),
+    0 8px 20px
+      rgba(249, 178, 51, 0.2);
+}
+
+.plans-hero__button--secondary {
+  border:
+    1px solid rgba(31, 32, 35, 0.09);
+
+  background:
+    rgba(255, 255, 255, 0.82);
+
+  color: #333438;
+
+  box-shadow:
+    0 14px 32px
+    rgba(75, 46, 18, 0.07);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.plans-hero__button--secondary:hover {
+  color: #e94e1b;
+
+  border-color:
+    rgba(233, 78, 27, 0.2);
+
+  background: #ffffff;
+
+  transform: translateY(-3px);
+}
+
+
+/* ==========================================================
+   HERO BENEFITS
+========================================================== */
+
+.plans-hero__benefits {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 10px 19px;
+
+  margin: 25px 0 0;
+  padding: 0;
+
+  list-style: none;
+}
+
+.plans-hero__benefits li {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #6d7077;
+
+  font-size: 0.77rem;
+  font-weight: 750;
+}
+
+.plans-hero__benefits li span {
+  display: grid;
+
+  flex: 0 0 21px;
+
+  width: 21px;
+  height: 21px;
+
+  place-items: center;
+
+  border-radius: 50%;
+
+  background: #dcfce7;
+
+  color: #16a34a;
+
+  font-size: 0.67rem;
+}
+
+
+/* ==========================================================
+   HERO VISUAL
+========================================================== */
+
+.plans-hero__visual {
+  position: relative;
+
+  display: grid;
+
+  min-width: 0;
+  min-height: 515px;
+
+  place-items: center;
+}
+
+
+/* ==========================================================
+   MAIN VISUAL CARD
+========================================================== */
+
+.plans-hero-card {
+  position: relative;
+  z-index: 3;
+
+  width: min(500px, 88%);
+
+  overflow: hidden;
+
+  padding:
+    clamp(30px, 4vw, 45px);
+
+  border:
+    1px solid rgba(31, 32, 35, 0.08);
+
+  border-radius: 28px;
+
+  background:
+    rgba(255, 255, 255, 0.92);
+
+  box-shadow:
+    0 40px 90px
+    rgba(82, 51, 20, 0.12);
+
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.plans-hero-card::before {
+  content: "";
+
+  position: absolute;
+
+  top: -90px;
+  right: -75px;
+
+  width: 190px;
+  height: 190px;
+
+  border-radius: 50%;
+
+  background:
+    rgba(249, 178, 51, 0.095);
+
+  pointer-events: none;
+}
+
+.plans-hero-card__icon {
+  position: relative;
+  z-index: 2;
+
+  display: grid;
+
+  width: 60px;
+  height: 60px;
+
+  place-items: center;
+
+  margin-bottom: 25px;
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233,
+      #e94e1b
+    );
+
+  color: #ffffff;
+
+  font-size: 1.3rem;
+
+  box-shadow:
+    0 15px 32px
+    rgba(233, 78, 27, 0.21);
+}
+
+.plans-hero-card > span {
+  position: relative;
+  z-index: 2;
+
+  display: block;
+
+  margin-bottom: 9px;
+
+  color: #e94e1b;
+
+  font-size: 0.7rem;
+  font-weight: 850;
+
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.plans-hero-card > strong {
+  position: relative;
+  z-index: 2;
+
+  display: block;
+
+  color: #25262a;
+
+  font-size:
+    clamp(1.8rem, 3vw, 2.6rem);
+
+  font-weight: 850;
+
+  line-height: 1.07;
+
+  letter-spacing: -0.045em;
+}
+
+.plans-hero-card > p {
+  position: relative;
+  z-index: 2;
+
+  margin: 17px 0 0;
+
+  color: #73767e;
+
+  font-size: 0.88rem;
+
+  line-height: 1.7;
+}
+
+
+/* ==========================================================
+   MODULES
+========================================================== */
+
+.plans-hero-card__modules {
+  position: relative;
+  z-index: 2;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 10px;
+
+  margin-top: 28px;
+}
+
+.plans-hero-card__modules > div {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  min-width: 0;
+
+  padding: 13px 12px;
+
+  border:
+    1px solid rgba(31, 32, 35, 0.07);
+
+  border-radius: 13px;
+
+  background: #ffffff;
+
+  color: #5f6268;
+
+  font-size: 0.72rem;
+  font-weight: 800;
+
+  box-shadow:
+    0 8px 22px
+    rgba(81, 51, 22, 0.035);
+}
+
+.plans-hero-card__modules i {
+  color: #e94e1b;
+}
+
+
+/* ==========================================================
+   FLOATING CARDS
+========================================================== */
+
+.plans-hero-floating {
+  position: absolute;
+  z-index: 5;
+
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 12px 15px;
+
+  border:
+    1px solid rgba(255, 255, 255, 0.92);
+
+  border-radius: 15px;
+
+  background:
+    rgba(255, 255, 255, 0.94);
+
+  box-shadow:
+    0 18px 42px
+    rgba(75, 45, 17, 0.14);
+
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.plans-hero-floating > i {
+  display: grid;
+
+  flex: 0 0 36px;
+
+  width: 36px;
+  height: 36px;
+
+  place-items: center;
+
+  border-radius: 11px;
+
+  background: #fff3e3;
+
+  color: #e94e1b;
+}
+
+.plans-hero-floating small {
+  display: block;
+
+  color: #96989d;
+
+  font-size: 0.57rem;
+}
+
+.plans-hero-floating strong {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #343539;
+
+  font-size: 0.72rem;
+}
+
+.plans-hero-floating--one {
+  top: 15%;
+  left: -1%;
+}
+
+.plans-hero-floating--two {
+  right: -1%;
+  bottom: 14%;
+}
+
+
+/* ==========================================================
+   HERO SCROLL
+========================================================== */
+
+.plans-hero__scroll {
+  position: absolute;
+
+  bottom: 19px;
+  left: 50%;
+
+  z-index: 6;
+
+  display: grid;
+
+  width: 29px;
+  height: 47px;
+
+  place-items: start center;
+
+  padding-top: 8px;
+
+  border:
+    1px solid rgba(31, 32, 35, 0.14);
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.45);
+
+  transform: translateX(-50%);
+
+  cursor: pointer;
+}
+
+.plans-hero__scroll span {
+  width: 4px;
+  height: 8px;
+
+  border-radius: 999px;
+
+  background: #e94e1b;
+
+  animation:
+    plansScroll 1.7s ease-in-out infinite;
+}
+
+@keyframes plansScroll {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
+
+/* ==========================================================
+   PLANS SECTION
+========================================================== */
+
+.plans-section {
+  position: relative;
+
+  width: 100%;
+
+  padding:
+    clamp(80px, 8vw, 120px)
+    0
+    clamp(90px, 9vw, 140px);
+
+  background:
+    radial-gradient(
+      circle at 8% 3%,
+      rgba(249, 178, 51, 0.065),
+      transparent 29%
+    ),
+    radial-gradient(
+      circle at 93% 8%,
+      rgba(233, 78, 27, 0.04),
+      transparent 30%
+    ),
+    linear-gradient(
+      135deg,
+      #ffffff 0%,
+      #fffdf9 50%,
+      #fffaf7 75%,
+      #ffffff 100%
+    );
+
+  scroll-margin-top:
+    var(--landing-navbar-height);
+}
+
+.plans-section::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  opacity: 0.22;
+
+  background-image:
+    linear-gradient(
+      rgba(31, 32, 35, 0.022) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      rgba(31, 32, 35, 0.022) 1px,
+      transparent 1px
+    );
+
+  background-size: 48px 48px;
+
+  mask-image:
+    linear-gradient(
+      to bottom,
+      #000 0%,
+      transparent 85%
+    );
+
+  -webkit-mask-image:
+    linear-gradient(
+      to bottom,
+      #000 0%,
+      transparent 85%
+    );
+}
+
+.plans-section > .container {
+  position: relative;
+  z-index: 2;
+
+  width:
+    min(1220px, calc(100% - 40px));
+
+  max-width: none;
+
+  margin: 0 auto;
+  padding: 0;
+}
+
+
+/* ==========================================================
+   PLANS HEADER
+========================================================== */
+
+.plans-header {
+  max-width: 860px;
+
+  margin: 0 auto 43px;
+
+  text-align: center;
+}
+
+.plans-header-badge {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  margin-bottom: 18px;
+
+  padding: 9px 14px;
+
+  border:
+    1px solid rgba(233, 78, 27, 0.14);
+
+  border-radius: 999px;
+
+  background:
+    rgba(255, 255, 255, 0.82);
+
+  color: #e94e1b;
+
+  font-size: 0.73rem;
+  font-weight: 850;
+
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+
+  box-shadow:
+    0 12px 30px
+    rgba(126, 70, 13, 0.055);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.plans-header h2 {
+  margin: 0;
+
+  color: #202125;
+
+  font-size:
+    clamp(2.45rem, 4.5vw, 4.35rem);
+
+  font-weight: 850;
+
+  line-height: 1.02;
+
+  letter-spacing: -0.055em;
+
+  text-wrap: balance;
+}
+
+.plans-header p {
+  max-width: 720px;
+
+  margin: 19px auto 0;
+
+  color: #72757d;
+
+  font-size:
+    clamp(0.96rem, 1.25vw, 1.08rem);
+
+  line-height: 1.72;
+
+  text-wrap: pretty;
+}
+
+
+/* ==========================================================
+   TABS
+========================================================== */
+
+.plans-tabs-wrapper {
+  display: flex;
+  justify-content: center;
+
+  margin-bottom: 48px;
+}
+
+.plans-tabs {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 5px;
+
+  padding: 6px;
+
+  border:
+    1px solid rgba(31, 32, 35, 0.08);
+
+  border-radius: 16px;
+
+  background:
+    rgba(255, 255, 255, 0.92);
+
+  box-shadow:
+    0 14px 34px
+    rgba(81, 51, 22, 0.06);
+
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.plans-tab {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  min-width: 116px;
+  min-height: 45px;
+
+  padding: 0 18px;
+
+  appearance: none;
+
+  border: 0;
+  outline: 0;
+
+  border-radius: 11px;
+
+  background: transparent;
+
+  color: #777a82;
+
+  font-family: inherit;
+
+  font-size: 0.8rem;
+  font-weight: 850;
+
+  cursor: pointer;
+
+  transition:
+    transform 180ms ease,
+    color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.plans-tab:hover {
+  color: #e94e1b;
+
+  background: #fff8ee;
+}
+
+.plans-tab.active {
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233,
+      #e94e1b
+    );
+
+  box-shadow:
+    0 10px 24px
+    rgba(233, 78, 27, 0.2);
+}
+
+
+/* ==========================================================
+   STATES
+========================================================== */
+
+.plans-state {
+  display: grid;
+
+  min-height: 300px;
+
+  place-items: center;
+  align-content: center;
+
+  gap: 8px;
+
+  text-align: center;
+}
+
+.plans-state strong {
+  color: #393a3e;
+
+  font-size: 0.94rem;
+  font-weight: 850;
+}
+
+.plans-state span {
+  max-width: 440px;
+
+  color: #85878d;
+
+  font-size: 0.76rem;
+
+  line-height: 1.5;
+}
+
+.plans-state > i {
+  margin-bottom: 5px;
+
+  color: #e94e1b;
+
+  font-size: 1.7rem;
+}
+
+.plans-loader {
+  width: 36px;
+  height: 36px;
+
+  margin-bottom: 8px;
+
+  border:
+    3px solid rgba(233, 78, 27, 0.12);
+
+  border-top-color: #e94e1b;
+
+  border-radius: 50%;
+
+  animation:
+    plansLoader 0.8s linear infinite;
+}
+
+@keyframes plansLoader {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ==========================================================
+   PLANS GRID
+========================================================== */
+
+.plans-grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  align-items: start;
+
+  gap: 20px;
+}
+
+
+/* ==========================================================
+   PLAN CARD
+========================================================== */
+
+.plan-card {
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(31, 32, 35, 0.08);
+
+  border-radius: 24px;
+
+  background:
+    rgba(255, 255, 255, 0.93);
+
+  box-shadow:
+    0 20px 52px
+    rgba(81, 51, 22, 0.075);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+
+  transition:
+    transform 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+.plan-card:hover {
+  transform: translateY(-6px);
+
+  border-color:
+    rgba(233, 78, 27, 0.18);
+
+  box-shadow:
+    0 30px 70px
+    rgba(81, 51, 22, 0.11);
+}
+
+.plan-card-featured {
+  border-color:
+    rgba(233, 78, 27, 0.23);
+
+  box-shadow:
+    0 28px 72px
+    rgba(126, 70, 13, 0.11);
+}
+
+
+/* ==========================================================
+   RECOMMENDED
+========================================================== */
+
+.plan-recommended {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  min-height: 42px;
+
+  padding: 9px 14px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233,
+      #e94e1b
+    );
+
+  color: #ffffff;
+
+  font-size: 0.69rem;
+  font-weight: 850;
+
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+
+/* ==========================================================
+   CARD HEADER
+========================================================== */
+
+.plan-card__header {
+  padding: 28px 25px 24px;
+
+  border-bottom:
+    1px solid rgba(31, 32, 35, 0.065);
+}
+
+.plan-card__badge {
+  display: inline-flex;
+
+  margin-bottom: 17px;
+
+  padding: 6px 10px;
+
+  border:
+    1px solid rgba(233, 78, 27, 0.12);
+
+  border-radius: 999px;
+
+  background: #fff3e3;
+
+  color: #e94e1b;
+
+  font-size: 0.65rem;
+  font-weight: 850;
+}
+
+.plan-card__identity {
+  display: flex;
+
+  align-items: flex-start;
+
+  gap: 13px;
+}
+
+.plan-icon {
+  display: grid;
+
+  flex: 0 0 47px;
+
+  width: 47px;
+  height: 47px;
+
+  place-items: center;
+
+  border-radius: 14px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233,
+      #e94e1b
+    );
+
+  color: #ffffff;
+
+  font-size: 1rem;
+
+  box-shadow:
+    0 12px 27px
+    rgba(233, 78, 27, 0.18);
+}
+
+.plan-card__identity h3 {
+  margin: 2px 0 0;
+
+  color: #25262a;
+
+  font-size: 1.25rem;
+  font-weight: 850;
+
+  line-height: 1.25;
+
+  letter-spacing: -0.025em;
+}
+
+.plan-card__identity p {
+  margin: 5px 0 0;
+
+  color: #7a7d84;
+
+  font-size: 0.75rem;
+
+  line-height: 1.5;
+}
+
+.plan-card__description {
+  margin: 18px 0 0;
+
+  color: #74777f;
+
+  font-size: 0.8rem;
+
+  line-height: 1.65;
+}
+
+
+/* ==========================================================
+   PRICE
+========================================================== */
+
+.plan-price {
+  margin-top: 24px;
+}
+
+.plan-price__regular {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: #a1a3a8;
+
+  font-size: 0.75rem;
+
+  text-decoration: line-through;
+}
+
+.plan-price__main {
+  display: flex;
+
+  align-items: flex-end;
+
+  gap: 7px;
+}
+
+.plan-price__main strong {
+  color: #e94e1b;
+
+  font-size:
+    clamp(2rem, 3vw, 2.55rem);
+
+  font-weight: 850;
+
+  line-height: 1;
+
+  letter-spacing: -0.05em;
+}
+
+.plan-price__main span {
+  margin-bottom: 4px;
+
+  color: #85878d;
+
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.plan-price > p {
+  margin: 7px 0 0;
+
+  color: #85878d;
+
+  font-size: 0.72rem;
+}
+
+.plan-price__saving,
+.plan-price__promotion {
+  display: flex;
+
+  align-items: center;
+
+  gap: 6px;
+
+  margin-top: 8px;
+
+  color: #169344;
+
+  font-size: 0.69rem;
+  font-weight: 800;
+}
+
+.plan-price__unavailable {
+  display: grid;
+
+  gap: 5px;
+}
+
+.plan-price__unavailable strong {
+  color: #333438;
+
+  font-size: 1.35rem;
+  font-weight: 850;
+}
+
+.plan-price__unavailable span {
+  color: #85878d;
+
+  font-size: 0.72rem;
+}
+
+.plan-trial {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  width: fit-content;
+
+  margin-top: 15px;
+
+  padding: 7px 10px;
+
+  border:
+    1px solid rgba(233, 78, 27, 0.1);
+
+  border-radius: 9px;
+
+  background: #fff3e3;
+
+  color: #e94e1b;
+
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+
+/* ==========================================================
+   FEATURES AREA
+========================================================== */
+
+.plan-card__features {
+  padding: 23px 21px;
+}
+
+.plan-card__features-title {
+  display: flex;
+
+  align-items: flex-end;
+  justify-content: space-between;
+
+  gap: 10px;
+
+  margin-bottom: 14px;
+}
+
+.plan-card__features-title > span {
+  color: #35363a;
+
+  font-size: 0.74rem;
+  font-weight: 850;
+
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.plan-card__features-title small {
+  color: #9a9ca1;
+
+  font-size: 0.58rem;
+}
+
+
+/* ==========================================================
+   CATEGORY ACCORDION
+========================================================== */
+
+.plan-categories {
+  display: grid;
+
+  gap: 8px;
+}
+
+.plan-category {
+  overflow: hidden;
+
+  border:
+    1px solid rgba(31, 32, 35, 0.075);
+
+  border-radius: 13px;
+
+  background: #ffffff;
+
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.plan-category[open] {
+  border-color:
+    rgba(233, 78, 27, 0.14);
+
+  box-shadow:
+    0 12px 28px
+    rgba(81, 51, 22, 0.055);
+}
+
+.plan-category summary {
+  list-style: none;
+}
+
+.plan-category summary::-webkit-details-marker {
+  display: none;
+}
+
+
+/* ==========================================================
+   CATEGORY SUMMARY
+========================================================== */
+
+.plan-category__summary {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  padding: 12px 13px;
+
+  cursor: pointer;
+
+  user-select: none;
+
+  transition:
+    background-color 180ms ease;
+}
+
+.plan-category__summary:hover {
+  background: #fffdf9;
+}
+
+.plan-category__identity {
+  display: flex;
+
+  align-items: center;
+
+  min-width: 0;
+
+  gap: 10px;
+}
+
+.plan-category__icon {
+  display: grid;
+
+  flex: 0 0 35px;
+
+  width: 35px;
+  height: 35px;
+
+  place-items: center;
+
+  border-radius: 10px;
+
+  background: #fff3e3;
+
+  color: #e94e1b;
+
+  font-size: 0.75rem;
+}
+
+.plan-category__identity strong {
+  display: block;
+
+  color: #3b3c40;
+
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.plan-category__identity span {
+  display: block;
+
+  margin-top: 2px;
+
+  color: #999ba0;
+
+  font-size: 0.6rem;
+}
+
+.plan-category__arrow {
+  display: grid;
+
+  flex: 0 0 27px;
+
+  width: 27px;
+  height: 27px;
+
+  place-items: center;
+
+  border-radius: 8px;
+
+  background: #f7f7f8;
+
+  color: #898b91;
+
+  font-size: 0.65rem;
+
+  transition:
+    transform 180ms ease,
+    color 180ms ease,
+    background 180ms ease;
+}
+
+.plan-category[open]
+.plan-category__arrow {
+  transform: rotate(180deg);
+
+  background: #fff3e3;
+
+  color: #e94e1b;
+}
+
+
+/* ==========================================================
+   CATEGORY CONTENT
+========================================================== */
+
+.plan-category__content {
+  display: grid;
+
+  gap: 1px;
+
+  padding:
+    4px
+    13px
+    13px;
+}
+
+
+/* ==========================================================
+   FEATURE
+========================================================== */
+
+.plan-feature {
+  display: grid;
+
+  grid-template-columns:
+    22px minmax(0, 1fr);
+
+  align-items: flex-start;
+
+  gap: 9px;
+
+  padding: 8px 0;
+
+  border-top:
+    1px solid rgba(31, 32, 35, 0.05);
+}
+
+.plan-feature__content {
+  min-width: 0;
+}
+
+.plan-feature__row {
+  display: flex;
+
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 8px;
+}
+
+.plan-feature__row > span {
+  color: #62656c;
+
+  font-size: 0.74rem;
+
+  line-height: 1.45;
+}
+
+.plan-feature__row strong {
+  flex: 0 0 auto;
+
+  color: #169344;
+
+  font-size: 0.66rem;
+  font-weight: 850;
+
+  text-align: right;
+}
+
+.plan-feature__content > small {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #94969c;
+
+  font-size: 0.61rem;
+
+  line-height: 1.45;
+}
+
+.plan-feature--disabled {
+  opacity: 0.62;
+}
+
+
+/* ==========================================================
+   FEATURE STATUS
+========================================================== */
+
+.plan-feature-status {
+  display: grid;
+
+  flex: 0 0 22px;
+
+  width: 22px;
+  height: 22px;
+
+  place-items: center;
+
+  margin-top: 1px;
+
+  border-radius: 50%;
+
+  font-size: 0.62rem;
+}
+
+.plan-feature-status-success {
+  background: #22c55e;
+
+  color: #ffffff;
+
+  box-shadow:
+    0 4px 10px
+    rgba(34, 197, 94, 0.18);
+}
+
+.plan-feature-status-disabled {
+  border: 1px solid #d7d9dc;
+
+  background: #f8f8f9;
+
+  color: #999ba0;
+}
+
+.plan-feature-status-optional {
+  border:
+    1px solid rgba(233, 78, 27, 0.14);
+
+  background: #fff3e3;
+
+  color: #e94e1b;
+}
+
+
+/* ==========================================================
+   ADDONS
+========================================================== */
+
+.plan-addons {
+  margin: 0 21px;
+
+  padding: 19px 0;
+
+  border-top:
+    1px solid rgba(31, 32, 35, 0.065);
+}
+
+.plan-addons__title {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  margin-bottom: 12px;
+
+  color: #3f4044;
+
+  font-size: 0.72rem;
+  font-weight: 850;
+
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.plan-addons__title i {
+  color: #e94e1b;
+}
+
+.plan-addons__list {
+  display: grid;
+
+  gap: 8px;
+}
+
+.plan-addon {
+  display: grid;
+
+  grid-template-columns:
+    22px minmax(0, 1fr);
+
+  align-items: center;
+
+  gap: 9px;
+}
+
+.plan-addon > div {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 8px;
+
+  min-width: 0;
+}
+
+.plan-addon > div > span {
+  min-width: 0;
+
+  color: #686b71;
+
+  font-size: 0.72rem;
+}
+
+.plan-addon > div > strong {
+  flex: 0 0 auto;
+
+  color: #e94e1b;
+
+  font-size: 0.65rem;
+  font-weight: 850;
+}
+
+
+/* ==========================================================
+   CARD FOOTER
+========================================================== */
+
+.plan-card__footer {
+  display: grid;
+
+  gap: 10px;
+
+  margin-top: auto;
+
+  padding:
+    4px
+    21px
+    23px;
+}
+
+.plan-card__button {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  min-height: 49px;
+
+  padding: 0 18px;
+
+  border-radius: 14px;
+
+  background: #22c55e;
+
+  color: #ffffff;
+
+  font-size: 0.79rem;
+  font-weight: 850;
+
+  text-decoration: none;
+
+  box-shadow:
+    0 14px 30px
+    rgba(34, 197, 94, 0.19);
+
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+}
+
+.plan-card__button:hover {
+  color: #ffffff;
+
+  background: #16a34a;
+
+  transform: translateY(-3px);
+
+  box-shadow:
+    0 20px 40px
+    rgba(34, 197, 94, 0.27);
+}
+
+.plan-card__button--featured {
+  background:
+    linear-gradient(
+      135deg,
+      #f9b233,
+      #e94e1b
+    );
+
+  box-shadow:
+    0 14px 30px
+    rgba(233, 78, 27, 0.2);
+}
+
+.plan-card__button--featured:hover {
+  background:
+    linear-gradient(
+      135deg,
+      #f5a623,
+      #e94e1b
+    );
+
+  box-shadow:
+    0 20px 40px
+    rgba(233, 78, 27, 0.28);
+}
+
+.plan-card__footer-note {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+
+  color: #a0a2a7;
+
+  font-size: 0.6rem;
+}
+
+
+/* ==========================================================
+   DESKTOP MEDIUM
+========================================================== */
+
+@media (max-width: 1080px) {
+  .plans-hero__container {
+    gap: 35px;
+
+    width:
+      min(100% - 36px, 1050px);
+  }
+
+  .plans-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .plans-hero-floating--one {
+    left: 0;
+  }
+
+  .plans-hero-floating--two {
+    right: 0;
+  }
+}
+
+
+/* ==========================================================
+   TABLET
+========================================================== */
+
+@media (max-width: 800px) {
+  .plans-hero {
+    min-height: auto;
+  }
+
+  .plans-hero__container {
+    grid-template-columns: 1fr;
+
+    min-height: auto;
+
+    padding-top: 65px;
+    padding-bottom: 95px;
+
+    text-align: center;
+  }
+
+  .plans-hero__content {
+    max-width: 700px;
+
+    margin: 0 auto;
+  }
+
+  .plans-hero__title {
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .plans-hero__description {
+    margin-right: auto;
+    margin-left: auto;
+  }
+
+  .plans-hero__actions,
+  .plans-hero__benefits {
+    justify-content: center;
+  }
+
+  .plans-hero__visual {
+    width: min(620px, 100%);
+
+    min-height: 470px;
+
+    margin: 0 auto;
+  }
+
+  .plans-section {
+    padding:
+      75px
+      0
+      90px;
+  }
+
+  .plans-section > .container {
+    width:
+      min(100% - 28px, 680px);
+  }
+
+  .plans-header {
+    margin-bottom: 38px;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-card {
+    width: min(100%, 620px);
+
+    margin: 0 auto;
+  }
+}
+
+
+/* ==========================================================
+   MOBILE
+========================================================== */
+
+@media (max-width: 560px) {
+  .plans-hero__container {
+    width:
+      min(100% - 28px, 430px);
+
+    gap: 32px;
+
+    padding-top: 42px;
+    padding-bottom: 72px;
+  }
+
+  .plans-hero__eyebrow {
+    margin-bottom: 17px;
+
+    padding: 8px 11px;
+
+    font-size: 0.64rem;
+  }
+
+  .plans-hero__title {
+    font-size:
+      clamp(2.4rem, 12vw, 3.5rem);
+
+    line-height: 0.98;
+  }
+
+  .plans-hero__description {
+    margin-top: 18px;
+
+    font-size: 0.91rem;
+
+    line-height: 1.62;
+  }
+
+  .plans-hero__actions {
+    display: grid;
+
+    width: 100%;
+
+    gap: 11px;
+  }
+
+  .plans-hero__button {
+    width: 100%;
+
+    min-height: 51px;
+  }
+
+  .plans-hero__benefits {
+    display: none;
+  }
+
+  .plans-hero__visual {
+    min-height: 390px;
+  }
+
+  .plans-hero-card {
+    width: 94%;
+
+    padding: 25px 20px;
+
+    border-radius: 22px;
+  }
+
+  .plans-hero-card__icon {
+    width: 52px;
+    height: 52px;
+
+    margin-bottom: 20px;
+
+    border-radius: 15px;
+  }
+
+  .plans-hero-card > strong {
+    font-size: 1.8rem;
+  }
+
+  .plans-hero-card__modules {
+    gap: 7px;
+
+    margin-top: 22px;
+  }
+
+  .plans-hero-card__modules > div {
+    padding: 9px;
+
+    font-size: 0.63rem;
+  }
+
+  .plans-hero-floating {
+    padding: 8px 10px;
+  }
+
+  .plans-hero-floating > i {
+    width: 28px;
+    height: 28px;
+
+    flex-basis: 28px;
+  }
+
+  .plans-hero-floating strong {
+    font-size: 0.6rem;
+  }
+
+  .plans-hero-floating small {
+    font-size: 0.48rem;
+  }
+
+  .plans-hero-floating--one {
+    top: 5%;
+    left: 0;
+  }
+
+  .plans-hero-floating--two {
+    right: 0;
+    bottom: 4%;
+  }
+
+  .plans-hero__scroll {
+    display: none;
+  }
+
+
+  /* PLANES */
+
+  .plans-section {
+    padding:
+      62px
+      0
+      70px;
+  }
+
+  .plans-header h2 {
+    font-size:
+      clamp(2.15rem, 10vw, 3.1rem);
+  }
+
+  .plans-header p {
+    margin-top: 16px;
+
+    font-size: 0.9rem;
+  }
+
+  .plans-tabs-wrapper {
+    margin-bottom: 34px;
+  }
+
+  .plans-tabs {
+    display: grid;
+
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+
+    width: 100%;
+  }
+
+  .plans-tab {
+    min-width: 0;
+    min-height: 43px;
+
+    padding: 0 7px;
+
+    font-size: 0.7rem;
+  }
+
+
+  /* CARD */
+
+  .plan-card {
+    border-radius: 19px;
+  }
+
+  .plan-card__header {
+    padding: 23px 19px;
+  }
+
+  .plan-card__identity h3 {
+    font-size: 1.1rem;
+  }
+
+  .plan-price__main strong {
+    font-size: 2.15rem;
+  }
+
+
+  /* FEATURES */
+
+  .plan-card__features {
+    padding:
+      20px
+      16px;
+  }
+
+  .plan-card__features-title {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 3px;
+  }
+
+  .plan-category__summary {
+    padding: 11px;
+  }
+
+  .plan-category__content {
+    padding:
+      3px
+      11px
+      11px;
+  }
+
+  .plan-feature__row {
+    flex-direction: column;
+
+    gap: 2px;
+  }
+
+  .plan-feature__row strong {
+    text-align: left;
+  }
+
+
+  /* ADDONS */
+
+  .plan-addons {
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .plan-addon > div {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 1px;
+  }
+
+
+  /* FOOTER */
+
+  .plan-card__footer {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+
+/* ==========================================================
+   LAPTOPS CON POCA ALTURA
+========================================================== */
+
+@media (min-width: 801px) and (max-height: 850px) {
+  .plans-hero {
+    min-height: calc(
+      100svh - var(--landing-navbar-height)
+    );
+  }
+
+  .plans-hero__container {
+    min-height: calc(
+      100svh - var(--landing-navbar-height)
+    );
+
+    padding-top: 28px;
+    padding-bottom: 45px;
+  }
+
+  .plans-hero__title {
+    font-size:
+      clamp(2.7rem, 4.3vw, 4.2rem);
+  }
+
+  .plans-hero__description {
+    margin-top: 17px;
+
+    font-size: 0.94rem;
+
+    line-height: 1.55;
+  }
+
+  .plans-hero__actions {
+    margin-top: 21px;
+  }
+
+  .plans-hero__benefits {
+    margin-top: 16px;
+  }
+
+  .plans-hero__visual {
+    min-height: 430px;
+  }
+
+  .plans-hero-card {
+    width: min(470px, 88%);
+
+    padding: 31px;
+  }
+
+  .plans-hero-card__icon {
+    width: 50px;
+    height: 50px;
+
+    margin-bottom: 18px;
+  }
+
+  .plans-hero-card__modules {
+    margin-top: 19px;
+  }
+}
+
+
+/* ==========================================================
+   REDUCED MOTION
+========================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-card,
+  .plans-tab,
+  .plan-card__button,
+  .plans-hero__button,
+  .plan-category__arrow {
+    transition: none;
+  }
+
+  .plans-hero__scroll span,
+  .plans-loader {
+    animation: none;
+  }
+}

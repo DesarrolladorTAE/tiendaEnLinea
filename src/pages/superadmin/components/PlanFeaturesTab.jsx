@@ -15,13 +15,11 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  FormControlLabel,
   IconButton,
   MenuItem,
   Stack,
   Switch,
   TextField,
-  Tooltip,
   Typography,
   alpha,
 } from "@mui/material";
@@ -33,8 +31,6 @@ import ToggleOnRoundedIcon from "@mui/icons-material/ToggleOnRounded";
 import NumbersRoundedIcon from "@mui/icons-material/NumbersRounded";
 import TextFieldsRoundedIcon from "@mui/icons-material/TextFieldsRounded";
 import CategoryRoundedIcon from "@mui/icons-material/CategoryRounded";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
 
 const BRAND = {
   orange: "#ff5a1f",
@@ -64,15 +60,46 @@ const fieldSx = {
 const emptyFeature = {
   category_id: "",
   name: "",
-  display_name: "",
   description: "",
-  type: "boolean",
+  icon: "",
+  value_type: "boolean",
   sort_order: 0,
   is_active: true,
 };
 
+/*
+|--------------------------------------------------------------------------
+| Helpers
+|--------------------------------------------------------------------------
+*/
+
+const getFeatureStatus = (feature) => {
+  return (
+    feature?.configuration?.status ||
+    feature?.status ||
+    "not_included"
+  );
+};
+
+const getFeatureValue = (feature) => {
+  return (
+    feature?.configuration?.value ??
+    feature?.value ??
+    ""
+  );
+};
+
+const isFeatureIncluded = (feature) => {
+  const status = getFeatureStatus(feature);
+
+  return (
+    status === "included" ||
+    status === "limited"
+  );
+};
+
 export default function PlanFeaturesTab({
-  categories,
+  categories = [],
   onChange,
   onCreateFeature,
   creatingFeature = false,
@@ -82,6 +109,12 @@ export default function PlanFeaturesTab({
 
   const [newFeature, setNewFeature] =
     useState(emptyFeature);
+
+  /*
+  |--------------------------------------------------------------------------
+  | Resumen
+  |--------------------------------------------------------------------------
+  */
 
   const total = useMemo(
     () =>
@@ -101,16 +134,23 @@ export default function PlanFeaturesTab({
           sum +
           (category.features || []).filter(
             (feature) =>
-              Boolean(feature.included)
+              isFeatureIncluded(feature)
           ).length,
         0
       ),
     [categories]
   );
 
+  /*
+  |--------------------------------------------------------------------------
+  | Modal
+  |--------------------------------------------------------------------------
+  */
+
   const handleOpenCreate = () => {
     setNewFeature({
       ...emptyFeature,
+
       category_id:
         categories?.[0]?.id || "",
     });
@@ -124,7 +164,10 @@ export default function PlanFeaturesTab({
     }
 
     setOpenCreate(false);
-    setNewFeature(emptyFeature);
+
+    setNewFeature(
+      emptyFeature
+    );
   };
 
   const handleNewFeatureChange = (
@@ -142,41 +185,70 @@ export default function PlanFeaturesTab({
       return;
     }
 
+    const payload = {
+      category_id: Number(
+        newFeature.category_id
+      ),
+
+      name:
+        newFeature.name.trim(),
+
+      description:
+        newFeature.description?.trim() ||
+        null,
+
+      icon:
+        newFeature.icon?.trim() ||
+        null,
+
+      value_type:
+        newFeature.value_type,
+
+      sort_order: Number(
+        newFeature.sort_order || 0
+      ),
+
+      is_active: Boolean(
+        newFeature.is_active
+      ),
+    };
+
     const success =
-      await onCreateFeature({
-        ...newFeature,
-
-        category_id: Number(
-          newFeature.category_id
-        ),
-
-        sort_order: Number(
-          newFeature.sort_order || 0
-        ),
-
-        is_active: Boolean(
-          newFeature.is_active
-        ),
-      });
+      await onCreateFeature(
+        payload
+      );
 
     if (success !== false) {
       setOpenCreate(false);
-      setNewFeature(emptyFeature);
+
+      setNewFeature(
+        emptyFeature
+      );
     }
   };
 
   const canCreate =
-    newFeature.category_id &&
-    newFeature.name.trim() &&
-    newFeature.display_name.trim();
+    Boolean(
+      newFeature.category_id
+    ) &&
+    Boolean(
+      newFeature.name.trim()
+    );
 
   return (
     <Stack spacing={3}>
+
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
       <Card
         elevation={0}
         sx={{
           borderRadius: 4,
+
           border: "1px solid",
+
           borderColor: "divider",
         }}
       >
@@ -216,15 +288,22 @@ export default function PlanFeaturesTab({
                 sx={{
                   width: 46,
                   height: 46,
+
                   borderRadius: 2.5,
+
                   display: "grid",
+
                   placeItems: "center",
+
                   flexShrink: 0,
+
                   bgcolor: alpha(
                     BRAND.orange,
                     0.09
                   ),
-                  color: BRAND.orange,
+
+                  color:
+                    BRAND.orange,
                 }}
               >
                 <ChecklistRoundedIcon />
@@ -235,7 +314,8 @@ export default function PlanFeaturesTab({
                   variant="h6"
                   fontWeight={900}
                   sx={{
-                    letterSpacing: "-.02em",
+                    letterSpacing:
+                      "-.02em",
                   }}
                 >
                   Características del plan
@@ -259,16 +339,25 @@ export default function PlanFeaturesTab({
               startIcon={
                 <AddRoundedIcon />
               }
-              onClick={handleOpenCreate}
+              onClick={
+                handleOpenCreate
+              }
               sx={{
                 borderRadius: 999,
+
                 px: 2.75,
-                bgcolor: BRAND.orange,
+
+                bgcolor:
+                  BRAND.orange,
+
                 fontWeight: 900,
-                textTransform: "none",
+
+                textTransform:
+                  "none",
 
                 "&:hover": {
-                  bgcolor: "#e94e1b",
+                  bgcolor:
+                    "#e94e1b",
                 },
               }}
             >
@@ -277,6 +366,10 @@ export default function PlanFeaturesTab({
           </Stack>
 
           <Divider sx={{ my: 3 }} />
+
+          {/* =================================================
+              RESUMEN
+          ================================================= */}
 
           <Box
             sx={{
@@ -302,16 +395,18 @@ export default function PlanFeaturesTab({
 
             <SummaryItem
               label="No incluidas"
-              value={
-                Math.max(
-                  total - included,
-                  0
-                )
-              }
+              value={Math.max(
+                total - included,
+                0
+              )}
             />
           </Box>
         </CardContent>
       </Card>
+
+      {/* =====================================================
+          CATEGORÍAS
+      ===================================================== */}
 
       {categories.length === 0 ? (
         <Card
@@ -319,7 +414,8 @@ export default function PlanFeaturesTab({
           sx={{
             borderRadius: 4,
 
-            border: "1px dashed",
+            border:
+              "1px dashed",
 
             borderColor: alpha(
               BRAND.orange,
@@ -335,22 +431,33 @@ export default function PlanFeaturesTab({
           <CardContent
             sx={{
               py: 6,
-              textAlign: "center",
+
+              textAlign:
+                "center",
             }}
           >
             <Box
               sx={{
                 width: 64,
                 height: 64,
+
                 borderRadius: 4,
+
                 mx: "auto",
+
                 display: "grid",
-                placeItems: "center",
+
+                placeItems:
+                  "center",
+
                 bgcolor: alpha(
                   BRAND.orange,
                   0.09
                 ),
-                color: BRAND.orange,
+
+                color:
+                  BRAND.orange,
+
                 mb: 2,
               }}
             >
@@ -372,7 +479,9 @@ export default function PlanFeaturesTab({
               color="text.secondary"
               sx={{
                 mt: 1,
+
                 maxWidth: 500,
+
                 mx: "auto",
               }}
             >
@@ -394,9 +503,7 @@ export default function PlanFeaturesTab({
                   category.id ||
                   `category-${categoryIndex}`
                 }
-                category={
-                  category
-                }
+                category={category}
                 categoryIndex={
                   categoryIndex
                 }
@@ -409,9 +516,15 @@ export default function PlanFeaturesTab({
         </Stack>
       )}
 
+      {/* =====================================================
+          MODAL NUEVA CARACTERÍSTICA
+      ===================================================== */}
+
       <Dialog
         open={openCreate}
-        onClose={handleCloseCreate}
+        onClose={
+          handleCloseCreate
+        }
         fullWidth
         maxWidth="sm"
         PaperProps={{
@@ -440,14 +553,21 @@ export default function PlanFeaturesTab({
                 sx={{
                   width: 42,
                   height: 42,
+
                   borderRadius: 2.5,
+
                   display: "grid",
-                  placeItems: "center",
+
+                  placeItems:
+                    "center",
+
                   bgcolor: alpha(
                     BRAND.orange,
                     0.09
                   ),
-                  color: BRAND.orange,
+
+                  color:
+                    BRAND.orange,
                 }}
               >
                 <AddRoundedIcon />
@@ -495,6 +615,9 @@ export default function PlanFeaturesTab({
           }}
         >
           <Stack spacing={2.5}>
+
+            {/* CATEGORÍA */}
+
             <TextField
               select
               label="Categoría"
@@ -520,60 +643,33 @@ export default function PlanFeaturesTab({
                       category.id
                     }
                   >
-                    {category.display_name ||
-                      category.name}
+                    {category.name}
                   </MenuItem>
                 )
               )}
             </TextField>
 
-            <Box
-              sx={{
-                display: "grid",
+            {/* NOMBRE */}
 
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "1fr 1fr",
-                },
+            <TextField
+              label="Nombre"
+              value={
+                newFeature.name
+              }
+              onChange={(event) =>
+                handleNewFeatureChange(
+                  "name",
+                  event.target.value
+                )
+              }
+              required
+              fullWidth
+              placeholder="Ej. Usuarios adicionales"
+              helperText="El slug se generará automáticamente."
+              sx={fieldSx}
+            />
 
-                gap: 2,
-              }}
-            >
-              <TextField
-                label="Nombre interno"
-                value={
-                  newFeature.name
-                }
-                onChange={(event) =>
-                  handleNewFeatureChange(
-                    "name",
-                    event.target.value
-                  )
-                }
-                required
-                fullWidth
-                placeholder="usuarios"
-                helperText="Identificador interno."
-                sx={fieldSx}
-              />
-
-              <TextField
-                label="Nombre visible"
-                value={
-                  newFeature.display_name
-                }
-                onChange={(event) =>
-                  handleNewFeatureChange(
-                    "display_name",
-                    event.target.value
-                  )
-                }
-                required
-                fullWidth
-                placeholder="Usuarios"
-                sx={fieldSx}
-              />
-            </Box>
+            {/* DESCRIPCIÓN */}
 
             <TextField
               label="Descripción"
@@ -593,6 +689,27 @@ export default function PlanFeaturesTab({
               sx={fieldSx}
             />
 
+            {/* ICONO */}
+
+            <TextField
+              label="Icono"
+              value={
+                newFeature.icon
+              }
+              onChange={(event) =>
+                handleNewFeatureChange(
+                  "icon",
+                  event.target.value
+                )
+              }
+              fullWidth
+              placeholder="Ej. bi-people-fill"
+              helperText="Clase de Bootstrap Icons."
+              sx={fieldSx}
+            />
+
+            {/* TIPO Y ORDEN */}
+
             <Box
               sx={{
                 display: "grid",
@@ -609,11 +726,11 @@ export default function PlanFeaturesTab({
                 select
                 label="Tipo de valor"
                 value={
-                  newFeature.type
+                  newFeature.value_type
                 }
                 onChange={(event) =>
                   handleNewFeatureChange(
-                    "type",
+                    "value_type",
                     event.target.value
                   )
                 }
@@ -653,6 +770,8 @@ export default function PlanFeaturesTab({
               />
             </Box>
 
+            {/* ACTIVO */}
+
             <Box
               sx={{
                 p: 2,
@@ -661,19 +780,21 @@ export default function PlanFeaturesTab({
 
                 border: "1px solid",
 
-                borderColor: newFeature.is_active
-                  ? alpha(
-                      BRAND.orange,
-                      0.3
-                    )
-                  : "divider",
+                borderColor:
+                  newFeature.is_active
+                    ? alpha(
+                        BRAND.orange,
+                        0.3
+                      )
+                    : "divider",
 
-                bgcolor: newFeature.is_active
-                  ? alpha(
-                      BRAND.orange,
-                      0.03
-                    )
-                  : "#fafafa",
+                bgcolor:
+                  newFeature.is_active
+                    ? alpha(
+                        BRAND.orange,
+                        0.03
+                      )
+                    : "#fafafa",
               }}
             >
               <Stack
@@ -745,10 +866,16 @@ export default function PlanFeaturesTab({
             }
             sx={{
               borderRadius: 999,
+
               px: 2.5,
-              color: "text.secondary",
+
+              color:
+                "text.secondary",
+
               fontWeight: 800,
-              textTransform: "none",
+
+              textTransform:
+                "none",
             }}
           >
             Cancelar
@@ -768,13 +895,20 @@ export default function PlanFeaturesTab({
             }
             sx={{
               borderRadius: 999,
+
               px: 3,
-              bgcolor: BRAND.orange,
+
+              bgcolor:
+                BRAND.orange,
+
               fontWeight: 900,
-              textTransform: "none",
+
+              textTransform:
+                "none",
 
               "&:hover": {
-                bgcolor: "#e94e1b",
+                bgcolor:
+                  "#e94e1b",
               },
             }}
           >
@@ -788,6 +922,12 @@ export default function PlanFeaturesTab({
   );
 }
 
+/*
+|--------------------------------------------------------------------------
+| Categoría
+|--------------------------------------------------------------------------
+*/
+
 function CategoryCard({
   category,
   categoryIndex,
@@ -799,7 +939,7 @@ function CategoryCard({
   const includedCount =
     features.filter(
       (feature) =>
-        Boolean(feature.included)
+        isFeatureIncluded(feature)
     ).length;
 
   return (
@@ -807,8 +947,11 @@ function CategoryCard({
       elevation={0}
       sx={{
         borderRadius: 4,
+
         border: "1px solid",
+
         borderColor: "divider",
+
         overflow: "hidden",
       }}
     >
@@ -852,17 +995,39 @@ function CategoryCard({
               sx={{
                 width: 44,
                 height: 44,
+
                 borderRadius: 2.5,
+
                 display: "grid",
-                placeItems: "center",
+
+                placeItems:
+                  "center",
+
                 bgcolor: alpha(
                   BRAND.orange,
                   0.09
                 ),
-                color: BRAND.orange,
+
+                color:
+                  BRAND.orange,
               }}
             >
-              <CategoryRoundedIcon />
+              {category.icon ? (
+                <i
+                  className={
+                    category.icon.startsWith(
+                      "bi "
+                    )
+                      ? category.icon
+                      : `bi ${category.icon}`
+                  }
+                  style={{
+                    fontSize: 20,
+                  }}
+                />
+              ) : (
+                <CategoryRoundedIcon />
+              )}
             </Box>
 
             <Box>
@@ -870,8 +1035,7 @@ function CategoryCard({
                 fontWeight={900}
                 fontSize={17}
               >
-                {category.display_name ||
-                  category.name ||
+                {category.name ||
                   "Categoría"}
               </Typography>
 
@@ -900,7 +1064,8 @@ function CategoryCard({
                 0.08
               ),
 
-              color: BRAND.orange,
+              color:
+                BRAND.orange,
             }}
           />
         </Stack>
@@ -963,19 +1128,114 @@ function CategoryCard({
   );
 }
 
+/*
+|--------------------------------------------------------------------------
+| Característica
+|--------------------------------------------------------------------------
+*/
+
 function FeatureRow({
   feature,
   categoryIndex,
   featureIndex,
   onChange,
 }) {
-  const included =
-    Boolean(feature.included);
-
   const type =
-    feature.type ||
     feature.value_type ||
+    feature.type ||
     "text";
+
+  const status =
+    getFeatureStatus(feature);
+
+  const value =
+    getFeatureValue(feature);
+
+  const included =
+    isFeatureIncluded(feature);
+
+  const handleToggle = (
+    checked
+  ) => {
+    /*
+     * Desactivar
+     */
+
+    if (!checked) {
+      onChange(
+        categoryIndex,
+        featureIndex,
+        "status",
+        "not_included"
+      );
+
+      onChange(
+        categoryIndex,
+        featureIndex,
+        "value",
+        null
+      );
+
+      return;
+    }
+
+    /*
+     * Numérico:
+     *
+     * Debe usar limited porque necesita
+     * un valor de límite.
+     */
+
+    if (type === "number") {
+      onChange(
+        categoryIndex,
+        featureIndex,
+        "status",
+        "limited"
+      );
+
+      return;
+    }
+
+    /*
+     * Boolean / texto
+     */
+
+    onChange(
+      categoryIndex,
+      featureIndex,
+      "status",
+      "included"
+    );
+  };
+
+  const handleValueChange = (
+    newValue
+  ) => {
+    onChange(
+      categoryIndex,
+      featureIndex,
+      "value",
+      newValue
+    );
+
+    /*
+     * Un number con valor debe
+     * mantenerse como limited.
+     */
+
+    if (
+      type === "number" &&
+      status !== "limited"
+    ) {
+      onChange(
+        categoryIndex,
+        featureIndex,
+        "status",
+        "limited"
+      );
+    }
+  };
 
   return (
     <Box
@@ -1024,9 +1284,11 @@ function FeatureRow({
 
           gridTemplateColumns: {
             xs: "1fr",
-            md: type === "boolean"
-              ? "minmax(280px,1fr) 180px"
-              : "minmax(280px,1fr) 160px minmax(180px,240px)",
+
+            md:
+              type === "boolean"
+                ? "minmax(280px,1fr) 180px"
+                : "minmax(280px,1fr) 180px minmax(200px,260px)",
           },
 
           gap: 2,
@@ -1034,6 +1296,9 @@ function FeatureRow({
           alignItems: "center",
         }}
       >
+
+        {/* INFORMACIÓN */}
+
         <Stack
           direction="row"
           spacing={1.5}
@@ -1055,13 +1320,57 @@ function FeatureRow({
               <Typography
                 fontWeight={900}
               >
-                {feature.display_name ||
-                  feature.name}
+                {feature.name}
               </Typography>
 
               <TypeChip
                 type={type}
               />
+
+              {status === "limited" && (
+                <Chip
+                  size="small"
+                  label="Limitado"
+                  sx={{
+                    height: 22,
+
+                    fontSize: 10,
+
+                    fontWeight: 800,
+
+                    bgcolor: alpha(
+                      BRAND.amber,
+                      0.16
+                    ),
+
+                    color:
+                      "#9a6500",
+                  }}
+                />
+              )}
+
+              {status ===
+                "optional" && (
+                <Chip
+                  size="small"
+                  label="Opcional"
+                  sx={{
+                    height: 22,
+
+                    fontSize: 10,
+
+                    fontWeight: 800,
+
+                    bgcolor: alpha(
+                      BRAND.orange,
+                      0.1
+                    ),
+
+                    color:
+                      BRAND.orange,
+                  }}
+                />
+              )}
             </Stack>
 
             {feature.description && (
@@ -1070,6 +1379,7 @@ function FeatureRow({
                 color="text.secondary"
                 sx={{
                   mt: 0.4,
+
                   lineHeight: 1.5,
                 }}
               >
@@ -1079,10 +1389,14 @@ function FeatureRow({
           </Box>
         </Stack>
 
+        {/* SWITCH */}
+
         <Box
           sx={{
             display: "flex",
+
             alignItems: "center",
+
             justifyContent: {
               xs: "space-between",
               md: "flex-start",
@@ -1097,10 +1411,7 @@ function FeatureRow({
             <Switch
               checked={included}
               onChange={(event) =>
-                onChange(
-                  categoryIndex,
-                  featureIndex,
-                  "included",
+                handleToggle(
                   event.target.checked
                 )
               }
@@ -1129,24 +1440,25 @@ function FeatureRow({
               }
             >
               {included
-                ? "Incluido"
+                ? status === "limited"
+                  ? "Con límite"
+                  : "Incluido"
                 : "No incluido"}
             </Typography>
           </Stack>
         </Box>
 
+        {/* VALOR */}
+
         {type !== "boolean" && (
           <FeatureValueField
-            feature={feature}
+            value={value}
             type={type}
-            included={included}
-            onChange={(value) =>
-              onChange(
-                categoryIndex,
-                featureIndex,
-                "value",
-                value
-              )
+            included={
+              included
+            }
+            onChange={
+              handleValueChange
             }
           />
         )}
@@ -1155,44 +1467,120 @@ function FeatureRow({
   );
 }
 
+/*
+|--------------------------------------------------------------------------
+| Campo valor
+|--------------------------------------------------------------------------
+*/
+
 function FeatureValueField({
-  feature,
+  value,
   type,
   included,
   onChange,
 }) {
+  const [unlimited, setUnlimited] =
+    useState(
+      value === "unlimited" ||
+      value === "-1"
+    );
+
+  /*
+   * Número
+   */
+
   if (type === "number") {
     return (
-      <TextField
-        size="small"
-        label="Límite"
-        type="number"
-        value={
-          feature.value ?? ""
-        }
-        disabled={!included}
-        onChange={(event) =>
-          onChange(
-            event.target.value
-          )
-        }
-        fullWidth
-        placeholder="Ej. 5"
-        inputProps={{
-          min: 0,
-        }}
-        sx={fieldSx}
-      />
+      <Stack spacing={1}>
+        <TextField
+          size="small"
+          label="Límite"
+          type="number"
+          value={
+            unlimited
+              ? ""
+              : value ?? ""
+          }
+          disabled={
+            !included ||
+            unlimited
+          }
+          onChange={(event) =>
+            onChange(
+              event.target.value
+            )
+          }
+          fullWidth
+          placeholder="Ej. 5"
+          inputProps={{
+            min: 0,
+          }}
+          sx={fieldSx}
+        />
+
+        <Stack
+          direction="row"
+          alignItems="center"
+          spacing={0.5}
+        >
+          <Switch
+            size="small"
+            checked={unlimited}
+            disabled={!included}
+            onChange={(event) => {
+              const checked =
+                event.target.checked;
+
+              setUnlimited(
+                checked
+              );
+
+              onChange(
+                checked
+                  ? "unlimited"
+                  : ""
+              );
+            }}
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked":
+                {
+                  color:
+                    BRAND.orange,
+                },
+
+              "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
+                {
+                  bgcolor:
+                    BRAND.orange,
+                },
+            }}
+          />
+
+          <Typography
+            variant="caption"
+            fontWeight={800}
+            color={
+              unlimited
+                ? BRAND.orange
+                : "text.secondary"
+            }
+          >
+            Ilimitado
+          </Typography>
+        </Stack>
+      </Stack>
     );
   }
+
+  /*
+   * Texto
+   */
 
   return (
     <TextField
       size="small"
       label="Valor"
-      value={
-        feature.value ?? ""
-      }
+      value={value ?? ""}
       disabled={!included}
       onChange={(event) =>
         onChange(
@@ -1200,11 +1588,17 @@ function FeatureValueField({
         )
       }
       fullWidth
-      placeholder="Ej. Ilimitado"
+      placeholder="Ej. Personalizado"
       sx={fieldSx}
     />
   );
 }
+
+/*
+|--------------------------------------------------------------------------
+| Icono tipo
+|--------------------------------------------------------------------------
+*/
 
 function FeatureTypeIcon({
   type,
@@ -1228,9 +1622,13 @@ function FeatureTypeIcon({
       sx={{
         width: 38,
         height: 38,
+
         flexShrink: 0,
+
         borderRadius: 2,
+
         display: "grid",
+
         placeItems: "center",
 
         bgcolor: active
@@ -1254,6 +1652,12 @@ function FeatureTypeIcon({
   );
 }
 
+/*
+|--------------------------------------------------------------------------
+| Chip tipo
+|--------------------------------------------------------------------------
+*/
+
 function TypeChip({
   type,
 }) {
@@ -1272,12 +1676,20 @@ function TypeChip({
       }
       sx={{
         height: 22,
+
         fontSize: 10,
+
         fontWeight: 800,
       }}
     />
   );
 }
+
+/*
+|--------------------------------------------------------------------------
+| Resumen
+|--------------------------------------------------------------------------
+*/
 
 function SummaryItem({
   label,
@@ -1287,10 +1699,15 @@ function SummaryItem({
     <Box
       sx={{
         p: 2,
+
         borderRadius: 3,
+
         bgcolor: "#fafafa",
+
         border: "1px solid",
-        borderColor: "divider",
+
+        borderColor:
+          "divider",
       }}
     >
       <Typography

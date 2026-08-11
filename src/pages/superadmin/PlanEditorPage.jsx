@@ -29,6 +29,7 @@ import { planPriceService } from "../../services/superadmin/planPriceService";
 import { planFeatureValueService } from "../../services/superadmin/planFeatureValueService";
 import { planAddonService } from "../../services/superadmin/planAddonService";
 import { planFeatureService } from "../../services/superadmin/planFeatureService";
+import { complementoService } from "../../services/superadmin/complementoService";
 
 import { alertFromAxiosError, showSuccess } from "../../utils/alerts";
 
@@ -105,6 +106,7 @@ export default function PlanEditorPage() {
   const [loadingAddons, setLoadingAddons] = useState(false);
 
   const [creatingFeature, setCreatingFeature] = useState(false);
+  const [creatingComplemento, setCreatingComplemento] = useState(false);
 
   const title = useMemo(() => {
     if (isNew) {
@@ -309,13 +311,15 @@ export default function PlanEditorPage() {
       ...current,
       {
         id: null,
-        billing_cycle: "monthly",
+        billing_period: "monthly",
         label: "",
+        saving_label: "",
         price: "",
-        months_paid: 1,
-        months_received: 1,
+        regular_price: "",
+        months: 1,
+        paid_months: 1,
         is_active: true,
-        sort_order: current.length,
+        sort_order: current.length + 1,
       },
     ]);
   };
@@ -330,23 +334,47 @@ export default function PlanEditorPage() {
     try {
       setSaving(true);
 
-      const data = prices.map((price, index) => ({
-        id: price.id || null,
+      const data = prices.map((price, index) => {
+        const months = Number(price.months || 1);
 
-        billing_cycle: price.billing_cycle || "monthly",
+        const paidMonths =
+          price.paid_months === "" ||
+          price.paid_months === null ||
+          price.paid_months === undefined
+            ? null
+            : Number(price.paid_months);
 
-        label: price.label?.trim() || null,
+        const regularPrice =
+          price.regular_price === "" ||
+          price.regular_price === null ||
+          price.regular_price === undefined
+            ? null
+            : Number(price.regular_price);
 
-        price: Number(price.price || 0),
+        return {
+          billing_period: price.billing_period || "monthly",
 
-        months_paid: Number(price.months_paid || 1),
+          price: Number(price.price || 0),
 
-        months_received: Number(price.months_received || 1),
+          regular_price: regularPrice,
 
-        is_active: price.is_active !== false,
+          months,
 
-        sort_order: Number(price.sort_order ?? index),
-      }));
+          paid_months: paidMonths,
+
+          label: price.label?.trim() || null,
+
+          saving_label:
+            price.saving_label?.trim() ||
+            (paidMonths !== null && paidMonths < months
+              ? `Paga ${paidMonths} y recibe ${months}`
+              : null),
+
+          is_active: price.is_active !== false,
+
+          sort_order: Number(price.sort_order ?? index + 1),
+        };
+      });
 
       await planPriceService.syncPlanPrices(id, data);
 
@@ -361,7 +389,6 @@ export default function PlanEditorPage() {
       setSaving(false);
     }
   };
-
   const handleFeatureChange = (categoryIndex, featureIndex, field, value) => {
     setFeatureMatrix((current) =>
       current.map((category, currentCategoryIndex) => {
@@ -380,7 +407,11 @@ export default function PlanEditorPage() {
 
               return {
                 ...feature,
-                [field]: value,
+
+                configuration: {
+                  ...(feature.configuration || {}),
+                  [field]: value,
+                },
               };
             },
           ),
@@ -397,17 +428,27 @@ export default function PlanEditorPage() {
 
       featureMatrix.forEach((category) => {
         (category.features || []).forEach((feature) => {
-          features.push({
-            feature_id: feature.feature_id || feature.id,
+          const configuration = feature.configuration || {};
 
-            included: Boolean(feature.included),
+          features.push({
+            plan_feature_id: feature.id,
+
+            status: configuration.status || "not_included",
 
             value:
-              feature.value === "" ||
-              feature.value === undefined ||
-              feature.value === null
+              configuration.value === "" ||
+              configuration.value === undefined ||
+              configuration.value === null
                 ? null
-                : feature.value,
+                : String(configuration.value),
+
+            label: configuration.label?.trim?.() || null,
+
+            note: configuration.note?.trim?.() || null,
+
+            sort_order: Number(
+              configuration.sort_order ?? feature.sort_order ?? 0,
+            ),
           });
         });
       });
@@ -439,32 +480,49 @@ export default function PlanEditorPage() {
     );
   };
 
- const handleCreateFeature = async (feature) => {
-  try {
-    setCreatingFeature(true);
+  const handleCreateFeature = async (feature) => {
+    try {
+      setCreatingFeature(true);
 
-    await planFeatureService.create(feature);
+      await planFeatureService.create(feature);
 
-    await showSuccess(
-      "La característica se creó correctamente."
-    );
+      await showSuccess("La característica se creó correctamente.");
 
-    await loadFeatures();
+      await loadFeatures();
 
-    return true;
-  } catch (error) {
-    console.error(error);
+      return true;
+    } catch (error) {
+      console.error(error);
 
-    alertFromAxiosError(
-      error,
-      "No se pudo crear la característica."
-    );
+      alertFromAxiosError(error, "No se pudo crear la característica.");
 
-    return false;
-  } finally {
-    setCreatingFeature(false);
-  }
-};
+      return false;
+    } finally {
+      setCreatingFeature(false);
+    }
+  };
+
+  const handleCreateComplemento = async (complemento) => {
+    try {
+      setCreatingComplemento(true);
+
+      await complementoService.create(complemento);
+
+      await showSuccess("El complemento se creó correctamente.");
+
+      await loadAddons();
+
+      return true;
+    } catch (error) {
+      console.error(error);
+
+      alertFromAxiosError(error, "No se pudo crear el complemento.");
+
+      return false;
+    } finally {
+      setCreatingComplemento(false);
+    }
+  };
 
   const handleSaveAddons = async () => {
     try {
@@ -835,7 +893,12 @@ export default function PlanEditorPage() {
             (loadingAddons ? (
               <SectionLoader text="Cargando complementos..." />
             ) : (
-              <PlanAddonsTab addons={addons} onChange={handleAddonChange} />
+              <PlanAddonsTab
+                addons={addons}
+                onChange={handleAddonChange}
+                onCreateComplemento={handleCreateComplemento}
+                creatingComplemento={creatingComplemento}
+              />
             ))}
         </CardContent>
       </Card>

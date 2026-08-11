@@ -61,36 +61,22 @@ const billingCycleLabel = {
 const money = (value) => {
   const amount = Number(value || 0);
 
-  return amount.toLocaleString(
-    "es-MX",
-    {
-      style: "currency",
-      currency: "MXN",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }
-  );
+  return amount.toLocaleString("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 };
 
-export default function PlanPricesTab({
-  prices,
-  onChange,
-  onAdd,
-  onDelete,
-}) {
-  const activePrices =
-    prices.filter(
-      (price) =>
-        price.is_active !== false
-    ).length;
+export default function PlanPricesTab({ prices, onChange, onAdd, onDelete }) {
+  const activePrices = prices.filter(
+    (price) => price.is_active !== false,
+  ).length;
 
   const lowestPrice =
     prices.length > 0
-      ? Math.min(
-          ...prices.map((price) =>
-            Number(price.price || 0)
-          )
-        )
+      ? Math.min(...prices.map((price) => Number(price.price || 0)))
       : 0;
 
   return (
@@ -132,11 +118,7 @@ export default function PlanPricesTab({
             }}
             spacing={2}
           >
-            <Stack
-              direction="row"
-              spacing={1.5}
-              alignItems="flex-start"
-            >
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
               <Box
                 sx={{
                   width: 46,
@@ -145,10 +127,7 @@ export default function PlanPricesTab({
                   display: "grid",
                   placeItems: "center",
                   flexShrink: 0,
-                  bgcolor: alpha(
-                    BRAND.orange,
-                    0.09
-                  ),
+                  bgcolor: alpha(BRAND.orange, 0.09),
                   color: BRAND.orange,
                 }}
               >
@@ -160,8 +139,7 @@ export default function PlanPricesTab({
                   variant="h6"
                   fontWeight={900}
                   sx={{
-                    letterSpacing:
-                      "-.02em",
+                    letterSpacing: "-.02em",
                   }}
                 >
                   Precios del plan
@@ -174,8 +152,7 @@ export default function PlanPricesTab({
                     fontSize: 14,
                   }}
                 >
-                  Define cuánto cuesta el plan,
-                  cada cuánto se cobra y qué
+                  Define cuánto cuesta el plan, cada cuánto se cobra y qué
                   promociones recibe el cliente.
                 </Typography>
               </Box>
@@ -183,9 +160,7 @@ export default function PlanPricesTab({
 
             <Button
               variant="contained"
-              startIcon={
-                <AddRoundedIcon />
-              }
+              startIcon={<AddRoundedIcon />}
               onClick={onAdd}
               sx={{
                 borderRadius: 999,
@@ -219,22 +194,11 @@ export default function PlanPricesTab({
                   gap: 2,
                 }}
               >
-                <SummaryItem
-                  label="Modalidades"
-                  value={prices.length}
-                />
+                <SummaryItem label="Modalidades" value={prices.length} />
 
-                <SummaryItem
-                  label="Activas"
-                  value={activePrices}
-                />
+                <SummaryItem label="Activas" value={activePrices} />
 
-                <SummaryItem
-                  label="Desde"
-                  value={money(
-                    lowestPrice
-                  )}
-                />
+                <SummaryItem label="Desde" value={money(lowestPrice)} />
               </Box>
             </>
           )}
@@ -249,14 +213,8 @@ export default function PlanPricesTab({
           sx={{
             borderRadius: 4,
             border: "1px dashed",
-            borderColor: alpha(
-              BRAND.orange,
-              0.35
-            ),
-            bgcolor: alpha(
-              BRAND.orange,
-              0.02
-            ),
+            borderColor: alpha(BRAND.orange, 0.35),
+            bgcolor: alpha(BRAND.orange, 0.02),
           }}
         >
           <CardContent
@@ -273,10 +231,7 @@ export default function PlanPricesTab({
                 mx: "auto",
                 display: "grid",
                 placeItems: "center",
-                bgcolor: alpha(
-                  BRAND.orange,
-                  0.09
-                ),
+                bgcolor: alpha(BRAND.orange, 0.09),
                 color: BRAND.orange,
                 mb: 2,
               }}
@@ -288,10 +243,7 @@ export default function PlanPricesTab({
               />
             </Box>
 
-            <Typography
-              variant="h6"
-              fontWeight={900}
-            >
+            <Typography variant="h6" fontWeight={900}>
               Aún no hay precios
             </Typography>
 
@@ -303,17 +255,13 @@ export default function PlanPricesTab({
                 mx: "auto",
               }}
             >
-              Agrega una modalidad mensual,
-              semestral, anual o personalizada
-              para comenzar a comercializar
-              este plan.
+              Agrega una modalidad mensual, semestral, anual o personalizada
+              para comenzar a comercializar este plan.
             </Typography>
 
             <Button
               variant="contained"
-              startIcon={
-                <AddRoundedIcon />
-              }
+              startIcon={<AddRoundedIcon />}
               onClick={onAdd}
               sx={{
                 mt: 3,
@@ -336,46 +284,27 @@ export default function PlanPricesTab({
 
       {/* PRECIOS */}
 
-      {prices.map(
-        (price, index) => (
-          <PriceCard
-            key={
-              price.id ||
-              `price-${index}`
-            }
-            price={price}
-            index={index}
-            onChange={onChange}
-            onDelete={onDelete}
-          />
-        )
-      )}
+      {prices.map((price, index) => (
+        <PriceCard
+          key={price.id || `price-${index}`}
+          price={price}
+          index={index}
+          onChange={onChange}
+          onDelete={onDelete}
+        />
+      ))}
     </Stack>
   );
 }
 
-function PriceCard({
-  price,
-  index,
-  onChange,
-  onDelete,
-}) {
-  const active =
-    price.is_active !== false;
+function PriceCard({ price, index, onChange, onDelete }) {
+  const active = price.is_active !== false;
 
-  const monthsPaid = Number(
-    price.months_paid || 1
-  );
+  const monthsPaid = Number(price.paid_months ?? price.months ?? 1);
 
-  const monthsReceived = Number(
-    price.months_received || 1
-  );
+  const monthsReceived = Number(price.months || 1);
 
-  const bonusMonths =
-    Math.max(
-      monthsReceived - monthsPaid,
-      0
-    );
+  const bonusMonths = Math.max(monthsReceived - monthsPaid, 0);
 
   return (
     <Card
@@ -384,21 +313,14 @@ function PriceCard({
         borderRadius: 4,
         border: "1px solid",
 
-        borderColor: active
-          ? alpha(
-              BRAND.orange,
-              0.24
-            )
-          : "divider",
+        borderColor: active ? alpha(BRAND.orange, 0.24) : "divider",
 
         overflow: "hidden",
 
-        transition:
-          "border-color .2s ease, box-shadow .2s ease",
+        transition: "border-color .2s ease, box-shadow .2s ease",
 
         "&:hover": {
-          boxShadow:
-            "0 12px 35px rgba(15,23,42,.06)",
+          boxShadow: "0 12px 35px rgba(15,23,42,.06)",
         },
       }}
     >
@@ -414,17 +336,12 @@ function PriceCard({
           py: 2.25,
 
           background: active
-            ? `linear-gradient(90deg, ${alpha(
-                BRAND.orange,
-                0.065
-              )}, #fff)`
+            ? `linear-gradient(90deg, ${alpha(BRAND.orange, 0.065)}, #fff)`
             : "#fafafa",
 
-          borderBottom:
-            "1px solid",
+          borderBottom: "1px solid",
 
-          borderColor:
-            "divider",
+          borderColor: "divider",
         }}
       >
         <Stack
@@ -439,11 +356,7 @@ function PriceCard({
           }}
           spacing={2}
         >
-          <Stack
-            direction="row"
-            spacing={1.5}
-            alignItems="center"
-          >
+          <Stack direction="row" spacing={1.5} alignItems="center">
             <Box
               sx={{
                 width: 44,
@@ -451,15 +364,8 @@ function PriceCard({
                 borderRadius: 2.5,
                 display: "grid",
                 placeItems: "center",
-                bgcolor: active
-                  ? alpha(
-                      BRAND.orange,
-                      0.1
-                    )
-                  : "#eee",
-                color: active
-                  ? BRAND.orange
-                  : "text.secondary",
+                bgcolor: active ? alpha(BRAND.orange, 0.1) : "#eee",
+                color: active ? BRAND.orange : "text.secondary",
               }}
             >
               <CalendarMonthRoundedIcon />
@@ -473,49 +379,27 @@ function PriceCard({
                 flexWrap="wrap"
                 useFlexGap
               >
-                <Typography
-                  fontWeight={900}
-                  fontSize={17}
-                >
+                <Typography fontWeight={900} fontSize={17}>
                   {price.label ||
-                    billingCycleLabel[
-                      price.billing_cycle
-                    ] ||
+                    billingCycleLabel[price.billing_cycle] ||
                     `Modalidad ${index + 1}`}
                 </Typography>
 
                 <Chip
                   size="small"
-                  label={
-                    active
-                      ? "Activo"
-                      : "Inactivo"
-                  }
-                  icon={
-                    active ? (
-                      <CheckCircleRoundedIcon />
-                    ) : undefined
-                  }
+                  label={active ? "Activo" : "Inactivo"}
+                  icon={active ? <CheckCircleRoundedIcon /> : undefined}
                   sx={{
                     height: 24,
                     fontWeight: 800,
 
-                    bgcolor: active
-                      ? alpha(
-                          BRAND.orange,
-                          0.1
-                        )
-                      : "#eee",
+                    bgcolor: active ? alpha(BRAND.orange, 0.1) : "#eee",
 
-                    color: active
-                      ? BRAND.orange
-                      : "text.secondary",
+                    color: active ? BRAND.orange : "text.secondary",
 
-                    "& .MuiChip-icon":
-                      {
-                        color:
-                          BRAND.orange,
-                      },
+                    "& .MuiChip-icon": {
+                      color: BRAND.orange,
+                    },
                   }}
                 />
               </Stack>
@@ -541,11 +425,7 @@ function PriceCard({
               sm: "flex-end",
             }}
           >
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={0.5}
-            >
+            <Stack direction="row" alignItems="center" spacing={0.5}>
               <Typography
                 variant="body2"
                 color="text.secondary"
@@ -557,35 +437,22 @@ function PriceCard({
               <Switch
                 checked={active}
                 onChange={(event) =>
-                  onChange(
-                    index,
-                    "is_active",
-                    event.target.checked
-                  )
+                  onChange(index, "is_active", event.target.checked)
                 }
                 sx={{
-                  "& .MuiSwitch-switchBase.Mui-checked":
-                    {
-                      color:
-                        BRAND.orange,
-                    },
+                  "& .MuiSwitch-switchBase.Mui-checked": {
+                    color: BRAND.orange,
+                  },
 
-                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track":
-                    {
-                      bgcolor:
-                        BRAND.orange,
-                    },
+                  "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+                    bgcolor: BRAND.orange,
+                  },
                 }}
               />
             </Stack>
 
             <Tooltip title="Eliminar modalidad">
-              <IconButton
-                color="error"
-                onClick={() =>
-                  onDelete(index)
-                }
-              >
+              <IconButton color="error" onClick={() => onDelete(index)}>
                 <DeleteOutlineRoundedIcon />
               </IconButton>
             </Tooltip>
@@ -611,9 +478,7 @@ function PriceCard({
         {/* CONTRATACIÓN */}
 
         <SectionTitle
-          icon={
-            <PaymentsRoundedIcon />
-          }
+          icon={<PaymentsRoundedIcon />}
           title="Contratación"
           description="Define el periodo y el precio de esta modalidad."
         />
@@ -635,50 +500,25 @@ function PriceCard({
           <TextField
             select
             label="Periodo de contratación"
-            value={
-              price.billing_cycle ||
-              "monthly"
-            }
+            value={price.billing_period || "monthly"}
             onChange={(event) =>
-              onChange(
-                index,
-                "billing_cycle",
-                event.target.value
-              )
+              onChange(index, "billing_period", event.target.value)
             }
             fullWidth
             sx={fieldSx}
           >
-            <MenuItem value="monthly">
-              Mensual
-            </MenuItem>
+            <MenuItem value="monthly">Mensual</MenuItem>
 
-            <MenuItem value="semiannual">
-              Semestral
-            </MenuItem>
+            <MenuItem value="semiannual">Semestral</MenuItem>
 
-            <MenuItem value="annual">
-              Anual
-            </MenuItem>
-
-            <MenuItem value="custom">
-              Personalizado
-            </MenuItem>
+            <MenuItem value="annual">Anual</MenuItem>
           </TextField>
 
           <TextField
             label="Precio"
             type="number"
-            value={
-              price.price ?? ""
-            }
-            onChange={(event) =>
-              onChange(
-                index,
-                "price",
-                event.target.value
-              )
-            }
+            value={price.price ?? ""}
+            onChange={(event) => onChange(index, "price", event.target.value)}
             fullWidth
             inputProps={{
               min: 0,
@@ -705,9 +545,7 @@ function PriceCard({
         {/* PROMOCIÓN */}
 
         <SectionTitle
-          icon={
-            <LocalOfferRoundedIcon />
-          }
+          icon={<LocalOfferRoundedIcon />}
           title="Promoción por periodo"
           description="Configura cuántos meses paga el cliente y cuántos meses recibe."
         />
@@ -729,16 +567,12 @@ function PriceCard({
           <TextField
             label="Meses que paga"
             type="number"
-            value={monthsPaid}
+            value={price.paid_months ?? price.months ?? 1}
             onChange={(event) =>
-              onChange(
-                index,
-                "months_paid",
-                event.target.value
-              )
+              onChange(index, "paid_months", event.target.value)
             }
             inputProps={{
-              min: 1,
+              min: 0,
             }}
             fullWidth
             sx={fieldSx}
@@ -747,14 +581,8 @@ function PriceCard({
           <TextField
             label="Meses que recibe"
             type="number"
-            value={monthsReceived}
-            onChange={(event) =>
-              onChange(
-                index,
-                "months_received",
-                event.target.value
-              )
-            }
+            value={price.months ?? 1}
+            onChange={(event) => onChange(index, "months", event.target.value)}
             inputProps={{
               min: 1,
             }}
@@ -774,9 +602,7 @@ function PriceCard({
         {/* PRESENTACIÓN */}
 
         <SectionTitle
-          icon={
-            <DragIndicatorRoundedIcon />
-          }
+          icon={<DragIndicatorRoundedIcon />}
           title="Presentación"
           description="Define cómo se mostrará y en qué posición aparecerá."
         />
@@ -797,16 +623,8 @@ function PriceCard({
         >
           <TextField
             label="Etiqueta visible"
-            value={
-              price.label || ""
-            }
-            onChange={(event) =>
-              onChange(
-                index,
-                "label",
-                event.target.value
-              )
-            }
+            value={price.label || ""}
+            onChange={(event) => onChange(index, "label", event.target.value)}
             fullWidth
             placeholder="Ej. Mensual, Mejor opción..."
             helperText="Nombre que verá el cliente."
@@ -816,16 +634,9 @@ function PriceCard({
           <TextField
             label="Orden"
             type="number"
-            value={
-              price.sort_order ??
-              index
-            }
+            value={price.sort_order ?? index}
             onChange={(event) =>
-              onChange(
-                index,
-                "sort_order",
-                event.target.value
-              )
+              onChange(index, "sort_order", event.target.value)
             }
             fullWidth
             inputProps={{
@@ -840,17 +651,9 @@ function PriceCard({
   );
 }
 
-function SectionTitle({
-  icon,
-  title,
-  description,
-}) {
+function SectionTitle({ icon, title, description }) {
   return (
-    <Stack
-      direction="row"
-      spacing={1.25}
-      alignItems="flex-start"
-    >
+    <Stack direction="row" spacing={1.25} alignItems="flex-start">
       <Box
         sx={{
           width: 34,
@@ -859,10 +662,7 @@ function SectionTitle({
           display: "grid",
           placeItems: "center",
           flexShrink: 0,
-          bgcolor: alpha(
-            BRAND.orange,
-            0.08
-          ),
+          bgcolor: alpha(BRAND.orange, 0.08),
           color: BRAND.orange,
 
           "& svg": {
@@ -874,10 +674,7 @@ function SectionTitle({
       </Box>
 
       <Box>
-        <Typography
-          fontWeight={900}
-          fontSize={14}
-        >
+        <Typography fontWeight={900} fontSize={14}>
           {title}
         </Typography>
 
@@ -895,11 +692,7 @@ function SectionTitle({
   );
 }
 
-function PromotionPreview({
-  paid,
-  received,
-  bonus,
-}) {
+function PromotionPreview({ paid, received, bonus }) {
   return (
     <Box
       sx={{
@@ -911,21 +704,9 @@ function PromotionPreview({
 
         border: "1px solid",
 
-        borderColor:
-          bonus > 0
-            ? alpha(
-                BRAND.amber,
-                0.5
-              )
-            : "divider",
+        borderColor: bonus > 0 ? alpha(BRAND.amber, 0.5) : "divider",
 
-        bgcolor:
-          bonus > 0
-            ? alpha(
-                BRAND.amber,
-                0.07
-              )
-            : "#fafafa",
+        bgcolor: bonus > 0 ? alpha(BRAND.amber, 0.07) : "#fafafa",
       }}
     >
       <Stack
@@ -941,10 +722,7 @@ function PromotionPreview({
         spacing={1}
       >
         <Box>
-          <Typography
-            variant="body2"
-            color="text.secondary"
-          >
+          <Typography variant="body2" color="text.secondary">
             Vista previa de la promoción
           </Typography>
 
@@ -954,40 +732,23 @@ function PromotionPreview({
               mt: 0.35,
             }}
           >
-            Paga {paid}{" "}
-            {paid === 1
-              ? "mes"
-              : "meses"}{" "}
-            y recibe {received}{" "}
-            {received === 1
-              ? "mes"
-              : "meses"}
+            Paga {paid} {paid === 1 ? "mes" : "meses"} y recibe {received}{" "}
+            {received === 1 ? "mes" : "meses"}
           </Typography>
         </Box>
 
         {bonus > 0 ? (
           <Chip
-            icon={
-              <LocalOfferRoundedIcon />
-            }
-            label={`+${bonus} ${
-              bonus === 1
-                ? "mes gratis"
-                : "meses gratis"
-            }`}
+            icon={<LocalOfferRoundedIcon />}
+            label={`+${bonus} ${bonus === 1 ? "mes gratis" : "meses gratis"}`}
             sx={{
               fontWeight: 900,
-              bgcolor: alpha(
-                BRAND.amber,
-                0.22
-              ),
+              bgcolor: alpha(BRAND.amber, 0.22),
               color: "#8a5500",
 
-              "& .MuiChip-icon":
-                {
-                  color:
-                    "#8a5500",
-                },
+              "& .MuiChip-icon": {
+                color: "#8a5500",
+              },
             }}
           />
         ) : (
@@ -1004,10 +765,7 @@ function PromotionPreview({
   );
 }
 
-function SummaryItem({
-  label,
-  value,
-}) {
+function SummaryItem({ label, value }) {
   return (
     <Box
       sx={{
@@ -1018,10 +776,7 @@ function SummaryItem({
         borderColor: "divider",
       }}
     >
-      <Typography
-        variant="body2"
-        color="text.secondary"
-      >
+      <Typography variant="body2" color="text.secondary">
         {label}
       </Typography>
 

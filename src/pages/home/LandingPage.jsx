@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import {
+  Outlet,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
+
 import "./styles/index.css";
 
 import Navbar from "./components/Navbar";
@@ -10,7 +15,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [scrolled, setScrolled] = useState(false);
+  const [scrolled, setScrolled] =
+    useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,12 +25,19 @@ export default function LandingPage() {
 
     handleScroll();
 
-    window.addEventListener("scroll", handleScroll, {
-      passive: true,
-    });
+    window.addEventListener(
+      "scroll",
+      handleScroll,
+      {
+        passive: true,
+      }
+    );
 
     return () => {
-      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
     };
   }, []);
 
@@ -40,13 +53,23 @@ export default function LandingPage() {
     });
   }, [location.pathname]);
 
-  const isHome = location.pathname === "/";
+  const isHome =
+    location.pathname === "/";
 
-const usesTransparentNavbar =
-  location.pathname === "/" ||
-  location.pathname.startsWith("/platform") ||
-    location.pathname.startsWith("/features") ||
-  location.pathname.startsWith("/contact");
+  const usesTransparentNavbar =
+    location.pathname === "/" ||
+    location.pathname.startsWith(
+      "/platform"
+    ) ||
+    location.pathname.startsWith(
+      "/features"
+    ) ||
+    location.pathname.startsWith(
+      "/contact"
+    ) ||
+    location.pathname.startsWith(
+      "/services"
+    );
 
   return (
     <div
@@ -67,14 +90,18 @@ const usesTransparentNavbar =
         transparent={usesTransparentNavbar}
         currentPath={location.pathname}
         onNavigate={navigate}
-        onLogin={() => navigate("/login-register")}
+        onLogin={() =>
+          navigate("/login-register")
+        }
       />
 
       <main className="landing-main">
         <Outlet />
       </main>
 
-      <Footer onNavigate={navigate} />
+      <Footer
+        onNavigate={navigate}
+      />
 
       <ScrollTopButton />
     </div>
