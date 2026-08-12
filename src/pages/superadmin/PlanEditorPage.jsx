@@ -469,14 +469,61 @@ export default function PlanEditorPage() {
 
   const handleAddonChange = (index, field, value) => {
     setAddons((current) =>
-      current.map((addon, currentIndex) =>
-        currentIndex === index
-          ? {
-              ...addon,
-              [field]: value,
-            }
-          : addon,
-      ),
+      current.map((addon, currentIndex) => {
+        if (currentIndex !== index) {
+          return addon;
+        }
+
+        if (field === "availability") {
+          return {
+            ...addon,
+
+            // Valor utilizado por la interfaz.
+            availability: value,
+
+            // Valor utilizado por el backend.
+            status: value,
+
+            included: value === "included",
+
+            price_override:
+              value === "available"
+                ? (addon.price_override ??
+                  addon.configuration?.price_override ??
+                  null)
+                : null,
+
+            configuration: {
+              ...(addon.configuration || {}),
+              status: value,
+
+              price_override:
+                value === "available"
+                  ? (addon.price_override ??
+                    addon.configuration?.price_override ??
+                    null)
+                  : null,
+            },
+          };
+        }
+
+        if (field === "price_override") {
+          return {
+            ...addon,
+            price_override: value,
+
+            configuration: {
+              ...(addon.configuration || {}),
+              price_override: value,
+            },
+          };
+        }
+
+        return {
+          ...addon,
+          [field]: value,
+        };
+      }),
     );
   };
 
@@ -528,21 +575,29 @@ export default function PlanEditorPage() {
     try {
       setSaving(true);
 
-      const data = addons.map((addon) => ({
-        addon_id: addon.addon_id || addon.id,
+      const data = addons.map((addon) => {
+        const status =
+          addon.availability ??
+          addon.configuration?.status ??
+          (addon.included ? "included" : "available");
 
-        availability:
-          addon.availability || (addon.included ? "included" : "available"),
+        const rawPriceOverride =
+          addon.price_override ?? addon.configuration?.price_override ?? null;
 
-        included: Boolean(addon.included),
+        return {
+          complemento_id: addon.complemento_id ?? addon.addon_id ?? addon.id,
 
-        price_override:
-          addon.price_override === "" ||
-          addon.price_override === null ||
-          addon.price_override === undefined
-            ? null
-            : Number(addon.price_override),
-      }));
+          status,
+
+          price_override:
+            status !== "available" ||
+            rawPriceOverride === "" ||
+            rawPriceOverride === null ||
+            rawPriceOverride === undefined
+              ? null
+              : Number(rawPriceOverride),
+        };
+      });
 
       await planAddonService.syncPlanAddons(id, data);
 
@@ -725,7 +780,7 @@ export default function PlanEditorPage() {
               <Button
                 variant="outlined"
                 startIcon={<ArrowBackRoundedIcon />}
-                onClick={() => navigate("/superadmin/planes")}
+                onClick={() => navigate("/panel/planes")}
                 disabled={saving}
                 sx={{
                   borderRadius: 999,

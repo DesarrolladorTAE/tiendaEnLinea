@@ -6,7 +6,7 @@ import axiosClientPOS from "../config/axiosClientPOS";
 
 import POSDashboard from "../components/POSDashboard";
 import POSLoginModal from "../components/POSLoginModal";
-import SupportTicketButton from "../components/SupportTicketButton";
+// import SupportTicketButton from "../components/SupportTicketButton";
 
 const POSWrapper = () => {
   const [isAuthenticated, setIsAuthenticated] =
@@ -163,7 +163,7 @@ const POSWrapper = () => {
             posLocationId={posLocationId}
           />
 
-          <SupportTicketButton />
+          {/* <SupportTicketButton /> */}
         </>
       )}
 

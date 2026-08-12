@@ -85,26 +85,21 @@ export default function PlanAddonsTab({
   onCreateComplemento,
   creatingComplemento = false,
 }) {
-  const [openCreate, setOpenCreate] =
-    useState(false);
+  const [openCreate, setOpenCreate] = useState(false);
 
-  const [newComplemento, setNewComplemento] =
-    useState(emptyComplemento);
+  const [newComplemento, setNewComplemento] = useState(emptyComplemento);
 
   const stats = useMemo(() => {
     const included = addons.filter(
-      (addon) =>
-        getAvailability(addon) === "included"
+      (addon) => getAvailability(addon) === "included",
     ).length;
 
     const available = addons.filter(
-      (addon) =>
-        getAvailability(addon) === "available"
+      (addon) => getAvailability(addon) === "available",
     ).length;
 
     const notAvailable = addons.filter(
-      (addon) =>
-        getAvailability(addon) === "not_available"
+      (addon) => getAvailability(addon) === "not_available",
     ).length;
 
     return {
@@ -129,10 +124,7 @@ export default function PlanAddonsTab({
     setNewComplemento(emptyComplemento);
   };
 
-  const handleFieldChange = (
-    field,
-    value
-  ) => {
+  const handleFieldChange = (field, value) => {
     setNewComplemento((current) => ({
       ...current,
       [field]: value,
@@ -145,43 +137,24 @@ export default function PlanAddonsTab({
     }
 
     const payload = {
-      nombre:
-        newComplemento.nombre.trim(),
+      nombre: newComplemento.nombre.trim(),
 
-      description:
-        newComplemento.description.trim() ||
-        null,
+      description: newComplemento.description.trim() || null,
 
-      precio:
-        newComplemento.precio === ""
-          ? 0
-          : Number(newComplemento.precio),
+      precio: newComplemento.precio === "" ? 0 : Number(newComplemento.precio),
 
-      tipo:
-        newComplemento.tipo,
+      tipo: newComplemento.tipo,
 
-      nota:
-        newComplemento.nota.trim() ||
-        null,
+      nota: newComplemento.nota.trim() || null,
 
-      is_active:
-        Boolean(
-          newComplemento.is_active
-        ),
+      is_active: Boolean(newComplemento.is_active),
 
-      show_on_landing:
-        Boolean(
-          newComplemento.show_on_landing
-        ),
+      show_on_landing: Boolean(newComplemento.show_on_landing),
 
-      sort_order:
-        Number(
-          newComplemento.sort_order || 0
-        ),
+      sort_order: Number(newComplemento.sort_order || 0),
     };
 
-    const success =
-      await onCreateComplemento(payload);
+    const success = await onCreateComplemento(payload);
 
     if (success !== false) {
       setOpenCreate(false);
@@ -189,8 +162,7 @@ export default function PlanAddonsTab({
     }
   };
 
-  const canCreate =
-    newComplemento.nombre.trim();
+  const canCreate = newComplemento.nombre.trim();
 
   return (
     <Stack spacing={3}>
@@ -229,11 +201,7 @@ export default function PlanAddonsTab({
             }}
             spacing={2}
           >
-            <Stack
-              direction="row"
-              spacing={1.5}
-              alignItems="flex-start"
-            >
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
               <Box
                 sx={{
                   width: 46,
@@ -242,10 +210,7 @@ export default function PlanAddonsTab({
                   display: "grid",
                   placeItems: "center",
                   flexShrink: 0,
-                  bgcolor: alpha(
-                    BRAND.orange,
-                    0.09
-                  ),
+                  bgcolor: alpha(BRAND.orange, 0.09),
                   color: BRAND.orange,
                 }}
               >
@@ -253,10 +218,7 @@ export default function PlanAddonsTab({
               </Box>
 
               <Box>
-                <Typography
-                  variant="h6"
-                  fontWeight={900}
-                >
+                <Typography variant="h6" fontWeight={900}>
                   Complementos del plan
                 </Typography>
 
@@ -267,19 +229,15 @@ export default function PlanAddonsTab({
                     fontSize: 14,
                   }}
                 >
-                  Define qué complementos están
-                  incluidos, cuáles pueden
-                  contratarse y cuáles no están
-                  disponibles.
+                  Define qué complementos están incluidos, cuáles pueden
+                  contratarse y cuáles no están disponibles.
                 </Typography>
               </Box>
             </Stack>
 
             <Button
               variant="contained"
-              startIcon={
-                <AddRoundedIcon />
-              }
+              startIcon={<AddRoundedIcon />}
               onClick={handleOpenCreate}
               sx={{
                 borderRadius: 999,
@@ -311,25 +269,13 @@ export default function PlanAddonsTab({
               gap: 2,
             }}
           >
-            <SummaryItem
-              label="Complementos"
-              value={stats.total}
-            />
+            <SummaryItem label="Complementos" value={stats.total} />
 
-            <SummaryItem
-              label="Incluidos"
-              value={stats.included}
-            />
+            <SummaryItem label="Incluidos" value={stats.included} />
 
-            <SummaryItem
-              label="Con costo"
-              value={stats.available}
-            />
+            <SummaryItem label="Con costo" value={stats.available} />
 
-            <SummaryItem
-              label="No disponibles"
-              value={stats.notAvailable}
-            />
+            <SummaryItem label="No disponibles" value={stats.notAvailable} />
           </Box>
         </CardContent>
       </Card>
@@ -341,8 +287,7 @@ export default function PlanAddonsTab({
             borderRadius: 3,
           }}
         >
-          No existen complementos disponibles
-          para este plan.
+          No existen complementos disponibles para este plan.
         </Alert>
       ) : (
         <TableContainer
@@ -421,225 +366,139 @@ export default function PlanAddonsTab({
             </TableHead>
 
             <TableBody>
-              {addons.map(
-                (addon, index) => {
-                  const availability =
-                    getAvailability(
-                      addon
-                    );
+              {addons.map((addon, index) => {
+                const availability = getAvailability(addon);
 
-                  const priceOverride =
-                    getPriceOverride(
-                      addon
-                    );
+                const priceOverride = getPriceOverride(addon);
 
-                  return (
-                    <TableRow
-                      key={
-                        addon.id ||
-                        `addon-${index}`
-                      }
-                      hover
-                    >
-                      <TableCell>
-                        <Stack
-                          direction="row"
-                          spacing={1.5}
-                          alignItems="center"
-                        >
-                          <Box
-                            sx={{
-                              width: 42,
-                              height: 42,
-                              flexShrink: 0,
-                              borderRadius: 2.5,
-                              display: "grid",
-                              placeItems:
-                                "center",
-                              bgcolor: alpha(
-                                BRAND.orange,
-                                0.08
-                              ),
-                              color:
-                                BRAND.orange,
-                            }}
-                          >
-                            <ExtensionRoundedIcon />
-                          </Box>
-
-                          <Box>
-                            <Typography
-                              fontWeight={900}
-                            >
-                              {addon.nombre ||
-                                "Complemento"}
-                            </Typography>
-
-                            {addon.description && (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{
-                                  mt: 0.25,
-                                }}
-                              >
-                                {
-                                  addon.description
-                                }
-                              </Typography>
-                            )}
-
-                            {addon.nota && (
-                              <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{
-                                  display:
-                                    "block",
-                                  mt: 0.5,
-                                }}
-                              >
-                                {addon.nota}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Stack>
-                      </TableCell>
-
-                      <TableCell>
-                        <Typography
-                          fontWeight={900}
-                        >
-                          {money(
-                            addon.precio
-                          )}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={
-                            billingLabels[
-                              addon.tipo
-                            ] ||
-                            addon.tipo ||
-                            "—"
-                          }
+                return (
+                  <TableRow key={addon.id || `addon-${index}`} hover>
+                    <TableCell>
+                      <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Box
                           sx={{
-                            fontWeight: 800,
+                            width: 42,
+                            height: 42,
+                            flexShrink: 0,
+                            borderRadius: 2.5,
+                            display: "grid",
+                            placeItems: "center",
+                            bgcolor: alpha(BRAND.orange, 0.08),
+                            color: BRAND.orange,
                           }}
-                        />
-                      </TableCell>
-
-                      <TableCell>
-                        <TextField
-                          select
-                          size="small"
-                          value={
-                            availability
-                          }
-                          onChange={(
-                            event
-                          ) => {
-                            const value =
-                              event.target
-                                .value;
-
-                            onChange(
-                              index,
-                              "availability",
-                              value
-                            );
-
-                            if (
-                              value !==
-                              "available"
-                            ) {
-                              onChange(
-                                index,
-                                "price_override",
-                                null
-                              );
-                            }
-                          }}
-                          fullWidth
-                          sx={fieldSx}
                         >
-                          <MenuItem value="included">
-                            Incluido
-                          </MenuItem>
+                          <ExtensionRoundedIcon />
+                        </Box>
 
-                          <MenuItem value="available">
-                            Disponible con costo
-                          </MenuItem>
+                        <Box>
+                          <Typography fontWeight={900}>
+                            {addon.nombre || "Complemento"}
+                          </Typography>
 
-                          <MenuItem value="not_available">
-                            No disponible
-                          </MenuItem>
-                        </TextField>
-                      </TableCell>
+                          {addon.description && (
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                mt: 0.25,
+                              }}
+                            >
+                              {addon.description}
+                            </Typography>
+                          )}
 
-                      <TableCell>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={
-                            priceOverride ?? ""
-                          }
-                          disabled={
-                            availability !==
-                            "available"
-                          }
-                          onChange={(
-                            event
-                          ) =>
-                            onChange(
-                              index,
-                              "price_override",
-                              event.target
-                                .value
-                            )
-                          }
-                          placeholder={
-                            addon.precio != null
-                              ? String(
-                                  addon.precio
-                                )
-                              : "0.00"
-                          }
-                          inputProps={{
-                            min: 0,
-                            step: "0.01",
-                          }}
-                          InputProps={{
-                            startAdornment: (
-                              <Typography
-                                color="text.secondary"
-                                sx={{
-                                  mr: 0.5,
-                                }}
-                              >
-                                $
-                              </Typography>
-                            ),
-                          }}
-                          fullWidth
-                          sx={fieldSx}
-                        />
-                      </TableCell>
+                          {addon.nota && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{
+                                display: "block",
+                                mt: 0.5,
+                              }}
+                            >
+                              {addon.nota}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Stack>
+                    </TableCell>
 
-                      <TableCell align="center">
-                        <AvailabilityChip
-                          availability={
-                            availability
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                }
-              )}
+                    <TableCell>
+                      <Typography fontWeight={900}>
+                        {money(addon.precio)}
+                      </Typography>
+                    </TableCell>
+
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={billingLabels[addon.tipo] || addon.tipo || "—"}
+                        sx={{
+                          fontWeight: 800,
+                        }}
+                      />
+                    </TableCell>
+
+                    <TableCell>
+                      <TextField
+                        select
+                        size="small"
+                        value={availability}
+                        onChange={(event) =>
+                          onChange(index, "availability", event.target.value)
+                        }
+                        fullWidth
+                        sx={fieldSx}
+                      >
+                        <MenuItem value="included">Incluido</MenuItem>
+
+                        <MenuItem value="available">
+                          Disponible con costo
+                        </MenuItem>
+
+                        <MenuItem value="not_available">No disponible</MenuItem>
+                      </TextField>
+                    </TableCell>
+
+                    <TableCell>
+                      <TextField
+                        type="number"
+                        size="small"
+                        value={priceOverride ?? ""}
+                        disabled={availability !== "available"}
+                        onChange={(event) =>
+                          onChange(index, "price_override", event.target.value)
+                        }
+                        placeholder={
+                          addon.precio != null ? String(addon.precio) : "0.00"
+                        }
+                        inputProps={{
+                          min: 0,
+                          step: "0.01",
+                        }}
+                        InputProps={{
+                          startAdornment: (
+                            <Typography
+                              color="text.secondary"
+                              sx={{
+                                mr: 0.5,
+                              }}
+                            >
+                              $
+                            </Typography>
+                          ),
+                        }}
+                        fullWidth
+                        sx={fieldSx}
+                      />
+                    </TableCell>
+
+                    <TableCell align="center">
+                      <AvailabilityChip availability={availability} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -667,10 +526,7 @@ export default function PlanAddonsTab({
             justifyContent="space-between"
             alignItems="flex-start"
           >
-            <Stack
-              direction="row"
-              spacing={1.5}
-            >
+            <Stack direction="row" spacing={1.5}>
               <Box
                 sx={{
                   width: 42,
@@ -678,10 +534,7 @@ export default function PlanAddonsTab({
                   borderRadius: 2.5,
                   display: "grid",
                   placeItems: "center",
-                  bgcolor: alpha(
-                    BRAND.orange,
-                    0.09
-                  ),
+                  bgcolor: alpha(BRAND.orange, 0.09),
                   color: BRAND.orange,
                 }}
               >
@@ -689,30 +542,19 @@ export default function PlanAddonsTab({
               </Box>
 
               <Box>
-                <Typography
-                  variant="h6"
-                  fontWeight={900}
-                >
+                <Typography variant="h6" fontWeight={900}>
                   Nuevo complemento
                 </Typography>
 
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                >
-                  Agrega un complemento al
-                  catálogo general.
+                <Typography variant="body2" color="text.secondary">
+                  Agrega un complemento al catálogo general.
                 </Typography>
               </Box>
             </Stack>
 
             <IconButton
-              onClick={
-                handleCloseCreate
-              }
-              disabled={
-                creatingComplemento
-              }
+              onClick={handleCloseCreate}
+              disabled={creatingComplemento}
             >
               <CloseRoundedIcon />
             </IconButton>
@@ -729,14 +571,9 @@ export default function PlanAddonsTab({
           <Stack spacing={2.5}>
             <TextField
               label="Nombre"
-              value={
-                newComplemento.nombre
-              }
+              value={newComplemento.nombre}
               onChange={(event) =>
-                handleFieldChange(
-                  "nombre",
-                  event.target.value
-                )
+                handleFieldChange("nombre", event.target.value)
               }
               required
               fullWidth
@@ -746,14 +583,9 @@ export default function PlanAddonsTab({
 
             <TextField
               label="Descripción"
-              value={
-                newComplemento.description
-              }
+              value={newComplemento.description}
               onChange={(event) =>
-                handleFieldChange(
-                  "description",
-                  event.target.value
-                )
+                handleFieldChange("description", event.target.value)
               }
               multiline
               minRows={3}
@@ -776,14 +608,9 @@ export default function PlanAddonsTab({
               <TextField
                 label="Precio base"
                 type="number"
-                value={
-                  newComplemento.precio
-                }
+                value={newComplemento.precio}
                 onChange={(event) =>
-                  handleFieldChange(
-                    "precio",
-                    event.target.value
-                  )
+                  handleFieldChange("precio", event.target.value)
                 }
                 inputProps={{
                   min: 0,
@@ -796,46 +623,28 @@ export default function PlanAddonsTab({
               <TextField
                 select
                 label="Tipo de cobro"
-                value={
-                  newComplemento.tipo
-                }
+                value={newComplemento.tipo}
                 onChange={(event) =>
-                  handleFieldChange(
-                    "tipo",
-                    event.target.value
-                  )
+                  handleFieldChange("tipo", event.target.value)
                 }
                 fullWidth
                 sx={fieldSx}
               >
-                <MenuItem value="mensual">
-                  Mensual
-                </MenuItem>
+                <MenuItem value="mensual">Mensual</MenuItem>
 
-                <MenuItem value="anual">
-                  Anual
-                </MenuItem>
+                <MenuItem value="anual">Anual</MenuItem>
 
-                <MenuItem value="único">
-                  Pago único
-                </MenuItem>
+                <MenuItem value="único">Pago único</MenuItem>
 
-                <MenuItem value="unidad">
-                  Por unidad
-                </MenuItem>
+                <MenuItem value="unidad">Por unidad</MenuItem>
               </TextField>
             </Box>
 
             <TextField
               label="Nota"
-              value={
-                newComplemento.nota
-              }
+              value={newComplemento.nota}
               onChange={(event) =>
-                handleFieldChange(
-                  "nota",
-                  event.target.value
-                )
+                handleFieldChange("nota", event.target.value)
               }
               fullWidth
               placeholder="Ej. Gratis en plan Avanzado"
@@ -845,14 +654,9 @@ export default function PlanAddonsTab({
             <TextField
               label="Orden"
               type="number"
-              value={
-                newComplemento.sort_order
-              }
+              value={newComplemento.sort_order}
               onChange={(event) =>
-                handleFieldChange(
-                  "sort_order",
-                  event.target.value
-                )
+                handleFieldChange("sort_order", event.target.value)
               }
               inputProps={{
                 min: 0,
@@ -876,30 +680,17 @@ export default function PlanAddonsTab({
                   alignItems="center"
                 >
                   <Box>
-                    <Typography
-                      fontWeight={900}
-                    >
-                      Complemento activo
-                    </Typography>
+                    <Typography fontWeight={900}>Complemento activo</Typography>
 
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                    >
-                      Permite utilizarlo en los
-                      planes.
+                    <Typography variant="body2" color="text.secondary">
+                      Permite utilizarlo en los planes.
                     </Typography>
                   </Box>
 
                   <Switch
-                    checked={
-                      newComplemento.is_active
-                    }
+                    checked={newComplemento.is_active}
                     onChange={(event) =>
-                      handleFieldChange(
-                        "is_active",
-                        event.target.checked
-                      )
+                      handleFieldChange("is_active", event.target.checked)
                     }
                   />
                 </Stack>
@@ -912,30 +703,17 @@ export default function PlanAddonsTab({
                   alignItems="center"
                 >
                   <Box>
-                    <Typography
-                      fontWeight={900}
-                    >
-                      Mostrar en landing
-                    </Typography>
+                    <Typography fontWeight={900}>Mostrar en landing</Typography>
 
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                    >
-                      Muestra este complemento
-                      públicamente.
+                    <Typography variant="body2" color="text.secondary">
+                      Muestra este complemento públicamente.
                     </Typography>
                   </Box>
 
                   <Switch
-                    checked={
-                      newComplemento.show_on_landing
-                    }
+                    checked={newComplemento.show_on_landing}
                     onChange={(event) =>
-                      handleFieldChange(
-                        "show_on_landing",
-                        event.target.checked
-                      )
+                      handleFieldChange("show_on_landing", event.target.checked)
                     }
                   />
                 </Stack>
@@ -950,27 +728,15 @@ export default function PlanAddonsTab({
             pb: 3,
           }}
         >
-          <Button
-            onClick={
-              handleCloseCreate
-            }
-            disabled={
-              creatingComplemento
-            }
-          >
+          <Button onClick={handleCloseCreate} disabled={creatingComplemento}>
             Cancelar
           </Button>
 
           <Button
             variant="contained"
-            startIcon={
-              <AddRoundedIcon />
-            }
+            startIcon={<AddRoundedIcon />}
             onClick={handleCreate}
-            disabled={
-              !canCreate ||
-              creatingComplemento
-            }
+            disabled={!canCreate || creatingComplemento}
             sx={{
               borderRadius: 999,
               px: 3,
@@ -983,9 +749,7 @@ export default function PlanAddonsTab({
               },
             }}
           >
-            {creatingComplemento
-              ? "Creando..."
-              : "Crear complemento"}
+            {creatingComplemento ? "Creando..." : "Crear complemento"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -995,56 +759,38 @@ export default function PlanAddonsTab({
 
 function getAvailability(addon) {
   return (
-    addon.configuration?.status ||
-    addon.availability ||
-    "available"
+    addon.availability ??
+    addon.status ??
+    addon.configuration?.status ??
+    (addon.included ? "included" : "available")
   );
 }
 
 function getPriceOverride(addon) {
-  if (
-    addon.price_override !== undefined
-  ) {
-    return addon.price_override;
-  }
-
-  return (
-    addon.configuration?.price_override ??
-    null
-  );
+  return addon.price_override ?? addon.configuration?.price_override ?? null;
 }
 
 function money(value) {
   const amount = Number(value || 0);
 
-  return amount.toLocaleString(
-    "es-MX",
-    {
-      style: "currency",
-      currency: "MXN",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }
-  );
+  return amount.toLocaleString("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
-function AvailabilityChip({
-  availability,
-}) {
+function AvailabilityChip({ availability }) {
   if (availability === "included") {
     return (
       <Chip
         size="small"
-        icon={
-          <CheckCircleRoundedIcon />
-        }
+        icon={<CheckCircleRoundedIcon />}
         label="Incluido"
         sx={{
           fontWeight: 900,
-          bgcolor: alpha(
-            BRAND.orange,
-            0.1
-          ),
+          bgcolor: alpha(BRAND.orange, 0.1),
           color: BRAND.orange,
 
           "& .MuiChip-icon": {
@@ -1055,10 +801,7 @@ function AvailabilityChip({
     );
   }
 
-  if (
-    availability ===
-    "not_available"
-  ) {
+  if (availability === "not_available") {
     return (
       <Chip
         size="small"
@@ -1074,16 +817,11 @@ function AvailabilityChip({
   return (
     <Chip
       size="small"
-      icon={
-        <ShoppingCartCheckoutRoundedIcon />
-      }
+      icon={<ShoppingCartCheckoutRoundedIcon />}
       label="Con costo"
       sx={{
         fontWeight: 900,
-        bgcolor: alpha(
-          BRAND.amber,
-          0.18
-        ),
+        bgcolor: alpha(BRAND.amber, 0.18),
         color: "#8a5500",
 
         "& .MuiChip-icon": {
@@ -1094,10 +832,7 @@ function AvailabilityChip({
   );
 }
 
-function SummaryItem({
-  label,
-  value,
-}) {
+function SummaryItem({ label, value }) {
   return (
     <Box
       sx={{
@@ -1108,10 +843,7 @@ function SummaryItem({
         borderColor: "divider",
       }}
     >
-      <Typography
-        variant="body2"
-        color="text.secondary"
-      >
+      <Typography variant="body2" color="text.secondary">
         {label}
       </Typography>
 
