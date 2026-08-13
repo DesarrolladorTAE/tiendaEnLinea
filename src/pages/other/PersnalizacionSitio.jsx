@@ -10,28 +10,63 @@ import VistaPlan2 from "../home/HomeFashionSix";
 import VistaPlan3 from "../home/HomeFurniture";
 import VistaPlan4 from "../home/HomeFurniture";
 
-export default function PersonalizacionSitio() {
-  const { storeSlug } = useParams();
+export default function PersonalizacionSitio({
+  customStoreSlug = null,
+}) {
+  const { storeSlug: routeStoreSlug } = useParams();
+
+  // ✅ Si viene de dominio personalizado usa ese slug.
+  // ✅ Si viene de /tienda/:storeSlug usa el parámetro de la URL.
+  const storeSlug = customStoreSlug || routeStoreSlug;
+
   const [data, setData] = useState(null);
 
   useEffect(() => {
     let alive = true;
 
+    // Evita hacer la petición si por alguna razón no existe slug
+    if (!storeSlug) {
+      setData({
+        ok: false,
+        expired: true,
+      });
+
+      return () => {
+        alive = false;
+      };
+    }
+
+    // Limpia la información anterior si cambia de tienda
+    setData(null);
+
     axios
-      .get(`https://mitiendaenlineamx.com.mx/api/public/tienda/${storeSlug}/vista`)
+      .get(
+        `https://mitiendaenlineamx.com.mx/api/public/tienda/${encodeURIComponent(
+          storeSlug,
+        )}/vista`,
+      )
       .then(({ data }) => {
         if (!alive) return;
 
-        // ✅ normaliza storeId aunque venga con distinto nombre
+        // ✅ Normaliza storeId aunque venga con distinto nombre
         const normalized = {
           ...data,
-          storeId: data?.id_store ?? data?.store_id ?? data?.id_store_fk ?? null
+          storeId:
+            data?.id_store ??
+            data?.store_id ??
+            data?.id_store_fk ??
+            null,
         };
 
         setData(normalized);
       })
       .catch(() => {
-        if (alive) setData({ ok: false, expired: true });
+        if (!alive) return;
+
+        setData({
+          ok: false,
+          expired: true,
+        });
       });
 
     return () => {
@@ -39,15 +74,57 @@ export default function PersonalizacionSitio() {
     };
   }, [storeSlug]);
 
-  if (!data) return <div>Cargando…</div>;
-  if (!data.ok || data.expired) return <TiendaNoDisponible />;
+  if (!data) {
+    return <div>Cargando…</div>;
+  }
 
-  const storeId = data.storeId; // ✅ ya normalizado
+  if (!data.ok || data.expired) {
+    return <TiendaNoDisponible />;
+  }
+
+  const storeId = data.storeId;
 
   // Render según plan
-  if (data.plan_id === 1) return <Catalogo storeId={storeId} storeSlug={storeSlug} />;
-  if (data.plan_id === 2) return <VistaPlan2 storeId={storeId} storeSlug={storeSlug} />;
-  if (data.plan_id === 3) return <VistaPlan3 storeId={storeId} storeSlug={storeSlug} />;
-  if (data.plan_id === 4) return <VistaPlan4 storeId={storeId} storeSlug={storeSlug} />;
-  return <VistaPlan4 storeId={storeId} storeSlug={storeSlug} />;
+  if (data.plan_id === 1) {
+    return (
+      <Catalogo
+        storeId={storeId}
+        storeSlug={storeSlug}
+      />
+    );
+  }
+
+  if (data.plan_id === 2) {
+    return (
+      <VistaPlan2
+        storeId={storeId}
+        storeSlug={storeSlug}
+      />
+    );
+  }
+
+  if (data.plan_id === 3) {
+    return (
+      <VistaPlan3
+        storeId={storeId}
+        storeSlug={storeSlug}
+      />
+    );
+  }
+
+  if (data.plan_id === 4) {
+    return (
+      <VistaPlan4
+        storeId={storeId}
+        storeSlug={storeSlug}
+      />
+    );
+  }
+
+  return (
+    <VistaPlan4
+      storeId={storeId}
+      storeSlug={storeSlug}
+    />
+  );
 }

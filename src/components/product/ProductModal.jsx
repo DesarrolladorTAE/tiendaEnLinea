@@ -11,7 +11,7 @@ import {
   Chip,
   Button,
   Divider,
-  Paper
+  Paper,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
@@ -46,14 +46,13 @@ const PALETTE = {
   accentSoft: `color-mix(in srgb, ${V("--void-accent", "#7DD3FC")} 16%, transparent)`,
   popSoft: `color-mix(in srgb, ${V("--void-pop", "#FBCFE8")} 16%, transparent)`,
   warnSoft: `color-mix(in srgb, ${V("--void-warn", "#FB7185")} 16%, transparent)`,
-  glow: `0 10px 38px color-mix(in srgb, ${V("--void-accent", "#7DD3FC")} 35%, transparent)`
+  glow: `0 10px 38px color-mix(in srgb, ${V("--void-accent", "#7DD3FC")} 35%, transparent)`,
 };
 
 function normalizeImages(value) {
-  const arr =
-    Array.isArray(value)
-      ? value
-      : typeof value === "string" && value.trim() !== ""
+  const arr = Array.isArray(value)
+    ? value
+    : typeof value === "string" && value.trim() !== ""
       ? [value.trim()]
       : [];
   const clean = arr.filter(Boolean).slice(0, 6);
@@ -73,7 +72,7 @@ function formatFechaMX(v) {
   return new Intl.DateTimeFormat("es-MX", {
     day: "2-digit",
     month: "long",
-    year: "numeric"
+    year: "numeric",
   }).format(d);
 }
 
@@ -99,12 +98,14 @@ function buildOptionButtonLabel(v) {
   const attrs = Array.isArray(v?.variant_attributes)
     ? v.variant_attributes
     : Array.isArray(v?.attributes)
-    ? v.attributes
-    : [];
+      ? v.attributes
+      : [];
 
   const sizeAttr = attrs.find((a) => {
     const n = String(a?.name ?? "").toLowerCase();
-    return n === "talla" || n === "size" || n.includes("talla") || n.includes("size");
+    return (
+      n === "talla" || n === "size" || n.includes("talla") || n.includes("size")
+    );
   });
 
   const sizeVal = String(sizeAttr?.value ?? "").trim();
@@ -112,7 +113,8 @@ function buildOptionButtonLabel(v) {
 
   const first = attrs.find((a) => String(a?.value ?? "").trim() !== "");
   const firstVal = String(first?.value ?? "").trim();
-  if (firstVal) return firstVal.length <= 12 ? firstVal : firstVal.slice(0, 12) + "…";
+  if (firstVal)
+    return firstVal.length <= 12 ? firstVal : firstVal.slice(0, 12) + "…";
 
   const n = String(v?.name ?? "").trim();
   if (n && n.length <= 12) return n;
@@ -127,7 +129,11 @@ function money(n) {
 
 function getOptionTotalStock(v, useWh) {
   if (!v) return 0;
-  if (useWh && Array.isArray(v?.warehouse_stocks) && v.warehouse_stocks.length) {
+  if (
+    useWh &&
+    Array.isArray(v?.warehouse_stocks) &&
+    v.warehouse_stocks.length
+  ) {
     return v.warehouse_stocks.reduce((a, r) => a + (Number(r?.stock) || 0), 0);
   }
   return Number(v?.stock) || 0;
@@ -135,10 +141,9 @@ function getOptionTotalStock(v, useWh) {
 
 function computeEffectiveUnitPrice({ hasOptions, product, selectedOption }) {
   const discount = Number(product?.discount) || 0;
-  const base =
-    hasOptions
-      ? Number(selectedOption?.price ?? product?.price ?? 0)
-      : Number(product?.price ?? 0);
+  const base = hasOptions
+    ? Number(selectedOption?.price ?? product?.price ?? 0)
+    : Number(product?.price ?? 0);
 
   const out = discount > 0 ? base * (1 - discount / 100) : base;
   return Number(out.toFixed(2));
@@ -163,17 +168,22 @@ function guessOptionsTitle(variants) {
 
   const arr = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
   const [topName, topCount] = arr[0];
-  if (topCount >= Math.max(2, Math.floor((variants.length || 0) * 0.6))) return topName;
+  if (topCount >= Math.max(2, Math.floor((variants.length || 0) * 0.6)))
+    return topName;
   return "Opciones";
 }
 
 function countWarehousesWithStockFromOption(option) {
-  const rows = Array.isArray(option?.warehouse_stocks) ? option.warehouse_stocks : [];
+  const rows = Array.isArray(option?.warehouse_stocks)
+    ? option.warehouse_stocks
+    : [];
   return rows.filter((r) => (Number(r?.stock) || 0) > 0).length;
 }
 
 function countWarehousesWithStockFromProduct(product) {
-  const rows = Array.isArray(product?.warehouse_inventories) ? product.warehouse_inventories : [];
+  const rows = Array.isArray(product?.warehouse_inventories)
+    ? product.warehouse_inventories
+    : [];
   return rows.filter((r) => (Number(r?.qty ?? r?.stock) || 0) > 0).length;
 }
 
@@ -181,14 +191,20 @@ export default function ProductModal({
   product,
   images: imagesProp,
   currency,
-  finalProductPrice,      // legacy (simple)
-  finalDiscountedPrice,   // legacy (simple)
-  discountedPrice,        // legacy (simple)
+  finalProductPrice, // legacy (simple)
+  finalDiscountedPrice, // legacy (simple)
+  discountedPrice, // legacy (simple)
   show,
   onHide,
-  onWhatsapp
+  onWhatsapp,
 }) {
   const symbol = currency?.currencySymbol ?? "MX$";
+
+  const storeId = Number(
+    product?.store_id ?? product?.store?.id ?? product?.storeId,
+  );
+
+  const isStore464 = storeId === 464;
 
   const hasOptions =
     Boolean(product?.has_variants) ||
@@ -210,11 +226,12 @@ export default function ProductModal({
 
   const next = React.useCallback(
     () => setIndex((i) => (i + 1) % productImages.length),
-    [productImages.length]
+    [productImages.length],
   );
   const prev = React.useCallback(
-    () => setIndex((i) => (i - 1 + productImages.length) % productImages.length),
-    [productImages.length]
+    () =>
+      setIndex((i) => (i - 1 + productImages.length) % productImages.length),
+    [productImages.length],
   );
 
   React.useEffect(() => {
@@ -233,7 +250,9 @@ export default function ProductModal({
     const fromNew = Array.isArray(product?.categories)
       ? product.categories.map((c) => c?.name).filter(Boolean)
       : [];
-    const merged = [...legacy, ...fromNew].map((x) => String(x)).filter(Boolean);
+    const merged = [...legacy, ...fromNew]
+      .map((x) => String(x))
+      .filter(Boolean);
     return Array.from(new Set(merged));
   }, [product]);
 
@@ -243,7 +262,10 @@ export default function ProductModal({
     return arr.filter((v) => v?.is_active !== false);
   }, [product]);
 
-  const optionsTitle = React.useMemo(() => guessOptionsTitle(options), [options]);
+  const optionsTitle = React.useMemo(
+    () => guessOptionsTitle(options),
+    [options],
+  );
 
   const [selectedOptionId, setSelectedOptionId] = React.useState("");
 
@@ -259,7 +281,9 @@ export default function ProductModal({
 
   const selectedOption = React.useMemo(() => {
     if (!selectedOptionId) return null;
-    return options.find((v) => String(v.id) === String(selectedOptionId)) || null;
+    return (
+      options.find((v) => String(v.id) === String(selectedOptionId)) || null
+    );
   }, [options, selectedOptionId]);
 
   const selectedOptionLabel = React.useMemo(() => {
@@ -267,7 +291,9 @@ export default function ProductModal({
   }, [selectedOption]);
 
   const selectedOptionAttrs = React.useMemo(() => {
-    return normalizeAttrs(selectedOption?.variant_attributes || selectedOption?.attributes);
+    return normalizeAttrs(
+      selectedOption?.variant_attributes || selectedOption?.attributes,
+    );
   }, [selectedOption]);
 
   // ✅ imagen opción aparte
@@ -286,9 +312,12 @@ export default function ProductModal({
   const productStockTotal = React.useMemo(() => {
     if (useWh && !hasOptions) {
       return countWarehousesWithStockFromProduct(product) > 0
-        ? (Array.isArray(product?.warehouse_inventories)
-            ? product.warehouse_inventories.reduce((a, r) => a + (Number(r?.qty ?? r?.stock) || 0), 0)
-            : 0)
+        ? Array.isArray(product?.warehouse_inventories)
+          ? product.warehouse_inventories.reduce(
+              (a, r) => a + (Number(r?.qty ?? r?.stock) || 0),
+              0,
+            )
+          : 0
         : 0;
     }
     return Number(product?.stock) || 0;
@@ -300,7 +329,9 @@ export default function ProductModal({
 
     let count = 0;
     if (hasOptions) {
-      count = selectedOption ? countWarehousesWithStockFromOption(selectedOption) : 0;
+      count = selectedOption
+        ? countWarehousesWithStockFromOption(selectedOption)
+        : 0;
     } else {
       count = countWarehousesWithStockFromProduct(product);
     }
@@ -329,7 +360,8 @@ export default function ProductModal({
     if (!product?.id) return;
 
     const productId = Number(product.id);
-    const variant_id = hasOptions && selectedOptionId ? Number(selectedOptionId) : null;
+    const variant_id =
+      hasOptions && selectedOptionId ? Number(selectedOptionId) : null;
 
     const display_name = hasOptions
       ? `${product?.name} — ${selectedOptionLabel}`
@@ -348,8 +380,8 @@ export default function ProductModal({
       meta: {
         discount: Number(product?.discount) || 0,
         option_label: selectedOptionLabel || null,
-        option_attributes: selectedOptionAttrs
-      }
+        option_attributes: selectedOptionAttrs,
+      },
     });
   };
 
@@ -365,12 +397,14 @@ export default function ProductModal({
           overflow: "hidden",
           backgroundImage: `linear-gradient(180deg, ${PALETTE.bg1} 0%, ${PALETTE.bg2} 100%)`,
           border: `1px solid ${PALETTE.stroke}`,
-          boxShadow: `0 40px 120px ${PALETTE.shadow}, inset 0 0 0 1px color-mix(in srgb, ${PALETTE.stroke} 35%, transparent)`
-        }
+          boxShadow: `0 40px 120px ${PALETTE.shadow}, inset 0 0 0 1px color-mix(in srgb, ${PALETTE.stroke} 35%, transparent)`,
+        },
       }}
     >
       {/* Header */}
-      <Box sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1.25 }}>
+      <Box
+        sx={{ px: { xs: 2, sm: 2.5, md: 3 }, pt: { xs: 2, sm: 2.5 }, pb: 1.25 }}
+      >
         <Stack direction="row" alignItems="flex-start" spacing={2}>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
@@ -381,17 +415,24 @@ export default function ProductModal({
                 letterSpacing: ".2px",
                 overflow: "hidden",
                 whiteSpace: { xs: "normal", sm: "nowrap" },
-                textOverflow: { xs: "clip", sm: "ellipsis" }
+                textOverflow: { xs: "clip", sm: "ellipsis" },
               }}
               title={product?.name}
             >
               {product?.name}
             </Typography>
 
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.6, flexWrap: "wrap" }}>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mt: 0.6, flexWrap: "wrap" }}
+            >
               {product?.rating > 0 ? (
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                  <StarRoundedIcon sx={{ fontSize: 18, color: PALETTE.accent }} />
+                  <StarRoundedIcon
+                    sx={{ fontSize: 18, color: PALETTE.accent }}
+                  />
                   <Typography variant="body2" sx={{ color: PALETTE.muted }}>
                     {Number(product.rating).toFixed(1)}
                   </Typography>
@@ -408,14 +449,22 @@ export default function ProductModal({
                     borderRadius: 999,
                     bgcolor: PALETTE.accentSoft,
                     border: `1px solid ${PALETTE.stroke}`,
-                    "& .MuiChip-label": { px: 1, fontWeight: 900, fontSize: 12 }
+                    "& .MuiChip-label": {
+                      px: 1,
+                      fontWeight: 900,
+                      fontSize: 12,
+                    },
                   }}
                 />
               ) : null}
 
               {hasOptions ? (
                 <Chip
-                  icon={<TuneRoundedIcon sx={{ fontSize: 18, color: PALETTE.txt }} />}
+                  icon={
+                    <TuneRoundedIcon
+                      sx={{ fontSize: 18, color: PALETTE.txt }}
+                    />
+                  }
                   label="Opciones"
                   size="small"
                   sx={{
@@ -424,7 +473,11 @@ export default function ProductModal({
                     borderRadius: 999,
                     bgcolor: PALETTE.popSoft,
                     border: `1px solid ${PALETTE.stroke}`,
-                    "& .MuiChip-label": { px: 1, fontWeight: 900, fontSize: 12 }
+                    "& .MuiChip-label": {
+                      px: 1,
+                      fontWeight: 900,
+                      fontSize: 12,
+                    },
                   }}
                 />
               ) : null}
@@ -438,7 +491,7 @@ export default function ProductModal({
               color: PALETTE.txt,
               bgcolor: "rgba(255,255,255,0.06)",
               border: `1px solid ${PALETTE.stroke}`,
-              "&:hover": { bgcolor: "rgba(255,255,255,0.10)" }
+              "&:hover": { bgcolor: "rgba(255,255,255,0.10)" },
             }}
             aria-label="Cerrar"
           >
@@ -451,7 +504,10 @@ export default function ProductModal({
 
       {/* Body */}
       <DialogContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
-        <Stack direction={{ xs: "column", md: "row" }} spacing={{ xs: 2, md: 3 }}>
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          spacing={{ xs: 2, md: 3 }}
+        >
           {/* Imagen principal del producto */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Box
@@ -460,7 +516,7 @@ export default function ProductModal({
                 borderRadius: 3,
                 overflow: "hidden",
                 border: `1px solid ${PALETTE.stroke}`,
-                bgcolor: "rgba(255,255,255,0.03)"
+                bgcolor: "rgba(255,255,255,0.03)",
               }}
             >
               {productImages.length > 1 && (
@@ -474,7 +530,7 @@ export default function ProductModal({
                     zIndex: 2,
                     bgcolor: "rgba(0,0,0,0.35)",
                     color: "#fff",
-                    "&:hover": { bgcolor: "rgba(0,0,0,0.55)" }
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.55)" },
                   }}
                   aria-label="Anterior"
                 >
@@ -494,7 +550,7 @@ export default function ProductModal({
                   height: { xs: 260, sm: 320, md: 380 },
                   objectFit: "contain",
                   display: "block",
-                  background: "rgba(0,0,0,0.25)"
+                  background: "rgba(0,0,0,0.25)",
                 }}
               />
 
@@ -509,7 +565,7 @@ export default function ProductModal({
                     zIndex: 2,
                     bgcolor: "rgba(0,0,0,0.35)",
                     color: "#fff",
-                    "&:hover": { bgcolor: "rgba(0,0,0,0.55)" }
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.55)" },
                   }}
                   aria-label="Siguiente"
                 >
@@ -532,8 +588,8 @@ export default function ProductModal({
                   "&::-webkit-scrollbar": { height: 6 },
                   "&::-webkit-scrollbar-thumb": {
                     background: "rgba(255,255,255,0.18)",
-                    borderRadius: 999
-                  }
+                    borderRadius: 999,
+                  },
                 }}
               >
                 {productImages.map((src, i) => {
@@ -554,7 +610,7 @@ export default function ProductModal({
                         cursor: "pointer",
                         opacity: active ? 1 : 0.85,
                         transition: "all .18s ease",
-                        "&:hover": { opacity: 1 }
+                        "&:hover": { opacity: 1 },
                       }}
                     >
                       <Box
@@ -564,7 +620,11 @@ export default function ProductModal({
                         loading="lazy"
                         onError={onImgError}
                         data-fallback="0"
-                        sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                        }}
                       />
                     </Box>
                   );
@@ -581,10 +641,13 @@ export default function ProductModal({
                   p: 1,
                   borderRadius: 3,
                   borderColor: PALETTE.stroke,
-                  bgcolor: "rgba(255,255,255,0.04)"
+                  bgcolor: "rgba(255,255,255,0.04)",
                 }}
               >
-                <Typography variant="body2" sx={{ color: PALETTE.muted, fontWeight: 950, mb: 0.75 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: PALETTE.muted, fontWeight: 950, mb: 0.75 }}
+                >
                   Imagen de la opción seleccionada
                 </Typography>
 
@@ -601,7 +664,7 @@ export default function ProductModal({
                     borderRadius: 2,
                     border: `1px solid ${PALETTE.stroke}`,
                     bgcolor: "rgba(0,0,0,0.25)",
-                    display: "block"
+                    display: "block",
                   }}
                 />
               </Paper>
@@ -616,41 +679,151 @@ export default function ProductModal({
               p: 2,
               borderRadius: 3,
               border: `1px solid ${PALETTE.stroke}`,
-              bgcolor: "rgba(255,255,255,0.03)"
+              bgcolor: "rgba(255,255,255,0.03)",
             }}
           >
             <Typography variant="body2" sx={{ color: PALETTE.muted, mb: 0.5 }}>
               Precio
             </Typography>
 
-            <Stack direction="row" spacing={1.25} alignItems="baseline" sx={{ mb: 1.1 }}>
-              <Typography
-                variant="h5"
-                sx={{ color: PALETTE.accent, fontWeight: 950, lineHeight: 1, fontSize: 26 }}
+            <Box sx={{ mb: 1.25 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
+                flexWrap="wrap"
+                useFlexGap
               >
-                {symbol}{money(effectiveUnitPrice)}
-              </Typography>
-
-              {Number(product?.discount) > 0 && (
                 <Typography
-                  variant="body2"
-                  sx={{ color: PALETTE.muted, textDecoration: "line-through", opacity: 0.85 }}
+                  variant="h5"
+                  sx={{
+                    color: PALETTE.accent,
+                    fontWeight: 950,
+                    lineHeight: 1,
+                    fontSize: 26,
+                  }}
                 >
-                  {symbol}{money(baseOptionPrice)}
+                  {symbol}
+                  {money(effectiveUnitPrice)}
                 </Typography>
-              )}
-            </Stack>
 
+                {Number(product?.discount) > 0 && (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: PALETTE.muted,
+                      textDecoration: "line-through",
+                      opacity: 0.85,
+                    }}
+                  >
+                    {symbol}
+                    {money(baseOptionPrice)}
+                  </Typography>
+                )}
+
+                {isStore464 && (
+                  <Chip
+                    label="1 pieza · Playera + shorts"
+                    size="small"
+                    sx={{
+                      height: 24,
+                      color: PALETTE.accent,
+                      bgcolor: PALETTE.accentSoft,
+                      border: `1px solid color-mix(
+            in srgb,
+            ${PALETTE.accent} 35%,
+            transparent
+          )`,
+                      borderRadius: 999,
+                      "& .MuiChip-label": {
+                        px: 1.15,
+                        fontSize: 11,
+                        lineHeight: 1,
+                        fontWeight: 900,
+                      },
+                    }}
+                  />
+                )}
+              </Stack>
+
+              {isStore464 && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mt: 1.25,
+                    px: 1.25,
+                    py: 1,
+                    borderRadius: 2,
+                    color: PALETTE.accent,
+                    bgcolor: PALETTE.accentSoft,
+                    border: `1px solid color-mix(
+          in srgb,
+          ${PALETTE.accent} 28%,
+          transparent
+        )`,
+                  }}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography
+                      sx={{
+                        color: PALETTE.accent,
+                        fontSize: 11,
+                        lineHeight: 1.2,
+                        fontWeight: 950,
+                        textTransform: "uppercase",
+                        letterSpacing: ".35px",
+                      }}
+                    >
+                      Precio de mayoreo
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        mt: 0.3,
+                        color: PALETTE.muted,
+                        fontSize: 11,
+                        lineHeight: 1.35,
+                        fontWeight: 700,
+                      }}
+                    >
+                      Desde 7 piezas · Incluye playera, shorts, nombre, número y
+                      calcetas
+                    </Typography>
+                  </Box>
+
+                  <Typography
+                    sx={{
+                      color: PALETTE.accent,
+                      fontSize: { xs: 15, sm: 17 },
+                      lineHeight: 1,
+                      fontWeight: 950,
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {symbol}320.00
+                  </Typography>
+                </Box>
+              )}
+            </Box>
             {categoryNames.length > 0 && (
-              <Typography variant="body2" sx={{ color: PALETTE.muted, mb: 0.75 }}>
+              <Typography
+                variant="body2"
+                sx={{ color: PALETTE.muted, mb: 0.75 }}
+              >
                 <strong style={{ color: PALETTE.txt }}>Categorías:</strong>{" "}
                 {categoryNames.join(" / ")}
               </Typography>
             )}
 
             {product?.sku && (
-              <Typography variant="body2" sx={{ color: PALETTE.muted, mb: 0.5 }}>
-                <strong style={{ color: PALETTE.txt }}>SKU:</strong> {product.sku}
+              <Typography
+                variant="body2"
+                sx={{ color: PALETTE.muted, mb: 0.5 }}
+              >
+                <strong style={{ color: PALETTE.txt }}>SKU:</strong>{" "}
+                {product.sku}
               </Typography>
             )}
 
@@ -663,9 +836,19 @@ export default function ProductModal({
 
             {/* ✅ Multi-almacén: mensaje simple, sin "selecciona" */}
             {useWh && (
-              <Stack direction="row" spacing={0.8} alignItems="center" sx={{ mt: 0.5, mb: 0.75 }}>
-                <WarehouseRoundedIcon sx={{ fontSize: 18, color: PALETTE.muted }} />
-                <Typography variant="body2" sx={{ color: PALETTE.muted, fontWeight: 900 }}>
+              <Stack
+                direction="row"
+                spacing={0.8}
+                alignItems="center"
+                sx={{ mt: 0.5, mb: 0.75 }}
+              >
+                <WarehouseRoundedIcon
+                  sx={{ fontSize: 18, color: PALETTE.muted }}
+                />
+                <Typography
+                  variant="body2"
+                  sx={{ color: PALETTE.muted, fontWeight: 900 }}
+                >
                   {availabilityText}
                 </Typography>
               </Stack>
@@ -680,10 +863,13 @@ export default function ProductModal({
                   p: 1.25,
                   borderRadius: 3,
                   bgcolor: "rgba(255,255,255,0.04)",
-                  borderColor: PALETTE.stroke
+                  borderColor: PALETTE.stroke,
                 }}
               >
-                <Typography variant="body2" sx={{ color: PALETTE.muted, fontWeight: 950 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: PALETTE.muted, fontWeight: 950 }}
+                >
                   OPCIONES
                 </Typography>
 
@@ -694,7 +880,13 @@ export default function ProductModal({
                   Elige una opción para comparar precio y disponibilidad
                 </Typography>
 
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap" useFlexGap>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{ mt: 1 }}
+                  flexWrap="wrap"
+                  useFlexGap
+                >
                   {options.length ? (
                     options.map((v) => {
                       const idStr = String(v.id);
@@ -717,13 +909,19 @@ export default function ProductModal({
                             fontSize: 13,
                             letterSpacing: ".35px",
                             border: `2px solid ${selected ? "#fff" : "rgba(255,255,255,0.14)"}`,
-                            bgcolor: selected ? "rgba(255,255,255,0.10)" : "transparent",
+                            bgcolor: selected
+                              ? "rgba(255,255,255,0.10)"
+                              : "transparent",
                             color: "#fff",
-                            boxShadow: selected ? "0 0 0 1px rgba(255,255,255,0.2), 0 10px 30px rgba(0,0,0,0.35)" : "none",
+                            boxShadow: selected
+                              ? "0 0 0 1px rgba(255,255,255,0.2), 0 10px 30px rgba(0,0,0,0.35)"
+                              : "none",
                             opacity: disabled ? 0.45 : 1,
                             "&:hover": {
-                              bgcolor: selected ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"
-                            }
+                              bgcolor: selected
+                                ? "rgba(255,255,255,0.12)"
+                                : "rgba(255,255,255,0.06)",
+                            },
                           }}
                           title={pickOptionLabel(v)}
                         >
@@ -748,22 +946,40 @@ export default function ProductModal({
 
                     {!!selectedOption?.sku && (
                       <Typography variant="body2" sx={{ color: PALETTE.muted }}>
-                        <strong style={{ color: "#fff" }}>SKU opción:</strong> {selectedOption.sku}
+                        <strong style={{ color: "#fff" }}>SKU opción:</strong>{" "}
+                        {selectedOption.sku}
                       </Typography>
                     )}
 
                     {!!selectedOptionAttrs.length && (
                       <>
-                        <Typography variant="body2" sx={{ color: PALETTE.muted, fontWeight: 950, mt: 0.5 }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: PALETTE.muted,
+                            fontWeight: 950,
+                            mt: 0.5,
+                          }}
+                        >
                           Características
                         </Typography>
 
                         {/* ✅ Chips en BLANCO */}
-                        <Stack direction="row" spacing={0.75} sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
+                        <Stack
+                          direction="row"
+                          spacing={0.75}
+                          sx={{ mt: 0.75 }}
+                          flexWrap="wrap"
+                          useFlexGap
+                        >
                           {selectedOptionAttrs.slice(0, 12).map((a, idx) => (
                             <Chip
                               key={`attr-${idx}`}
-                              icon={<StyleRoundedIcon sx={{ fontSize: 16, color: "#fff" }} />}
+                              icon={
+                                <StyleRoundedIcon
+                                  sx={{ fontSize: 16, color: "#fff" }}
+                                />
+                              }
                               label={`${a.name}${a.value ? `: ${a.value}` : ""}`}
                               variant="outlined"
                               sx={{
@@ -773,7 +989,7 @@ export default function ProductModal({
                                 color: "#fff",
                                 borderColor: "rgba(255,255,255,0.20)",
                                 bgcolor: "rgba(255,255,255,0.06)",
-                                "& .MuiChip-label": { color: "#fff" }
+                                "& .MuiChip-label": { color: "#fff" },
                               }}
                             />
                           ))}
@@ -787,7 +1003,7 @@ export default function ProductModal({
                                 color: "#fff",
                                 borderColor: "rgba(255,255,255,0.20)",
                                 bgcolor: "rgba(255,255,255,0.06)",
-                                "& .MuiChip-label": { color: "#fff" }
+                                "& .MuiChip-label": { color: "#fff" },
                               }}
                               variant="outlined"
                             />
@@ -803,7 +1019,10 @@ export default function ProductModal({
             {/* Descripciones */}
             {product?.shortDescription && (
               <>
-                <Typography variant="body2" sx={{ color: PALETTE.muted, fontWeight: 950, mt: 1.15 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: PALETTE.muted, fontWeight: 950, mt: 1.15 }}
+                >
                   Descripción corta
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#fff", mb: 0.75 }}>
@@ -814,7 +1033,10 @@ export default function ProductModal({
 
             {product?.fullDescription && (
               <>
-                <Typography variant="body2" sx={{ color: PALETTE.muted, fontWeight: 950 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ color: PALETTE.muted, fontWeight: 950 }}
+                >
                   Descripción completa
                 </Typography>
                 <Typography variant="body2" sx={{ color: "#fff", mb: 0.75 }}>
@@ -848,8 +1070,8 @@ export default function ProductModal({
                   boxShadow: "0 14px 34px rgba(0,0,0,0.35)",
                   "&:hover": {
                     bgcolor: "#fff",
-                    boxShadow: "0 20px 48px rgba(0,0,0,0.45)"
-                  }
+                    boxShadow: "0 20px 48px rgba(0,0,0,0.45)",
+                  },
                 }}
               >
                 Añadir al carrito
@@ -857,8 +1079,17 @@ export default function ProductModal({
             </Stack>
 
             {!canAdd && (
-              <Typography sx={{ mt: 1, fontSize: 12, color: PALETTE.warn, fontWeight: 950 }}>
-                {hasOptions ? "Elige una opción con existencia para poder agregar." : "Sin stock disponible."}
+              <Typography
+                sx={{
+                  mt: 1,
+                  fontSize: 12,
+                  color: PALETTE.warn,
+                  fontWeight: 950,
+                }}
+              >
+                {hasOptions
+                  ? "Elige una opción con existencia para poder agregar."
+                  : "Sin stock disponible."}
               </Typography>
             )}
           </Box>
@@ -873,7 +1104,10 @@ ProductModal.propTypes = {
   currency: PropTypes.shape({ currencySymbol: PropTypes.string }),
 
   discountedPrice: PropTypes.number,
-  finalDiscountedPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  finalDiscountedPrice: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.number,
+  ]),
   finalProductPrice: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
 
   onHide: PropTypes.func.isRequired,
@@ -883,7 +1117,10 @@ ProductModal.propTypes = {
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     name: PropTypes.string,
     sku: PropTypes.string,
-    image: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.string), PropTypes.string]),
+    image: PropTypes.oneOfType([
+      PropTypes.arrayOf(PropTypes.string),
+      PropTypes.string,
+    ]),
     rating: PropTypes.number,
     discount: PropTypes.number,
     offerEnd: PropTypes.string,
@@ -898,7 +1135,13 @@ ProductModal.propTypes = {
     use_warehouse_inventory: PropTypes.bool,
     warehouse_inventories: PropTypes.array,
     variants: PropTypes.array,
+
+    store_id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    store: PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+    }),
   }).isRequired,
 
-  show: PropTypes.bool.isRequired
+  show: PropTypes.bool.isRequired,
 };
