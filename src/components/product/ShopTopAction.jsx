@@ -19,7 +19,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  ListSubheader
+  ListSubheader,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import CloseIcon from "@mui/icons-material/Close";
@@ -48,7 +48,7 @@ const PALETTE = {
   cyanSoft: "rgba(118,224,255,0.10)",
   pink: "#FF5EA6",
   pinkSoft: "rgba(255,94,166,0.12)",
-  menuHeaderBg: "rgba(12,14,20,0.98)"
+  menuHeaderBg: "rgba(12,14,20,0.98)",
 };
 
 const ShopTopAction = ({
@@ -56,7 +56,9 @@ const ShopTopAction = ({
   productCount,
   sortedProductCount,
   categories = [],
-  loadingCats = false
+  loadingCats = false,
+  isStore464 = false,
+  variantSearch = "",
 }) => {
   const [searchTerm, setSearchTerm] = React.useState("");
   const [activeCat, setActiveCat] = React.useState(null);
@@ -75,13 +77,16 @@ const ShopTopAction = ({
   const hasChildrenShape = React.useMemo(
     () =>
       Array.isArray(categories) &&
-      categories.some((c) => Array.isArray(c?.children) && c.children.length > 0),
-    [categories]
+      categories.some(
+        (c) => Array.isArray(c?.children) && c.children.length > 0,
+      ),
+    [categories],
   );
 
   const hasParentIdShape = React.useMemo(
-    () => Array.isArray(categories) && categories.some((c) => c?.parent_id != null),
-    [categories]
+    () =>
+      Array.isArray(categories) && categories.some((c) => c?.parent_id != null),
+    [categories],
   );
 
   const useGroupedSelect = hasChildrenShape || hasParentIdShape;
@@ -118,8 +123,8 @@ const ShopTopAction = ({
       .map((p) => ({
         ...p,
         children: (childrenByParent.get(String(p.id)) ?? []).sort((a, b) =>
-          String(a.name).localeCompare(String(b.name))
-        )
+          String(a.name).localeCompare(String(b.name)),
+        ),
       }))
       .filter((p) => (p.children?.length ?? 0) > 0)
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
@@ -159,9 +164,13 @@ const ShopTopAction = ({
 
     const filteredGroups = groups
       .map((g) => {
-        const parentMatches = String(g?.name ?? "").toLowerCase().includes(q);
+        const parentMatches = String(g?.name ?? "")
+          .toLowerCase()
+          .includes(q);
         const kids = (g.children ?? []).filter((c) =>
-          String(c?.name ?? "").toLowerCase().includes(q)
+          String(c?.name ?? "")
+            .toLowerCase()
+            .includes(q),
         );
         return parentMatches
           ? { ...g, children: g.children ?? [] }
@@ -170,7 +179,9 @@ const ShopTopAction = ({
       .filter((g) => (g.children?.length ?? 0) > 0);
 
     const filteredSingles = singlesDedup.filter((s) =>
-      String(s?.name ?? "").toLowerCase().includes(q)
+      String(s?.name ?? "")
+        .toLowerCase()
+        .includes(q),
     );
 
     return { groups: filteredGroups, singles: filteredSingles };
@@ -194,7 +205,7 @@ const ShopTopAction = ({
     return categories.filter((c) =>
       String(c?.name ?? c?.label ?? c?.slug ?? c?.id)
         .toLowerCase()
-        .includes(q)
+        .includes(q),
     );
   }, [allFilter, categories]);
 
@@ -211,7 +222,7 @@ const ShopTopAction = ({
     border: `1px solid ${PALETTE.stroke}`,
     boxShadow:
       "0 40px 120px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.03)",
-    color: PALETTE.txt
+    color: PALETTE.txt,
   };
 
   const parseSelect = (val) => {
@@ -259,7 +270,11 @@ const ShopTopAction = ({
 
     if (kind === "p") {
       const g = groups.find((x) => String(x.id) === String(id));
-      const payload = { id: g?.id ?? id, name: g?.name ?? String(id), type: "parent" };
+      const payload = {
+        id: g?.id ?? id,
+        name: g?.name ?? String(id),
+        type: "parent",
+      };
       setActiveCat(payload);
       getFilterSortParams("category", payload);
       return;
@@ -269,7 +284,12 @@ const ShopTopAction = ({
       for (const g of groups) {
         const c = (g.children ?? []).find((x) => String(x.id) === String(id));
         if (c) {
-          const payload = { id: c.id, name: c.name, type: "child", parent_id: g.id };
+          const payload = {
+            id: c.id,
+            name: c.name,
+            type: "child",
+            parent_id: g.id,
+          };
           setActiveCat(payload);
           getFilterSortParams("category", payload);
           return;
@@ -283,7 +303,11 @@ const ShopTopAction = ({
 
     if (kind === "s") {
       const s = singlesDedup.find((x) => String(x.id) === String(id));
-      const payload = { id: s?.id ?? id, name: s?.name ?? String(id), type: "single" };
+      const payload = {
+        id: s?.id ?? id,
+        name: s?.name ?? String(id),
+        type: "single",
+      };
       setActiveCat(payload);
       getFilterSortParams("category", payload);
       return;
@@ -312,7 +336,7 @@ const ShopTopAction = ({
     hasParentIdShape,
     useGroupedSelect,
     groups,
-    singlesDedup
+    singlesDedup,
   ]);
 
   return (
@@ -328,7 +352,7 @@ const ShopTopAction = ({
           border: `1px solid ${PALETTE.stroke}`,
           boxShadow:
             "0 30px 80px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.03)",
-          backdropFilter: "blur(10px)"
+          backdropFilter: "blur(10px)",
         }}
       >
         {/* Encabezado */}
@@ -356,7 +380,7 @@ const ShopTopAction = ({
               <InputAdornment position="start">
                 <SearchIcon sx={{ color: PALETTE.txt }} />
               </InputAdornment>
-            )
+            ),
           }}
           sx={{
             mb: 2,
@@ -366,11 +390,78 @@ const ShopTopAction = ({
               bgcolor: PALETTE.cyanSoft,
               "& fieldset": { borderColor: PALETTE.stroke },
               "&:hover fieldset": { borderColor: PALETTE.cyan },
-              "&.Mui-focused fieldset": { borderColor: PALETTE.accent }
+              "&.Mui-focused fieldset": { borderColor: PALETTE.accent },
             },
-            "& .MuiInputBase-input::placeholder": { color: PALETTE.txt }
+            "& .MuiInputBase-input::placeholder": { color: PALETTE.txt },
           }}
         />
+        {isStore464 && (
+          <Box
+            sx={{
+              mb: 2,
+              p: 1.5,
+              borderRadius: 2,
+              bgcolor: PALETTE.cyanSoft,
+              border: `1px solid ${PALETTE.cyan}`,
+            }}
+          >
+            <Typography
+              sx={{
+                mb: 0.75,
+                color: PALETTE.cyan,
+                fontSize: 13,
+                fontWeight: 900,
+              }}
+            >
+              Buscar existencias por talla
+            </Typography>
+
+            <TextField
+              fullWidth
+              variant="outlined"
+              placeholder="Ejemplo: CH-9, M-3, XL-3"
+              value={variantSearch}
+              onChange={(event) =>
+                getFilterSortParams("variantSearch", event.target.value)
+              }
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: PALETTE.cyan }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  color: PALETTE.txt,
+                  borderRadius: 2,
+                  bgcolor: "rgba(255,255,255,0.06)",
+                  "& fieldset": {
+                    borderColor: PALETTE.stroke,
+                  },
+                  "&:hover fieldset": {
+                    borderColor: PALETTE.cyan,
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: PALETTE.cyan,
+                  },
+                },
+              }}
+            />
+
+            <Typography
+              sx={{
+                display: "block",
+                mt: 0.75,
+                color: PALETTE.txt,
+                fontSize: 11,
+                opacity: 0.75,
+              }}
+            >
+              También puedes escribirlo sin guiones: CH9,M3,XL3
+            </Typography>
+          </Box>
+        )}
 
         <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
 
@@ -382,7 +473,7 @@ const ShopTopAction = ({
                 shrink
                 sx={{
                   color: PALETTE.txt,
-                  "&.Mui-focused": { color: PALETTE.cyan }
+                  "&.Mui-focused": { color: PALETTE.cyan },
                 }}
               >
                 Categoría
@@ -405,7 +496,8 @@ const ShopTopAction = ({
                   // setSelectQuery("");
                 }}
                 renderValue={(val) => {
-                  if (!val) return <span style={{ color: PALETTE.txt }}>TODAS</span>;
+                  if (!val)
+                    return <span style={{ color: PALETTE.txt }}>TODAS</span>;
                   return (
                     <span style={{ color: PALETTE.txt, fontWeight: 900 }}>
                       {activeCat?.name ?? "Categoría"}
@@ -424,48 +516,48 @@ const ShopTopAction = ({
                       "& .MuiMenuItem-root": {
                         color: PALETTE.txt,
                         bgcolor: "transparent",
-                        transition: "all .15s ease"
+                        transition: "all .15s ease",
                       },
                       "& .MuiMenuItem-root:hover": {
-                        bgcolor: "rgba(118,224,255,0.10)"
+                        bgcolor: "rgba(118,224,255,0.10)",
                       },
                       "& .MuiMenuItem-root.Mui-selected": {
-                        bgcolor: "rgba(124,77,255,0.16) !important"
+                        bgcolor: "rgba(124,77,255,0.16) !important",
                       },
                       "& .MuiMenuItem-root.Mui-selected:hover": {
-                        bgcolor: "rgba(124,77,255,0.22) !important"
+                        bgcolor: "rgba(124,77,255,0.22) !important",
                       },
 
                       "& .MuiListSubheader-root": {
                         bgcolor: PALETTE.menuHeaderBg,
-                        backgroundImage: "none"
+                        backgroundImage: "none",
                       },
                       "& .MuiListSubheader-root.MuiListSubheader-sticky": {
                         bgcolor: PALETTE.menuHeaderBg,
-                        backgroundImage: "none"
+                        backgroundImage: "none",
                       },
 
                       "&::-webkit-scrollbar": { width: 8 },
                       "&::-webkit-scrollbar-thumb": {
                         background: "rgba(255,255,255,0.18)",
-                        borderRadius: 999
-                      }
-                    }
-                  }
+                        borderRadius: 999,
+                      },
+                    },
+                  },
                 }}
                 sx={{
                   "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: PALETTE.stroke
+                    borderColor: PALETTE.stroke,
                   },
                   "&:hover .MuiOutlinedInput-notchedOutline": {
-                    borderColor: PALETTE.cyan
+                    borderColor: PALETTE.cyan,
                   },
                   "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                    borderColor: PALETTE.accent
+                    borderColor: PALETTE.accent,
                   },
                   color: PALETTE.txt,
                   borderRadius: 2,
-                  bgcolor: "rgba(255,255,255,0.06)"
+                  bgcolor: "rgba(255,255,255,0.06)",
                 }}
               >
                 {/* Buscador dentro del menú */}
@@ -479,7 +571,7 @@ const ShopTopAction = ({
                     zIndex: 10,
                     px: 1,
                     py: 1,
-                    borderBottom: "1px solid rgba(255,255,255,0.08)"
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
                   }}
                 >
                   <TextField
@@ -495,7 +587,7 @@ const ShopTopAction = ({
                         <InputAdornment position="start">
                           <SearchIcon sx={{ color: PALETTE.txt }} />
                         </InputAdornment>
-                      )
+                      ),
                     }}
                     sx={{
                       "& .MuiOutlinedInput-root": {
@@ -504,9 +596,13 @@ const ShopTopAction = ({
                         bgcolor: "rgba(255,255,255,0.08)",
                         "& fieldset": { borderColor: PALETTE.stroke },
                         "&:hover fieldset": { borderColor: PALETTE.cyan },
-                        "&.Mui-focused fieldset": { borderColor: PALETTE.accent }
+                        "&.Mui-focused fieldset": {
+                          borderColor: PALETTE.accent,
+                        },
                       },
-                      "& .MuiInputBase-input::placeholder": { color: PALETTE.txt }
+                      "& .MuiInputBase-input::placeholder": {
+                        color: PALETTE.txt,
+                      },
                     }}
                   />
                 </ListSubheader>
@@ -527,7 +623,11 @@ const ShopTopAction = ({
                 {/* Grupos: Padre seleccionable + Hijas */}
                 {selectOptions.groups.map((g) => {
                   const parentValue = `p:${g.id}`;
-                  const parentPayload = { id: g.id, name: g.name, type: "parent" };
+                  const parentPayload = {
+                    id: g.id,
+                    name: g.name,
+                    type: "parent",
+                  };
 
                   return (
                     <React.Fragment key={`grp-${g.id}`}>
@@ -543,7 +643,7 @@ const ShopTopAction = ({
                           color: "#fff",
                           bgcolor: "rgba(255,255,255,0.04)",
                           borderTop: "1px solid rgba(255,255,255,0.06)",
-                          borderBottom: "1px solid rgba(255,255,255,0.06)"
+                          borderBottom: "1px solid rgba(255,255,255,0.06)",
                         }}
                       >
                         <Typography sx={{ fontWeight: 950, color: "#fff" }}>
@@ -558,7 +658,7 @@ const ShopTopAction = ({
                           id: c.id,
                           name: c.name,
                           type: "child",
-                          parent_id: g.id
+                          parent_id: g.id,
                         };
 
                         return (
@@ -580,12 +680,14 @@ const ShopTopAction = ({
                                 bottom: 8,
                                 width: 2,
                                 borderRadius: 999,
-                                background: "rgba(118,224,255,0.22)"
+                                background: "rgba(118,224,255,0.22)",
                               },
-                              "&:hover": { bgcolor: "rgba(118,224,255,0.08)" }
+                              "&:hover": { bgcolor: "rgba(118,224,255,0.08)" },
                             }}
                           >
-                            <Typography sx={{ color: PALETTE.txt, fontWeight: 800 }}>
+                            <Typography
+                              sx={{ color: PALETTE.txt, fontWeight: 800 }}
+                            >
                               {c.name}
                             </Typography>
                           </MenuItem>
@@ -610,8 +712,8 @@ const ShopTopAction = ({
                       "&.MuiListSubheader-sticky": {
                         color: "#fff",
                         bgcolor: PALETTE.bgMenu,
-                        backgroundImage: "none"
-                      }
+                        backgroundImage: "none",
+                      },
                     }}
                   >
                     Otras
@@ -620,7 +722,11 @@ const ShopTopAction = ({
 
                 {selectOptions.singles.map((s) => {
                   const singleValue = `s:${s.id}`;
-                  const singlePayload = { id: s.id, name: s.name, type: "single" };
+                  const singlePayload = {
+                    id: s.id,
+                    name: s.name,
+                    type: "single",
+                  };
 
                   return (
                     <MenuItem
@@ -649,8 +755,8 @@ const ShopTopAction = ({
                   color: PALETTE.cyan,
                   "&:hover": {
                     borderColor: PALETTE.cyan,
-                    bgcolor: PALETTE.cyanSoft
-                  }
+                    bgcolor: PALETTE.cyanSoft,
+                  },
                 }}
               >
                 Limpiar filtro
@@ -684,9 +790,11 @@ const ShopTopAction = ({
                     border: `1px solid ${
                       activeCat ? "rgba(255,255,255,.12)" : PALETTE.cyan
                     }`,
-                    boxShadow: activeCat ? "none" : "0 14px 34px rgba(118,224,255,0.30)",
+                    boxShadow: activeCat
+                      ? "none"
+                      : "0 14px 34px rgba(118,224,255,0.30)",
                     cursor: "pointer",
-                    transition: "all .18s ease"
+                    transition: "all .18s ease",
                   }}
                 />
 
@@ -697,7 +805,11 @@ const ShopTopAction = ({
                       key={cat.id}
                       label={cat.name}
                       onClick={() => {
-                        const payload = { id: cat.id, name: cat.name, type: "single" };
+                        const payload = {
+                          id: cat.id,
+                          name: cat.name,
+                          type: "single",
+                        };
                         setActiveCat(payload);
                         getFilterSortParams("category", payload);
                       }}
@@ -712,10 +824,12 @@ const ShopTopAction = ({
                         border: `1px solid ${
                           active ? PALETTE.accent : "rgba(255,255,255,.12)"
                         }`,
-                        bgcolor: active ? PALETTE.accentSoft : "rgba(255,255,255,.06)",
+                        bgcolor: active
+                          ? PALETTE.accentSoft
+                          : "rgba(255,255,255,.06)",
                         boxShadow: active ? PALETTE.glow : "none",
                         cursor: "pointer",
-                        transition: "all .18s ease"
+                        transition: "all .18s ease",
                       }}
                     />
                   );
@@ -723,7 +837,9 @@ const ShopTopAction = ({
               </Stack>
 
               {categories.length > sample.length && (
-                <Box sx={{ mt: 1.5, display: "flex", justifyContent: "flex-end" }}>
+                <Box
+                  sx={{ mt: 1.5, display: "flex", justifyContent: "flex-end" }}
+                >
                   <Button
                     onClick={toggleSeeAll}
                     variant="contained"
@@ -734,14 +850,14 @@ const ShopTopAction = ({
                       borderRadius: 2,
                       color: "#0B0E12",
                       bgcolor: "#fff",
-                      boxShadow: "0 14px 34px rgba(118,224,255,0.30)"
+                      boxShadow: "0 14px 34px rgba(118,224,255,0.30)",
                     }}
                   >
                     {manyCats
                       ? "Ver todas (panel)"
                       : showAll
-                      ? "Ocultar categorías"
-                      : "Ver todas las categorías"}
+                        ? "Ocultar categorías"
+                        : "Ver todas las categorías"}
                   </Button>
                 </Box>
               )}
@@ -762,7 +878,11 @@ const ShopTopAction = ({
                           key={`all-${cat.id}`}
                           label={cat.name}
                           onClick={() => {
-                            const payload = { id: cat.id, name: cat.name, type: "single" };
+                            const payload = {
+                              id: cat.id,
+                              name: cat.name,
+                              type: "single",
+                            };
                             setActiveCat(payload);
                             getFilterSortParams("category", payload);
                           }}
@@ -777,9 +897,11 @@ const ShopTopAction = ({
                             border: `1px solid ${
                               active ? PALETTE.pink : "rgba(255,255,255,.12)"
                             }`,
-                            bgcolor: active ? PALETTE.pinkSoft : "rgba(255,255,255,.06)",
+                            bgcolor: active
+                              ? PALETTE.pinkSoft
+                              : "rgba(255,255,255,.06)",
                             cursor: "pointer",
-                            transition: "all .18s ease"
+                            transition: "all .18s ease",
                           }}
                         />
                       );
@@ -799,16 +921,22 @@ const ShopTopAction = ({
             py: 1.25,
             borderRadius: 2,
             border: `1px dashed ${PALETTE.stroke}`,
-            bgcolor: "rgba(255,255,255,0.03)"
+            bgcolor: "rgba(255,255,255,0.03)",
           }}
         >
           <Typography variant="body2" sx={{ color: PALETTE.txt }}>
             Mostrando{" "}
-            <Typography component="span" sx={{ color: PALETTE.cyan, fontWeight: 800 }}>
+            <Typography
+              component="span"
+              sx={{ color: PALETTE.cyan, fontWeight: 800 }}
+            >
               {sortedProductCount}
             </Typography>{" "}
             de{" "}
-            <Typography component="span" sx={{ color: PALETTE.txt, fontWeight: 700 }}>
+            <Typography
+              component="span"
+              sx={{ color: PALETTE.txt, fontWeight: 700 }}
+            >
               {productCount}
             </Typography>{" "}
             productos
@@ -830,22 +958,30 @@ const ShopTopAction = ({
               border: `1px solid ${PALETTE.stroke}`,
               boxShadow:
                 "0 40px 120px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(255,255,255,0.03)",
-              color: PALETTE.txt
-            }
+              color: PALETTE.txt,
+            },
           }}
         >
           <DialogTitle sx={{ pr: 6, fontWeight: 900, color: PALETTE.txt }}>
             Todas las categorías
             <IconButton
               onClick={() => setOpenAllDialog(false)}
-              sx={{ position: "absolute", right: 8, top: 8, color: PALETTE.txt }}
+              sx={{
+                position: "absolute",
+                right: 8,
+                top: 8,
+                color: PALETTE.txt,
+              }}
               aria-label="Cerrar"
             >
               <CloseIcon />
             </IconButton>
           </DialogTitle>
 
-          <DialogContent dividers sx={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <DialogContent
+            dividers
+            sx={{ borderColor: "rgba(255,255,255,0.06)" }}
+          >
             <TextField
               fullWidth
               placeholder="Buscar categoría…"
@@ -856,7 +992,7 @@ const ShopTopAction = ({
                   <InputAdornment position="start">
                     <SearchIcon sx={{ color: PALETTE.txt }} />
                   </InputAdornment>
-                )
+                ),
               }}
               sx={{
                 mb: 2,
@@ -866,12 +1002,18 @@ const ShopTopAction = ({
                   bgcolor: "rgba(255,255,255,0.06)",
                   "& fieldset": { borderColor: PALETTE.stroke },
                   "&:hover fieldset": { borderColor: PALETTE.cyan },
-                  "&.Mui-focused fieldset": { borderColor: PALETTE.accent }
-                }
+                  "&.Mui-focused fieldset": { borderColor: PALETTE.accent },
+                },
               }}
             />
 
-            <Box sx={{ maxHeight: { xs: 360, sm: 420 }, overflowY: "auto", pr: 0.5 }}>
+            <Box
+              sx={{
+                maxHeight: { xs: 360, sm: 420 },
+                overflowY: "auto",
+                pr: 0.5,
+              }}
+            >
               <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                 {filteredAllCats.map((cat) => {
                   const active = activeCat?.id === cat.id;
@@ -880,7 +1022,11 @@ const ShopTopAction = ({
                       key={`dlg-${cat.id}`}
                       label={cat.name}
                       onClick={() => {
-                        const payload = { id: cat.id, name: cat.name, type: "single" };
+                        const payload = {
+                          id: cat.id,
+                          name: cat.name,
+                          type: "single",
+                        };
                         setActiveCat(payload);
                         getFilterSortParams("category", payload);
                         setOpenAllDialog(false);
@@ -896,9 +1042,11 @@ const ShopTopAction = ({
                         border: `1px solid ${
                           active ? PALETTE.pink : "rgba(255,255,255,.12)"
                         }`,
-                        bgcolor: active ? PALETTE.pinkSoft : "rgba(255,255,255,.06)",
+                        bgcolor: active
+                          ? PALETTE.pinkSoft
+                          : "rgba(255,255,255,.06)",
                         cursor: "pointer",
-                        transition: "all .18s ease"
+                        transition: "all .18s ease",
                       }}
                     />
                   );
@@ -913,7 +1061,10 @@ const ShopTopAction = ({
                 sx={{
                   borderColor: PALETTE.cyan,
                   color: PALETTE.cyan,
-                  "&:hover": { borderColor: PALETTE.cyan, bgcolor: PALETTE.cyanSoft }
+                  "&:hover": {
+                    borderColor: PALETTE.cyan,
+                    bgcolor: PALETTE.cyanSoft,
+                  },
                 }}
               >
                 Limpiar filtro
@@ -931,7 +1082,9 @@ ShopTopAction.propTypes = {
   productCount: PropTypes.number.isRequired,
   sortedProductCount: PropTypes.number.isRequired,
   categories: PropTypes.array,
-  loadingCats: PropTypes.bool
+  loadingCats: PropTypes.bool,
+  isStore464: PropTypes.bool,
+  variantSearch: PropTypes.string,
 };
 
 export default ShopTopAction;

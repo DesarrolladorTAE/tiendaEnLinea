@@ -8,7 +8,9 @@ const ShopTopbar = ({
   productCount,
   sortedProductCount,
   categories = [],
-  loadingCats = false
+  loadingCats = false,
+  isStore464 = false,
+  variantSearch = "",
 }) => {
   return (
     <Fragment>
@@ -19,6 +21,8 @@ const ShopTopbar = ({
         sortedProductCount={sortedProductCount}
         categories={categories}
         loadingCats={loadingCats}
+        isStore464={isStore464}
+        variantSearch={variantSearch}
       />
     </Fragment>
   );
@@ -30,7 +34,9 @@ ShopTopbar.propTypes = {
   productCount: PropTypes.number,
   sortedProductCount: PropTypes.number,
   categories: PropTypes.array,
-  loadingCats: PropTypes.bool
+  loadingCats: PropTypes.bool,
+  isStore464: PropTypes.bool,
+  variantSearch: PropTypes.string,
 };
 
 export default ShopTopbar;

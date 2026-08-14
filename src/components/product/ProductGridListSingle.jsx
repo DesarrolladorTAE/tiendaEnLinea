@@ -1,6 +1,5 @@
-// ProductGridListSingle.jsx
 import PropTypes from "prop-types";
-import React, { Fragment, useRef, useState, useMemo } from "react";
+import React, { Fragment, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
 import clsx from "clsx";
 import { getDiscountPrice } from "../../helpers/product";
@@ -11,8 +10,14 @@ import { addToWhatsappCart } from "../../store/slices/whatsappCartSlice";
 const DEFAULT_IMG = "/assets/img/defaultproduct.png";
 
 function pickImages(imgField) {
-  if (Array.isArray(imgField)) return imgField.filter(Boolean);
-  if (typeof imgField === "string" && imgField.trim() !== "") return [imgField.trim()];
+  if (Array.isArray(imgField)) {
+    return imgField.filter(Boolean);
+  }
+
+  if (typeof imgField === "string" && imgField.trim() !== "") {
+    return [imgField.trim()];
+  }
+
   return [];
 }
 
@@ -25,48 +30,203 @@ function onImgError(e) {
 
 function money2(n) {
   const x = Number(n) || 0;
-  return +x.toFixed(2);
+  return Number(x.toFixed(2));
+}
+
+function getVariantLabel(variant, fallback) {
+  if (fallback) return String(fallback).toUpperCase();
+
+  const attrs = Array.isArray(variant?.variant_attributes)
+    ? variant.variant_attributes
+    : Array.isArray(variant?.attributes)
+      ? variant.attributes
+      : [];
+
+  const sizeAttribute = attrs.find((attr) => {
+    const name = String(attr?.name ?? "").toLowerCase();
+
+    return (
+      name === "talla" ||
+      name === "size" ||
+      name.includes("talla") ||
+      name.includes("size")
+    );
+  });
+
+  const sizeValue = String(sizeAttribute?.value ?? "").trim();
+
+  if (sizeValue) return sizeValue.toUpperCase();
+
+  const name = String(variant?.name ?? "").trim();
+  if (name) return name.toUpperCase();
+
+  return `OPCIÓN ${variant?.id ?? ""}`;
+}
+
+function getVariantImage(variant) {
+  const value = variant?.image_url ?? variant?.image ?? null;
+
+  if (Array.isArray(value)) {
+    return value.find(Boolean) ?? null;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  return null;
 }
 
 const ProductGridListSingle = ({
   product,
   currency,
+  storeId,
   spaceBottomClass,
   wishlistItem,
   compareItem,
+  variantCard = false,
+  selectedVariant = null,
+  requestedQty = 1,
+  availableStock = null,
+  variantSize = null,
 }) => {
   const dispatch = useDispatch();
   const cardRef = useRef(null);
   const [modalShow, setModalShow] = useState(false);
 
-  // ✅ flags del nuevo payload
-  const hasVariants = Boolean(product?.has_variants) || (Array.isArray(product?.variants) && product.variants.length > 0);
+  const resolvedStoreId = Number(
+    storeId ?? product?.store_id ?? product?.store?.id ?? product?.storeId,
+  );
+
+  const isStore464 = resolvedStoreId === 464;
+
+  const hasVariants =
+    Boolean(product?.has_variants) ||
+    (Array.isArray(product?.variants) && product.variants.length > 0);
+
   const useWh = Boolean(product?.use_warehouse_inventory);
 
-  // Moneda segura
   const symbol = currency?.currencySymbol ?? "$";
+
   const rate = Number(currency?.currencyRate ?? 1);
 
-  // Precios
-  const discounted = getDiscountPrice(product.price, product.discount);
-  const final = money2((Number(product.price) || 0) * rate);
-  const finalDiscount = discounted !== null ? money2((Number(discounted) || 0) * rate) : null;
+  const normalDiscounted = getDiscountPrice(product.price, product.discount);
 
-  // Imágenes
-  const images = pickImages(product.image);
+  const normalPrice = money2((Number(product.price) || 0) * rate);
+
+  const normalDiscountPrice =
+    normalDiscounted !== null
+      ? money2((Number(normalDiscounted) || 0) * rate)
+      : null;
+
+  const variantBasePrice = Number(
+    selectedVariant?.price ?? product?.price ?? 0,
+  );
+
+  const variantDiscounted = variantCard
+    ? getDiscountPrice(variantBasePrice, product?.discount)
+    : null;
+
+  const displayedVariantPrice = money2(
+    (variantDiscounted !== null ? variantDiscounted : variantBasePrice) * rate,
+  );
+
+  const displayedVariantOldPrice =
+    variantDiscounted !== null ? money2(variantBasePrice * rate) : null;
+
+  const productImages = pickImages(product.image);
+  const variantImage = getVariantImage(selectedVariant);
+
+  const images =
+    variantCard && variantImage
+      ? [
+          variantImage,
+          ...productImages.filter((image) => image !== variantImage),
+        ]
+      : productImages;
+
   const mainImg = images[0] || DEFAULT_IMG;
+
   const hoverImg = images[1] || null;
 
-  // ✅ agregar simple directo solo si NO variantes y NO multi almacén
-  const canQuickAdd = !hasVariants && !useWh;
+  const sizeLabel = getVariantLabel(selectedVariant, variantSize);
+
+  const variantAttributes = Array.isArray(selectedVariant?.variant_attributes)
+    ? selectedVariant.variant_attributes
+    : Array.isArray(selectedVariant?.attributes)
+      ? selectedVariant.attributes
+      : [];
+
+  const visibleVariantAttributes = variantAttributes
+    .map((attribute) => ({
+      name: String(attribute?.name ?? "").trim(),
+      value: String(attribute?.value ?? "").trim(),
+    }))
+    .filter((attribute) => {
+      if (!attribute.name && !attribute.value) {
+        return false;
+      }
+
+      const name = attribute.name.toLowerCase();
+
+      // La talla ya se muestra en su propio chip.
+      return !(
+        name === "talla" ||
+        name === "size" ||
+        name.includes("talla") ||
+        name.includes("size")
+      );
+    });
+
+  const safeRequestedQty = Math.max(1, Number(requestedQty) || 1);
+
+  const hasWholesalePrice = variantCard && isStore464 && safeRequestedQty >= 7;
+
+  const variantCartPrice = hasWholesalePrice ? 320 : displayedVariantPrice;
+
+  const canQuickAdd = variantCard || (!hasVariants && !useWh);
+
+  const openModal = () => {
+    // En resultados por variante no se abre el modal.
+    if (variantCard) return;
+    setModalShow(true);
+  };
 
   const handleQuickAdd = () => {
+    if (variantCard && selectedVariant) {
+      dispatch(
+        addToWhatsappCart({
+          cart_key: `p${product.id}-o${selectedVariant.id}`,
+          product_id: Number(product.id),
+          variant_id: Number(selectedVariant.id),
+          warehouse_id: null,
+          warehouse_name: null,
+          name: product.name,
+          display_name: `${product.name} — Talla ${sizeLabel}`,
+          price: variantCartPrice,
+          qty: safeRequestedQty,
+          meta: {
+            discount: Number(product?.discount) || 0,
+            option_label: sizeLabel,
+            option_attributes: variantAttributes,
+            requested_qty: safeRequestedQty,
+            available_stock: Number(availableStock) || 0,
+            wholesale_price: hasWholesalePrice,
+          },
+        }),
+      );
+
+      return;
+    }
+
     if (!canQuickAdd) {
       setModalShow(true);
       return;
     }
 
-    const priceToUse = product.discount ? (discounted ?? product.price) : product.price;
+    const priceToUse = product.discount
+      ? (normalDiscounted ?? product.price)
+      : product.price;
 
     dispatch(
       addToWhatsappCart({
@@ -79,27 +239,33 @@ const ProductGridListSingle = ({
         display_name: product.name,
         price: Number(priceToUse) || 0,
         qty: 1,
-      })
+      }),
     );
   };
 
-  // ✅ esto lo llama el modal (ya con variante/almacén elegidos)
   const handleWhatsappFromModal = (payload) => {
     dispatch(addToWhatsappCart(payload));
     setModalShow(false);
   };
 
-  // Tilt 3D suave
   const onMouseMove = (e) => {
     const el = cardRef.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    const x = e.clientX - r.left;
-    const y = e.clientY - r.top;
-    const rx = -((y - r.height / 2) / (r.height / 2)) * 8;
-    const ry = ((x - r.width / 2) / (r.width / 2)) * 8;
-    el.style.transform = `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg) translateZ(0)`;
+
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const rotateX = -((y - rect.height / 2) / (rect.height / 2)) * 8;
+
+    const rotateY = ((x - rect.width / 2) / (rect.width / 2)) * 8;
+
+    el.style.transform =
+      `perspective(1000px) ` +
+      `rotateX(${rotateX}deg) ` +
+      `rotateY(${rotateY}deg) translateZ(0)`;
   };
+
   const onMouseLeave = () => {
     const el = cardRef.current;
     if (el) el.style.transform = "";
@@ -109,52 +275,209 @@ const ProductGridListSingle = ({
     <Fragment>
       <article
         ref={cardRef}
-        className={clsx("neo-card is-compact", spaceBottomClass)}
+        className={clsx(
+          "neo-card is-compact",
+          {
+            "neo-variant-card": variantCard,
+          },
+          spaceBottomClass,
+        )}
         onMouseMove={onMouseMove}
         onMouseLeave={onMouseLeave}
       >
         <span className="neo-glow" aria-hidden />
 
-        {/* Media */}
-        <div className="neo-media" role="button" onClick={() => setModalShow(true)}>
-          <img className="neo-img default" src={mainImg} alt={product.name} loading="lazy" onError={onImgError} />
+        <div
+          className="neo-media"
+          role={variantCard ? undefined : "button"}
+          onClick={openModal}
+          style={{
+            cursor: variantCard ? "default" : "pointer",
+          }}
+        >
+          <img
+            className="neo-img default"
+            src={mainImg}
+            alt={product.name}
+            loading="lazy"
+            onError={onImgError}
+          />
+
           {hoverImg && (
-            <img className="neo-img hover" src={hoverImg} alt={product.name} loading="lazy" onError={onImgError} />
+            <img
+              className="neo-img hover"
+              src={hoverImg}
+              alt={product.name}
+              loading="lazy"
+              onError={onImgError}
+            />
           )}
 
           {(product.discount || product.new) && (
             <div className="neo-badges">
-              {product.discount ? <span className="badge-off">-{product.discount}%</span> : null}
+              {product.discount ? (
+                <span className="badge-off">-{product.discount}%</span>
+              ) : null}
+
               {product.new ? <span className="badge-new">Nuevo</span> : null}
             </div>
           )}
 
-          <div className="neo-actions">
-            <button className="btn-glow" onClick={(e) => (e.stopPropagation(), setModalShow(true))}>
-              <i className="pe-7s-look" /> Ver
-            </button>
-
-            <button
-              className="btn-glow"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleQuickAdd();
+          {variantCard && (
+            <div
+              style={{
+                position: "absolute",
+                top: 12,
+                right: 12,
+                zIndex: 3,
+                padding: "6px 12px",
+                borderRadius: "999px",
+                color: "#0b0e12",
+                background: "#76e0ff",
+                boxShadow: "0 8px 26px rgba(118,224,255,.35)",
+                fontSize: "13px",
+                lineHeight: 1,
+                fontWeight: 950,
               }}
             >
-              <i className="pe-7s-cart" /> {canQuickAdd ? "Añadir" : "Seleccionar"}
-            </button>
-          </div>
+              Talla {sizeLabel}
+            </div>
+          )}
+
+          {!variantCard && (
+            <div className="neo-actions">
+              <button
+                type="button"
+                className="btn-glow"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setModalShow(true);
+                }}
+              >
+                <i className="pe-7s-look" /> Ver
+              </button>
+
+              <button
+                type="button"
+                className="btn-glow"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleQuickAdd();
+                }}
+              >
+                <i className="pe-7s-cart" />{" "}
+                {canQuickAdd ? "Añadir" : "Seleccionar"}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Contenido */}
         <div className="neo-content">
           <h3 className="neo-title" title={product.name}>
-            <span role="button" onClick={() => setModalShow(true)}>
+            <span role={variantCard ? undefined : "button"} onClick={openModal}>
               {product.name}
             </span>
           </h3>
 
-          {product.rating && product.rating > 0 ? (
+          {variantCard ? (
+            <>
+              <div
+                style={{
+                  display: "flex",
+                  gap: "6px",
+                  flexWrap: "wrap",
+                  margin: "8px 0",
+                }}
+              >
+                <span
+                  style={{
+                    padding: "5px 9px",
+                    borderRadius: "999px",
+                    color: "#76e0ff",
+                    background: "rgba(118,224,255,.10)",
+                    border: "1px solid rgba(118,224,255,.28)",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                  }}
+                >
+                  Talla: {sizeLabel}
+                </span>
+
+                <span
+                  style={{
+                    padding: "5px 9px",
+                    borderRadius: "999px",
+                    color: "#fff",
+                    background: "rgba(255,255,255,.06)",
+                    border: "1px solid rgba(255,255,255,.12)",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                  }}
+                >
+                  Solicita: {safeRequestedQty}
+                </span>
+
+                <span
+                  style={{
+                    padding: "5px 9px",
+                    borderRadius: "999px",
+                    color: "#22c55e",
+                    background: "rgba(34,197,94,.10)",
+                    border: "1px solid rgba(34,197,94,.25)",
+                    fontSize: "11px",
+                    fontWeight: 900,
+                  }}
+                >
+                  Existencia: {Number(availableStock) || 0}
+                </span>
+              </div>
+
+              {selectedVariant?.sku && (
+                <div
+                  style={{
+                    marginBottom: "7px",
+                    color: "rgba(255,255,255,.68)",
+                    fontSize: "11px",
+                    lineHeight: 1.3,
+                  }}
+                >
+                  <strong style={{ color: "#fff" }}>SKU:</strong>{" "}
+                  {selectedVariant.sku}
+                </div>
+              )}
+
+              {visibleVariantAttributes.length > 0 && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "5px",
+                    flexWrap: "wrap",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {visibleVariantAttributes
+                    .slice(0, 4)
+                    .map((attribute, index) => (
+                      <span
+                        key={`${attribute.name}-${index}`}
+                        style={{
+                          padding: "4px 7px",
+                          borderRadius: "7px",
+                          color: "rgba(255,255,255,.82)",
+                          background: "rgba(255,255,255,.05)",
+                          border: "1px solid rgba(255,255,255,.10)",
+                          fontSize: "10px",
+                          fontWeight: 800,
+                        }}
+                      >
+                        {attribute.name}
+                        {attribute.value ? `: ${attribute.value}` : ""}
+                      </span>
+                    ))}
+                </div>
+              )}
+            </>
+          ) : product.rating && product.rating > 0 ? (
             <div className="neo-rating">
               <Rating ratingValue={product.rating} />
             </div>
@@ -163,57 +486,160 @@ const ProductGridListSingle = ({
           )}
 
           <div className="neo-price">
-            {hasVariants ? (
-              <span className="price-current">
-                {symbol} Según variante
-              </span>
-            ) : finalDiscount !== null ? (
+            {variantCard ? (
               <>
                 <span className="price-current">
                   {symbol}
-                  {finalDiscount}
+                  {money2(variantCartPrice)}
                 </span>
+
+                {hasWholesalePrice ? (
+                  <span className="price-old">
+                    {symbol}
+                    {displayedVariantPrice}
+                  </span>
+                ) : displayedVariantOldPrice !== null ? (
+                  <span className="price-old">
+                    {symbol}
+                    {displayedVariantOldPrice}
+                  </span>
+                ) : null}
+              </>
+            ) : hasVariants ? (
+              <span className="price-current">{symbol} Según variante</span>
+            ) : normalDiscountPrice !== null ? (
+              <>
+                <span className="price-current">
+                  {symbol}
+                  {normalDiscountPrice}
+                </span>
+
                 <span className="price-old">
                   {symbol}
-                  {final}
+                  {normalPrice}
                 </span>
               </>
             ) : (
               <span className="price-current">
                 {symbol}
-                {final}
+                {normalPrice}
               </span>
             )}
           </div>
+          {variantCard && isStore464 && (
+            <>
+              <div
+                style={{
+                  marginTop: "9px",
+                  padding: "7px 8px",
+                  borderRadius: "9px",
+                  color: "#76e0ff",
+                  background: "rgba(118,224,255,.08)",
+                  border: "1px solid rgba(118,224,255,.20)",
+                  fontSize: "10px",
+                  lineHeight: 1.35,
+                  fontWeight: 800,
+                }}
+              >
+                1 pieza incluye playera + shorts
+              </div>
+
+              <div
+                style={{
+                  marginTop: "6px",
+                  padding: "7px 8px",
+                  borderRadius: "9px",
+                  color: hasWholesalePrice ? "#22c55e" : "#76e0ff",
+                  background: hasWholesalePrice
+                    ? "rgba(34,197,94,.10)"
+                    : "rgba(118,224,255,.08)",
+                  border: hasWholesalePrice
+                    ? "1px solid rgba(34,197,94,.25)"
+                    : "1px solid rgba(118,224,255,.20)",
+                  fontSize: "10px",
+                  lineHeight: 1.35,
+                  fontWeight: 800,
+                }}
+              >
+                Desde 7 piezas: {symbol}320.00
+                <br />
+                Playera, shorts, nombre, número y calcetas
+              </div>
+            </>
+          )}
+
+          {variantCard && (
+            <button
+              type="button"
+              onClick={handleQuickAdd}
+              style={{
+                display: "flex",
+                width: "100%",
+                minHeight: "40px",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                marginTop: "10px",
+                padding: "9px 8px",
+                border: 0,
+                borderRadius: "10px",
+                color: "#0b0e12",
+                background: "#fff",
+                boxShadow: "0 10px 26px rgba(0,0,0,.30)",
+                cursor: "pointer",
+                fontSize: "11px",
+                lineHeight: 1.1,
+                fontWeight: 950,
+              }}
+            >
+              <i className="pe-7s-cart" />
+              Agregar {safeRequestedQty}
+            </button>
+          )}
         </div>
       </article>
 
-      <ProductModal
-        show={modalShow}
-        onHide={() => setModalShow(false)}
-        images={images}
-        product={product}
-        currency={currency}
-        discountedPrice={discounted}
-        finalProductPrice={final}
-        finalDiscountedPrice={finalDiscount}
-        onWhatsapp={handleWhatsappFromModal}
-        wishlistItem={wishlistItem}
-        compareItem={compareItem}
-      />
+      {!variantCard && (
+        <ProductModal
+          show={modalShow}
+          onHide={() => setModalShow(false)}
+          images={images}
+          product={product}
+          currency={currency}
+          discountedPrice={normalDiscounted}
+          finalProductPrice={normalPrice}
+          finalDiscountedPrice={normalDiscountPrice}
+          onWhatsapp={handleWhatsappFromModal}
+          wishlistItem={wishlistItem}
+          compareItem={compareItem}
+        />
+      )}
     </Fragment>
   );
 };
 
 ProductGridListSingle.propTypes = {
   product: PropTypes.object.isRequired,
+
   currency: PropTypes.shape({
     currencySymbol: PropTypes.string,
     currencyRate: PropTypes.number,
   }),
+
   wishlistItem: PropTypes.object,
   compareItem: PropTypes.object,
   spaceBottomClass: PropTypes.string,
+
+  variantCard: PropTypes.bool,
+  selectedVariant: PropTypes.object,
+
+  requestedQty: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+
+  availableStock: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+
+  variantSize: PropTypes.string,
+
+  storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
 };
 
 export default ProductGridListSingle;

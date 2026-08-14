@@ -3,29 +3,42 @@ import PropTypes from "prop-types";
 import clsx from "clsx";
 import ProductgridList from "./ProductgridList";
 
-const ShopProducts = ({ products, layout }) => {
+const ShopProducts = ({
+  products = [],
+  layout,
+  variantResults = [],
+  variantSearchActive = false,
+  storeId,
+}) => {
   const currency = {
-    currencySymbol: "MX$", // Define aquí la divisa que deseas
-    currencyRate: 1
+    currencySymbol: "MX$",
+    currencyRate: 1,
   };
+
+  const showVariantCards = Number(storeId) === 464 && variantSearchActive;
 
   return (
     <div className="shop-bottom-area mt-35">
       <div className={clsx("row", layout)}>
         <ProductgridList
           products={products}
+          variantResults={variantResults}
+          variantSearchActive={showVariantCards}
+          storeId={storeId}
           spaceBottomClass="mb-25"
-          currency={currency} // <-- se pasa como prop
+          currency={currency}
         />
       </div>
     </div>
   );
 };
 
-
 ShopProducts.propTypes = {
   layout: PropTypes.string,
-  products: PropTypes.array
+  products: PropTypes.array,
+  variantResults: PropTypes.array,
+  variantSearchActive: PropTypes.bool,
+  storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
 };
 
 export default ShopProducts;

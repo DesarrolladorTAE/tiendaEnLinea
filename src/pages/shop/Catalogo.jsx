@@ -1,137 +1,366 @@
-import React, { Fragment, useState, useEffect, useMemo } from "react";
+import React, {
+  Fragment,
+  useState,
+  useEffect,
+  useMemo,
+} from "react";
+import PropTypes from "prop-types";
 import Paginator from "react-hooks-paginator";
-import { useLocation, useParams } from "react-router-dom";
+import {
+  useLocation,
+  useParams,
+} from "react-router-dom";
+import axios from "axios";
+
 import SEO from "../../components/seo";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
 import ShopProducts from "../../wrappers/product/ShopProducts";
 import { useStoreData } from "../../hooks/useStoreData";
 import WhatsAppFloatingButton from "../../components/WhatsAppFloatingButton";
-import axios from "axios";
 
-// 👇 monkey-patch para quitar el warning en dev (react-hooks-paginator con React 18)
+// Monkey-patch para quitar el warning en desarrollo
+// de react-hooks-paginator con React 18.
 if (Paginator && "defaultProps" in Paginator) {
   try {
-    // eslint-disable-next-line no-param-reassign
     Paginator.defaultProps = undefined;
-  } catch {}
+  } catch {
+    // No es necesario realizar otra acción.
+  }
 }
 
-const API_BASE = "https://mitiendaenlineamx.com.mx/api";
+const API_BASE =
+  "https://mitiendaenlineamx.com.mx/api";
+
 const pageLimit = 12;
 
-/* ========================= Helpers ========================= */
+/* =========================================================
+ * Helpers de categorías
+ * ======================================================= */
 
-function getProductCategoryTokensFromProduct(p) {
-  const out = new Set();
+function getProductCategoryTokensFromProduct(product) {
+  const tokens = new Set();
 
-  const push = (v) => {
-    if (v === null || v === undefined) return;
-    out.add(String(v).toLowerCase());
+  const push = (value) => {
+    if (value === null || value === undefined) {
+      return;
+    }
+
+    tokens.add(
+      String(value)
+        .trim()
+        .toLowerCase()
+    );
   };
 
-  if (Array.isArray(p?.categories)) {
-    p.categories.forEach((c) => {
-      if (!c) return;
-      if (typeof c === "string" || typeof c === "number") {
-        push(c);
-      } else if (typeof c === "object") {
-        push(c.id);
-        push(c.name);
-        push(c.slug);
-        push(c.parent_id);
+  if (Array.isArray(product?.categories)) {
+    product.categories.forEach((category) => {
+      if (!category) return;
+
+      if (
+        typeof category === "string" ||
+        typeof category === "number"
+      ) {
+        push(category);
+        return;
+      }
+
+      if (typeof category === "object") {
+        push(category.id);
+        push(category.name);
+        push(category.slug);
+        push(category.parent_id);
       }
     });
   }
 
-  const c = p?.category;
-  if (Array.isArray(c)) {
-    c.forEach((x) => push(x));
-  } else if (typeof c === "string" || typeof c === "number") {
-    push(c);
-  } else if (c && typeof c === "object") {
-    push(c.id);
-    push(c.name);
-    push(c.slug);
+  const category = product?.category;
+
+  if (Array.isArray(category)) {
+    category.forEach((item) => {
+      if (
+        typeof item === "object" &&
+        item !== null
+      ) {
+        push(item.id);
+        push(item.name);
+        push(item.slug);
+        push(item.parent_id);
+      } else {
+        push(item);
+      }
+    });
+  } else if (
+    typeof category === "string" ||
+    typeof category === "number"
+  ) {
+    push(category);
+  } else if (
+    category &&
+    typeof category === "object"
+  ) {
+    push(category.id);
+    push(category.name);
+    push(category.slug);
+    push(category.parent_id);
   }
 
-  push(p?.categoryId);
-  push(p?.category_id);
-  push(p?.catId);
-  push(p?.categoria_id);
-  push(p?.categoriaId);
+  push(product?.categoryId);
+  push(product?.category_id);
+  push(product?.catId);
+  push(product?.categoria_id);
+  push(product?.categoriaId);
 
-  if (Array.isArray(p?.tags)) p.tags.forEach((t) => push(t));
+  if (Array.isArray(product?.tags)) {
+    product.tags.forEach((tag) => {
+      if (
+        typeof tag === "object" &&
+        tag !== null
+      ) {
+        push(tag.id);
+        push(tag.name);
+        push(tag.slug);
+      } else {
+        push(tag);
+      }
+    });
+  }
 
-  return Array.from(out);
+  return Array.from(tokens);
 }
 
-function buildChildrenIndex(categories) {
-  const childrenByParent = new Map();
+/* =========================================================
+ * Helpers de búsqueda de variantes
+ * ======================================================= */
 
-  (categories || []).forEach((c) => {
-    if (!c) return;
+/**
+ * Formatos permitidos:
+ *
+ * CH9,M3,XL3
+ * CH-9,M-3,XL-3
+ * CH 9, M 3, XL 3
+ */
+function parseVariantSearch(value) {
+  const input = String(value ?? "")
+    .trim()
+    .toUpperCase();
 
-    if (Array.isArray(c.children) && c.children.length) {
-      childrenByParent.set(String(c.id), c.children);
-      return;
-    }
+  if (!input) return [];
 
-    if (c.parent_id != null) {
-      const key = String(c.parent_id);
-      const arr = childrenByParent.get(key) || [];
-      arr.push(c);
-      childrenByParent.set(key, arr);
-    }
-  });
+  return input
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .map((part) => {
+      const match = part.match(
+        /^(.+?)[\s-]*(\d+)$/
+      );
 
-  return childrenByParent;
+      if (!match) return null;
+
+      const size = match[1]
+        .trim()
+        .replace(/[\s_-]+/g, "")
+        .toUpperCase();
+
+      const qty = Number(match[2]);
+
+      if (
+        !size ||
+        !Number.isInteger(qty) ||
+        qty <= 0
+      ) {
+        return null;
+      }
+
+      return {
+        size,
+        qty,
+      };
+    })
+    .filter(Boolean);
 }
 
-/* ========================= Componente ========================= */
+/**
+ * Obtiene la talla desde los atributos de la variante.
+ * Si no existen atributos, utiliza variant.name.
+ */
+function getVariantSize(variant) {
+  const directName = String(
+    variant?.name ?? ""
+  ).trim();
 
-const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
+  const attributes = Array.isArray(
+    variant?.variant_attributes
+  )
+    ? variant.variant_attributes
+    : Array.isArray(variant?.attributes)
+    ? variant.attributes
+    : [];
+
+  const sizeAttribute = attributes.find(
+    (attribute) => {
+      const name = String(
+        attribute?.name ?? ""
+      )
+        .trim()
+        .toLowerCase();
+
+      return (
+        name === "talla" ||
+        name === "size" ||
+        name.includes("talla") ||
+        name.includes("size")
+      );
+    }
+  );
+
+  return String(
+    sizeAttribute?.value ?? directName
+  )
+    .trim()
+    .replace(/[\s_-]+/g, "")
+    .toUpperCase();
+}
+
+/**
+ * Obtiene la existencia total de una variante.
+ */
+function getVariantStock(
+  variant,
+  useWarehouseInventory
+) {
+  if (
+    useWarehouseInventory &&
+    Array.isArray(variant?.warehouse_stocks)
+  ) {
+    return variant.warehouse_stocks.reduce(
+      (total, row) =>
+        total +
+        (
+          Number(
+            row?.stock ??
+            row?.qty
+          ) || 0
+        ),
+      0
+    );
+  }
+
+  return Number(variant?.stock) || 0;
+}
+
+/* =========================================================
+ * Componente
+ * ======================================================= */
+
+const Catalogo = ({
+  storeId: storeIdProp,
+  storeSlug: storeSlugProp,
+}) => {
   const params = useParams();
-
-  // ✅ IMPORTANTE: usa prop si viene, si no params
-  const storeSlug = storeSlugProp ?? params.storeSlug;
-
-  const { isStoreValid, products, storePhone, storeName } = useStoreData(storeSlug);
   const { pathname } = useLocation();
 
-  const [layout, setLayout] = useState("grid three-column");
+  const storeSlug =
+    storeSlugProp ??
+    params.storeSlug;
 
-  // filtros
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const {
+    isStoreValid,
+    products,
+    storePhone,
+    storeName,
+  } = useStoreData(storeSlug);
 
-  // paginación
-  const [offset, setOffset] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
+  /*
+   * El fallback por slug permite identificar la tienda
+   * aunque el componente padre no mande storeId.
+   */
+  const storeId = Number(
+    storeIdProp ??
+    (
+      storeSlug === "ans-machado-uniformes"
+        ? 464
+        : null
+    )
+  );
 
-  // categorías
-  const [categories, setCategories] = useState([]);
-  const [loadingCats, setLoadingCats] = useState(true);
+  const isStore464 = storeId === 464;
 
-  const storeId = storeIdProp;
+  // Diseño de productos.
+  const [layout, setLayout] = useState(
+    "grid three-column"
+  );
 
-  // ✅ NO TOCO TU ENDPOINT: lo dejo igual que antes
+  // Filtros normales.
+  const [
+    searchQuery,
+    setSearchQuery,
+  ] = useState("");
+
+  const [
+    selectedCategory,
+    setSelectedCategory,
+  ] = useState(null);
+
+  // Búsqueda especial de variantes.
+  const [
+    variantSearch,
+    setVariantSearch,
+  ] = useState("");
+
+  // Paginación.
+  const [
+    offset,
+    setOffset,
+  ] = useState(0);
+
+  const [
+    currentPage,
+    setCurrentPage,
+  ] = useState(1);
+
+  // Categorías.
+  const [
+    categories,
+    setCategories,
+  ] = useState([]);
+
+  const [
+    loadingCats,
+    setLoadingCats,
+  ] = useState(true);
+
+  /* =======================================================
+   * Carga de categorías
+   * ===================================================== */
+
   useEffect(() => {
     let alive = true;
+
     setLoadingCats(true);
 
     axios
-      .get(`${API_BASE}/public/stores/slug/${storeSlug}/categories?mode=tree`)
+      .get(
+        `${API_BASE}/public/stores/slug/${storeSlug}/categories?mode=tree`
+      )
       .then(({ data }) => {
         if (!alive) return;
-        setCategories(data?.parents ?? []);
+
+        setCategories(
+          Array.isArray(data?.parents)
+            ? data.parents
+            : []
+        );
       })
       .catch(() => {
         if (!alive) return;
         setCategories([]);
       })
       .finally(() => {
-        if (alive) setLoadingCats(false);
+        if (alive) {
+          setLoadingCats(false);
+        }
       });
 
     return () => {
@@ -139,93 +368,347 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
     };
   }, [storeSlug]);
 
-  const getLayout = (nextLayout) => setLayout(nextLayout);
+  /* =======================================================
+   * Eventos de filtros
+   * ===================================================== */
 
-  const getFilterSortParams = (type, value) => {
+  const getLayout = (nextLayout) => {
+    setLayout(nextLayout);
+  };
+
+  const getFilterSortParams = (
+    type,
+    value
+  ) => {
     if (type === "searchQuery") {
       setSearchQuery(value ?? "");
       setCurrentPage(1);
       setOffset(0);
       return;
     }
-    if (type === "category") {
-      setSelectedCategory(value || null);
+
+    if (type === "variantSearch") {
+      setVariantSearch(value ?? "");
       setCurrentPage(1);
       setOffset(0);
       return;
     }
-  };
 
-  const childrenIndex = useMemo(() => buildChildrenIndex(categories), [categories]);
-
-  const filteredProducts = useMemo(() => {
-    let base = Array.isArray(products) ? products : [];
-
-    const q = searchQuery.trim().toLowerCase();
-    if (q) {
-      base = base.filter((p) => String(p?.name ?? "").toLowerCase().includes(q));
-    }
-
-    if (selectedCategory?.id) {
-      const wantId = String(selectedCategory.id).toLowerCase();
-      const wantName = String(selectedCategory.name ?? "").toLowerCase();
-
-      const tokensMatchAny = (p, ids, names) => {
-        const tokens = getProductCategoryTokensFromProduct(p).map((t) => String(t).toLowerCase());
-        return tokens.some((t) => ids.has(t) || names.has(t));
-      };
-
-      if (selectedCategory.type === "parent") {
-        const parent = categories.find((c) => String(c.id) === String(selectedCategory.id));
-
-        const children =
-          parent?.children ??
-          categories.filter((c) => String(c.parent_id) === String(selectedCategory.id));
-
-        const ids = new Set([wantId]);
-        const names = new Set([wantName]);
-
-        children.forEach((c) => {
-          ids.add(String(c.id).toLowerCase());
-          names.add(String(c.name).toLowerCase());
-        });
-
-        base = base.filter((p) => tokensMatchAny(p, ids, names));
-      } else {
-        const ids = new Set([wantId]);
-        const names = new Set([wantName]);
-        base = base.filter((p) => tokensMatchAny(p, ids, names));
-      }
-    }
-
-    return base;
-  }, [products, searchQuery, selectedCategory, childrenIndex, categories]);
-
-  const currentData = useMemo(
-    () => filteredProducts.slice(offset, offset + pageLimit),
-    [filteredProducts, offset]
-  );
-
-  useEffect(() => {
-    if (offset >= filteredProducts.length && filteredProducts.length > 0) {
+    if (type === "category") {
+      setSelectedCategory(
+        value || null
+      );
       setCurrentPage(1);
       setOffset(0);
     }
-  }, [filteredProducts, offset]);
+  };
 
-  if (isStoreValid === null) return <div>Cargando tienda...</div>;
+  /* =======================================================
+   * Filtrado normal de productos
+   * ===================================================== */
+
+  const filteredProducts = useMemo(() => {
+    let result = Array.isArray(products)
+      ? products
+      : [];
+
+    const query = searchQuery
+      .trim()
+      .toLowerCase();
+
+    if (query) {
+      result = result.filter((product) =>
+        String(product?.name ?? "")
+          .toLowerCase()
+          .includes(query)
+      );
+    }
+
+    if (!selectedCategory?.id) {
+      return result;
+    }
+
+    const selectedId = String(
+      selectedCategory.id
+    ).toLowerCase();
+
+    const selectedName = String(
+      selectedCategory.name ?? ""
+    ).toLowerCase();
+
+    const tokensMatchAny = (
+      product,
+      ids,
+      names
+    ) => {
+      const productTokens =
+        getProductCategoryTokensFromProduct(
+          product
+        );
+
+      return productTokens.some(
+        (token) =>
+          ids.has(
+            String(token).toLowerCase()
+          ) ||
+          names.has(
+            String(token).toLowerCase()
+          )
+      );
+    };
+
+    if (
+      selectedCategory.type === "parent"
+    ) {
+      const parent = categories.find(
+        (category) =>
+          String(category.id) ===
+          String(selectedCategory.id)
+      );
+
+      const children =
+        parent?.children ??
+        categories.filter(
+          (category) =>
+            String(category.parent_id) ===
+            String(selectedCategory.id)
+        );
+
+      const ids = new Set([
+        selectedId,
+      ]);
+
+      const names = new Set([
+        selectedName,
+      ]);
+
+      children.forEach((category) => {
+        ids.add(
+          String(category.id).toLowerCase()
+        );
+
+        names.add(
+          String(
+            category.name ?? ""
+          ).toLowerCase()
+        );
+      });
+
+      return result.filter((product) =>
+        tokensMatchAny(
+          product,
+          ids,
+          names
+        )
+      );
+    }
+
+    const ids = new Set([
+      selectedId,
+    ]);
+
+    const names = new Set([
+      selectedName,
+    ]);
+
+    return result.filter((product) =>
+      tokensMatchAny(
+        product,
+        ids,
+        names
+      )
+    );
+  }, [
+    products,
+    searchQuery,
+    selectedCategory,
+    categories,
+  ]);
+
+  /* =======================================================
+   * Interpretación de la búsqueda especial
+   * ===================================================== */
+
+  const variantRequests = useMemo(() => {
+    if (!isStore464) {
+      return [];
+    }
+
+    return parseVariantSearch(
+      variantSearch
+    );
+  }, [
+    isStore464,
+    variantSearch,
+  ]);
+
+  /* =======================================================
+   * Resultados individuales de variantes
+   * ===================================================== */
+
+  const variantResults = useMemo(() => {
+    if (
+      !isStore464 ||
+      variantRequests.length === 0
+    ) {
+      return [];
+    }
+
+    const requestsBySize = new Map(
+      variantRequests.map((request) => [
+        request.size,
+        request.qty,
+      ])
+    );
+
+    /*
+     * Partimos de filteredProducts para respetar también
+     * el nombre y la categoría seleccionados.
+     */
+    return filteredProducts.flatMap(
+      (product) => {
+        const variants = Array.isArray(
+          product?.variants
+        )
+          ? product.variants
+          : [];
+
+        return variants
+          .filter(
+            (variant) =>
+              variant?.is_active !== false
+          )
+          .map((variant) => {
+            const size = getVariantSize(
+              variant
+            );
+
+            const requestedQty =
+              requestsBySize.get(size);
+
+            if (!requestedQty) {
+              return null;
+            }
+
+            const stock =
+              getVariantStock(
+                variant,
+                Boolean(
+                  product?.use_warehouse_inventory
+                )
+              );
+
+            /*
+             * Solamente se muestra si tiene la cantidad
+             * solicitada o una existencia mayor.
+             */
+            if (stock < requestedQty) {
+              return null;
+            }
+
+            return {
+              product,
+              variant,
+              size,
+              stock,
+              requestedQty,
+            };
+          })
+          .filter(Boolean);
+      }
+    );
+  }, [
+    isStore464,
+    filteredProducts,
+    variantRequests,
+  ]);
+
+  const isVariantSearchActive =
+    isStore464 &&
+    variantRequests.length > 0;
+
+  /* =======================================================
+   * Paginación
+   * ===================================================== */
+
+  const currentData = useMemo(
+    () =>
+      filteredProducts.slice(
+        offset,
+        offset + pageLimit
+      ),
+    [
+      filteredProducts,
+      offset,
+    ]
+  );
+
+  const paginatedVariantResults =
+    useMemo(
+      () =>
+        variantResults.slice(
+          offset,
+          offset + pageLimit
+        ),
+      [
+        variantResults,
+        offset,
+      ]
+    );
+
+  const activeTotal =
+    isVariantSearchActive
+      ? variantResults.length
+      : filteredProducts.length;
+
+  /*
+   * Regresa a la primera página si el filtro deja
+   * el offset actual fuera del número de resultados.
+   */
+  useEffect(() => {
+    if (
+      offset > 0 &&
+      offset >= activeTotal
+    ) {
+      setCurrentPage(1);
+      setOffset(0);
+    }
+  }, [
+    activeTotal,
+    offset,
+  ]);
+
+  /*
+   * Todos los hooks deben estar antes de este retorno.
+   */
+  if (isStoreValid === null) {
+    return (
+      <div>
+        Cargando tienda...
+      </div>
+    );
+  }
 
   return (
     <Fragment>
       <SEO
         title={` ${storeName}`}
-        description={`Explora los productos disponibles en ${storeName}. Compra fácil y rápido.`}
+        description={
+          `Explora los productos disponibles en ${storeName}. ` +
+          "Compra fácil y rápido."
+        }
       />
 
       <Breadcrumb
         pages={[
-          { label: "BIENVENIDO", path: pathname },
-          { label: "CATALOGO", path: pathname }
+          {
+            label: "BIENVENIDO",
+            path: pathname,
+          },
+          {
+            label: "CATÁLOGO",
+            path: pathname,
+          },
         ]}
       />
 
@@ -235,34 +718,63 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
             <div className="col-lg-12">
               <ShopTopbar
                 getLayout={getLayout}
-                getFilterSortParams={getFilterSortParams}
-                productCount={Array.isArray(products) ? products.length : 0}
-                sortedProductCount={filteredProducts.length}
+                getFilterSortParams={
+                  getFilterSortParams
+                }
+                productCount={
+                  Array.isArray(products)
+                    ? products.length
+                    : 0
+                }
+                sortedProductCount={
+                  activeTotal
+                }
                 categories={categories}
                 loadingCats={loadingCats}
+                isStore464={isStore464}
+                variantSearch={
+                  variantSearch
+                }
               />
 
-              <ShopProducts layout={layout} products={currentData} />
+              <ShopProducts
+                layout={layout}
+                products={currentData}
+                variantResults={
+                  paginatedVariantResults
+                }
+                variantSearchActive={
+                  isVariantSearchActive
+                }
+                storeId={storeId}
+              />
 
-              <div className="pro-pagination-style text-center mt-30">
-                <Paginator
-                  totalRecords={filteredProducts.length}
-                  pageLimit={pageLimit}
-                  pageNeighbours={2}
-                  setOffset={setOffset}
-                  currentPage={currentPage}
-                  setCurrentPage={setCurrentPage}
-                  pageContainerClass="mb-0 mt-0"
-                  pagePrevText="«"
-                  pageNextText="»"
-                />
-              </div>
+              {activeTotal > pageLimit && (
+                <div className="pro-pagination-style text-center mt-30">
+                  <Paginator
+                    totalRecords={
+                      activeTotal
+                    }
+                    pageLimit={pageLimit}
+                    pageNeighbours={2}
+                    setOffset={setOffset}
+                    currentPage={
+                      currentPage
+                    }
+                    setCurrentPage={
+                      setCurrentPage
+                    }
+                    pageContainerClass="mb-0 mt-0"
+                    pagePrevText="«"
+                    pageNextText="»"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ✅ CLAVE: pasa storeSlug para que el botón resuelva storeId por /bootstrap */}
       <WhatsAppFloatingButton
         storePhone={storePhone}
         storeId={storeId}
@@ -270,6 +782,14 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
       />
     </Fragment>
   );
+};
+
+Catalogo.propTypes = {
+  storeId: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.number,
+  ]),
+  storeSlug: PropTypes.string,
 };
 
 export default Catalogo;
