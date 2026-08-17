@@ -46,6 +46,18 @@ const ContactPage = lazy(
   () => import("./pages/home/ContactPage.jsx")
 );
 
+/* =========================================================
+   BLOGS
+========================================================= */
+
+const Blogs = lazy(
+  () => import("./pages/home/components/Blogs.jsx")
+);
+
+const BlogDetail = lazy(
+  () => import("./pages/home/components/BlogDetail.jsx")
+);
+
 const LoginRegister = lazy(
   () => import("./pages/other/LoginRegister.jsx")
 );
@@ -166,6 +178,20 @@ const App = () => {
                 <Route
                   path="/contact"
                   element={<ContactPage />}
+                />
+
+                {/* ======================================
+                    BLOGS
+                ====================================== */}
+
+                <Route
+                  path="/blogs"
+                  element={<Blogs />}
+                />
+
+                <Route
+                  path="/blogs/:postSlug"
+                  element={<BlogDetail />}
                 />
               </Route>
             )}
