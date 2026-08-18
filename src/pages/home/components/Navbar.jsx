@@ -22,6 +22,10 @@ const navigationLinks = [
     path: "/contact",
     label: "Contacto",
   },
+  {
+    path: "/Blogs",
+    label: "Blog"
+  }
 ];
 
 export default function Navbar({

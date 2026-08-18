@@ -69,6 +69,10 @@ export default function LandingPage() {
     ) ||
     location.pathname.startsWith(
       "/services"
+    ) ||
+    location.pathname.toLowerCase().startsWith(
+      "/blogs"
+
     );
 
   return (

@@ -28,6 +28,23 @@ const ContactPage = lazy(() => import("./pages/home/ContactPage.jsx"));
 
 const LoginRegister = lazy(() => import("./pages/other/LoginRegister.jsx"));
 
+/* =========================================================
+   BLOGS
+========================================================= */
+
+const Blogs = lazy(
+  () => import("./pages/home/components/Blogs.jsx")
+);
+
+const BlogDetail = lazy(
+  () => import("./pages/home/components/BlogDetail.jsx")
+);
+
+const LoginRegister = lazy(
+  () => import("./pages/other/LoginRegister.jsx")
+);
+
+
 const Renovar = lazy(() => import("./pages/other/Renovar.jsx"));
 
 const Terminos = lazy(() => import("./pages/other/TerminosCondiciones.jsx"));
@@ -114,7 +131,28 @@ const App = () => {
 
                 <Route path="/services" element={<PlansPage />} />
 
+
                 <Route path="/contact" element={<ContactPage />} />
+
+                <Route
+                  path="/contact"
+                  element={<ContactPage />}
+                />
+
+                {/* ======================================
+                    BLOGS
+                ====================================== */}
+
+                <Route
+                  path="/blogs"
+                  element={<Blogs />}
+                />
+
+                <Route
+                  path="/blogs/:postSlug"
+                  element={<BlogDetail />}
+                />
+
               </Route>
             )}
 
