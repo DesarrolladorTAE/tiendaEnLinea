@@ -8,6 +8,7 @@ import {
   useParams,
 } from "react-router-dom";
 
+import SEO from "../../../components/seo";
 import "../styles/BlogDetail.css";
 
 const API_BASE_URL =
@@ -179,14 +180,20 @@ const BlogAdCard = ({ ad }) => {
     () =>
       Array.isArray(ad?.images)
         ? ad.images.filter((image) =>
-            Boolean(getAdImageUrl(image))
+            Boolean(
+              getAdImageUrl(
+                image
+              )
+            )
           )
         : [],
     [ad]
   );
 
-  const [activeImage, setActiveImage] =
-    useState(0);
+  const [
+    activeImage,
+    setActiveImage,
+  ] = useState(0);
 
   useEffect(() => {
     setActiveImage(0);
@@ -194,19 +201,24 @@ const BlogAdCard = ({ ad }) => {
 
   useEffect(() => {
     if (images.length <= 1) {
-      return;
+      return undefined;
     }
 
-    const interval = setInterval(() => {
-      setActiveImage((current) =>
-        current >= images.length - 1
-          ? 0
-          : current + 1
-      );
-    }, 5000);
+    const interval =
+      setInterval(() => {
+        setActiveImage(
+          (current) =>
+            current >=
+            images.length - 1
+              ? 0
+              : current + 1
+        );
+      }, 5000);
 
     return () => {
-      clearInterval(interval);
+      clearInterval(
+        interval
+      );
     };
   }, [images.length]);
 
@@ -219,24 +231,37 @@ const BlogAdCard = ({ ad }) => {
 
       {images.length > 0 ? (
         <div className="blog-detail-ad__media">
-          {images.map((image, index) => (
-            <img
-              key={
-                image?.id ||
-                `${ad?.id}-image-${index}`
-              }
-              src={getAdImageUrl(image)}
-              alt={getAdImageAlt(image, ad)}
-              className={[
-                "blog-detail-ad__slide",
-                index === activeImage
-                  ? "blog-detail-ad__slide--active"
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-            />
-          ))}
+          {images.map(
+            (
+              image,
+              index
+            ) => (
+              <img
+                key={
+                  image?.id ||
+                  `${ad?.id}-image-${index}`
+                }
+                src={getAdImageUrl(
+                  image
+                )}
+                alt={getAdImageAlt(
+                  image,
+                  ad
+                )}
+                className={[
+                  "blog-detail-ad__slide",
+                  index ===
+                  activeImage
+                    ? "blog-detail-ad__slide--active"
+                    : "",
+                ]
+                  .filter(
+                    Boolean
+                  )
+                  .join(" ")}
+              />
+            )
+          )}
         </div>
       ) : (
         <div className="blog-detail-ad__placeholder">
@@ -271,7 +296,9 @@ const BlogAdCard = ({ ad }) => {
 
       <div className="blog-detail-ad__content">
         {ad?.title && (
-          <h3>{ad.title}</h3>
+          <h3>
+            {ad.title}
+          </h3>
         )}
 
         {ad?.description && (
@@ -284,7 +311,9 @@ const BlogAdCard = ({ ad }) => {
 
         {ad?.link_url && (
           <a
-            href={ad.link_url}
+            href={
+              ad.link_url
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="blog-detail-ad__button"
@@ -314,7 +343,10 @@ const BlogAdCard = ({ ad }) => {
       {images.length > 1 && (
         <div className="blog-detail-ad__dots">
           {images.map(
-            (image, index) => (
+            (
+              image,
+              index
+            ) => (
               <button
                 key={
                   image?.id ||
@@ -323,11 +355,14 @@ const BlogAdCard = ({ ad }) => {
                 type="button"
                 className={[
                   "blog-detail-ad__dot",
-                  index === activeImage
+                  index ===
+                  activeImage
                     ? "blog-detail-ad__dot--active"
                     : "",
                 ]
-                  .filter(Boolean)
+                  .filter(
+                    Boolean
+                  )
                   .join(" ")}
                 onClick={() =>
                   setActiveImage(
@@ -382,125 +417,141 @@ const BlogDetail = () => {
     const controller =
       new AbortController();
 
-    const loadPost = async () => {
-      try {
-        setLoading(true);
-        setError("");
+    const loadPost =
+      async () => {
+        try {
+          setLoading(
+            true
+          );
+          setError("");
 
-        const [
-          detailResponse,
-          recentResponse,
-        ] = await Promise.all([
-          fetch(
-            `${API_BASE_URL}/${SYSTEM_SLUG}/blogs/${BLOG_SLUG}/posts/${postSlug}`,
-            {
-              method: "GET",
-              headers: {
-                Accept:
-                  "application/json",
-              },
-              signal:
-                controller.signal,
-            }
-          ),
+          const [
+            detailResponse,
+            recentResponse,
+          ] =
+            await Promise.all(
+              [
+                fetch(
+                  `${API_BASE_URL}/${SYSTEM_SLUG}/blogs/${BLOG_SLUG}/posts/${postSlug}`,
+                  {
+                    method:
+                      "GET",
+                    headers: {
+                      Accept:
+                        "application/json",
+                    },
+                    signal:
+                      controller.signal,
+                  }
+                ),
 
-          fetch(
-            `${API_BASE_URL}/${SYSTEM_SLUG}/blogs/${BLOG_SLUG}/posts?per_page=4&order=latest`,
-            {
-              method: "GET",
-              headers: {
-                Accept:
-                  "application/json",
-              },
-              signal:
-                controller.signal,
-            }
-          ),
-        ]);
+                fetch(
+                  `${API_BASE_URL}/${SYSTEM_SLUG}/blogs/${BLOG_SLUG}/posts?per_page=4&order=latest`,
+                  {
+                    method:
+                      "GET",
+                    headers: {
+                      Accept:
+                        "application/json",
+                    },
+                    signal:
+                      controller.signal,
+                  }
+                ),
+              ]
+            );
 
-        if (
-          !detailResponse.ok
-        ) {
           if (
-            detailResponse.status ===
-            404
+            !detailResponse.ok
           ) {
+            if (
+              detailResponse.status ===
+              404
+            ) {
+              throw new Error(
+                "La publicación solicitada no está disponible."
+              );
+            }
+
+            if (
+              detailResponse.status ===
+              429
+            ) {
+              throw new Error(
+                "Se alcanzó temporalmente el límite de consultas. Intenta nuevamente en unos momentos."
+              );
+            }
+
             throw new Error(
-              "La publicación solicitada no está disponible."
+              "No fue posible cargar la publicación."
             );
           }
 
-          if (
-            detailResponse.status ===
-            429
-          ) {
-            throw new Error(
-              "Se alcanzó temporalmente el límite de consultas. Intenta nuevamente en unos momentos."
+          const detailJson =
+            await detailResponse.json();
+
+          const currentPost =
+            normalizePost(
+              detailJson
             );
-          }
 
-          throw new Error(
-            "No fue posible cargar la publicación."
-          );
-        }
+          let normalizedRecent =
+            [];
 
-        const detailJson =
-          await detailResponse.json();
+          if (
+            recentResponse.ok
+          ) {
+            const recentJson =
+              await recentResponse.json();
 
-        const currentPost =
-          normalizePost(
-            detailJson
-          );
-
-        let normalizedRecent =
-          [];
-
-        if (
-          recentResponse.ok
-        ) {
-          const recentJson =
-            await recentResponse.json();
-
-          normalizedRecent =
-            normalizePosts(
-              recentJson
-            )
-              .filter(
-                (item) =>
-                  item?.slug !==
-                  postSlug
+            normalizedRecent =
+              normalizePosts(
+                recentJson
               )
-              .slice(0, 3);
-        }
+                .filter(
+                  (item) =>
+                    item?.slug !==
+                    postSlug
+                )
+                .slice(
+                  0,
+                  3
+                );
+          }
 
-        setPost(
-          currentPost
-        );
+          setPost(
+            currentPost
+          );
 
-        setRecentPosts(
-          normalizedRecent
-        );
-      } catch (requestError) {
-        if (
-          requestError?.name ===
-          "AbortError"
+          setRecentPosts(
+            normalizedRecent
+          );
+        } catch (
+          requestError
         ) {
-          return;
-        }
+          if (
+            requestError?.name ===
+            "AbortError"
+          ) {
+            return;
+          }
 
-        setError(
-          requestError?.message ||
-            "Ocurrió un error al cargar la publicación."
-        );
-      } finally {
-        if (
-          !controller.signal
-            .aborted
-        ) {
-          setLoading(false);
+          setError(
+            requestError?.message ||
+              "Ocurrió un error al cargar la publicación."
+          );
+        } finally {
+          if (
+            !controller
+              .signal
+              .aborted
+          ) {
+            setLoading(
+              false
+            );
+          }
         }
-      }
-    };
+      };
 
     if (postSlug) {
       loadPost();
@@ -512,32 +563,6 @@ const BlogDetail = () => {
   }, [postSlug]);
 
   /* =======================================================
-     SEO BÁSICO
-  ======================================================= */
-
-  useEffect(() => {
-    if (!post) {
-      return;
-    }
-
-    const previousTitle =
-      document.title;
-
-    const title =
-      post?.seo_title ||
-      post?.title;
-
-    if (title) {
-      document.title = `${title} | Mi Tienda en Línea MX`;
-    }
-
-    return () => {
-      document.title =
-        previousTitle;
-    };
-  }, [post]);
-
-  /* =======================================================
      DERIVED DATA
   ======================================================= */
 
@@ -545,7 +570,9 @@ const BlogDetail = () => {
     getCoverUrl(post);
 
   const categoryName =
-    getCategoryName(post);
+    getCategoryName(
+      post
+    );
 
   const authorName =
     getAuthorName(post);
@@ -557,7 +584,9 @@ const BlogDetail = () => {
 
   const ads = useMemo(() => {
     if (
-      !Array.isArray(post?.ads)
+      !Array.isArray(
+        post?.ads
+      )
     ) {
       return [];
     }
@@ -566,26 +595,100 @@ const BlogDetail = () => {
       .filter(
         (ad) =>
           !ad?.status ||
-          ad.status === "active"
+          ad.status ===
+            "active"
       )
       .sort(
         (a, b) =>
           Number(
-            a?.sort_order ?? 0
+            a?.sort_order ??
+              0
           ) -
           Number(
-            b?.sort_order ?? 0
+            b?.sort_order ??
+              0
           )
       );
   }, [post]);
 
   const tags = useMemo(
     () =>
-      Array.isArray(post?.tags)
+      Array.isArray(
+        post?.tags
+      )
         ? post.tags
         : [],
     [post]
   );
+
+  /* =======================================================
+     SEO DATA
+  ======================================================= */
+
+  const seoKeywords =
+    useMemo(() => {
+      const keywords =
+        post?.seo
+          ?.keywords;
+
+      if (
+        Array.isArray(
+          keywords
+        )
+      ) {
+        return keywords
+          .filter(
+            Boolean
+          )
+          .join(", ");
+      }
+
+      if (
+        typeof keywords ===
+        "string"
+      ) {
+        return keywords;
+      }
+
+      return "";
+    }, [post]);
+
+  const seoTitle =
+    post?.seo?.title ||
+    post?.title ||
+    "Mi Tienda en Línea MX";
+
+  const seoDescription =
+    post?.seo
+      ?.description ||
+    cleanText(
+      post?.excerpt
+    ) ||
+    "";
+
+  const canonicalUrl =
+    post?.seo
+      ?.canonical_url ||
+    post?.url ||
+    "";
+
+  const robotsIndex =
+    post?.seo
+      ?.robots_index ??
+    true;
+
+  const robotsFollow =
+    post?.seo
+      ?.robots_follow ??
+    true;
+
+  const openGraph =
+    post?.open_graph ||
+    null;
+
+  const structuredData =
+    post?.structured_data ||
+    null;
 
   /* =======================================================
      LOADING
@@ -598,11 +701,13 @@ const BlogDetail = () => {
           <div className="blog-detail-loading__spinner" />
 
           <strong>
-            Cargando publicación
+            Cargando
+            publicación
           </strong>
 
           <span>
-            Estamos preparando el
+            Estamos
+            preparando el
             contenido.
           </span>
         </div>
@@ -614,7 +719,10 @@ const BlogDetail = () => {
      ERROR
   ======================================================= */
 
-  if (error || !post) {
+  if (
+    error ||
+    !post
+  ) {
     return (
       <main className="blog-detail-page">
         <section className="blog-detail-error">
@@ -648,270 +756,330 @@ const BlogDetail = () => {
   }
 
   return (
-    <main className="blog-detail-page">
+    <>
       {/* ===================================================
-          HERO
+          SEO / OPEN GRAPH / STRUCTURED DATA
       =================================================== */}
 
-      <section className="blog-detail-hero">
-        <div
-          className="blog-detail-hero__background"
-          aria-hidden="true"
-        >
-          <div className="blog-detail-hero__grid" />
+      <SEO
+        title={
+          seoTitle
+        }
+        titleTemplate="%s | Mi Tienda en Línea MX"
+        description={
+          seoDescription
+        }
+        keywords={
+          seoKeywords
+        }
+        canonicalUrl={
+          canonicalUrl
+        }
+        robotsIndex={
+          robotsIndex
+        }
+        robotsFollow={
+          robotsFollow
+        }
+        openGraph={
+          openGraph
+        }
+        structuredData={
+          structuredData
+        }
+      />
 
-          <div className="blog-detail-hero__glow blog-detail-hero__glow--one" />
+      <main className="blog-detail-page">
+        {/* =================================================
+            HERO
+        ================================================= */}
 
-          <div className="blog-detail-hero__glow blog-detail-hero__glow--two" />
-
-          <div className="blog-detail-hero__circle" />
-        </div>
-
-        <div className="blog-detail-hero__container">
-          <Link
-            to="/blogs"
-            className="blog-detail-back"
+        <section className="blog-detail-hero">
+          <div
+            className="blog-detail-hero__background"
+            aria-hidden="true"
           >
-            <svg
-              viewBox="0 0 24 24"
-              aria-hidden="true"
+            <div className="blog-detail-hero__grid" />
+
+            <div className="blog-detail-hero__glow blog-detail-hero__glow--one" />
+
+            <div className="blog-detail-hero__glow blog-detail-hero__glow--two" />
+
+            <div className="blog-detail-hero__circle" />
+          </div>
+
+          <div className="blog-detail-hero__container">
+            <Link
+              to="/blogs"
+              className="blog-detail-back"
             >
-              <path
-                d="M19 12H5m6-6-6 6 6 6"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+              <svg
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path
+                  d="M19 12H5m6-6-6 6 6 6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
 
-            <span>
-              Regresar a blogs
-            </span>
-          </Link>
+              <span>
+                Regresar a
+                blogs
+              </span>
+            </Link>
 
-          <div className="blog-detail-hero__layout">
-            <div className="blog-detail-hero__content">
-              {categoryName && (
-                <span className="blog-detail-category">
-                  {categoryName}
-                </span>
-              )}
-
-              <h1>
-                {post.title}
-              </h1>
-
-              {post?.excerpt && (
-                <p className="blog-detail-hero__excerpt">
-                  {cleanText(
-                    post.excerpt
-                  )}
-                </p>
-              )}
-
-              <div className="blog-detail-meta">
-                <div className="blog-detail-meta__author">
-                  <span className="blog-detail-meta__avatar">
-                    {authorName
-                      .charAt(0)
-                      .toUpperCase()}
-                  </span>
-
-                  <span>
-                    {authorName}
-                  </span>
-                </div>
-
-                {publishedDate && (
-                  <time
-                    dateTime={
-                      post.published_at
+            <div className="blog-detail-hero__layout">
+              <div className="blog-detail-hero__content">
+                {categoryName && (
+                  <span className="blog-detail-category">
+                    {
+                      categoryName
                     }
-                  >
-                    {publishedDate}
-                  </time>
+                  </span>
+                )}
+
+                <h1>
+                  {
+                    post.title
+                  }
+                </h1>
+
+                {post?.excerpt && (
+                  <p className="blog-detail-hero__excerpt">
+                    {cleanText(
+                      post.excerpt
+                    )}
+                  </p>
+                )}
+
+                <div className="blog-detail-meta">
+                  <div className="blog-detail-meta__author">
+                    <span className="blog-detail-meta__avatar">
+                      {authorName
+                        .charAt(
+                          0
+                        )
+                        .toUpperCase()}
+                    </span>
+
+                    <span>
+                      {
+                        authorName
+                      }
+                    </span>
+                  </div>
+
+                  {publishedDate && (
+                    <time
+                      dateTime={
+                        post.published_at
+                      }
+                    >
+                      {
+                        publishedDate
+                      }
+                    </time>
+                  )}
+                </div>
+              </div>
+
+              <div className="blog-detail-hero__media">
+                {coverUrl ? (
+                  <img
+                    src={
+                      coverUrl
+                    }
+                    alt={getCoverAlt(
+                      post
+                    )}
+                  />
+                ) : (
+                  <div className="blog-detail-hero__placeholder">
+                    <img
+                      src="/assets/logoc.png"
+                      alt="Mi Tienda en Línea MX"
+                    />
+
+                    <span>
+                      Mi Tienda
+                      en Línea
+                    </span>
+                  </div>
                 )}
               </div>
             </div>
+          </div>
+        </section>
 
-            <div className="blog-detail-hero__media">
-              {coverUrl ? (
-                <img
-                  src={coverUrl}
-                  alt={getCoverAlt(
-                    post
-                  )}
-                />
-              ) : (
-                <div className="blog-detail-hero__placeholder">
+        {/* =================================================
+            ARTICLE
+        ================================================= */}
+
+        <section className="blog-detail-body">
+          <div className="blog-detail-body__container">
+            <article className="blog-detail-article">
+              {coverUrl && (
+                <div className="blog-detail-article__cover">
                   <img
-                    src="/assets/logoc.png"
-                    alt="Mi Tienda en Línea MX"
+                    src={
+                      coverUrl
+                    }
+                    alt={getCoverAlt(
+                      post
+                    )}
                   />
-
-                  <span>
-                    Mi Tienda en Línea
-                  </span>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* ===================================================
-          ARTICLE
-      =================================================== */}
-
-      <section className="blog-detail-body">
-        <div className="blog-detail-body__container">
-          <article className="blog-detail-article">
-            {coverUrl && (
-              <div className="blog-detail-article__cover">
-                <img
-                  src={coverUrl}
-                  alt={getCoverAlt(
-                    post
-                  )}
-                />
-              </div>
-            )}
-
-            <div
-              className="blog-detail-content"
-              dangerouslySetInnerHTML={{
-                __html:
-                  post?.content || "",
-              }}
-            />
-
-            {tags.length > 0 && (
-              <footer className="blog-detail-tags">
-                <span className="blog-detail-tags__title">
-                  Etiquetas
-                </span>
-
-                <div className="blog-detail-tags__list">
-                  {tags.map(
-                    (tag) => (
-                      <span
-                        key={
-                          tag?.id ||
-                          tag?.slug ||
-                          tag?.name
-                        }
-                      >
-                        #
-                        {tag?.name ||
-                          tag?.slug}
-                      </span>
-                    )
-                  )}
-                </div>
-              </footer>
-            )}
-          </article>
-
-          {/* ===============================================
-              SIDEBAR
-          =============================================== */}
-
-          <aside className="blog-detail-sidebar">
-            {/* =============================================
-                ADS
-            ============================================= */}
-
-            {ads.map((ad) => (
-              <BlogAdCard
-                key={ad?.id}
-                ad={ad}
+              <div
+                className="blog-detail-content"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    post?.content ||
+                    "",
+                }}
               />
-            ))}
+
+              {tags.length >
+                0 && (
+                <footer className="blog-detail-tags">
+                  <span className="blog-detail-tags__title">
+                    Etiquetas
+                  </span>
+
+                  <div className="blog-detail-tags__list">
+                    {tags.map(
+                      (
+                        tag
+                      ) => (
+                        <span
+                          key={
+                            tag?.id ||
+                            tag?.slug ||
+                            tag?.name
+                          }
+                        >
+                          #
+                          {tag?.name ||
+                            tag?.slug}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </footer>
+              )}
+            </article>
 
             {/* =============================================
-                RECENT POSTS
+                SIDEBAR
             ============================================= */}
 
-            {recentPosts.length >
-              0 && (
-              <section className="blog-detail-recent">
-                <div className="blog-detail-recent__heading">
-                  <span />
+            <aside className="blog-detail-sidebar">
+              {/* ===========================================
+                  ADS
+              =========================================== */}
 
-                  <h2>
-                    Publicaciones
-                    recientes
-                  </h2>
-                </div>
-
-                <div className="blog-detail-recent__list">
-                  {recentPosts.map(
-                    (
-                      recentPost
-                    ) => {
-                      const image =
-                        getCoverUrl(
-                          recentPost
-                        );
-
-                      return (
-                        <Link
-                          key={
-                            recentPost?.id ||
-                            recentPost?.slug
-                          }
-                          to={`/blogs/${recentPost.slug}`}
-                          className="blog-detail-recent__item"
-                        >
-                          <div className="blog-detail-recent__image">
-                            {image ? (
-                              <img
-                                src={
-                                  image
-                                }
-                                alt={getCoverAlt(
-                                  recentPost
-                                )}
-                              />
-                            ) : (
-                              <div className="blog-detail-recent__placeholder">
-                                M
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="blog-detail-recent__content">
-                            <h3>
-                              {
-                                recentPost.title
-                              }
-                            </h3>
-
-                            {recentPost?.published_at && (
-                              <time
-                                dateTime={
-                                  recentPost.published_at
-                                }
-                              >
-                                {formatDate(
-                                  recentPost.published_at
-                                )}
-                              </time>
-                            )}
-                          </div>
-                        </Link>
-                      );
+              {ads.map(
+                (ad) => (
+                  <BlogAdCard
+                    key={
+                      ad?.id
                     }
-                  )}
-                </div>
-              </section>
-            )}
-          </aside>
-        </div>
-      </section>
-    </main>
+                    ad={
+                      ad
+                    }
+                  />
+                )
+              )}
+
+              {/* ===========================================
+                  RECENT POSTS
+              =========================================== */}
+
+              {recentPosts.length >
+                0 && (
+                <section className="blog-detail-recent">
+                  <div className="blog-detail-recent__heading">
+                    <span />
+
+                    <h2>
+                      Publicaciones
+                      recientes
+                    </h2>
+                  </div>
+
+                  <div className="blog-detail-recent__list">
+                    {recentPosts.map(
+                      (
+                        recentPost
+                      ) => {
+                        const image =
+                          getCoverUrl(
+                            recentPost
+                          );
+
+                        return (
+                          <Link
+                            key={
+                              recentPost?.id ||
+                              recentPost?.slug
+                            }
+                            to={`/blogs/${recentPost.slug}`}
+                            className="blog-detail-recent__item"
+                          >
+                            <div className="blog-detail-recent__image">
+                              {image ? (
+                                <img
+                                  src={
+                                    image
+                                  }
+                                  alt={getCoverAlt(
+                                    recentPost
+                                  )}
+                                />
+                              ) : (
+                                <div className="blog-detail-recent__placeholder">
+                                  M
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="blog-detail-recent__content">
+                              <h3>
+                                {
+                                  recentPost.title
+                                }
+                              </h3>
+
+                              {recentPost?.published_at && (
+                                <time
+                                  dateTime={
+                                    recentPost.published_at
+                                  }
+                                >
+                                  {formatDate(
+                                    recentPost.published_at
+                                  )}
+                                </time>
+                              )}
+                            </div>
+                          </Link>
+                        );
+                      }
+                    )}
+                  </div>
+                </section>
+              )}
+            </aside>
+          </div>
+        </section>
+      </main>
+    </>
   );
 };
 
