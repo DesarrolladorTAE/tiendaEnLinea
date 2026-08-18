@@ -26,7 +26,7 @@ const PlansPage = lazy(() => import("./pages/home/PlansPage.jsx"));
 
 const ContactPage = lazy(() => import("./pages/home/ContactPage.jsx"));
 
-const LoginRegister = lazy(() => import("./pages/other/LoginRegister.jsx"));
+// const LoginRegister = lazy(() => import("./pages/other/LoginRegister.jsx"));
 
 /* =========================================================
    BLOGS
