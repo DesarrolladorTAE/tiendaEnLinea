@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   CircularProgress,
   Divider,
   Stack,
@@ -15,7 +16,8 @@ import {
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
+import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import DirectionsCarFilledRoundedIcon from "@mui/icons-material/DirectionsCarFilledRounded";
 
 import axiosClient from "../../config/axiosClient";
 
@@ -92,8 +94,8 @@ export default function ProductPdfImportPage() {
     }
   };
 
+  const products = resultado?.resultado?.products || [];
   const images = resultado?.resultado?.images || [];
-  const pages = resultado?.resultado?.pages || [];
 
   return (
     <Box
@@ -136,7 +138,10 @@ export default function ProductPdfImportPage() {
         </Box>
 
         <Box>
-          <Typography variant="h5" fontWeight={800}>
+          <Typography
+            variant="h5"
+            fontWeight={800}
+          >
             Analizar catálogo PDF
           </Typography>
 
@@ -144,7 +149,8 @@ export default function ProductPdfImportPage() {
             variant="body2"
             color="text.secondary"
           >
-            Sube un catálogo PDF para detectar texto e imágenes.
+            Sube un catálogo PDF para detectar productos,
+            códigos, descripciones e imágenes.
           </Typography>
         </Box>
       </Stack>
@@ -321,11 +327,11 @@ export default function ProductPdfImportPage() {
                     variant="caption"
                     color="text.secondary"
                   >
-                    Páginas detectadas
+                    Productos detectados
                   </Typography>
 
                   <Typography fontWeight={700}>
-                    {resultado?.resultado?.total_pages ?? 0}
+                    {products.length}
                   </Typography>
                 </Box>
 
@@ -334,7 +340,7 @@ export default function ProductPdfImportPage() {
                     variant="caption"
                     color="text.secondary"
                   >
-                    Imágenes detectadas
+                    Imágenes extraídas
                   </Typography>
 
                   <Typography fontWeight={700}>
@@ -345,161 +351,399 @@ export default function ProductPdfImportPage() {
             </CardContent>
           </Card>
 
-          {images.length > 0 && (
-            <Card
-              variant="outlined"
-              sx={{
-                mt: 3,
-                borderRadius: 3,
-              }}
-            >
-              <CardContent
-                sx={{
-                  p: {
-                    xs: 2,
-                    md: 3,
-                  },
-                }}
-              >
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  alignItems="center"
-                  sx={{ mb: 2 }}
-                >
-                  <ImageRoundedIcon color="primary" />
-
-                  <Typography
-                    variant="h6"
-                    fontWeight={800}
-                  >
-                    Imágenes detectadas
-                  </Typography>
-                </Stack>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "repeat(2, minmax(0, 1fr))",
-                      sm: "repeat(3, minmax(0, 1fr))",
-                      md: "repeat(4, minmax(0, 1fr))",
-                    },
-                    gap: 2,
-                  }}
-                >
-                  {images.map((image, index) => (
-                    <Card
-                      key={image.path || image.url || index}
-                      variant="outlined"
-                      sx={{
-                        borderRadius: 2,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          bgcolor: "grey.50",
-                          p: 1,
-                        }}
-                      >
-                        <Box
-                          component="img"
-                          src={image.url}
-                          alt={image.name || `Imagen ${index + 1}`}
-                          loading="lazy"
-                          sx={{
-                            width: "100%",
-                            height: 180,
-                            objectFit: "contain",
-                            display: "block",
-                          }}
-                        />
-                      </Box>
-
-                      <Box sx={{ p: 1.5 }}>
-                        <Typography
-                          variant="body2"
-                          fontWeight={700}
-                          noWrap
-                        >
-                          {image.name || `Imagen ${index + 1}`}
-                        </Typography>
-
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                        >
-                          {image.size
-                            ? `${(image.size / 1024).toFixed(2)} KB`
-                            : "Tamaño no disponible"}
-                        </Typography>
-                      </Box>
-                    </Card>
-                  ))}
-                </Box>
-              </CardContent>
-            </Card>
-          )}
-
-          {images.length === 0 && (
+          {products.length === 0 && (
             <Alert
               severity="warning"
               sx={{
                 mt: 3,
               }}
             >
-              El PDF fue leído, pero no se encontraron imágenes extraíbles.
+              El PDF fue leído, pero no se pudieron separar productos.
             </Alert>
           )}
 
-          {pages.map((page) => (
-            <Card
-              key={page.page}
-              variant="outlined"
-              sx={{
-                mt: 3,
-                borderRadius: 3,
-              }}
-            >
-              <CardContent
+          {products.length > 0 && (
+            <Box sx={{ mt: 3 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                alignItems="center"
                 sx={{
-                  p: {
-                    xs: 2,
-                    md: 3,
-                  },
+                  mb: 2,
                 }}
               >
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={800}
-                  sx={{
-                    mb: 1,
-                  }}
-                >
-                  Texto detectado - Página {page.page}
-                </Typography>
+                <Inventory2RoundedIcon color="primary" />
 
-                <Box
-                  component="pre"
-                  sx={{
-                    m: 0,
-                    p: 2,
-                    maxHeight: 500,
-                    overflow: "auto",
-                    bgcolor: "grey.100",
-                    borderRadius: 2,
-                    fontSize: 13,
-                    lineHeight: 1.6,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
+                <Typography
+                  variant="h6"
+                  fontWeight={800}
                 >
-                  {page.text || "No se detectó texto."}
-                </Box>
-              </CardContent>
-            </Card>
-          ))}
+                  Productos detectados
+                </Typography>
+              </Stack>
+
+              <Stack spacing={2}>
+                {products.map((product, index) => (
+                  <Card
+                    key={
+                      product?.der?.sku ||
+                      product?.izq?.sku ||
+                      product?.index ||
+                      index
+                    }
+                    variant="outlined"
+                    sx={{
+                      borderRadius: 3,
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                          xs: "1fr",
+                          md: "250px 1fr",
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          minHeight: {
+                            xs: 220,
+                            md: 260,
+                          },
+                          bgcolor: "grey.50",
+                          display: "grid",
+                          placeItems: "center",
+                          p: 2,
+                          borderRight: {
+                            xs: "none",
+                            md: "1px solid",
+                          },
+                          borderBottom: {
+                            xs: "1px solid",
+                            md: "none",
+                          },
+                          borderColor: "divider",
+                        }}
+                      >
+                        {product?.image?.url ? (
+                          <Box
+                            component="img"
+                            src={product.image.url}
+                            alt={
+                              product.name ||
+                              `Producto ${index + 1}`
+                            }
+                            loading="lazy"
+                            sx={{
+                              width: "100%",
+                              height: 220,
+                              objectFit: "contain",
+                              display: "block",
+                            }}
+                          />
+                        ) : (
+                          <Stack
+                            alignItems="center"
+                            spacing={1}
+                            color="text.secondary"
+                          >
+                            <Inventory2RoundedIcon
+                              sx={{
+                                fontSize: 48,
+                              }}
+                            />
+
+                            <Typography variant="body2">
+                              Sin imagen
+                            </Typography>
+                          </Stack>
+                        )}
+                      </Box>
+
+                      <Box
+                        sx={{
+                          p: {
+                            xs: 2,
+                            md: 3,
+                          },
+                        }}
+                      >
+                        <Stack
+                          direction={{
+                            xs: "column",
+                            sm: "row",
+                          }}
+                          justifyContent="space-between"
+                          spacing={2}
+                        >
+                          <Box>
+                            <Stack
+                              direction="row"
+                              spacing={1}
+                              alignItems="center"
+                              flexWrap="wrap"
+                              useFlexGap
+                              sx={{
+                                mb: 1,
+                              }}
+                            >
+                              <DirectionsCarFilledRoundedIcon
+                                fontSize="small"
+                                color="primary"
+                              />
+
+                              <Typography
+                                variant="h6"
+                                fontWeight={800}
+                              >
+                                {product.vehicle || "Vehículo no detectado"}
+                              </Typography>
+                            </Stack>
+
+                            <Typography
+                              variant="body1"
+                              fontWeight={600}
+                            >
+                              {product.name || "Sin descripción"}
+                            </Typography>
+                          </Box>
+
+                          <Chip
+                            label={`Producto ${index + 1}`}
+                            size="small"
+                            variant="outlined"
+                          />
+                        </Stack>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Box
+                          sx={{
+                            display: "grid",
+                            gridTemplateColumns: {
+                              xs: "1fr",
+                              sm: "repeat(3, minmax(0, 1fr))",
+                            },
+                            gap: 2,
+                            mb: 2,
+                          }}
+                        >
+                          <Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Marca
+                            </Typography>
+
+                            <Typography fontWeight={700}>
+                              {product.brand_code || "-"}
+                            </Typography>
+                          </Box>
+
+                          <Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Modelo
+                            </Typography>
+
+                            <Typography fontWeight={700}>
+                              {product.model || "-"}
+                            </Typography>
+                          </Box>
+
+                          <Box>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              Aplicación
+                            </Typography>
+
+                            <Typography fontWeight={700}>
+                              {product.application || "-"}
+                            </Typography>
+                          </Box>
+                        </Box>
+
+                        <Box
+                          sx={{
+                            display: "grid",
+                            gridTemplateColumns: {
+                              xs: "1fr",
+                              lg: "repeat(2, minmax(0, 1fr))",
+                            },
+                            gap: 2,
+                          }}
+                        >
+                          <Card
+                            variant="outlined"
+                            sx={{
+                              borderRadius: 2,
+                              bgcolor: "action.hover",
+                            }}
+                          >
+                            <CardContent>
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                alignItems="center"
+                                sx={{ mb: 2 }}
+                              >
+                                <Typography
+                                  fontWeight={800}
+                                >
+                                  Derecho
+                                </Typography>
+
+                                <Chip
+                                  label="DER"
+                                  size="small"
+                                  color="primary"
+                                />
+                              </Stack>
+
+                              <Stack spacing={1.5}>
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    SKU
+                                  </Typography>
+
+                                  <Typography
+                                    fontWeight={800}
+                                  >
+                                    {product?.der?.sku || "-"}
+                                  </Typography>
+                                </Box>
+
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    Original
+                                  </Typography>
+
+                                  <Typography fontWeight={600}>
+                                    {product?.der?.original || "-"}
+                                  </Typography>
+                                </Box>
+
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    Equivalente
+                                  </Typography>
+
+                                  <Typography fontWeight={600}>
+                                    {product?.der?.equivalent || "-"}
+                                  </Typography>
+                                </Box>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+
+                          <Card
+                            variant="outlined"
+                            sx={{
+                              borderRadius: 2,
+                              bgcolor: "action.hover",
+                            }}
+                          >
+                            <CardContent>
+                              <Stack
+                                direction="row"
+                                justifyContent="space-between"
+                                alignItems="center"
+                                sx={{ mb: 2 }}
+                              >
+                                <Typography
+                                  fontWeight={800}
+                                >
+                                  Izquierdo
+                                </Typography>
+
+                                <Chip
+                                  label="IZQ"
+                                  size="small"
+                                  color="secondary"
+                                />
+                              </Stack>
+
+                              <Stack spacing={1.5}>
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    SKU
+                                  </Typography>
+
+                                  <Typography
+                                    fontWeight={800}
+                                  >
+                                    {product?.izq?.sku || "-"}
+                                  </Typography>
+                                </Box>
+
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    Original
+                                  </Typography>
+
+                                  <Typography fontWeight={600}>
+                                    {product?.izq?.original || "-"}
+                                  </Typography>
+                                </Box>
+
+                                <Box>
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    Equivalente
+                                  </Typography>
+
+                                  <Typography fontWeight={600}>
+                                    {product?.izq?.equivalent || "-"}
+                                  </Typography>
+                                </Box>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        </Box>
+
+                        {product?.image?.name && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              display: "block",
+                              mt: 2,
+                            }}
+                          >
+                            Imagen relacionada: {product.image.name}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Box>
+                  </Card>
+                ))}
+              </Stack>
+            </Box>
+          )}
         </>
       )}
     </Box>
