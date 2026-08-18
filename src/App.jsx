@@ -1,10 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import ScrollToTop from "./helpers/scroll-top";
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 
 import AdminRoutes from "./routes/AdminRoutes";
 import SuperAdminRoutes from "./routes/SuperAdminRoutes";
@@ -14,75 +10,50 @@ import WhatsappButton from "./components/WhatsappButton";
 import { Toaster } from "react-hot-toast";
 import GtmPageViewTracker from "./components/tracking/GtmPageViewTracker.jsx";
 
-const HomeFashionSix = lazy(
-  () => import("./pages/home/HomeFashionSix.jsx")
-);
+const HomeFashionSix = lazy(() => import("./pages/home/HomeFashionSix.jsx"));
 
-const HomeFurniture = lazy(
-  () => import("./pages/home/HomeFurniture.jsx")
-);
+const HomeFurniture = lazy(() => import("./pages/home/HomeFurniture.jsx"));
 
-const LandingPage = lazy(
-  () => import("./pages/home/LandingPage.jsx")
-);
+const LandingPage = lazy(() => import("./pages/home/LandingPage.jsx"));
 
-const HomePage = lazy(
-  () => import("./pages/home/HomePage.jsx")
-);
+const HomePage = lazy(() => import("./pages/home/HomePage.jsx"));
 
-const PlatformPage = lazy(
-  () => import("./pages/home/PlatformPage.jsx")
-);
+const PlatformPage = lazy(() => import("./pages/home/PlatformPage.jsx"));
 
-const FeaturesPage = lazy(
-  () => import("./pages/home/FeaturesPage.jsx")
-);
+const FeaturesPage = lazy(() => import("./pages/home/FeaturesPage.jsx"));
 
-const PlansPage = lazy(
-  () => import("./pages/home/PlansPage.jsx")
-);
+const PlansPage = lazy(() => import("./pages/home/PlansPage.jsx"));
 
-const ContactPage = lazy(
-  () => import("./pages/home/ContactPage.jsx")
-);
+const ContactPage = lazy(() => import("./pages/home/ContactPage.jsx"));
 
-const LoginRegister = lazy(
-  () => import("./pages/other/LoginRegister.jsx")
-);
+const LoginRegister = lazy(() => import("./pages/other/LoginRegister.jsx"));
 
-const Renovar = lazy(
-  () => import("./pages/other/Renovar.jsx")
-);
+const Renovar = lazy(() => import("./pages/other/Renovar.jsx"));
 
-const Terminos = lazy(
-  () => import("./pages/other/TerminosCondiciones.jsx")
-);
+const Terminos = lazy(() => import("./pages/other/TerminosCondiciones.jsx"));
 
-const NotFound = lazy(
-  () => import("./pages/other/NotFound.jsx")
-);
+const NotFound = lazy(() => import("./pages/other/NotFound.jsx"));
 
 const PublicInvoicePage = lazy(
-  () => import("./pages/facturacion/PublicInvoicePage.jsx")
+  () => import("./pages/facturacion/PublicInvoicePage.jsx"),
 );
 
-const POSWrapper = lazy(
-  () => import("./wrappers/POSWrapper")
-);
+const POSWrapper = lazy(() => import("./wrappers/POSWrapper"));
 
 const PersonalizacionSitio = lazy(
-  () => import("./pages/other/PersnalizacionSitio.jsx")
+  () => import("./pages/other/PersnalizacionSitio.jsx"),
 );
 
+const ProductPdfImportPage = lazy(
+  () => import("./pages/productos/ProductPdfImportPage.jsx"),
+);
 
 /* =========================================================
    DOMINIOS PERSONALIZADOS
 ========================================================= */
 
 const getCustomStore = () => {
-  const hostname = window.location.hostname
-    .toLowerCase()
-    .replace(/^www\./, "");
+  const hostname = window.location.hostname.toLowerCase().replace(/^www\./, "");
 
   const customDomains = {
     "latehuanita.mx": "la-tehuanita",
@@ -95,7 +66,6 @@ const getCustomStore = () => {
   return customDomains[hostname] || null;
 };
 
-
 const App = () => {
   const customStoreSlug = getCustomStore();
 
@@ -104,10 +74,7 @@ const App = () => {
       <GtmPageViewTracker />
 
       <ScrollToTop>
-        <Toaster
-          position="top-right"
-          reverseOrder={false}
-        />
+        <Toaster position="top-right" reverseOrder={false} />
 
         <Suspense
           fallback={
@@ -120,7 +87,6 @@ const App = () => {
           }
         >
           <Routes>
-
             {/* ==========================================
                 DOMINIO PERSONALIZADO
             ========================================== */}
@@ -129,13 +95,10 @@ const App = () => {
               <Route
                 path="/"
                 element={
-                  <PersonalizacionSitio
-                    customStoreSlug={customStoreSlug}
-                  />
+                  <PersonalizacionSitio customStoreSlug={customStoreSlug} />
                 }
               />
             )}
-
 
             {/* ==========================================
                 LANDING PRINCIPAL
@@ -143,33 +106,17 @@ const App = () => {
 
             {!customStoreSlug && (
               <Route element={<LandingPage />}>
-                <Route
-                  index
-                  element={<HomePage />}
-                />
+                <Route index element={<HomePage />} />
 
-                <Route
-                  path="/platform"
-                  element={<PlatformPage />}
-                />
+                <Route path="/platform" element={<PlatformPage />} />
 
-                <Route
-                  path="/features"
-                  element={<FeaturesPage />}
-                />
+                <Route path="/features" element={<FeaturesPage />} />
 
-                <Route
-                  path="/services"
-                  element={<PlansPage />}
-                />
+                <Route path="/services" element={<PlansPage />} />
 
-                <Route
-                  path="/contact"
-                  element={<ContactPage />}
-                />
+                <Route path="/contact" element={<ContactPage />} />
               </Route>
             )}
-
 
             {/* ==========================================
                 TIENDAS
@@ -180,34 +127,23 @@ const App = () => {
               element={<PersonalizacionSitio />}
             />
 
-
             {/* ==========================================
                 DEMÁS RUTAS
             ========================================== */}
 
-            <Route
-              path="/home-fashion-six"
-              element={<HomeFashionSix />}
-            />
+            <Route path="/home-fashion-six" element={<HomeFashionSix />} />
+
+            <Route path="/home-furniture" element={<HomeFurniture />} />
+
+            <Route path="/login-register" element={<LoginRegister />} />
+
+            <Route path="/renovar" element={<Renovar />} />
+
+            <Route path="/terminos-y-condiciones" element={<Terminos />} />
 
             <Route
-              path="/home-furniture"
-              element={<HomeFurniture />}
-            />
-
-            <Route
-              path="/login-register"
-              element={<LoginRegister />}
-            />
-
-            <Route
-              path="/renovar"
-              element={<Renovar />}
-            />
-
-            <Route
-              path="/terminos-y-condiciones"
-              element={<Terminos />}
+              path="/productos/importar-pdf"
+              element={<ProductPdfImportPage />}
             />
 
             {AdminRoutes}
@@ -228,16 +164,11 @@ const App = () => {
               element={<PublicInvoicePage />}
             />
 
-
             {/* ==========================================
                 404
             ========================================== */}
 
-            <Route
-              path="*"
-              element={<NotFound />}
-            />
-
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
       </ScrollToTop>
