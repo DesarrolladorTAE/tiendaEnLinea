@@ -15,15 +15,13 @@ const ShopProducts = ({
     currencyRate: 1,
   };
 
-  const showVariantCards = Number(storeId) === 464 && variantSearchActive;
-
   return (
     <div className="shop-bottom-area mt-35">
       <div className={clsx("row", layout)}>
         <ProductgridList
           products={products}
           variantResults={variantResults}
-          variantSearchActive={showVariantCards}
+          variantSearchActive={variantSearchActive}
           storeId={storeId}
           spaceBottomClass="mb-25"
           currency={currency}
@@ -38,7 +36,10 @@ ShopProducts.propTypes = {
   products: PropTypes.array,
   variantResults: PropTypes.array,
   variantSearchActive: PropTypes.bool,
-  storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  storeId: PropTypes.oneOfType([
+    PropTypes.string,
+    PropTypes.number,
+  ]),
 };
 
 export default ShopProducts;

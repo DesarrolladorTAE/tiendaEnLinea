@@ -1,15 +1,7 @@
-import React, {
-  Fragment,
-  useState,
-  useEffect,
-  useMemo,
-} from "react";
+import React, { Fragment, useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import Paginator from "react-hooks-paginator";
-import {
-  useLocation,
-  useParams,
-} from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import axios from "axios";
 
 import SEO from "../../components/seo";
@@ -29,8 +21,7 @@ if (Paginator && "defaultProps" in Paginator) {
   }
 }
 
-const API_BASE =
-  "https://mitiendaenlineamx.com.mx/api";
+const API_BASE = "https://mitiendaenlineamx.com.mx/api";
 
 const pageLimit = 12;
 
@@ -46,21 +37,14 @@ function getProductCategoryTokensFromProduct(product) {
       return;
     }
 
-    tokens.add(
-      String(value)
-        .trim()
-        .toLowerCase()
-    );
+    tokens.add(String(value).trim().toLowerCase());
   };
 
   if (Array.isArray(product?.categories)) {
     product.categories.forEach((category) => {
       if (!category) return;
 
-      if (
-        typeof category === "string" ||
-        typeof category === "number"
-      ) {
+      if (typeof category === "string" || typeof category === "number") {
         push(category);
         return;
       }
@@ -78,10 +62,7 @@ function getProductCategoryTokensFromProduct(product) {
 
   if (Array.isArray(category)) {
     category.forEach((item) => {
-      if (
-        typeof item === "object" &&
-        item !== null
-      ) {
+      if (typeof item === "object" && item !== null) {
         push(item.id);
         push(item.name);
         push(item.slug);
@@ -90,15 +71,9 @@ function getProductCategoryTokensFromProduct(product) {
         push(item);
       }
     });
-  } else if (
-    typeof category === "string" ||
-    typeof category === "number"
-  ) {
+  } else if (typeof category === "string" || typeof category === "number") {
     push(category);
-  } else if (
-    category &&
-    typeof category === "object"
-  ) {
+  } else if (category && typeof category === "object") {
     push(category.id);
     push(category.name);
     push(category.slug);
@@ -113,10 +88,7 @@ function getProductCategoryTokensFromProduct(product) {
 
   if (Array.isArray(product?.tags)) {
     product.tags.forEach((tag) => {
-      if (
-        typeof tag === "object" &&
-        tag !== null
-      ) {
+      if (typeof tag === "object" && tag !== null) {
         push(tag.id);
         push(tag.name);
         push(tag.slug);
@@ -152,9 +124,7 @@ function parseVariantSearch(value) {
     .map((part) => part.trim())
     .filter(Boolean)
     .map((part) => {
-      const match = part.match(
-        /^(.+?)[\s-]*(\d+)$/
-      );
+      const match = part.match(/^(.+?)[\s-]*(\d+)$/);
 
       if (!match) return null;
 
@@ -165,11 +135,7 @@ function parseVariantSearch(value) {
 
       const qty = Number(match[2]);
 
-      if (
-        !size ||
-        !Number.isInteger(qty) ||
-        qty <= 0
-      ) {
+      if (!size || !Number.isInteger(qty) || qty <= 0) {
         return null;
       }
 
@@ -186,38 +152,28 @@ function parseVariantSearch(value) {
  * Si no existen atributos, utiliza variant.name.
  */
 function getVariantSize(variant) {
-  const directName = String(
-    variant?.name ?? ""
-  ).trim();
+  const directName = String(variant?.name ?? "").trim();
 
-  const attributes = Array.isArray(
-    variant?.variant_attributes
-  )
+  const attributes = Array.isArray(variant?.variant_attributes)
     ? variant.variant_attributes
     : Array.isArray(variant?.attributes)
-    ? variant.attributes
-    : [];
+      ? variant.attributes
+      : [];
 
-  const sizeAttribute = attributes.find(
-    (attribute) => {
-      const name = String(
-        attribute?.name ?? ""
-      )
-        .trim()
-        .toLowerCase();
+  const sizeAttribute = attributes.find((attribute) => {
+    const name = String(attribute?.name ?? "")
+      .trim()
+      .toLowerCase();
 
-      return (
-        name === "talla" ||
-        name === "size" ||
-        name.includes("talla") ||
-        name.includes("size")
-      );
-    }
-  );
+    return (
+      name === "talla" ||
+      name === "size" ||
+      name.includes("talla") ||
+      name.includes("size")
+    );
+  });
 
-  return String(
-    sizeAttribute?.value ?? directName
-  )
+  return String(sizeAttribute?.value ?? directName)
     .trim()
     .replace(/[\s_-]+/g, "")
     .toUpperCase();
@@ -226,24 +182,11 @@ function getVariantSize(variant) {
 /**
  * Obtiene la existencia total de una variante.
  */
-function getVariantStock(
-  variant,
-  useWarehouseInventory
-) {
-  if (
-    useWarehouseInventory &&
-    Array.isArray(variant?.warehouse_stocks)
-  ) {
+function getVariantStock(variant, useWarehouseInventory) {
+  if (useWarehouseInventory && Array.isArray(variant?.warehouse_stocks)) {
     return variant.warehouse_stocks.reduce(
-      (total, row) =>
-        total +
-        (
-          Number(
-            row?.stock ??
-            row?.qty
-          ) || 0
-        ),
-      0
+      (total, row) => total + (Number(row?.stock ?? row?.qty) || 0),
+      0,
     );
   }
 
@@ -254,82 +197,45 @@ function getVariantStock(
  * Componente
  * ======================================================= */
 
-const Catalogo = ({
-  storeId: storeIdProp,
-  storeSlug: storeSlugProp,
-}) => {
+const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
   const params = useParams();
   const { pathname } = useLocation();
 
-  const storeSlug =
-    storeSlugProp ??
-    params.storeSlug;
+  const storeSlug = storeSlugProp ?? params.storeSlug;
 
-  const {
-    isStoreValid,
-    products,
-    storePhone,
-    storeName,
-  } = useStoreData(storeSlug);
+  const { isStoreValid, products, storePhone, storeName } =
+    useStoreData(storeSlug);
 
   /*
    * El fallback por slug permite identificar la tienda
    * aunque el componente padre no mande storeId.
    */
   const storeId = Number(
-    storeIdProp ??
-    (
-      storeSlug === "ans-machado-uniformes"
-        ? 464
-        : null
-    )
+    storeIdProp ?? (storeSlug === "ans-machado-uniformes" ? 464 : null),
   );
 
   const isStore464 = storeId === 464;
 
   // Diseño de productos.
-  const [layout, setLayout] = useState(
-    "grid three-column"
-  );
+  const [layout, setLayout] = useState("grid three-column");
 
   // Filtros normales.
-  const [
-    searchQuery,
-    setSearchQuery,
-  ] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const [
-    selectedCategory,
-    setSelectedCategory,
-  ] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   // Búsqueda especial de variantes.
-  const [
-    variantSearch,
-    setVariantSearch,
-  ] = useState("");
+  const [variantSearch, setVariantSearch] = useState("");
 
   // Paginación.
-  const [
-    offset,
-    setOffset,
-  ] = useState(0);
+  const [offset, setOffset] = useState(0);
 
-  const [
-    currentPage,
-    setCurrentPage,
-  ] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Categorías.
-  const [
-    categories,
-    setCategories,
-  ] = useState([]);
+  const [categories, setCategories] = useState([]);
 
-  const [
-    loadingCats,
-    setLoadingCats,
-  ] = useState(true);
+  const [loadingCats, setLoadingCats] = useState(true);
 
   /* =======================================================
    * Carga de categorías
@@ -341,17 +247,11 @@ const Catalogo = ({
     setLoadingCats(true);
 
     axios
-      .get(
-        `${API_BASE}/public/stores/slug/${storeSlug}/categories?mode=tree`
-      )
+      .get(`${API_BASE}/public/stores/slug/${storeSlug}/categories?mode=tree`)
       .then(({ data }) => {
         if (!alive) return;
 
-        setCategories(
-          Array.isArray(data?.parents)
-            ? data.parents
-            : []
-        );
+        setCategories(Array.isArray(data?.parents) ? data.parents : []);
       })
       .catch(() => {
         if (!alive) return;
@@ -376,10 +276,7 @@ const Catalogo = ({
     setLayout(nextLayout);
   };
 
-  const getFilterSortParams = (
-    type,
-    value
-  ) => {
+  const getFilterSortParams = (type, value) => {
     if (type === "searchQuery") {
       setSearchQuery(value ?? "");
       setCurrentPage(1);
@@ -395,9 +292,7 @@ const Catalogo = ({
     }
 
     if (type === "category") {
-      setSelectedCategory(
-        value || null
-      );
+      setSelectedCategory(value || null);
       setCurrentPage(1);
       setOffset(0);
     }
@@ -408,19 +303,15 @@ const Catalogo = ({
    * ===================================================== */
 
   const filteredProducts = useMemo(() => {
-    let result = Array.isArray(products)
-      ? products
-      : [];
+    let result = Array.isArray(products) ? products : [];
 
-    const query = searchQuery
-      .trim()
-      .toLowerCase();
+    const query = searchQuery.trim().toLowerCase();
 
     if (query) {
       result = result.filter((product) =>
         String(product?.name ?? "")
           .toLowerCase()
-          .includes(query)
+          .includes(query),
       );
     }
 
@@ -428,102 +319,51 @@ const Catalogo = ({
       return result;
     }
 
-    const selectedId = String(
-      selectedCategory.id
-    ).toLowerCase();
+    const selectedId = String(selectedCategory.id).toLowerCase();
 
-    const selectedName = String(
-      selectedCategory.name ?? ""
-    ).toLowerCase();
+    const selectedName = String(selectedCategory.name ?? "").toLowerCase();
 
-    const tokensMatchAny = (
-      product,
-      ids,
-      names
-    ) => {
-      const productTokens =
-        getProductCategoryTokensFromProduct(
-          product
-        );
+    const tokensMatchAny = (product, ids, names) => {
+      const productTokens = getProductCategoryTokensFromProduct(product);
 
       return productTokens.some(
         (token) =>
-          ids.has(
-            String(token).toLowerCase()
-          ) ||
-          names.has(
-            String(token).toLowerCase()
-          )
+          ids.has(String(token).toLowerCase()) ||
+          names.has(String(token).toLowerCase()),
       );
     };
 
-    if (
-      selectedCategory.type === "parent"
-    ) {
+    if (selectedCategory.type === "parent") {
       const parent = categories.find(
-        (category) =>
-          String(category.id) ===
-          String(selectedCategory.id)
+        (category) => String(category.id) === String(selectedCategory.id),
       );
 
       const children =
         parent?.children ??
         categories.filter(
           (category) =>
-            String(category.parent_id) ===
-            String(selectedCategory.id)
+            String(category.parent_id) === String(selectedCategory.id),
         );
 
-      const ids = new Set([
-        selectedId,
-      ]);
+      const ids = new Set([selectedId]);
 
-      const names = new Set([
-        selectedName,
-      ]);
+      const names = new Set([selectedName]);
 
       children.forEach((category) => {
-        ids.add(
-          String(category.id).toLowerCase()
-        );
+        ids.add(String(category.id).toLowerCase());
 
-        names.add(
-          String(
-            category.name ?? ""
-          ).toLowerCase()
-        );
+        names.add(String(category.name ?? "").toLowerCase());
       });
 
-      return result.filter((product) =>
-        tokensMatchAny(
-          product,
-          ids,
-          names
-        )
-      );
+      return result.filter((product) => tokensMatchAny(product, ids, names));
     }
 
-    const ids = new Set([
-      selectedId,
-    ]);
+    const ids = new Set([selectedId]);
 
-    const names = new Set([
-      selectedName,
-    ]);
+    const names = new Set([selectedName]);
 
-    return result.filter((product) =>
-      tokensMatchAny(
-        product,
-        ids,
-        names
-      )
-    );
-  }, [
-    products,
-    searchQuery,
-    selectedCategory,
-    categories,
-  ]);
+    return result.filter((product) => tokensMatchAny(product, ids, names));
+  }, [products, searchQuery, selectedCategory, categories]);
 
   /* =======================================================
    * Interpretación de la búsqueda especial
@@ -534,80 +374,49 @@ const Catalogo = ({
       return [];
     }
 
-    return parseVariantSearch(
-      variantSearch
-    );
-  }, [
-    isStore464,
-    variantSearch,
-  ]);
+    return parseVariantSearch(variantSearch);
+  }, [isStore464, variantSearch]);
 
   /* =======================================================
-   * Resultados individuales de variantes
+   * Resultados de productos que cumplen búsqueda de variantes
    * ===================================================== */
 
   const variantResults = useMemo(() => {
-    if (
-      !isStore464 ||
-      variantRequests.length === 0
-    ) {
+    if (!isStore464 || variantRequests.length === 0) {
       return [];
     }
 
     const requestsBySize = new Map(
-      variantRequests.map((request) => [
-        request.size,
-        request.qty,
-      ])
+      variantRequests.map((request) => [request.size, request.qty]),
     );
 
-    /*
-     * Partimos de filteredProducts para respetar también
-     * el nombre y la categoría seleccionados.
-     */
-    return filteredProducts.flatMap(
-      (product) => {
-        const variants = Array.isArray(
-          product?.variants
-        )
+    return filteredProducts
+      .map((product) => {
+        const variants = Array.isArray(product?.variants)
           ? product.variants
           : [];
 
-        return variants
-          .filter(
-            (variant) =>
-              variant?.is_active !== false
-          )
+        const matchingVariants = variants
+          .filter((variant) => variant?.is_active !== false)
           .map((variant) => {
-            const size = getVariantSize(
-              variant
-            );
+            const size = getVariantSize(variant);
 
-            const requestedQty =
-              requestsBySize.get(size);
+            const requestedQty = requestsBySize.get(size);
 
             if (!requestedQty) {
               return null;
             }
 
-            const stock =
-              getVariantStock(
-                variant,
-                Boolean(
-                  product?.use_warehouse_inventory
-                )
-              );
+            const stock = getVariantStock(
+              variant,
+              Boolean(product?.use_warehouse_inventory),
+            );
 
-            /*
-             * Solamente se muestra si tiene la cantidad
-             * solicitada o una existencia mayor.
-             */
             if (stock < requestedQty) {
               return null;
             }
 
             return {
-              product,
               variant,
               size,
               stock,
@@ -615,78 +424,63 @@ const Catalogo = ({
             };
           })
           .filter(Boolean);
-      }
-    );
-  }, [
-    isStore464,
-    filteredProducts,
-    variantRequests,
-  ]);
 
-  const isVariantSearchActive =
-    isStore464 &&
-    variantRequests.length > 0;
+        // Debe cumplir TODAS las tallas solicitadas.
+        if (matchingVariants.length !== variantRequests.length) {
+          return null;
+        }
+
+        return {
+          product,
+          matchingVariants,
+        };
+      })
+      .filter(Boolean);
+  }, [isStore464, filteredProducts, variantRequests]);
+
+  /* =======================================================
+   * Convertimos los resultados a productos normales
+   * ===================================================== */
+
+  const variantProducts = useMemo(() => {
+    return variantResults.map((result) => result?.product).filter(Boolean);
+  }, [variantResults]);
+
+  const isVariantSearchActive = isStore464 && variantRequests.length > 0;
 
   /* =======================================================
    * Paginación
    * ===================================================== */
 
   const currentData = useMemo(
-    () =>
-      filteredProducts.slice(
-        offset,
-        offset + pageLimit
-      ),
-    [
-      filteredProducts,
-      offset,
-    ]
+    () => filteredProducts.slice(offset, offset + pageLimit),
+    [filteredProducts, offset],
   );
 
-  const paginatedVariantResults =
-    useMemo(
-      () =>
-        variantResults.slice(
-          offset,
-          offset + pageLimit
-        ),
-      [
-        variantResults,
-        offset,
-      ]
-    );
+  const paginatedVariantResults = useMemo(
+    () => variantResults.slice(offset, offset + pageLimit),
+    [variantResults, offset],
+  );
 
-  const activeTotal =
-    isVariantSearchActive
-      ? variantResults.length
-      : filteredProducts.length;
-
+  const activeTotal = isVariantSearchActive
+    ? variantResults.length
+    : filteredProducts.length;
   /*
    * Regresa a la primera página si el filtro deja
    * el offset actual fuera del número de resultados.
    */
   useEffect(() => {
-    if (
-      offset > 0 &&
-      offset >= activeTotal
-    ) {
+    if (offset > 0 && offset >= activeTotal) {
       setCurrentPage(1);
       setOffset(0);
     }
-  }, [
-    activeTotal,
-    offset,
-  ]);
+  }, [activeTotal, offset]);
 
   /*
    * Todos los hooks deben estar antes de este retorno.
    */
   if (isStoreValid === null) {
-    return (
-      <div>
-        Cargando tienda...
-      </div>
-    );
+    return <div>Cargando tienda...</div>;
   }
 
   return (
@@ -718,52 +512,32 @@ const Catalogo = ({
             <div className="col-lg-12">
               <ShopTopbar
                 getLayout={getLayout}
-                getFilterSortParams={
-                  getFilterSortParams
-                }
-                productCount={
-                  Array.isArray(products)
-                    ? products.length
-                    : 0
-                }
-                sortedProductCount={
-                  activeTotal
-                }
+                getFilterSortParams={getFilterSortParams}
+                productCount={Array.isArray(products) ? products.length : 0}
+                sortedProductCount={activeTotal}
                 categories={categories}
                 loadingCats={loadingCats}
                 isStore464={isStore464}
-                variantSearch={
-                  variantSearch
-                }
+                variantSearch={variantSearch}
               />
 
               <ShopProducts
                 layout={layout}
                 products={currentData}
-                variantResults={
-                  paginatedVariantResults
-                }
-                variantSearchActive={
-                  isVariantSearchActive
-                }
+                variantResults={paginatedVariantResults}
+                variantSearchActive={isVariantSearchActive}
                 storeId={storeId}
               />
 
               {activeTotal > pageLimit && (
                 <div className="pro-pagination-style text-center mt-30">
                   <Paginator
-                    totalRecords={
-                      activeTotal
-                    }
+                    totalRecords={activeTotal}
                     pageLimit={pageLimit}
                     pageNeighbours={2}
                     setOffset={setOffset}
-                    currentPage={
-                      currentPage
-                    }
-                    setCurrentPage={
-                      setCurrentPage
-                    }
+                    currentPage={currentPage}
+                    setCurrentPage={setCurrentPage}
                     pageContainerClass="mb-0 mt-0"
                     pagePrevText="«"
                     pageNextText="»"
@@ -785,10 +559,7 @@ const Catalogo = ({
 };
 
 Catalogo.propTypes = {
-  storeId: PropTypes.oneOfType([
-    PropTypes.string,
-    PropTypes.number,
-  ]),
+  storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   storeSlug: PropTypes.string,
 };
 
