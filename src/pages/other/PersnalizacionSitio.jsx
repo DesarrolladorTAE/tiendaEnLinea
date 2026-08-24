@@ -4,19 +4,16 @@ import axios from "axios";
 
 import TiendaNoDisponible from "./TiendaNoDisponible";
 
-// Vistas
 import Catalogo from "../shop/Catalogo";
-import VistaPlan2 from "../home/HomeFashionSix";
-import VistaPlan3 from "../home/HomeFurniture";
-import VistaPlan4 from "../home/HomeFurniture";
+import VistaNegocio from "../home/HomeFashionSix";
+import VistaProfesional from "../home/HomeFurniture";
+import VistaAvanzado from "../home/HomeFurniture";
 
 export default function PersonalizacionSitio({
   customStoreSlug = null,
 }) {
   const { storeSlug: routeStoreSlug } = useParams();
 
-  // ✅ Si viene de dominio personalizado usa ese slug.
-  // ✅ Si viene de /tienda/:storeSlug usa el parámetro de la URL.
   const storeSlug = customStoreSlug || routeStoreSlug;
 
   const [data, setData] = useState(null);
@@ -24,7 +21,6 @@ export default function PersonalizacionSitio({
   useEffect(() => {
     let alive = true;
 
-    // Evita hacer la petición si por alguna razón no existe slug
     if (!storeSlug) {
       setData({
         ok: false,
@@ -36,25 +32,42 @@ export default function PersonalizacionSitio({
       };
     }
 
-    // Limpia la información anterior si cambia de tienda
     setData(null);
 
     axios
       .get(
-        `https://mitiendaenlineamx.com.mx/api/public/tienda/${encodeURIComponent(
+        `https://mitiendaenlineamx.com.mx/api/public/storefront/${encodeURIComponent(
           storeSlug,
-        )}/vista`,
+        )}`,
       )
       .then(({ data }) => {
         if (!alive) return;
 
-        // ✅ Normaliza storeId aunque venga con distinto nombre
         const normalized = {
           ...data,
+
           storeId:
+            data?.store?.id ??
             data?.id_store ??
             data?.store_id ??
             data?.id_store_fk ??
+            null,
+
+          branchId:
+            data?.branch?.id ??
+            data?.branch_id ??
+            null,
+
+          planId:
+            Number(
+              data?.plan?.id ??
+              data?.plan_id ??
+              1,
+            ),
+
+          template:
+            data?.sitio?.template ??
+            data?.template ??
             null,
         };
 
@@ -83,48 +96,53 @@ export default function PersonalizacionSitio({
   }
 
   const storeId = data.storeId;
+  const branchId = data.branchId;
+  const planId = data.planId;
+  const template = data.template;
 
-  // Render según plan
-  if (data.plan_id === 1) {
-    return (
-      <Catalogo
-        storeId={storeId}
-        storeSlug={storeSlug}
-      />
-    );
-  }
+  const commonProps = {
+    storeId,
+    branchId,
+    storeSlug,
+    storefrontData: data,
+    sitio: data?.sitio ?? null,
+    store: data?.store ?? null,
+    branch: data?.branch ?? null,
+    plan: data?.plan ?? null,
+  };
 
-  if (data.plan_id === 2) {
-    return (
-      <VistaPlan2
-        storeId={storeId}
-        storeSlug={storeSlug}
-      />
-    );
-  }
+  const renderTemplate = () => {
+    if (planId === 1) {
+      switch (template) {
+        case "negocio":
+          return <VistaNegocio {...commonProps} />;
 
-  if (data.plan_id === 3) {
-    return (
-      <VistaPlan3
-        storeId={storeId}
-        storeSlug={storeSlug}
-      />
-    );
-  }
+        case "profesional":
+          return <VistaProfesional {...commonProps} />;
 
-  if (data.plan_id === 4) {
-    return (
-      <VistaPlan4
-        storeId={storeId}
-        storeSlug={storeSlug}
-      />
-    );
-  }
+        case "avanzado":
+          return <VistaAvanzado {...commonProps} />;
 
-  return (
-    <VistaPlan4
-      storeId={storeId}
-      storeSlug={storeSlug}
-    />
-  );
+        case "catalogo":
+        default:
+          return <Catalogo {...commonProps} />;
+      }
+    }
+
+    if (planId === 2) {
+      return <VistaNegocio {...commonProps} />;
+    }
+
+    if (planId === 3) {
+      return <VistaProfesional {...commonProps} />;
+    }
+
+    if (planId === 4) {
+      return <VistaAvanzado {...commonProps} />;
+    }
+
+    return <Catalogo {...commonProps} />;
+  };
+
+  return renderTemplate();
 }
