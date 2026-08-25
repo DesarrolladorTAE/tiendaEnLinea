@@ -10,7 +10,11 @@ const ProductGridList = ({
   storeId,
   spaceBottomClass,
   currency,
+  columns = 3,
+  template = "negocio",
+  groupVariants = false,
 }) => {
+  const desktopClass = columns === 2 ? "col-xl-6" : columns === 4 ? "col-xl-3" : "col-xl-4";
   const { cartItems = [] } = useSelector(
     (state) => state.cart ?? {},
   );
@@ -35,7 +39,7 @@ const ProductGridList = ({
           return (
             <div
               key={`product-${product.id}`}
-              className="col-6 col-sm-6 col-xl-4 mb-3 mb-sm-4"
+              className={`col-6 col-sm-6 ${desktopClass} mb-3 mb-sm-4`}
             >
               <ProductGridListSingle
                 spaceBottomClass={spaceBottomClass}
@@ -44,6 +48,8 @@ const ProductGridList = ({
                 storeId={storeId}
                 variantCard={false}
                 matchingVariants={[]}
+                enableEffects={template === "avanzado"}
+                storefrontTemplate={template}
                 wishlistItem={wishlistItems.find(
                   (item) =>
                     Number(item.id) === Number(product.id),
@@ -66,7 +72,9 @@ const ProductGridList = ({
   // =====================================================
   return (
     <Fragment>
-      {variantResults.map((result) => {
+      {(groupVariants ? variantResults : variantResults.flatMap((result) =>
+        (result?.matchingVariants || []).map((match) => ({ ...result, matchingVariants: [match], singleMatch: match })),
+      )).map((result) => {
         const product = result?.product;
 
         const matchingVariants = Array.isArray(
@@ -81,8 +89,8 @@ const ProductGridList = ({
 
         return (
           <div
-            key={`variant-group-${product.id}`}
-            className="col-12 col-md-6 col-xl-4 mb-3 mb-sm-4"
+            key={`variant-${product.id}-${result?.singleMatch?.variant?.id || "group"}`}
+            className={`col-12 col-md-6 ${desktopClass} mb-3 mb-sm-4`}
           >
             <ProductGridListSingle
               spaceBottomClass={spaceBottomClass}
@@ -91,9 +99,15 @@ const ProductGridList = ({
               storeId={storeId}
 
               // IMPORTANTE
-              variantCard={false}
-              variantGroupCard
+              variantCard={!groupVariants}
+              variantGroupCard={groupVariants}
               matchingVariants={matchingVariants}
+              selectedVariant={result?.singleMatch?.variant || null}
+              requestedQty={result?.singleMatch?.requestedQty || 1}
+              availableStock={result?.singleMatch?.stock ?? null}
+              variantSize={result?.singleMatch?.size || null}
+              enableEffects={template === "avanzado"}
+              storefrontTemplate={template}
 
               wishlistItem={wishlistItems.find(
                 (item) =>
@@ -145,6 +159,9 @@ ProductGridList.propTypes = {
     PropTypes.string,
     PropTypes.number,
   ]),
+  columns: PropTypes.number,
+  template: PropTypes.string,
+  groupVariants: PropTypes.bool,
 };
 
 export default ProductGridList;

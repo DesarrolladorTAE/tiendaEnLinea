@@ -23,7 +23,16 @@ if (Paginator && "defaultProps" in Paginator) {
 
 const API_BASE = "https://mitiendaenlineamx.com.mx/api";
 
-const pageLimit = 12;
+const DEFAULT_PAGE_LIMIT = 12;
+
+const normalizeSettings = (value) => {
+  if (value && typeof value === "object") return value;
+  try { return value ? JSON.parse(value) : {}; } catch { return {}; }
+};
+
+const productStock = (product) => Array.isArray(product?.variants)
+  ? product.variants.reduce((total, variant) => total + (Number(variant?.stock) || 0), 0)
+  : Number(product?.stock ?? product?.qty) || 0;
 
 /* =========================================================
  * Helpers de categorías
@@ -197,7 +206,7 @@ function getVariantStock(variant, useWarehouseInventory) {
  * Componente
  * ======================================================= */
 
-const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
+const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSettings = null, storefrontTemplate = "negocio", storefrontTheme = {}, storefrontColors = {} }) => {
   const params = useParams();
   const { pathname } = useLocation();
 
@@ -210,14 +219,31 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
    * El fallback por slug permite identificar la tienda
    * aunque el componente padre no mande storeId.
    */
-  const storeId = Number(
-    storeIdProp ?? (storeSlug === "ans-machado-uniformes" ? 464 : null),
-  );
+  const storeId = Number(storeIdProp ?? 0) || null;
+  const [siteSettings, setSiteSettings] = useState(() => normalizeSettings(storefrontSettings));
+  const pageLimit = Number(siteSettings.products_per_page) || DEFAULT_PAGE_LIMIT;
+  const variantSearchEnabled = Boolean(siteSettings.variant_search_enabled);
+  const embeddedStorefront = storefrontSettings !== null;
 
-  const isStore464 = storeId === 464;
+  useEffect(() => {
+    if (storefrontSettings) {
+      setSiteSettings(normalizeSettings(storefrontSettings));
+      return undefined;
+    }
+    let alive = true;
+    axios.get(`${API_BASE}/public/tienda/${encodeURIComponent(storeSlug)}/sitio`)
+      .then(({ data }) => { if (alive) setSiteSettings(normalizeSettings(data?.sitio?.settings)); })
+      .catch(() => { if (alive) setSiteSettings({}); });
+    return () => { alive = false; };
+  }, [storeSlug, storefrontSettings]);
 
   // Diseño de productos.
   const [layout, setLayout] = useState("grid three-column");
+
+  useEffect(() => {
+    const columns = Number(siteSettings.catalog_columns) || 3;
+    setLayout(columns === 2 ? "grid two-column" : columns === 4 ? "grid four-column" : "grid three-column");
+  }, [siteSettings.catalog_columns]);
 
   // Filtros normales.
   const [searchQuery, setSearchQuery] = useState("");
@@ -315,9 +341,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
       );
     }
 
-    if (!selectedCategory?.id) {
-      return result;
-    }
+    if (!selectedCategory?.id) return result;
 
     const selectedId = String(selectedCategory.id).toLowerCase();
 
@@ -365,24 +389,42 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
     return result.filter((product) => tokensMatchAny(product, ids, names));
   }, [products, searchQuery, selectedCategory, categories]);
 
+  const configuredProducts = useMemo(() => {
+    let result = [...filteredProducts];
+    if (siteSettings.out_of_stock === "hide") result = result.filter((product) => productStock(product) > 0);
+    const sort = siteSettings.product_sort || "newest";
+    const compare = {
+      oldest: (a, b) => Number(a?.id || 0) - Number(b?.id || 0),
+      newest: (a, b) => Number(b?.id || 0) - Number(a?.id || 0),
+      name_asc: (a, b) => String(a?.name || "").localeCompare(String(b?.name || "")),
+      name_desc: (a, b) => String(b?.name || "").localeCompare(String(a?.name || "")),
+      price_asc: (a, b) => Number(a?.price || 0) - Number(b?.price || 0),
+      price_desc: (a, b) => Number(b?.price || 0) - Number(a?.price || 0),
+      stock_desc: (a, b) => productStock(b) - productStock(a),
+    }[sort];
+    if (compare) result.sort(compare);
+    if (siteSettings.out_of_stock === "last") result.sort((a, b) => Number(productStock(b) > 0) - Number(productStock(a) > 0));
+    return result;
+  }, [filteredProducts, siteSettings]);
+
   /* =======================================================
    * Interpretación de la búsqueda especial
    * ===================================================== */
 
   const variantRequests = useMemo(() => {
-    if (!isStore464) {
+    if (!variantSearchEnabled) {
       return [];
     }
 
     return parseVariantSearch(variantSearch);
-  }, [isStore464, variantSearch]);
+  }, [variantSearchEnabled, variantSearch]);
 
   /* =======================================================
    * Resultados de productos que cumplen búsqueda de variantes
    * ===================================================== */
 
   const variantResults = useMemo(() => {
-    if (!isStore464 || variantRequests.length === 0) {
+    if (!variantSearchEnabled || variantRequests.length === 0) {
       return [];
     }
 
@@ -390,7 +432,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
       variantRequests.map((request) => [request.size, request.qty]),
     );
 
-    return filteredProducts
+    return configuredProducts
       .map((product) => {
         const variants = Array.isArray(product?.variants)
           ? product.variants
@@ -436,7 +478,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
         };
       })
       .filter(Boolean);
-  }, [isStore464, filteredProducts, variantRequests]);
+  }, [variantSearchEnabled, configuredProducts, variantRequests]);
 
   /* =======================================================
    * Convertimos los resultados a productos normales
@@ -446,25 +488,25 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
     return variantResults.map((result) => result?.product).filter(Boolean);
   }, [variantResults]);
 
-  const isVariantSearchActive = isStore464 && variantRequests.length > 0;
+  const isVariantSearchActive = variantSearchEnabled && variantRequests.length > 0;
 
   /* =======================================================
    * Paginación
    * ===================================================== */
 
   const currentData = useMemo(
-    () => filteredProducts.slice(offset, offset + pageLimit),
-    [filteredProducts, offset],
+    () => configuredProducts.slice(offset, offset + pageLimit),
+    [configuredProducts, offset, pageLimit],
   );
 
   const paginatedVariantResults = useMemo(
     () => variantResults.slice(offset, offset + pageLimit),
-    [variantResults, offset],
+    [variantResults, offset, pageLimit],
   );
 
   const activeTotal = isVariantSearchActive
     ? variantResults.length
-    : filteredProducts.length;
+    : configuredProducts.length;
   /*
    * Regresa a la primera página si el filtro deja
    * el offset actual fuera del número de resultados.
@@ -485,15 +527,15 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
 
   return (
     <Fragment>
-      <SEO
+      {!embeddedStorefront && <SEO
         title={` ${storeName}`}
         description={
           `Explora los productos disponibles en ${storeName}. ` +
           "Compra fácil y rápido."
         }
-      />
+      />}
 
-      <Breadcrumb
+      {!embeddedStorefront && <Breadcrumb
         pages={[
           {
             label: "BIENVENIDO",
@@ -504,10 +546,10 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
             path: pathname,
           },
         ]}
-      />
+      />}
 
-      <div className="shop-area pt-50 pb-100">
-        <div className="container">
+      <div className={`shop-area pt-50 pb-100 sf-catalog sf-catalog--${storefrontTemplate}`} data-card-style={storefrontTheme.product_card_style || "adaptive"} style={{ "--catalog-accent": storefrontColors.accent || "#2563eb" }}>
+        <div className={embeddedStorefront ? "sf-catalog-container" : "container"} style={embeddedStorefront ? { maxWidth: storefrontTheme.widthValue || "1280px", margin: "0 auto", padding: "0 clamp(16px, 3vw, 36px)" } : undefined}>
           <div className="row">
             <div className="col-lg-12">
               <ShopTopbar
@@ -517,7 +559,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
                 sortedProductCount={activeTotal}
                 categories={categories}
                 loadingCats={loadingCats}
-                isStore464={isStore464}
+                isStore464={variantSearchEnabled}
                 variantSearch={variantSearch}
               />
 
@@ -527,6 +569,9 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
                 variantResults={paginatedVariantResults}
                 variantSearchActive={isVariantSearchActive}
                 storeId={storeId}
+                columns={Number(siteSettings.catalog_columns) || 3}
+                template={storefrontTemplate}
+                groupVariants={siteSettings.group_variants !== false}
               />
 
               {activeTotal > pageLimit && (
@@ -549,11 +594,11 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
         </div>
       </div>
 
-      <WhatsAppFloatingButton
+      {siteSettings.show_whatsapp !== false && <WhatsAppFloatingButton
         storePhone={storePhone}
         storeId={storeId}
         storeSlug={storeSlug}
-      />
+      />}
     </Fragment>
   );
 };
@@ -561,6 +606,10 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp }) => {
 Catalogo.propTypes = {
   storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   storeSlug: PropTypes.string,
+  storefrontSettings: PropTypes.object,
+  storefrontTemplate: PropTypes.string,
+  storefrontTheme: PropTypes.object,
+  storefrontColors: PropTypes.object,
 };
 
 export default Catalogo;

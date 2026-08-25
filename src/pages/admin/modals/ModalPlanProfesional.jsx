@@ -15,7 +15,7 @@ import {
   CircularProgress, // 👈 spinner
 } from "@mui/material";
 
-const IMG_SLOTS = 5; // 5 imágenes
+const IMG_SLOTS = 6; // límite del Plan Profesional en el backend
 
 export default function ModalPlanProfesional({
   open,

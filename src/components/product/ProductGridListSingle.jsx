@@ -51,6 +51,8 @@ const ProductGridListSingle = ({
   product, currency, storeId, spaceBottomClass, wishlistItem, compareItem,
   variantCard = false, variantGroupCard = false, matchingVariants = [],
   selectedVariant = null, requestedQty = 1, availableStock = null, variantSize = null,
+  enableEffects = false,
+  storefrontTemplate = "negocio",
 }) => {
   const dispatch = useDispatch();
   const cardRef = useRef(null);
@@ -205,7 +207,7 @@ const ProductGridListSingle = ({
 
   return (
     <Fragment>
-      <article ref={cardRef} className={clsx("neo-card is-compact", { "neo-variant-card": variantCard || variantGroupCard }, spaceBottomClass)} onMouseMove={onMouseMove} onMouseLeave={onMouseLeave}>
+      <article ref={cardRef} data-product-template={storefrontTemplate} className={clsx("neo-card sf-product-card is-compact", `sf-product-card--${storefrontTemplate}`, { "neo-variant-card sf-product-card--variant": variantCard || variantGroupCard }, spaceBottomClass)} onMouseMove={enableEffects ? onMouseMove : undefined} onMouseLeave={enableEffects ? onMouseLeave : undefined}>
         <span className="neo-glow" aria-hidden />
         <div className="neo-media" role={variantCard || variantGroupCard ? undefined : "button"} onClick={openModal} style={{ cursor: variantCard || variantGroupCard ? "default" : "pointer" }}>
           <img className="neo-img default" src={mainImg} alt={product.name} loading="lazy" onError={onImgError} />
@@ -294,6 +296,8 @@ ProductGridListSingle.propTypes = {
   availableStock: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   variantSize: PropTypes.string,
   storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  enableEffects: PropTypes.bool,
+  storefrontTemplate: PropTypes.string,
 };
 
 export default ProductGridListSingle;

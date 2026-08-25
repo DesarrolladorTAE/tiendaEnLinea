@@ -9,6 +9,9 @@ const ShopProducts = ({
   variantResults = [],
   variantSearchActive = false,
   storeId,
+  columns = 3,
+  template = "negocio",
+  groupVariants = false,
 }) => {
   const currency = {
     currencySymbol: "MX$",
@@ -23,6 +26,9 @@ const ShopProducts = ({
           variantResults={variantResults}
           variantSearchActive={variantSearchActive}
           storeId={storeId}
+          columns={columns}
+          template={template}
+          groupVariants={groupVariants}
           spaceBottomClass="mb-25"
           currency={currency}
         />
@@ -40,6 +46,9 @@ ShopProducts.propTypes = {
     PropTypes.string,
     PropTypes.number,
   ]),
+  columns: PropTypes.number,
+  template: PropTypes.string,
+  groupVariants: PropTypes.bool,
 };
 
 export default ShopProducts;

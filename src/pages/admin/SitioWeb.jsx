@@ -1,490 +1,187 @@
-// src/pages/other/SelectorVistasTienda.jsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Typography,
-  Button,
-  Chip,
-  Box,
-  Stack,
-  Tooltip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
-  useMediaQuery,
-  useTheme,
+  Alert, Box, Button, Card, Chip, CircularProgress, Container,
+  Grid, LinearProgress, Stack, Typography,
 } from "@mui/material";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import DesignServicesRoundedIcon from "@mui/icons-material/DesignServicesRounded";
+import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
+import LanguageRoundedIcon from "@mui/icons-material/LanguageRounded";
+import PaletteRoundedIcon from "@mui/icons-material/PaletteRounded";
+import RocketLaunchRoundedIcon from "@mui/icons-material/RocketLaunchRounded";
+import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import CloseIcon from "@mui/icons-material/Close";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
-import RocketLaunchOutlinedIcon from "@mui/icons-material/RocketLaunchOutlined";
+import { useAdminUi } from "../../context/AdminUiContext";
+import { getBranchSite, getMyStore, upsertBranchSite } from "../../services/admin/branchSiteService";
+import { alertFromAxiosError, showSuccess } from "../../utils/alerts";
+import SiteEditorModal from "./modals/SiteEditorModal";
 
-import axiosClient from "../../config/axiosClient";
-import { showError, showSuccess } from "../../utils/alerts";
-import planes from "../../utils/planes";
-import Renovar from "../../pages/other/Renovar";
+const PLANS = {
+  1: { name: "Demo", tagline: "Explora todas las herramientas", description: "Prueba la experiencia completa y prepara la imagen digital de tu negocio.", gradient: "linear-gradient(135deg,#334155,#0f766e)", icon: RocketLaunchRoundedIcon },
+  2: { name: "Negocio", tagline: "Tu presencia digital esencial", description: "Publica una identidad clara con logo, portada y colores de tu marca.", gradient: "linear-gradient(135deg,#0f766e,#14b8a6)", icon: StorefrontRoundedIcon },
+  3: { name: "Profesional", tagline: "Una vitrina con más impacto", description: "Enriquece tu sitio con tipografía, secciones y una galería más amplia.", gradient: "linear-gradient(135deg,#4338ca,#7c3aed)", icon: WorkspacePremiumRoundedIcon },
+  4: { name: "Avanzado", tagline: "Control creativo completo", description: "Personaliza la experiencia, el tema y hasta diez imágenes de carrusel.", gradient: "linear-gradient(135deg,#9f1239,#ea580c)", icon: RocketLaunchRoundedIcon },
+};
 
-import ModalPlanNegocio from "./modals/ModalPlanNegocio";
-import ModalPlanProfesional from "./modals/ModalPlanProfesional";
-import ModalPlanAvanzado from "./modals/ModalPlanAvanzado";
+const CAPS = {
+  1: { max_carousel: 10, max_phrases: 10, custom_font: true, advanced_theme: true },
+  2: { max_carousel: 3, max_phrases: 1, custom_font: false, advanced_theme: false },
+  3: { max_carousel: 6, max_phrases: 4, custom_font: true, advanced_theme: false },
+  4: { max_carousel: 10, max_phrases: 10, custom_font: true, advanced_theme: true },
+};
 
-const VISTAS = [
-  {
-    id: 1,
-    minPlan: 1,
-    titulo: "👀 Plan Demo",
-    subtitulo: "Catálogo básico",
-    descripcion: "Vista simple para mostrar y cargar tus primeros productos.",
-    icon: <VisibilityOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #2ecc71, #27ae60)",
-  },
-  {
-    id: 2,
-    minPlan: 2,
-    titulo: "🏪 Plan Negocio",
-    subtitulo: "Perfil de Tienda",
-    descripcion: "Presentación de tu tienda, destacar colecciones y productos.",
-    icon: <StorefrontOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #6a11cb, #2575fc)",
-  },
-  {
-    id: 3,
-    minPlan: 3,
-    titulo: "⭐ Plan Profesional",
-    subtitulo: "Conoce y Explora",
-    descripcion: "Plan Negocio + Carrusel de imágenes después de productos.",
-    icon: <WorkspacePremiumOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #f7971e, #ffd200)",
-  },
-  {
-    id: 4,
-    minPlan: 4,
-    titulo: "🚀 Plan Avanzado",
-    subtitulo: "Premium y Escalable",
-    descripcion: "Landing Page 100% completa editable 24/7 los 365 días.",
-    icon: <RocketLaunchOutlinedIcon fontSize="large" />,
-    gradient: "linear-gradient(135deg, #ff416c, #ff4b2b)",
-  },
-];
+const templateFor = (planId) => planId === 4 ? "avanzado" : planId === 3 ? "profesional" : "negocio";
 
-export default function SelectorVistasTienda({ onSelect }) {
-  const theme = useTheme();
-  const isXs = useMediaQuery(theme.breakpoints.down("sm"));
-
+export default function SitioWeb({ onSelect }) {
+  const navigate = useNavigate();
+  const { selectedBranch } = useAdminUi();
   const [store, setStore] = useState(null);
-  const [plan, setPlan] = useState(null);
-  const [isExpired, setIsExpired] = useState(false);
+  const [site, setSite] = useState(null);
+  const [apiPlan, setApiPlan] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [openRenovar, setOpenRenovar] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const branchId = selectedBranch?.id;
+  const planId = Number(apiPlan?.id || store?.plan_id || 2);
+  const plan = PLANS[planId] || PLANS[2];
+  const capabilities = apiPlan?.capabilities || CAPS[planId] || CAPS[2];
+  const expiration = planId === 1 ? store?.trial_ends_at : store?.plan_expiration;
+  const expired = expiration ? new Date(expiration).getTime() < Date.now() : store?.is_active === false;
 
-  const [open2, setOpen2] = useState(false);
-  const [open3, setOpen3] = useState(false);
-  const [open4, setOpen4] = useState(false);
-
-  const [defaults, setDefaults] = useState({});
-
-  const [saving2, setSaving2] = useState(false);
-  const [saving3, setSaving3] = useState(false);
-  const [saving4, setSaving4] = useState(false);
-
-  useEffect(() => {
-    const fetchStore = async () => {
-      try {
-        setLoading(true);
-
-        const { data } = await axiosClient.get("/perfil/mi-tienda");
-        const s = data;
-
-        setStore(s);
-
-        const p =
-          planes.find((pl) => Number(pl.plan_id) === Number(s.plan_id)) || {
-            plan_id: s.plan_id,
-            nombre: `Plan ${s.plan_id}`,
-            beneficios: [],
-          };
-
-        setPlan(p);
-
-        const fechaVigencia =
-          Number(s.plan_id) === 1 ? s.trial_ends_at : s.plan_expiration;
-
-        if (fechaVigencia) {
-          const now = new Date();
-          const fin = new Date(fechaVigencia);
-          setIsExpired(fin < now);
-        } else {
-          setIsExpired(!s.is_active);
-        }
-      } catch (error) {
-        showError("No se pudo cargar la información de la tienda.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStore();
-  }, []);
-
-  const puedeConfigurar = (vistaId) => {
-    return !isExpired && Number(store?.plan_id) === Number(vistaId);
-  };
-
-  const esPlanActual = (vistaId) => {
-    return Number(store?.plan_id) === Number(vistaId);
-  };
-
-  const fetchDefaults = async () => {
-    if (!store?.id) {
-      setDefaults({});
-      return;
-    }
-
+  const load = useCallback(async () => {
+    setLoading(true);
     try {
-      const { data } = await axiosClient.get(`/admin/sitios/${store.id}`);
-      setDefaults(data?.data || {});
-    } catch {
-      setDefaults({});
-    }
-  };
+      const { data: storeData } = await getMyStore();
+      setStore(storeData);
+      if (!branchId || !storeData?.id) return;
+      const { data } = await getBranchSite(storeData.id, branchId);
+      setSite(data?.data || null);
+      setApiPlan(data?.plan || data?.data?.plan || null);
+    } catch (error) {
+      alertFromAxiosError(error, "No se pudo cargar la configuración del sitio.");
+    } finally { setLoading(false); }
+  }, [branchId]);
 
-  const handleSelect = async (vistaId) => {
-    if (isExpired) {
-      showError("Tu plan está vencido. Renueva para habilitar la configuración.");
-      setOpenRenovar(true);
-      return;
-    }
+  useEffect(() => { load(); }, [load]);
 
-    if (!puedeConfigurar(vistaId)) {
-      showError("Solo puedes configurar esta vista si tu plan la incluye.");
-      return;
-    }
+  const features = useMemo(() => [
+    `${capabilities.max_carousel} imágenes de carrusel`,
+    `${capabilities.max_phrases} frases destacadas`,
+    capabilities.custom_font ? "Tipografía personalizada" : "Tipografía predeterminada",
+    capabilities.advanced_theme ? "Tema avanzado" : "Diseño guiado",
+  ], [capabilities]);
 
-    await fetchDefaults();
-    onSelect?.(vistaId);
-
-    if (vistaId === 2) setOpen2(true);
-    if (vistaId === 3) setOpen3(true);
-    if (vistaId === 4) setOpen4(true);
-  };
-
-  const submitPlan2 = async (fd) => {
+  const save = async (formData) => {
+    if (!store?.id || !branchId) return;
+    setSaving(true);
     try {
-      if (!puedeConfigurar(2)) {
-        showError("Solo puedes configurar esta vista si tu plan la incluye.");
-        return;
-      }
-
-      setSaving2(true);
-
-      const url = defaults?.id
-        ? `/admin/sitios/${store.id}/plan-2/update`
-        : `/admin/sitios/${store.id}/plan-2/create`;
-
-      await axiosClient.post(url, fd);
-      await fetchDefaults();
-      setOpen2(false);
-
-      showSuccess?.("Guardado correctamente (Plan Negocio)") ||
-        alert("Guardado correctamente (Plan Negocio)");
-    } catch {
-      showError("No se pudo guardar el Plan Negocio.");
-    } finally {
-      setSaving2(false);
-    }
+      if (!formData.has("template")) formData.append("template", templateFor(planId));
+      const { data } = await upsertBranchSite(store.id, branchId, formData);
+      setSite(data?.data || null);
+      setApiPlan(data?.data?.plan || apiPlan);
+      setEditorOpen(false);
+      await showSuccess(data?.message || "Sitio web guardado correctamente.");
+    } catch (error) {
+      alertFromAxiosError(error, error?.response?.data?.message || "No se pudo guardar el sitio web.");
+      throw error;
+    } finally { setSaving(false); }
   };
 
-  const submitPlan3 = async (fd) => {
-    try {
-      if (!puedeConfigurar(3)) {
-        showError("Solo puedes configurar esta vista si tu plan la incluye.");
-        return;
-      }
+  if (loading) return (
+    <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}>
+      <Stack spacing={2} alignItems="center"><CircularProgress size={34} /><Typography color="text.secondary">Preparando tu sitio web…</Typography></Stack>
+    </Box>
+  );
 
-      setSaving3(true);
+  if (!branchId) return (
+    <Container maxWidth="md" sx={{ py: 8 }}>
+      <Card variant="outlined" sx={{ p: { xs: 3, md: 5 }, borderRadius: 4, textAlign: "center" }}>
+        <StorefrontRoundedIcon color="primary" sx={{ fontSize: 52, mb: 1 }} />
+        <Typography variant="h5" fontWeight={800}>Selecciona una sucursal</Typography>
+        <Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>Cada sucursal tiene su propio sitio. Elige una para comenzar a configurarlo.</Typography>
+        <Button variant="contained" onClick={() => navigate("/admin/sucursales")}>Ir a sucursales</Button>
+      </Card>
+    </Container>
+  );
 
-      const url = defaults?.id
-        ? `/admin/sitios/${store.id}/plan-3/update`
-        : `/admin/sitios/${store.id}/plan-3/create`;
-
-      await axiosClient.post(url, fd);
-      await fetchDefaults();
-      setOpen3(false);
-
-      showSuccess?.("Guardado correctamente (Plan Profesional)") ||
-        alert("Guardado correctamente (Plan Profesional)");
-    } catch {
-      showError("No se pudo guardar el Plan Profesional.");
-    } finally {
-      setSaving3(false);
-    }
-  };
-
-  const submitPlan4 = async (fd) => {
-    try {
-      if (!puedeConfigurar(4)) {
-        showError("Solo puedes configurar esta vista si tu plan la incluye.");
-        return;
-      }
-
-      setSaving4(true);
-
-      const url = defaults?.id
-        ? `/admin/sitios/${store.id}/plan-3/update`
-        : `/admin/sitios/${store.id}/plan-3/create`;
-
-      await axiosClient.post(url, fd);
-      await fetchDefaults();
-      setOpen4(false);
-
-      showSuccess?.("Guardado correctamente (Plan Avanzado)") ||
-        alert("Guardado correctamente (Plan Avanzado)");
-    } catch {
-      showError("No se pudo guardar el Plan Avanzado.");
-    } finally {
-      setSaving4(false);
-    }
-  };
-
-  if (loading) {
-    return <Typography sx={{ px: 2, py: 1 }}>Cargando…</Typography>;
-  }
-
-  if (!store) return null;
-
+  const carouselCount = Array.from({ length: capabilities.max_carousel }, (_, i) => site?.carrusel?.[`imagen_${i + 1}`]).filter(Boolean).length;
+  const socialCount = [site?.facebook, site?.instagram, site?.twitter, site?.tiktok].filter(Boolean).length;
+  const phrasesCount = (site?.phrases || []).filter(Boolean).length;
+  const configuredItems = [site?.logo, site?.img_portada, site?.titulo_1, site?.descripcion, site?.hero_title, site?.hero_subtitle, site?.hero_button_text, ...Array(carouselCount).fill(true), ...Array(socialCount).fill(true), ...Array(phrasesCount).fill(true)].filter(Boolean).length;
+  const totalItems = 7 + capabilities.max_carousel + 4 + capabilities.max_phrases;
+  const progress = site ? Math.round((configuredItems / totalItems) * 100) : 0;
+  const sections = [
+    { title: "Identidad", detail: [site?.logo && "Logo", site?.titulo_1 && "título", site?.descripcion && "descripción"].filter(Boolean).join(", "), current: [site?.logo, site?.titulo_1, site?.descripcion].filter(Boolean).length, total: 3, icon: StorefrontRoundedIcon },
+    { title: "Portada y hero", detail: [site?.img_portada && "Portada", site?.hero_title && "mensaje", site?.hero_button_text && "botón"].filter(Boolean).join(", "), current: [site?.img_portada, site?.hero_title, site?.hero_button_text].filter(Boolean).length, total: 3, icon: ImageRoundedIcon },
+    { title: "Carrusel", detail: `${carouselCount} de ${capabilities.max_carousel} imágenes`, current: carouselCount, total: capabilities.max_carousel, icon: DesignServicesRoundedIcon },
+    { title: "Redes sociales", detail: `${socialCount} de 4 conectadas`, current: socialCount, total: 4, icon: LanguageRoundedIcon },
+    { title: "Diseño y frases", detail: `${phrasesCount} de ${capabilities.max_phrases} frases`, current: phrasesCount, total: capabilities.max_phrases, icon: PaletteRoundedIcon },
+  ];
   return (
-    <>
-      <Container maxWidth="lg" sx={{ py: { xs: 2, md: 3 } }}>
-        <Box
-          mb={2.5}
-          display="flex"
-          flexWrap="wrap"
-          alignItems="center"
-          gap={1.5}
-          justifyContent="space-between"
-        >
-          <Typography variant="h5" fontWeight={800}>
-            🌐 Mi Sitio Web
-          </Typography>
+    <Box sx={{ minHeight: "100%", background: "linear-gradient(145deg,#f5f7ff 0%,#f8fafc 45%,#eefbf8 100%)", py: { xs: 2, md: 3 } }}>
+      <Container maxWidth="lg">
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} gap={2} sx={{ mb: 3 }}>
+          <Box><Typography variant="h4" fontWeight={900}>Sitio Web</Typography><Typography color="text.secondary">Administra la presencia digital de <strong>{selectedBranch?.name || "tu sucursal"}</strong>.</Typography></Box>
+          
+        </Stack>
 
-          <Stack direction="row" alignItems="center" spacing={1.5}>
-            <Chip
-              label={isExpired ? "Plan inactivo" : "Plan activo"}
-              color={isExpired ? "error" : "success"}
-              variant="outlined"
-              sx={{ fontWeight: 700 }}
-            />
+        {expired && <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>Tu plan está inactivo o vencido. Renueva tu suscripción para volver a editar el sitio.</Alert>}
 
-            <Chip
-              label={plan?.nombre || `Plan ${store.plan_id}`}
-              color="primary"
-              variant="outlined"
-              sx={{ fontWeight: 700 }}
-            />
-          </Stack>
-        </Box>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          {[
+            { label: "Estado", value: site ? (site.is_active ? "Publicado" : "Pausado") : "Sin publicar", color: site?.is_active ? "#059669" : "#d97706" },
+            { label: "Configuración", value: `${progress}%`, color: "#2563eb" },
+            { label: "Imágenes", value: `${carouselCount}/${capabilities.max_carousel}`, color: "#7c3aed" },
+            { label: "Redes", value: `${socialCount}/4`, color: "#db2777" },
+          ].map((metric) => <Grid item xs={6} md={3} key={metric.label}><Card sx={{ p: 2, borderRadius: 3, height: "100%", border: "1px solid rgba(148,163,184,.22)", boxShadow: "0 8px 24px rgba(15,23,42,.06)", position: "relative", overflow: "hidden", "&:before": { content: '""', position: "absolute", left: 0, top: 0, bottom: 0, width: 4, bgcolor: metric.color } }}><Typography variant="caption" color="text.secondary" fontWeight={800}>{metric.label}</Typography><Typography variant="h6" fontWeight={900} sx={{ mt: .25, color: metric.color }}>{metric.value}</Typography></Card></Grid>)}
+        </Grid>
 
-        <Grid
-          container
-          spacing={{ xs: 2, md: 3 }}
-          justifyContent="center"
-          alignItems="stretch"
-        >
-          {VISTAS.map((v) => {
-            const habilitado = puedeConfigurar(v.id);
-            const esActual = esPlanActual(v.id);
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={7}>
+            <Card sx={{ borderRadius: 3, overflow: "hidden", height: "100%", border: "1px solid rgba(99,102,241,.16)", boxShadow: "0 12px 32px rgba(30,41,59,.08)" }}>
+              <Box sx={{ p: 2.25, color: "white", background: "linear-gradient(120deg,#1e293b,#3730a3)" }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography fontWeight={900} color="white" >Resumen de configuración</Typography><Typography variant="body2" sx={{ color: "rgba(255,255,255,.72)" }}>Revisa rápidamente qué está listo.</Typography></Box><Chip label={`Plan ${plan.name}`} size="small" sx={{ color: "white", bgcolor: "rgba(255,255,255,.14)", fontWeight: 800 }} /></Stack></Box>
+              <Stack divider={<Box sx={{ borderTop: "1px solid", borderColor: "divider" }} />}>
+                {sections.map((section) => { const Icon = section.icon; const complete = section.current >= section.total; const partial = section.current > 0 && !complete; return <Stack key={section.title} direction="row" alignItems="center" spacing={1.5} sx={{ px: 2.25, py: 1.55, transition: ".2s", "&:hover": { bgcolor: "#f8faff" } }}><Box sx={{ width: 38, height: 38, borderRadius: 2, display: "grid", placeItems: "center", bgcolor: complete ? "#dcfce7" : partial ? "#fef3c7" : "#f1f5f9", color: complete ? "#059669" : partial ? "#d97706" : "text.disabled" }}><Icon fontSize="small" /></Box><Box sx={{ flex: 1, minWidth: 0 }}><Typography variant="body2" fontWeight={850}>{section.title}</Typography><Typography variant="caption" color="text.secondary">{section.detail || "Sin información configurada"}</Typography></Box><Chip icon={complete ? <CheckCircleRoundedIcon /> : undefined} label={complete ? "Listo" : partial ? "En progreso" : "Pendiente"} size="small" color={complete ? "success" : partial ? "warning" : "default"} variant={partial ? "filled" : "outlined"} sx={{ fontWeight: 750 }} /></Stack>; })}
+              </Stack>
+            </Card>
+          </Grid>
 
-            return (
-              <Grid item xs={12} sm={6} md={6} lg={5} key={v.id}>
-                <Card
-                  elevation={habilitado ? 8 : 1}
-                  sx={{
-                    height: "100%",
-                    borderRadius: 3,
-                    overflow: "hidden",
-                    position: "relative",
-                    bgcolor: theme.palette.mode === "dark" ? "grey.900" : "#fff",
-                    transition: "transform .18s ease, box-shadow .18s ease",
-                    "&:hover": {
-                      transform: habilitado ? "translateY(-3px)" : "none",
-                      boxShadow: habilitado ? 12 : 2,
-                    },
-                    opacity: habilitado ? 1 : 0.9,
-                    filter: habilitado ? "none" : "grayscale(10%)",
-                    border: `2px solid ${habilitado
-                        ? theme.palette.success.light
-                        : theme.palette.divider
-                      }`,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      height: 10,
-                      width: "100%",
-                      background: v.gradient,
-                    }}
-                  />
-
-                  <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-                    <Stack
-                      direction="row"
-                      spacing={2}
-                      alignItems="center"
-                      mb={1.5}
-                      flexWrap="wrap"
-                    >
-                      <Box
-                        sx={{
-                          width: 56,
-                          height: 56,
-                          borderRadius: 2,
-                          display: "grid",
-                          placeItems: "center",
-                          color: "#fff",
-                          background: v.gradient,
-                          boxShadow: "0 6px 18px rgba(0,0,0,.2)",
-                        }}
-                      >
-                        {v.icon}
-                      </Box>
-
-                      <Box>
-                        <Typography variant="h6" fontWeight={800} lineHeight={1.1}>
-                          {v.titulo}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          {v.subtitulo}
-                        </Typography>
-                      </Box>
-                    </Stack>
-
-                    <Typography
-                      variant="body1"
-                      color="text.primary"
-                      sx={{ opacity: 0.9 }}
-                    >
-                      {v.descripcion}
-                    </Typography>
-
-                    <Box mt={2}>
-                      {habilitado ? (
-                        <Chip
-                          icon={<CheckCircleIcon />}
-                          label={esActual ? "Plan actual" : "No incluido en tu plan"}
-                          color="success"
-                          variant="outlined"
-                          sx={{ fontWeight: 700 }}
-                        />
-                      ) : (
-                        <Chip
-                          icon={<LockOutlinedIcon />}
-                          label={isExpired ? "Plan vencido" : "No disponible"}
-                          color="default"
-                          variant="outlined"
-                          sx={{ fontWeight: 700 }}
-                        />
-                      )}
-                    </Box>
-                  </CardContent>
-
-                  <CardActions sx={{ p: { xs: 2.5, md: 3 }, pt: 0 }}>
-                    <Tooltip
-                      placement="top"
-                      enterTouchDelay={0}
-                      leaveTouchDelay={2500}
-                      title={
-                        habilitado
-                          ? "Editar/Configurar esta vista"
-                          : isExpired
-                            ? "Tu plan está vencido. Renueva para habilitar."
-                            : "Esta vista no está incluida en tu plan."
-                      }
-                    >
-                      <span style={{ width: "100%" }}>
-                        <Button
-                          fullWidth
-                          size="large"
-                          variant={habilitado ? "contained" : "outlined"}
-                          color={habilitado ? "primary" : "inherit"}
-                          onClick={() => handleSelect(v.id)}
-                          disabled={!habilitado}
-                          sx={{ fontWeight: 800, py: 1.2, borderRadius: 2 }}
-                        >
-                          {habilitado ? "CONFIGURAR" : "BLOQUEADO"}
-                        </Button>
-                      </span>
-                    </Tooltip>
-                  </CardActions>
-                </Card>
-              </Grid>
-            );
-          })}
+          <Grid item xs={12} md={5}>
+            <Card sx={{ borderRadius: 3, height: "100%", overflow: "hidden", border: "1px solid rgba(20,184,166,.2)", boxShadow: "0 12px 32px rgba(30,41,59,.08)" }}>
+              <Box sx={{ height: 150, position: "relative", bgcolor: "#dbeafe", background: site?.img_portada ? `linear-gradient(0deg,rgba(15,23,42,.48),rgba(15,23,42,.05)),url(${site.img_portada}) center/cover` : "linear-gradient(135deg,#1e293b,#0f766e)" }}>
+                <Box sx={{ position: "absolute", left: 20, bottom: -25, width: 64, height: 64, borderRadius: 2.5, bgcolor: "white", p: .5, boxShadow: "0 8px 22px rgba(15,23,42,.25)", display: "grid", placeItems: "center", overflow: "hidden" }}>{site?.logo ? <Box component="img" src={site.logo} alt="Logo" sx={{ width: "100%", height: "100%", objectFit: "contain", borderRadius: 2 }} /> : <StorefrontRoundedIcon color="disabled" />}</Box>
+                <Chip label={site?.img_portada ? "Portada cargada" : "Sin portada"} size="small" sx={{ position: "absolute", right: 14, top: 14, bgcolor: "rgba(255,255,255,.9)", fontWeight: 800 }} />
+              </Box>
+              <Box sx={{ p: 2.5, pt: 4.5 }}>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start"><Box><Typography fontWeight={900}>Avance del sitio</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: .25 }}>{progress === 100 ? "Tu sitio está completo." : "Completa los elementos pendientes."}</Typography></Box><Typography variant="h4" fontWeight={900} color="primary">{progress}%</Typography></Stack>
+              <LinearProgress variant="determinate" value={progress} sx={{ my: 2.5, height: 8, borderRadius: 8 }} />
+              <Stack spacing={1.25}>
+                <Stack direction="row" justifyContent="space-between"><Typography variant="body2" color="text.secondary">Sucursal</Typography><Typography variant="body2" fontWeight={800}>{selectedBranch?.name || `#${branchId}`}</Typography></Stack>
+                <Stack direction="row" justifyContent="space-between"><Typography variant="body2" color="text.secondary">Plantilla</Typography><Typography variant="body2" fontWeight={800} textTransform="capitalize">{site?.template || templateFor(planId)}</Typography></Stack>
+                <Stack direction="row" justifyContent="space-between"><Typography variant="body2" color="text.secondary">Frases</Typography><Typography variant="body2" fontWeight={800}>{phrasesCount}/{capabilities.max_phrases}</Typography></Stack>
+              </Stack>
+              <Button fullWidth variant="contained" endIcon={<ArrowForwardRoundedIcon />} disabled={expired} onClick={() => { onSelect?.(planId); setEditorOpen(true); }} sx={{ mt: 3, borderRadius: 2, py: 1.1, textTransform: "none", fontWeight: 800 }}>{site ? "Continuar configurando" : "Comenzar configuración"}</Button>
+              <Button fullWidth size="small" onClick={() => navigate("/admin/sucursales")} sx={{ mt: 1, textTransform: "none" }}>Cambiar sucursal</Button>
+              </Box>
+            </Card>
+          </Grid>
         </Grid>
       </Container>
 
-      <Dialog
-        open={openRenovar}
-        onClose={() => setOpenRenovar(false)}
-        fullWidth
-        maxWidth="md"
-        fullScreen={isXs}
-      >
-        <DialogTitle sx={{ m: 0, p: 2 }}>
-          Renovar / Actualizar plan
-          <IconButton
-            aria-label="close"
-            onClick={() => setOpenRenovar(false)}
-            sx={{
-              position: "absolute",
-              right: 8,
-              top: 8,
-              color: (t) => t.palette.grey[500],
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent dividers>
-          <Renovar />
-        </DialogContent>
-      </Dialog>
-
-      <ModalPlanNegocio
-        open={open2}
-        onClose={() => setOpen2(false)}
-        onSubmit={submitPlan2}
-        storeId={store?.id}
-        defaultValues={defaults}
-        saving={saving2}
+      <SiteEditorModal
+        open={editorOpen}
+        onClose={() => !saving && setEditorOpen(false)}
+        onSubmit={save}
+        defaultValues={site || {}}
+        capabilities={capabilities}
+        planName={plan.name}
+        sampleName={store?.name || selectedBranch?.name || "Mi tienda"}
+        template={templateFor(planId)}
+        saving={saving}
       />
-
-      <ModalPlanProfesional
-        open={open3}
-        onClose={() => setOpen3(false)}
-        onSubmit={submitPlan3}
-        storeId={store?.id}
-        defaultValues={defaults}
-        saving={saving3}
-      />
-
-      <ModalPlanAvanzado
-        open={open4}
-        onClose={() => setOpen4(false)}
-        onSubmit={submitPlan4}
-        storeId={store?.id}
-        defaultValues={defaults}
-        saving={saving4}
-      />
-    </>
+    </Box>
   );
 }
