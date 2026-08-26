@@ -30,6 +30,12 @@ const normalizeSettings = (value) => {
   try { return value ? JSON.parse(value) : {}; } catch { return {}; }
 };
 
+const settingEnabled = (value, fallback = false) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "string") return !["0", "false", "off", "no"].includes(value.trim().toLowerCase());
+  return Boolean(value);
+};
+
 const productStock = (product) => Array.isArray(product?.variants)
   ? product.variants.reduce((total, variant) => total + (Number(variant?.stock) || 0), 0)
   : Number(product?.stock ?? product?.qty) || 0;
@@ -222,7 +228,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
   const storeId = Number(storeIdProp ?? 0) || null;
   const [siteSettings, setSiteSettings] = useState(() => normalizeSettings(storefrontSettings));
   const pageLimit = Number(siteSettings.products_per_page) || DEFAULT_PAGE_LIMIT;
-  const variantSearchEnabled = Boolean(siteSettings.variant_search_enabled);
+  const variantSearchEnabled = settingEnabled(siteSettings.variant_search_enabled);
   const embeddedStorefront = storefrontSettings !== null;
 
   useEffect(() => {
@@ -247,6 +253,11 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
 
   // Filtros normales.
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedSort, setSelectedSort] = useState(siteSettings.product_sort || "newest");
+
+  useEffect(() => {
+    setSelectedSort(siteSettings.product_sort || "newest");
+  }, [siteSettings.product_sort]);
 
   const [selectedCategory, setSelectedCategory] = useState(null);
 
@@ -303,6 +314,12 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
   };
 
   const getFilterSortParams = (type, value) => {
+    if (type === "sortBy") {
+      setSelectedSort(value || "newest");
+      setCurrentPage(1);
+      setOffset(0);
+      return;
+    }
     if (type === "searchQuery") {
       setSearchQuery(value ?? "");
       setCurrentPage(1);
@@ -392,7 +409,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
   const configuredProducts = useMemo(() => {
     let result = [...filteredProducts];
     if (siteSettings.out_of_stock === "hide") result = result.filter((product) => productStock(product) > 0);
-    const sort = siteSettings.product_sort || "newest";
+    const sort = selectedSort;
     const compare = {
       oldest: (a, b) => Number(a?.id || 0) - Number(b?.id || 0),
       newest: (a, b) => Number(b?.id || 0) - Number(a?.id || 0),
@@ -405,7 +422,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
     if (compare) result.sort(compare);
     if (siteSettings.out_of_stock === "last") result.sort((a, b) => Number(productStock(b) > 0) - Number(productStock(a) > 0));
     return result;
-  }, [filteredProducts, siteSettings]);
+  }, [filteredProducts, siteSettings, selectedSort]);
 
   /* =======================================================
    * Interpretación de la búsqueda especial
@@ -561,6 +578,10 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
                 loadingCats={loadingCats}
                 isStore464={variantSearchEnabled}
                 variantSearch={variantSearch}
+                showSortSelector={settingEnabled(siteSettings.show_sort_selector)}
+                currentSort={selectedSort}
+                storefrontColors={storefrontColors}
+                storefrontTheme={storefrontTheme}
               />
 
               <ShopProducts
@@ -571,7 +592,11 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
                 storeId={storeId}
                 columns={Number(siteSettings.catalog_columns) || 3}
                 template={storefrontTemplate}
-                groupVariants={siteSettings.group_variants !== false}
+                groupVariants={settingEnabled(siteSettings.group_variants, true)}
+                storefrontSettings={siteSettings}
+                storefrontTheme={storefrontTheme}
+                storefrontColors={storefrontColors}
+                storeSlug={storeSlug}
               />
 
               {activeTotal > pageLimit && (
@@ -594,10 +619,12 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
         </div>
       </div>
 
-      {siteSettings.show_whatsapp !== false && <WhatsAppFloatingButton
+      {settingEnabled(siteSettings.show_whatsapp, true) && <WhatsAppFloatingButton
         storePhone={storePhone}
         storeId={storeId}
         storeSlug={storeSlug}
+        storefrontTheme={storefrontTheme}
+        storefrontColors={storefrontColors}
       />}
     </Fragment>
   );

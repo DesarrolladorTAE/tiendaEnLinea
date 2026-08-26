@@ -1,6 +1,7 @@
 import PropTypes from "prop-types";
 import React, { Fragment, useRef, useState } from "react";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import clsx from "clsx";
 import { getDiscountPrice } from "../../helpers/product";
 import Rating from "./sub-components/ProductRating";
@@ -53,8 +54,10 @@ const ProductGridListSingle = ({
   selectedVariant = null, requestedQty = 1, availableStock = null, variantSize = null,
   enableEffects = false,
   storefrontTemplate = "negocio",
+  storefrontSettings = {}, storefrontTheme = {}, storefrontColors = {}, storeSlug,
 }) => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const cardRef = useRef(null);
   const [modalShow, setModalShow] = useState(false);
 
@@ -106,10 +109,20 @@ const ProductGridListSingle = ({
   const hasWholesalePrice = variantCard && isStore464 && safeRequestedQty >= 7;
   const variantCartPrice = hasWholesalePrice ? 320 : displayedVariantPrice;
   const canQuickAdd = variantCard || (!hasVariants && !useWh);
+  const useProductPage = storefrontSettings.product_view === "page";
+  const showShare = [true, 1, "1", "true"].includes(storefrontSettings.show_share);
+  const storefrontBase = window.location.pathname.startsWith("/tienda/") && storeSlug ? `/tienda/${encodeURIComponent(storeSlug)}` : "";
+  const productUrl = `${window.location.origin}${storefrontBase}/producto/${product.id}`;
 
   const openModal = () => {
     if (variantCard || variantGroupCard) return;
+    if (useProductPage && storeSlug) { navigate(`${storefrontBase}/producto/${product.id}`); return; }
     setModalShow(true);
+  };
+
+  const shareProduct = async () => {
+    if (navigator.share) { await navigator.share({ title: product.name, text: storefrontSettings.product_legend || product.name, url: productUrl }).catch(() => {}); return; }
+    await navigator.clipboard?.writeText(productUrl);
   };
 
   const handleAddVariantGroup = () => {
@@ -274,10 +287,12 @@ const ProductGridListSingle = ({
           {variantGroupCard && <button type="button" onClick={handleAddVariantGroup} style={{ display: "flex", width: "100%", minHeight: 42, alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, padding: "9px 8px", border: 0, borderRadius: 10, color: "#0b0e12", background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 950 }}><i className="pe-7s-cart" /> Agregar {totalRequestedQty} piezas</button>}
 
           {variantCard && <button type="button" onClick={handleQuickAdd} style={{ display: "flex", width: "100%", minHeight: 40, alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, padding: "9px 8px", border: 0, borderRadius: 10, color: "#0b0e12", background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 950 }}><i className="pe-7s-cart" /> Agregar {safeRequestedQty}</button>}
+          {storefrontSettings.product_legend && <p className="sf-product-legend">{storefrontSettings.product_legend}</p>}
+          {showShare && !variantCard && !variantGroupCard && <button type="button" className="sf-share-product" onClick={shareProduct}><i className="pe-7s-share" /> Compartir producto</button>}
         </div>
       </article>
 
-      {!variantCard && !variantGroupCard && <ProductModal show={modalShow} onHide={() => setModalShow(false)} images={images} product={product} currency={currency} discountedPrice={normalDiscounted} finalProductPrice={normalPrice} finalDiscountedPrice={normalDiscountPrice} onWhatsapp={handleWhatsappFromModal} wishlistItem={wishlistItem} compareItem={compareItem} />}
+      {!variantCard && !variantGroupCard && <ProductModal show={modalShow} onHide={() => setModalShow(false)} images={images} product={product} currency={currency} discountedPrice={normalDiscounted} finalProductPrice={normalPrice} finalDiscountedPrice={normalDiscountPrice} onWhatsapp={handleWhatsappFromModal} wishlistItem={wishlistItem} compareItem={compareItem} storefrontTheme={storefrontTheme} storefrontColors={storefrontColors} productLegend={storefrontSettings.product_legend || ""} />}
     </Fragment>
   );
 };
@@ -298,6 +313,10 @@ ProductGridListSingle.propTypes = {
   storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   enableEffects: PropTypes.bool,
   storefrontTemplate: PropTypes.string,
+  storefrontSettings: PropTypes.object,
+  storefrontTheme: PropTypes.object,
+  storefrontColors: PropTypes.object,
+  storeSlug: PropTypes.string,
 };
 
 export default ProductGridListSingle;

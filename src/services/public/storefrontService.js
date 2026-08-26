@@ -19,3 +19,6 @@ export const getPublicStorefront = (branchSlug) =>
   axios.get(
     `${API_BASE}/public/storefront/${encodeURIComponent(branchSlug)}`,
   );
+
+export const getPublicStoreProducts = (storeSlug) =>
+  axios.get(`${API_BASE}/tienda/${encodeURIComponent(storeSlug)}/products`);

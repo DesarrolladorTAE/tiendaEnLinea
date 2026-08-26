@@ -34,7 +34,7 @@ function pickRandom(items, n = 5) {
   return copy.slice(0, n);
 }
 
-const PALETTE = {
+const DEFAULT_PALETTE = {
   bgCard:
     "linear-gradient(180deg, rgba(10,12,16,0.92) 0%, rgba(12,14,20,0.92) 100%)",
   bgMenu:
@@ -59,7 +59,18 @@ const ShopTopAction = ({
   loadingCats = false,
   isStore464 = false,
   variantSearch = "",
+  showSortSelector = false,
+  currentSort = "newest",
+  storefrontColors = {}, storefrontTheme = {},
 }) => {
+  const PALETTE = React.useMemo(() => {
+    const background = storefrontColors.background || "#ffffff";
+    const text = storefrontColors.text || "#111827";
+    const secondary = storefrontColors.secondary || "#475569";
+    const accent = storefrontColors.accent || "#2563eb";
+    const primary = storefrontColors.primary || "#111827";
+    return { ...DEFAULT_PALETTE, bgCard: background, bgMenu: background, menuHeaderBg: background, stroke: secondary, txt: text, accent, accentSoft: `color-mix(in srgb, ${accent} 14%, transparent)`, glow: storefrontTheme.shadowValue || `0 10px 38px color-mix(in srgb, ${accent} 28%, transparent)`, cyan: accent, cyanSoft: `color-mix(in srgb, ${accent} 12%, transparent)`, pink: primary, pinkSoft: `color-mix(in srgb, ${primary} 12%, transparent)` };
+  }, [storefrontColors, storefrontTheme.shadowValue]);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [activeCat, setActiveCat] = React.useState(null);
 
@@ -341,7 +352,7 @@ const ShopTopAction = ({
 
   return (
     <>
-      <Card
+      <Card className="sf-shop-search"
         elevation={0}
         sx={{
           mb: 3.5,
@@ -395,6 +406,29 @@ const ShopTopAction = ({
             "& .MuiInputBase-input::placeholder": { color: PALETTE.txt },
           }}
         />
+        {showSortSelector && (
+          <TextField
+            select
+            fullWidth
+            label="Ordenar productos"
+            value={currentSort}
+            onChange={(event) => getFilterSortParams("sortBy", event.target.value)}
+            sx={{
+              mb: 2,
+              "& .MuiOutlinedInput-root": { color: PALETTE.txt, bgcolor: PALETTE.cyanSoft, borderRadius: 2 },
+              "& .MuiOutlinedInput-notchedOutline": { borderColor: PALETTE.stroke },
+              "& .MuiInputLabel-root, & .MuiSelect-icon": { color: PALETTE.txt },
+            }}
+          >
+            <MenuItem value="newest">Más recientes primero</MenuItem>
+            <MenuItem value="oldest">Más antiguos primero</MenuItem>
+            <MenuItem value="name_asc">Nombre A–Z</MenuItem>
+            <MenuItem value="name_desc">Nombre Z–A</MenuItem>
+            <MenuItem value="price_asc">Precio menor a mayor</MenuItem>
+            <MenuItem value="price_desc">Precio mayor a menor</MenuItem>
+            <MenuItem value="stock_desc">Mayor existencia primero</MenuItem>
+          </TextField>
+        )}
         {isStore464 && (
           <Box
             sx={{
@@ -522,10 +556,11 @@ const ShopTopAction = ({
                         bgcolor: "rgba(118,224,255,0.10)",
                       },
                       "& .MuiMenuItem-root.Mui-selected": {
-                        bgcolor: "rgba(124,77,255,0.16) !important",
+                        bgcolor: `${PALETTE.accentSoft} !important`,
+                        color: `${PALETTE.accent} !important`,
                       },
                       "& .MuiMenuItem-root.Mui-selected:hover": {
-                        bgcolor: "rgba(124,77,255,0.22) !important",
+                        bgcolor: `${PALETTE.accentSoft} !important`,
                       },
 
                       "& .MuiListSubheader-root": {
@@ -537,10 +572,14 @@ const ShopTopAction = ({
                         backgroundImage: "none",
                       },
 
-                      "&::-webkit-scrollbar": { width: 8 },
+                      scrollbarWidth: "thin",
+                      scrollbarColor: `${PALETTE.accent} ${PALETTE.bgMenu}`,
+                      "&::-webkit-scrollbar": { width: 10 },
+                      "&::-webkit-scrollbar-track": { bgcolor: PALETTE.bgMenu, borderRadius: 999 },
                       "&::-webkit-scrollbar-thumb": {
-                        background: "rgba(255,255,255,0.18)",
+                        background: PALETTE.accent,
                         borderRadius: 999,
+                        border: `3px solid ${PALETTE.bgMenu}`,
                       },
                     },
                   },
@@ -640,13 +679,13 @@ const ShopTopAction = ({
                         }}
                         sx={{
                           fontWeight: 950,
-                          color: "#fff",
+                          color: PALETTE.txt,
                           bgcolor: "rgba(255,255,255,0.04)",
                           borderTop: "1px solid rgba(255,255,255,0.06)",
                           borderBottom: "1px solid rgba(255,255,255,0.06)",
                         }}
                       >
-                        <Typography sx={{ fontWeight: 950, color: "#fff" }}>
+                        <Typography sx={{ fontWeight: 950, color: PALETTE.txt }}>
                           {g.name}
                         </Typography>
                       </MenuItem>
@@ -703,14 +742,14 @@ const ShopTopAction = ({
                     sx={{
                       bgcolor: PALETTE.bgMenu,
                       backgroundImage: "none",
-                      color: "#fff",
+                      color: PALETTE.txt,
                       fontWeight: 950,
                       letterSpacing: ".25px",
                       lineHeight: "34px",
                       opacity: 0.96,
                       mt: 0.5,
                       "&.MuiListSubheader-sticky": {
-                        color: "#fff",
+                        color: PALETTE.txt,
                         bgcolor: PALETTE.bgMenu,
                         backgroundImage: "none",
                       },
@@ -785,7 +824,7 @@ const ShopTopAction = ({
                     height: 34,
                     fontWeight: 900,
                     letterSpacing: ".2px",
-                    color: activeCat ? PALETTE.cyan : "#fff",
+                    color: activeCat ? PALETTE.cyan : PALETTE.txt,
                     borderRadius: 999,
                     border: `1px solid ${
                       activeCat ? "rgba(255,255,255,.12)" : PALETTE.cyan
@@ -819,7 +858,7 @@ const ShopTopAction = ({
                         height: 34,
                         fontWeight: 800,
                         letterSpacing: ".2px",
-                        color: active ? "#fff" : PALETTE.cyan,
+                        color: active ? PALETTE.txt : PALETTE.cyan,
                         borderRadius: 999,
                         border: `1px solid ${
                           active ? PALETTE.accent : "rgba(255,255,255,.12)"
@@ -849,7 +888,7 @@ const ShopTopAction = ({
                       fontWeight: 900,
                       borderRadius: 2,
                       color: "#0B0E12",
-                      bgcolor: "#fff",
+                      bgcolor: PALETTE.bgCard,
                       boxShadow: "0 14px 34px rgba(118,224,255,0.30)",
                     }}
                   >
@@ -1085,6 +1124,10 @@ ShopTopAction.propTypes = {
   loadingCats: PropTypes.bool,
   isStore464: PropTypes.bool,
   variantSearch: PropTypes.string,
+  showSortSelector: PropTypes.bool,
+  currentSort: PropTypes.string,
+  storefrontColors: PropTypes.object,
+  storefrontTheme: PropTypes.object,
 };
 
 export default ShopTopAction;

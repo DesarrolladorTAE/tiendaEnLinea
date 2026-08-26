@@ -34,6 +34,10 @@ import SortRoundedIcon from "@mui/icons-material/SortRounded";
 import FormatListNumberedRoundedIcon from "@mui/icons-material/FormatListNumberedRounded";
 import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
+import ViewDayRoundedIcon from "@mui/icons-material/ViewDayRounded";
 
 const EMPTY_COLORS = {
   primary: "#111827", secondary: "#374151", accent: "#2563EB",
@@ -57,7 +61,7 @@ const FONT_OPTIONS = [
 ];
 
 const DEFAULT_SECTIONS = [
-  { id: "hero", label: "Hero principal", visible: true },
+  { id: "hero", label: "Identidad destacada", visible: true },
   { id: "identity", label: "Identidad del negocio", visible: true },
   { id: "catalog", label: "Catálogo de productos", visible: true },
   { id: "carousel", label: "Carrusel", visible: true },
@@ -83,6 +87,12 @@ const parseJson = (value, fallback) => {
   try { return typeof value === "string" && value.trim() ? JSON.parse(value) : fallback; } catch { return null; }
 };
 
+const asBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null || value === "") return fallback;
+  if (typeof value === "string") return !["0", "false", "off", "no"].includes(value.trim().toLowerCase());
+  return Boolean(value);
+};
+
 const editorJson = (value, fallback) => JSON.stringify(parseJson(value, fallback) ?? fallback, null, 2);
 
 function UploadCard({ title, subtitle, preview, ratio = "16 / 9", onFile, onRemove, disabled }) {
@@ -106,7 +116,13 @@ function ConfigSelectRow({ icon: Icon, title, subtitle, value, onChange, childre
   return <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "stretch", sm: "center" }} spacing={1.5} sx={{ p: 1.35, borderRadius: 2.25, border: "1px solid", borderColor: "divider", bgcolor: "#fbfdff", "&:hover": { borderColor: color, bgcolor: "#f8faff" } }}><Stack direction="row" spacing={1.25} alignItems="center" sx={{ flex: 1, minWidth: 0 }}><Box sx={{ width: 36, height: 36, borderRadius: 2, bgcolor: `${color}14`, color, display: "grid", placeItems: "center", flexShrink: 0 }}><Icon fontSize="small" /></Box><Box><Typography variant="body2" fontWeight={850}>{title}</Typography>{subtitle && <Typography variant="caption" color="text.secondary">{subtitle}</Typography>}</Box></Stack><TextField select value={value} onChange={onChange} size="small" sx={{ width: { xs: "100%", sm: 230 }, bgcolor: "white", "& .MuiOutlinedInput-root.Mui-focused fieldset": { borderColor: color } }}>{children}</TextField></Stack>;
 }
 
+function PlanConfigRow({ locked, unlockPlan, children }) {
+  return <Box sx={{ position: "relative", opacity: locked ? .62 : 1, "& > :first-of-type": { pointerEvents: locked ? "none" : "auto" } }}>{children}{locked && <Chip icon={<LockRoundedIcon />} label={`Se desbloquea en ${unlockPlan}`} size="small" sx={{ position: "absolute", right: 12, top: 12, zIndex: 2, bgcolor: "#fff7ed", color: "#9a3412", fontWeight: 800 }} />}</Box>;
+}
+
 export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues = {}, capabilities = {}, planName = "", template = "negocio", sampleName = "Mi tienda", saving = false }) {
+  const supportsNativeSections = Boolean(capabilities.custom_sections);
+  capabilities = { ...capabilities, custom_sections: true };
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("md"));
   const [tab, setTab] = useState(0);
@@ -116,6 +132,7 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
   const [jsonErrors, setJsonErrors] = useState({});
   const maxCarousel = Number(capabilities.max_carousel || 3);
   const maxPhrases = Number(capabilities.max_phrases || 1);
+  const planLevel = String(planName).toLowerCase().includes("avanz") ? 4 : String(planName).toLowerCase().includes("prof") ? 3 : String(planName).toLowerCase().includes("demo") ? 4 : 2;
 
   useEffect(() => {
     if (!open) return;
@@ -163,24 +180,44 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
   });
   const currentSections = () => {
     const saved = parseJson(form.sections || "", []);
-    if (!Array.isArray(saved) || !saved.length) return DEFAULT_SECTIONS;
-    return saved.map((item) => {
+    const storedSettings = parseJson(form.settings || "", {}) || {};
+    const storedOrder = Array.isArray(storedSettings.section_order) ? storedSettings.section_order : [];
+    const storedVisibility = storedSettings.section_visibility || {};
+    const defaults = DEFAULT_SECTIONS.map((section) => ({ ...section, visible: storedVisibility[section.id] ?? section.visible })).sort((a, b) => { const ai = storedOrder.indexOf(a.id); const bi = storedOrder.indexOf(b.id); return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi); });
+    const source = !Array.isArray(saved) || !saved.length ? defaults : saved;
+    return source.map((item) => {
       const id = item.id || item.type;
-      return { ...DEFAULT_SECTIONS.find((section) => section.id === id), ...item, id, visible: item.visible ?? item.enabled ?? true };
-    }).filter((item) => item.id);
+      const advancedOnly = id === "socials";
+      const locked = advancedOnly && planLevel < 4;
+      const normalized = { ...DEFAULT_SECTIONS.find((section) => section.id === id), ...item, id };
+      return { ...normalized, label: `${normalized.label || id}${locked ? " · 🔒 Avanzado" : ""}`, locked, visible: locked ? false : asBoolean(item.visible ?? item.enabled, true) };
+    }).filter((item) => item.id && (planLevel !== 2 || ["catalog", "carousel", "phrases"].includes(item.id)));
   };
   const updateSection = (id, patch) => setForm((current) => {
+    if (id === "socials" && planLevel < 4) return current;
     const saved = parseJson(current.sections || "", []);
     const list = Array.isArray(saved) && saved.length ? saved : DEFAULT_SECTIONS;
     return { ...current, sections: JSON.stringify(list.map((item) => (item.id || item.type) === id ? { ...item, id, type: id, ...patch, enabled: patch.visible ?? item.enabled } : item), null, 2) };
   });
   const moveSection = (index, direction) => setForm((current) => {
     const saved = parseJson(current.sections || "", []);
-    const list = [...(Array.isArray(saved) && saved.length ? saved : DEFAULT_SECTIONS)];
+    const storedSettings = parseJson(current.settings || "", {}) || {};
+    const storedOrder = Array.isArray(storedSettings.section_order) ? storedSettings.section_order : [];
+    const storedVisibility = storedSettings.section_visibility || {};
+    const defaults = DEFAULT_SECTIONS
+      .map((section) => ({ ...section, visible: storedVisibility[section.id] ?? section.visible }))
+      .sort((a, b) => {
+        const ai = storedOrder.indexOf(a.id);
+        const bi = storedOrder.indexOf(b.id);
+        return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+      });
+    const source = Array.isArray(saved) && saved.length ? saved : defaults;
+    const list = source.filter((item) => planLevel !== 2 || ["catalog", "carousel", "phrases"].includes(item.id || item.type));
     const target = index + direction;
     if (target < 0 || target >= list.length) return current;
     [list[index], list[target]] = [list[target], list[index]];
-    return { ...current, sections: JSON.stringify(list, null, 2) };
+    const normalized = list.map((item, position) => ({ ...item, id: item.id || item.type, type: item.id || item.type, position: position + 1 }));
+    return { ...current, sections: JSON.stringify(normalized, null, 2) };
   });
   const updateTheme = (key, value) => setForm((current) => {
     const parsed = parseJson(current.theme || "", {}) || {};
@@ -212,19 +249,20 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
     const phrases = form.phrases.filter(Boolean);
     if (phrases.length) phrases.forEach((phrase, index) => fd.append(`phrases[${index}]`, phrase));
     else fd.append("phrases[0]", "");
-    if (capabilities.custom_sections) {
-      const normalizedSections = currentSections().map((section, index) => ({
+    const normalizedSections = currentSections().map((section, index) => ({
         id: section.id,
         type: section.id,
-        label: section.label,
+        label: String(section.label || section.id).replace(/ · 🔒 Avanzado$/, ""),
         visible: section.visible !== false,
         enabled: section.visible !== false,
         position: index + 1,
-      }));
+    }));
+    if (supportsNativeSections) {
       appendValue(fd, "sections", normalizedSections);
     }
     if (capabilities.advanced_theme) appendValue(fd, "theme", structured.theme);
-    appendValue(fd, "settings", structured.settings);
+    const settingsToSave = supportsNativeSections ? structured.settings : { ...structured.settings, section_order: normalizedSections.map((section) => section.id), section_visibility: Object.fromEntries(normalizedSections.map((section) => [section.id, section.visible])) };
+    appendValue(fd, "settings", settingsToSave);
     Object.entries(files).forEach(([key, file]) => { if (file) fd.append(key, file); });
     Object.entries(removed).forEach(([key, value]) => { if (value) fd.append(`remove_${key}`, "1"); });
     await onSubmit(fd);
@@ -232,7 +270,7 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
 
   const tabs = [
     { label: "Identidad", icon: <StorefrontRoundedIcon /> },
-    { label: "Hero", icon: <ImageRoundedIcon /> },
+    { label: "Conócenos", icon: <ImageRoundedIcon /> },
     { label: "Carrusel", icon: <ViewCarouselRoundedIcon /> },
     { label: "Diseño", icon: <PaletteRoundedIcon /> },
     { label: "Avanzado", icon: <SettingsRoundedIcon /> },
@@ -278,20 +316,21 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
             <TextField label="Título del negocio" value={form.titulo_1 || ""} onChange={change("titulo_1")} fullWidth inputProps={{ maxLength: 190 }} helperText={`${(form.titulo_1 || "").length}/190 caracteres`} FormHelperTextProps={{ sx: { textAlign: "right", mr: 0 } }} />
             <TextField label="Descripción" value={form.descripcion || ""} onChange={change("descripcion")} fullWidth multiline minRows={3} placeholder="Cuéntales a tus clientes sobre tu negocio, historia, productos o servicios…" helperText="El campo crece automáticamente y no tiene límite de caracteres." />
             <Divider />
-            <Box><Typography variant="subtitle1" fontWeight={850}>Redes sociales</Typography><Typography variant="body2" color="text.secondary">Los iconos y bordes se activan al ingresar un enlace.</Typography></Box>
-            <Stack spacing={1.5}>{SOCIALS.map(({ key, label, placeholder, color, icon: SocialIcon }) => { const active = Boolean((form[key] || "").trim()); return <TextField key={key} label={label} value={form[key] || ""} onChange={change(key)} fullWidth size="small" placeholder={placeholder} InputProps={{ startAdornment: <InputAdornment position="start"><SocialIcon sx={{ color: active ? color : "text.disabled", transition: ".2s" }} /></InputAdornment> }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "white", "& fieldset": { borderColor: active ? color : undefined, borderWidth: active ? 2 : 1 }, "&:hover fieldset": { borderColor: active ? color : undefined }, "&.Mui-focused fieldset": { borderColor: color } }, "& .MuiInputLabel-root.Mui-focused": { color } }} />; })}</Stack>
+            <Box><Stack direction="row" alignItems="center" spacing={1}><Box sx={{ flex: 1 }}><Typography variant="subtitle1" fontWeight={850}>Redes sociales</Typography><Typography variant="body2" color="text.secondary">Disponibles exclusivamente en el plan Avanzado.</Typography></Box>{planLevel < 4 && <Chip icon={<LockRoundedIcon />} label="Avanzado" size="small" />}</Stack></Box>
+            <Stack spacing={1.5}>{SOCIALS.map(({ key, label, placeholder, color, icon: SocialIcon }) => { const active = Boolean((form[key] || "").trim()); const locked = planLevel < 4; return <TextField disabled={locked} key={key} label={`${label}${locked ? " · 🔒 Avanzado" : ""}`} value={form[key] || ""} onChange={change(key)} fullWidth size="small" placeholder={placeholder} InputProps={{ startAdornment: <InputAdornment position="start"><SocialIcon sx={{ color: active && !locked ? color : "text.disabled", transition: ".2s" }} /></InputAdornment> }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: locked ? "#f8fafc" : "white", "& fieldset": { borderColor: active && !locked ? color : undefined, borderWidth: active && !locked ? 2 : 1 }, "&:hover fieldset": { borderColor: active && !locked ? color : undefined }, "&.Mui-focused fieldset": { borderColor: color } }, "& .MuiInputLabel-root.Mui-focused": { color } }} />; })}</Stack>
           </Stack>}
 
           {tab === 1 && <Stack spacing={2.5}>
-            <Box><Typography variant="h6" fontWeight={850}>Hero principal</Typography><Typography variant="body2" color="text.secondary">Configura la imagen y el mensaje principal de tu sitio.</Typography></Box>
+            <Box><Typography variant="h6" fontWeight={850}>Identidad destacada</Typography><Typography variant="body2" color="text.secondary">Crea la sección “Conócenos”. Utiliza automáticamente las dos primeras imágenes del carrusel; si no hay imágenes, muestra la portada.</Typography></Box>
+            {planLevel < 3 && <Box sx={{ p: 2, borderRadius: 2.5, bgcolor: "#fff7ed", border: "1px solid #fed7aa" }}><Stack direction="row" spacing={1} alignItems="center"><LockRoundedIcon sx={{ color: "#9a3412" }} /><Box><Typography fontWeight={850} color="#9a3412">Identidad destacada bloqueada</Typography><Typography variant="caption" color="#9a3412">Se desbloquea en Profesional.</Typography></Box></Stack></Box>}
             <Grid container spacing={3} alignItems="flex-start">
               <Grid item xs={12} md={6}>
                 <Box sx={{ border: "1px solid", borderColor: previews.img_portada ? "#2563eb" : "divider", borderRadius: 3, overflow: "hidden", bgcolor: "white", boxShadow: previews.img_portada ? "0 10px 30px rgba(37,99,235,.12)" : "none" }}>
                   <Box sx={{ width: "100%", minHeight: previews.img_portada ? 0 : { xs: 260, md: 390 }, bgcolor: "#f1f5f9", display: "grid", placeItems: "center", overflow: "hidden" }}>
-                    {previews.img_portada ? <Box component="img" src={previews.img_portada} alt="Imagen completa del Hero" sx={{ display: "block", width: "100%", height: "auto", maxHeight: 440, objectFit: "contain", objectPosition: "center" }} /> : <Stack alignItems="center" spacing={1} color="text.secondary"><ImageRoundedIcon sx={{ fontSize: 48, opacity: .4 }} /><Typography variant="body2" fontWeight={700}>Sin imagen para el Hero</Typography></Stack>}
+                    {previews.img_portada ? <Box component="img" src={previews.img_portada} alt="Portada de identidad" sx={{ display: "block", width: "100%", height: "auto", maxHeight: 440, objectFit: "contain", objectPosition: "center" }} /> : <Stack alignItems="center" spacing={1} color="text.secondary"><ImageRoundedIcon sx={{ fontSize: 48, opacity: .4 }} /><Typography variant="body2" fontWeight={700}>Sin portada de identidad</Typography></Stack>}
                   </Box>
                   <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ p: 1.5 }}>
-                    <Box><Typography variant="body2" fontWeight={850}>Imagen del Hero</Typography><Typography variant="caption" color="text.secondary">Se muestra completa, sin recortes</Typography></Box>
+                    <Box><Typography variant="body2" fontWeight={850}>Portada de identidad</Typography><Typography variant="caption" color="text.secondary">Se muestra completa, sin recortes</Typography></Box>
                     <Stack direction="row" spacing={.5}>{previews.img_portada && <IconButton size="small" color="error" onClick={() => removeFile("img_portada")} disabled={saving}><DeleteOutlineRoundedIcon fontSize="small" /></IconButton>}<IconButton component="label" size="small" color="primary" disabled={saving}><CloudUploadRoundedIcon /><input hidden type="file" accept="image/*" onChange={(e) => chooseFile("img_portada", e.target.files?.[0] || null)} /></IconButton></Stack>
                   </Stack>
                 </Box>
@@ -305,14 +344,14 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
                     { key: "hero_subtitle", label: "Descripción", limit: 400, icon: SubjectRoundedIcon, multiline: true, placeholder: "Describe brevemente lo que ofrece tu sitio", sm: 12 },
                     { key: "hero_button_text", label: "Texto del botón", limit: 30, icon: SmartButtonRoundedIcon, multiline: false, placeholder: "Ej. Ver productos", sm: 5 },
                     { key: "hero_button_url", label: "Enlace del botón", limit: 190, icon: LinkRoundedIcon, multiline: false, placeholder: "https://", sm: 7 },
-                  ].map(({ key, label, limit, icon: FieldIcon, multiline, placeholder, sm }) => { const value = form[key] || ""; const active = Boolean(value.trim()); return <Box key={key} sx={{ gridColumn: { xs: "1 / -1", sm: `span ${sm}` } }}><TextField label={label} value={value} onChange={change(key)} fullWidth multiline={multiline} minRows={multiline ? 3 : undefined} placeholder={placeholder} inputProps={{ maxLength: limit }} helperText={`${value.length}/${limit} caracteres`} FormHelperTextProps={{ sx: { textAlign: "right", mr: 0 } }} InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: multiline ? "flex-start" : "center", mt: multiline ? 1.5 : 0 }}><FieldIcon sx={{ color: active ? "#2563eb" : "text.disabled", transition: ".2s" }} /></InputAdornment> }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: "white", alignItems: multiline ? "flex-start" : "center", "& fieldset": { borderColor: active ? "#2563eb" : undefined, borderWidth: active ? 2 : 1 }, "&:hover fieldset": { borderColor: active ? "#2563eb" : undefined }, "&.Mui-focused fieldset": { borderColor: "#2563eb" } }, "& .MuiInputLabel-root.Mui-focused": { color: "#2563eb" } }} /></Box>; })}
+                  ].map(({ key, label, limit, icon: FieldIcon, multiline, placeholder, sm }) => { const value = form[key] || ""; const active = Boolean(value.trim()); const requiredPlan = key.startsWith("hero_button") ? 4 : 3; const locked = planLevel < requiredPlan; return <Box key={key} sx={{ gridColumn: { xs: "1 / -1", sm: `span ${sm}` } }}><TextField disabled={locked} label={`${label}${locked ? ` · 🔒 ${requiredPlan === 4 ? "Avanzado" : "Profesional"}` : ""}`} value={value} onChange={change(key)} fullWidth multiline={multiline} minRows={multiline ? 3 : undefined} placeholder={placeholder} inputProps={{ maxLength: limit }} helperText={locked ? `Se desbloquea en ${requiredPlan === 4 ? "Avanzado" : "Profesional"}` : `${value.length}/${limit} caracteres`} FormHelperTextProps={{ sx: { textAlign: "right", mr: 0 } }} InputProps={{ startAdornment: <InputAdornment position="start" sx={{ alignSelf: multiline ? "flex-start" : "center", mt: multiline ? 1.5 : 0 }}><FieldIcon sx={{ color: active && !locked ? "#2563eb" : "text.disabled", transition: ".2s" }} /></InputAdornment> }} sx={{ "& .MuiOutlinedInput-root": { bgcolor: locked ? "#f8fafc" : "white", alignItems: multiline ? "flex-start" : "center", "& fieldset": { borderColor: active && !locked ? "#2563eb" : undefined, borderWidth: active && !locked ? 2 : 1 }, "&:hover fieldset": { borderColor: active && !locked ? "#2563eb" : undefined }, "&.Mui-focused fieldset": { borderColor: "#2563eb" } }, "& .MuiInputLabel-root.Mui-focused": { color: "#2563eb" } }} /></Box>; })}
                 </Box>
               </Grid>
             </Grid>
           </Stack>}
 
           {tab === 2 && <Stack spacing={2.5}>
-            <Box><Stack direction="row" justifyContent="space-between"><Box><Typography variant="h6" fontWeight={850}>Carrusel</Typography><Typography variant="body2" color="text.secondary">Imágenes disponibles según tu plan.</Typography></Box><Chip label={`${maxCarousel} espacios`} color="primary" /></Stack></Box>
+            <Box><Stack direction="row" justifyContent="space-between"><Box><Typography variant="h6" fontWeight={850}>Carrusel</Typography><Typography variant="body2" color="text.secondary">Las imágenes 1 y 2 también se usan en “Conócenos”. Si ambas están vacías, se usa la portada.</Typography></Box><Chip label={`${maxCarousel} espacios`} color="primary" /></Stack></Box>
             <Grid container spacing={2}>{Array.from({ length: maxCarousel }, (_, i) => { const key = `imagen_${i + 1}`; return <Grid item xs={12} sm={6} md={4} key={key}><UploadCard title={`Imagen ${i + 1}`} subtitle="Máximo 20 MB" preview={previews[key]} onFile={(file) => chooseFile(key, file)} onRemove={() => removeFile(key)} disabled={saving} /></Grid>; })}</Grid>
           </Stack>}
 
@@ -331,6 +370,8 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
           {tab === 4 && <Stack spacing={2.5}>
             <Box><Typography variant="h6" fontWeight={850}>Configuración avanzada</Typography><Typography variant="body2" color="text.secondary">Define cómo se organiza y funciona el catálogo para esta sucursal.</Typography></Box>
             <FormControlLabel control={<Switch checked={Boolean(form.is_active)} onChange={(e) => setForm((current) => ({ ...current, is_active: e.target.checked }))} />} label="Sitio publicado y visible" />
+            {!capabilities.custom_sections && <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography fontWeight={850}>Secciones del sitio</Typography><Typography variant="caption" color="text.secondary">Negocio incluye portada, productos y contacto.</Typography></Box><Chip icon={<LockRoundedIcon />} label="Más secciones en Profesional" size="small" sx={{ bgcolor: "#fff7ed", color: "#9a3412", fontWeight: 800 }} /></Stack><Stack spacing={1} sx={{ mt: 2 }}>{DEFAULT_SECTIONS.map((section, index) => { const included = ["hero", "catalog", "socials"].includes(section.id); return <Stack key={section.id} direction="row" alignItems="center" spacing={1} sx={{ p: 1, borderRadius: 2, border: "1px solid", borderColor: included ? "#bfdbfe" : "divider", bgcolor: included ? "#f8faff" : "#f8fafc", opacity: included ? 1 : .62 }}><Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: included ? "primary.main" : "grey.300", color: "white", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 900 }}>{index + 1}</Box><Typography variant="body2" fontWeight={800} sx={{ flex: 1 }}>{section.label}</Typography>{included ? <Chip label="Incluida" size="small" color="primary" variant="outlined" /> : <Chip icon={<LockRoundedIcon />} label="Profesional" size="small" />}</Stack>; })}</Stack></Box>}
+            {!capabilities.advanced_theme && <Box sx={{ p: 2, borderRadius: 3, bgcolor: "#f8fafc", border: "1px solid", borderColor: "divider" }}><Stack direction="row" alignItems="center" spacing={1.5}><LockRoundedIcon color="action" /><Box sx={{ flex: 1 }}><Typography fontWeight={850}>Estilos avanzados bloqueados</Typography><Typography variant="caption" color="text.secondary">Apariencia, ancho, sombras, espaciado, botones y animaciones.</Typography></Box><Chip icon={<LockRoundedIcon />} label="Se desbloquea en Avanzado" size="small" sx={{ bgcolor: "#fff7ed", color: "#9a3412", fontWeight: 800 }} /></Stack></Box>}
             {capabilities.custom_sections && <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography fontWeight={850}>Secciones del sitio</Typography><Typography variant="caption" color="text.secondary">Activa, oculta y ordena el contenido de arriba hacia abajo.</Typography></Box><Chip label={`${currentSections().filter((section) => section.visible !== false).length} visibles`} size="small" color="primary" variant="outlined" /></Stack><Stack spacing={1} sx={{ mt: 2 }}>{currentSections().map((section, index, list) => <Stack key={section.id} direction="row" alignItems="center" spacing={1} sx={{ p: 1, borderRadius: 2, border: "1px solid", borderColor: section.visible !== false ? "#bfdbfe" : "divider", bgcolor: section.visible !== false ? "#f8faff" : "#f8fafc" }}><Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: section.visible !== false ? "primary.main" : "grey.300", color: "white", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 900 }}>{index + 1}</Box><Typography variant="body2" fontWeight={800} sx={{ flex: 1 }}>{section.label || section.id}</Typography><Switch size="small" checked={section.visible !== false} onChange={(e) => updateSection(section.id, { visible: e.target.checked })} /><IconButton size="small" disabled={index === 0} onClick={() => moveSection(index, -1)}><ArrowUpwardRoundedIcon fontSize="small" /></IconButton><IconButton size="small" disabled={index === list.length - 1} onClick={() => moveSection(index, 1)}><ArrowDownwardRoundedIcon fontSize="small" /></IconButton></Stack>)}</Stack></Box>}
             {capabilities.advanced_theme && <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Box sx={{ mb: 2 }}><Typography fontWeight={850}>Tema visual</Typography><Typography variant="caption" color="text.secondary">Define la personalidad y densidad visual de toda la página.</Typography></Box><Stack spacing={1}>
               {[
@@ -345,17 +386,26 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
               ].map((control) => <ConfigSelectRow key={control.key} icon={control.icon} title={control.label} value={(parseJson(form.theme || "", {}) || {})[control.key] || control.fallback} onChange={(e) => updateTheme(control.key, e.target.value)}>{control.options.map(([value,label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</ConfigSelectRow>)}
             </Stack><Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mt: 2 }}><FormControlLabel control={<Switch checked={(parseJson(form.theme || "", {}) || {}).sticky_header !== false} onChange={(e) => updateTheme("sticky_header", e.target.checked)} />} label="Encabezado fijo" /><FormControlLabel control={<Switch checked={(parseJson(form.theme || "", {}) || {}).smooth_scroll !== false} onChange={(e) => updateTheme("smooth_scroll", e.target.checked)} />} label="Desplazamiento suave" /></Stack></Box>}
             <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Typography fontWeight={850} sx={{ mb: 2 }}>Productos</Typography><Stack spacing={1}>
-              <ConfigSelectRow icon={SortRoundedIcon} title="Orden predeterminado" subtitle="Orden inicial del catálogo" value={(parseJson(form.settings || "", {}) || {}).product_sort || "newest"} onChange={(e) => updateSetting("product_sort", e.target.value)} color="#7c3aed"><MenuItem value="newest">Más recientes primero</MenuItem><MenuItem value="oldest">Más antiguos primero</MenuItem><MenuItem value="name_asc">Nombre A–Z</MenuItem><MenuItem value="name_desc">Nombre Z–A</MenuItem><MenuItem value="price_asc">Precio menor a mayor</MenuItem><MenuItem value="price_desc">Precio mayor a menor</MenuItem><MenuItem value="stock_desc">Mayor existencia primero</MenuItem></ConfigSelectRow>
-              <ConfigSelectRow icon={FormatListNumberedRoundedIcon} title="Productos por página" value={(parseJson(form.settings || "", {}) || {}).products_per_page || 12} onChange={(e) => updateSetting("products_per_page", Number(e.target.value))} color="#7c3aed">{[12,24,36,48].map((value) => <MenuItem value={value} key={value}>{value} productos</MenuItem>)}</ConfigSelectRow>
-              <ConfigSelectRow icon={GridViewRoundedIcon} title="Columnas del catálogo" value={(parseJson(form.settings || "", {}) || {}).catalog_columns || 3} onChange={(e) => updateSetting("catalog_columns", Number(e.target.value))} color="#7c3aed">{[2,3,4].map((value) => <MenuItem value={value} key={value}>{value} columnas</MenuItem>)}</ConfigSelectRow>
+              <ConfigSelectRow icon={SortRoundedIcon} title="Orden predeterminado" subtitle="Orden inicial del catálogo" value={(parseJson(form.settings || "", {}) || {}).product_sort || "newest"} onChange={(e) => updateSetting("product_sort", e.target.value)} color="#7c3aed"><MenuItem value="newest">Más recientes primero</MenuItem><MenuItem value="oldest">Más antiguos primero</MenuItem><MenuItem value="name_asc">Nombre A–Z</MenuItem><MenuItem value="name_desc">Nombre Z–A</MenuItem><MenuItem value="price_asc" disabled={planLevel < 3}>Precio menor a mayor {planLevel < 3 && "🔒 Profesional"}</MenuItem><MenuItem value="price_desc" disabled={planLevel < 3}>Precio mayor a menor {planLevel < 3 && "🔒 Profesional"}</MenuItem><MenuItem value="stock_desc" disabled={planLevel < 3}>Mayor existencia primero {planLevel < 3 && "🔒 Profesional"}</MenuItem></ConfigSelectRow>
+              <ConfigSelectRow icon={FormatListNumberedRoundedIcon} title="Productos por página" value={(parseJson(form.settings || "", {}) || {}).products_per_page || 12} onChange={(e) => updateSetting("products_per_page", Number(e.target.value))} color="#7c3aed">{[12,24,36,48].map((value) => { const required = value === 24 ? 3 : value >= 36 ? 4 : 2; return <MenuItem value={value} key={value} disabled={planLevel < required}>{value} productos {planLevel < required && `🔒 ${required === 4 ? "Avanzado" : "Profesional"}`}</MenuItem>; })}</ConfigSelectRow>
+              <ConfigSelectRow icon={GridViewRoundedIcon} title="Columnas del catálogo" value={(parseJson(form.settings || "", {}) || {}).catalog_columns || 3} onChange={(e) => updateSetting("catalog_columns", Number(e.target.value))} color="#7c3aed">{[2,3,4].map((value) => <MenuItem value={value} key={value} disabled={value === 4 && planLevel < 3}>{value} columnas {value === 4 && planLevel < 3 && "🔒 Profesional"}</MenuItem>)}</ConfigSelectRow>
               <ConfigSelectRow icon={Inventory2RoundedIcon} title="Productos agotados" value={(parseJson(form.settings || "", {}) || {}).out_of_stock || "last"} onChange={(e) => updateSetting("out_of_stock", e.target.value)} color="#7c3aed"><MenuItem value="show">Mostrar normalmente</MenuItem><MenuItem value="last">Mostrar al final</MenuItem><MenuItem value="hide">Ocultar</MenuItem></ConfigSelectRow>
             </Stack></Box>
+            <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Typography fontWeight={850}>Experiencia de navegación</Typography><Typography variant="caption" color="text.secondary">Define cómo recorre el cliente la tienda y abre cada producto.</Typography><Stack spacing={1} sx={{ mt: 2 }}>
+              <PlanConfigRow locked={planLevel < 3} unlockPlan="Profesional"><ConfigSelectRow icon={ViewDayRoundedIcon} title="Navegación de secciones" subtitle="Landing continua o contenido por pestañas" value={(parseJson(form.settings || "", {}) || {}).navigation_mode || "landing"} onChange={(e) => updateSetting("navigation_mode", e.target.value)} color="#0f766e"><MenuItem value="landing">Landing continua</MenuItem><MenuItem value="tabs">Cambiar sección al hacer clic</MenuItem></ConfigSelectRow></PlanConfigRow>
+              <PlanConfigRow locked={planLevel < 3} unlockPlan="Profesional"><ConfigSelectRow icon={OpenInNewRoundedIcon} title="Apertura de productos" subtitle="Vista rápida o página pública individual" value={(parseJson(form.settings || "", {}) || {}).product_view || "modal"} onChange={(e) => updateSetting("product_view", e.target.value)} color="#0f766e"><MenuItem value="modal">Modal dentro del catálogo</MenuItem><MenuItem value="page">Página independiente</MenuItem></ConfigSelectRow></PlanConfigRow>
+              <PlanConfigRow locked={planLevel < 3} unlockPlan="Profesional"><Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 2.25 }}><FormControlLabel control={<Switch checked={asBoolean((parseJson(form.settings || "", {}) || {}).show_share)} onChange={(e) => updateSetting("show_share", e.target.checked)} />} label={<Stack direction="row" spacing={1} alignItems="center"><ShareRoundedIcon fontSize="small" /><span>Permitir compartir productos</span></Stack>} /></Box></PlanConfigRow>
+              <PlanConfigRow locked={planLevel < 3} unlockPlan="Profesional"><TextField label="Leyenda general de los productos" placeholder="Ej. Personalizamos tu pedido; contáctanos para conocer opciones." value={(parseJson(form.settings || "", {}) || {}).product_legend || ""} onChange={(e) => updateSetting("product_legend", e.target.value)} multiline minRows={2} fullWidth inputProps={{ maxLength: 250 }} helperText="Aparece en las tarjetas y en el detalle. Máximo 250 caracteres." /></PlanConfigRow>
+              <PlanConfigRow locked={planLevel < 3} unlockPlan="Profesional"><ConfigSelectRow icon={TitleRoundedIcon} title="Estilo de frases" subtitle="Presentación de los mensajes destacados" value={(parseJson(form.settings || "", {}) || {}).phrase_style || "editorial"} onChange={(e) => updateSetting("phrase_style", e.target.value)} color="#0f766e"><MenuItem value="editorial">Editorial</MenuItem><MenuItem value="cards">Tarjetas</MenuItem><MenuItem value="banner">Banner destacado</MenuItem><MenuItem value="minimal">Minimalista</MenuItem></ConfigSelectRow></PlanConfigRow>
+              <PlanConfigRow locked={planLevel < 3} unlockPlan="Profesional"><ConfigSelectRow icon={ViewHeadlineRoundedIcon} title="Alineación de frases" value={(parseJson(form.settings || "", {}) || {}).phrase_alignment || "alternating"} onChange={(e) => updateSetting("phrase_alignment", e.target.value)} color="#0f766e"><MenuItem value="left">Izquierda</MenuItem><MenuItem value="center">Centrada</MenuItem><MenuItem value="alternating">Alternada</MenuItem></ConfigSelectRow></PlanConfigRow>
+              <PlanConfigRow locked={planLevel < 4} unlockPlan="Avanzado"><Box sx={{ p: 1.5, border: "1px solid", borderColor: "divider", borderRadius: 2.25 }}><FormControlLabel control={<Switch checked={asBoolean((parseJson(form.settings || "", {}) || {}).advanced_hero)} onChange={(e) => updateSetting("advanced_hero", e.target.checked)} />} label="Identidad destacada con profundidad y animación" /></Box></PlanConfigRow>
+            </Stack></Box>
             <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Typography fontWeight={850}>Variantes</Typography><Typography variant="caption" color="text.secondary">Configura cómo se consultan y muestran las variantes disponibles.</Typography><Stack sx={{ mt: 1 }}>
-              <FormControlLabel control={<Switch checked={Boolean((parseJson(form.settings || "", {}) || {}).variant_search_enabled)} onChange={(e) => updateSetting("variant_search_enabled", e.target.checked)} />} label="Permitir búsqueda por variantes y cantidad" />
+              <PlanConfigRow locked={planLevel < 3} unlockPlan="Profesional"><Box><FormControlLabel control={<Switch checked={asBoolean((parseJson(form.settings || "", {}) || {}).variant_search_enabled)} onChange={(e) => updateSetting("variant_search_enabled", e.target.checked)} />} label="Permitir búsqueda por variantes y cantidad" /></Box></PlanConfigRow>
               <FormControlLabel control={<Switch checked={(parseJson(form.settings || "", {}) || {}).only_available_variants !== false} onChange={(e) => updateSetting("only_available_variants", e.target.checked)} />} label="Mostrar solamente variantes con existencia" />
               <FormControlLabel control={<Switch checked={(parseJson(form.settings || "", {}) || {}).group_variants !== false} onChange={(e) => updateSetting("group_variants", e.target.checked)} />} label="Agrupar variantes dentro del producto" />
             </Stack></Box>
-            <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Typography fontWeight={850}>Elementos del catálogo</Typography><Stack sx={{ mt: 1 }}>{[["show_search","Mostrar buscador",true],["show_categories","Mostrar categorías",true],["show_sort","Permitir cambiar el orden",true],["show_whatsapp","Mostrar botón de WhatsApp",true]].map(([key,label,fallback]) => <FormControlLabel key={key} control={<Switch checked={(parseJson(form.settings || "", {}) || {})[key] ?? fallback} onChange={(e) => updateSetting(key, e.target.checked)} />} label={label} />)}</Stack></Box>
+            <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Typography fontWeight={850}>Elementos del catálogo</Typography><Stack sx={{ mt: 1 }}>{[["show_search","Mostrar buscador",true],["show_categories","Mostrar categorías",true],["show_whatsapp","Mostrar botón de WhatsApp",true]].map(([key,label,fallback]) => <FormControlLabel key={key} control={<Switch checked={asBoolean((parseJson(form.settings || "", {}) || {})[key], fallback)} onChange={(e) => updateSetting(key, e.target.checked)} />} label={label} />)}<PlanConfigRow locked={planLevel < 4} unlockPlan="Avanzado"><Box><FormControlLabel control={<Switch checked={asBoolean((parseJson(form.settings || "", {}) || {}).show_sort_selector)} onChange={(e) => updateSetting("show_sort_selector", e.target.checked)} />} label="Mostrar selector de ordenamiento en la tienda" /></Box></PlanConfigRow></Stack></Box>
           </Stack>}
         </DialogContent>
       </Box>

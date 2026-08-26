@@ -13,6 +13,7 @@ const ProductGridList = ({
   columns = 3,
   template = "negocio",
   groupVariants = false,
+  storefrontSettings = {}, storefrontTheme = {}, storefrontColors = {}, storeSlug,
 }) => {
   const desktopClass = columns === 2 ? "col-xl-6" : columns === 4 ? "col-xl-3" : "col-xl-4";
   const { cartItems = [] } = useSelector(
@@ -50,6 +51,10 @@ const ProductGridList = ({
                 matchingVariants={[]}
                 enableEffects={template === "avanzado"}
                 storefrontTemplate={template}
+                storefrontSettings={storefrontSettings}
+                storefrontTheme={storefrontTheme}
+                storefrontColors={storefrontColors}
+                storeSlug={storeSlug}
                 wishlistItem={wishlistItems.find(
                   (item) =>
                     Number(item.id) === Number(product.id),
@@ -108,6 +113,10 @@ const ProductGridList = ({
               variantSize={result?.singleMatch?.size || null}
               enableEffects={template === "avanzado"}
               storefrontTemplate={template}
+              storefrontSettings={storefrontSettings}
+              storefrontTheme={storefrontTheme}
+              storefrontColors={storefrontColors}
+              storeSlug={storeSlug}
 
               wishlistItem={wishlistItems.find(
                 (item) =>
@@ -162,6 +171,10 @@ ProductGridList.propTypes = {
   columns: PropTypes.number,
   template: PropTypes.string,
   groupVariants: PropTypes.bool,
+  storefrontSettings: PropTypes.object,
+  storefrontTheme: PropTypes.object,
+  storefrontColors: PropTypes.object,
+  storeSlug: PropTypes.string,
 };
 
 export default ProductGridList;

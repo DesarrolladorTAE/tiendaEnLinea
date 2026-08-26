@@ -197,6 +197,7 @@ export default function ProductModal({
   show,
   onHide,
   onWhatsapp,
+  storefrontTheme = {}, storefrontColors = {}, productLegend = "",
 }) {
   const symbol = currency?.currencySymbol ?? "MX$";
 
@@ -392,8 +393,20 @@ export default function ProductModal({
       maxWidth="md"
       fullWidth
       PaperProps={{
+        className: "sf-product-modal",
+        style: {
+          "--void-1": storefrontColors.background || "#ffffff",
+          "--void-2": storefrontColors.background || "#ffffff",
+          "--void-3": storefrontColors.background || "#ffffff",
+          "--void-text": storefrontColors.text || "#111827",
+          "--void-muted": storefrontColors.secondary || "#475569",
+          "--void-accent": storefrontColors.accent || "#2563eb",
+          "--void-pop": storefrontColors.primary || "#111827",
+          "--void-warn": storefrontColors.secondary || "#475569",
+          "--void-stroke": storefrontColors.secondary || "#cbd5e1",
+        },
         sx: {
-          borderRadius: 3,
+          borderRadius: storefrontTheme.radiusValue !== undefined ? `${storefrontTheme.radiusValue}px` : 3,
           overflow: "hidden",
           backgroundImage: `linear-gradient(180deg, ${PALETTE.bg1} 0%, ${PALETTE.bg2} 100%)`,
           border: `1px solid ${PALETTE.stroke}`,
@@ -421,6 +434,7 @@ export default function ProductModal({
             >
               {product?.name}
             </Typography>
+            {productLegend && <Typography variant="caption" sx={{ display: "block", mt: .5, color: PALETTE.muted }}>{productLegend}</Typography>}
 
             <Stack
               direction="row"
@@ -529,7 +543,7 @@ export default function ProductModal({
                     transform: "translateY(-50%)",
                     zIndex: 2,
                     bgcolor: "rgba(0,0,0,0.35)",
-                    color: "#fff",
+                    color: PALETTE.txt,
                     "&:hover": { bgcolor: "rgba(0,0,0,0.55)" },
                   }}
                   aria-label="Anterior"
@@ -564,7 +578,7 @@ export default function ProductModal({
                     transform: "translateY(-50%)",
                     zIndex: 2,
                     bgcolor: "rgba(0,0,0,0.35)",
-                    color: "#fff",
+                    color: PALETTE.txt,
                     "&:hover": { bgcolor: "rgba(0,0,0,0.55)" },
                   }}
                   aria-label="Siguiente"
@@ -587,7 +601,7 @@ export default function ProductModal({
                   pb: 0.5,
                   "&::-webkit-scrollbar": { height: 6 },
                   "&::-webkit-scrollbar-thumb": {
-                    background: "rgba(255,255,255,0.18)",
+                    background: PALETTE.accent,
                     borderRadius: 999,
                   },
                 }}
@@ -829,7 +843,7 @@ export default function ProductModal({
 
             <Typography variant="body2" sx={{ color: PALETTE.muted, mb: 0.5 }}>
               <strong style={{ color: PALETTE.txt }}>En existencia:</strong>{" "}
-              <span style={{ color: "#22c55e", fontWeight: 950 }}>
+              <span style={{ color: PALETTE.accent, fontWeight: 950 }}>
                 {hasOptions ? optionStockTotal : productStockTotal}
               </span>
             </Typography>
@@ -908,11 +922,11 @@ export default function ProductModal({
                             fontWeight: 950,
                             fontSize: 13,
                             letterSpacing: ".35px",
-                            border: `2px solid ${selected ? "#fff" : "rgba(255,255,255,0.14)"}`,
+                            border: `2px solid ${selected ? PALETTE.accent : PALETTE.stroke}`,
                             bgcolor: selected
                               ? "rgba(255,255,255,0.10)"
                               : "transparent",
-                            color: "#fff",
+                            color: PALETTE.txt,
                             boxShadow: selected
                               ? "0 0 0 1px rgba(255,255,255,0.2), 0 10px 30px rgba(0,0,0,0.35)"
                               : "none",
@@ -940,13 +954,13 @@ export default function ProductModal({
                 {selectedOption && (
                   <Stack spacing={0.5} sx={{ mt: 1.15 }}>
                     <Typography variant="body2" sx={{ color: PALETTE.muted }}>
-                      <strong style={{ color: "#fff" }}>Seleccionada:</strong>{" "}
+                      <strong style={{ color: PALETTE.txt }}>Seleccionada:</strong>{" "}
                       {selectedOptionLabel}
                     </Typography>
 
                     {!!selectedOption?.sku && (
                       <Typography variant="body2" sx={{ color: PALETTE.muted }}>
-                        <strong style={{ color: "#fff" }}>SKU opción:</strong>{" "}
+                        <strong style={{ color: PALETTE.txt }}>SKU opción:</strong>{" "}
                         {selectedOption.sku}
                       </Typography>
                     )}
@@ -977,7 +991,7 @@ export default function ProductModal({
                               key={`attr-${idx}`}
                               icon={
                                 <StyleRoundedIcon
-                                  sx={{ fontSize: 16, color: "#fff" }}
+                                  sx={{ fontSize: 16, color: PALETTE.txt }}
                                 />
                               }
                               label={`${a.name}${a.value ? `: ${a.value}` : ""}`}
@@ -986,10 +1000,10 @@ export default function ProductModal({
                                 height: 28,
                                 fontWeight: 950,
                                 fontSize: 12,
-                                color: "#fff",
+                                color: PALETTE.txt,
                                 borderColor: "rgba(255,255,255,0.20)",
                                 bgcolor: "rgba(255,255,255,0.06)",
-                                "& .MuiChip-label": { color: "#fff" },
+                                "& .MuiChip-label": { color: PALETTE.txt },
                               }}
                             />
                           ))}
@@ -1000,10 +1014,10 @@ export default function ProductModal({
                               sx={{
                                 fontWeight: 950,
                                 height: 28,
-                                color: "#fff",
+                                color: PALETTE.txt,
                                 borderColor: "rgba(255,255,255,0.20)",
                                 bgcolor: "rgba(255,255,255,0.06)",
-                                "& .MuiChip-label": { color: "#fff" },
+                                "& .MuiChip-label": { color: PALETTE.txt },
                               }}
                               variant="outlined"
                             />
@@ -1025,7 +1039,7 @@ export default function ProductModal({
                 >
                   Descripción corta
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#fff", mb: 0.75 }}>
+                <Typography variant="body2" sx={{ color: PALETTE.txt, mb: 0.75 }}>
                   {product.shortDescription}
                 </Typography>
               </>
@@ -1039,7 +1053,7 @@ export default function ProductModal({
                 >
                   Descripción completa
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#fff", mb: 0.75 }}>
+                <Typography variant="body2" sx={{ color: PALETTE.txt, mb: 0.75 }}>
                   {product.fullDescription}
                 </Typography>
               </>
@@ -1047,7 +1061,7 @@ export default function ProductModal({
 
             {product?.offerEnd && (
               <Typography variant="body2" sx={{ color: PALETTE.muted }}>
-                <strong style={{ color: "#fff" }}>Oferta hasta:</strong>{" "}
+                <strong style={{ color: PALETTE.txt }}>Oferta hasta:</strong>{" "}
                 {formatFechaMX(product.offerEnd)}
               </Typography>
             )}
@@ -1112,6 +1126,9 @@ ProductModal.propTypes = {
 
   onHide: PropTypes.func.isRequired,
   onWhatsapp: PropTypes.func,
+  storefrontTheme: PropTypes.object,
+  storefrontColors: PropTypes.object,
+  productLegend: PropTypes.string,
 
   product: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),

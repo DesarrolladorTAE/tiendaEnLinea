@@ -11,6 +11,9 @@ const ShopTopbar = ({
   loadingCats = false,
   isStore464 = false,
   variantSearch = "",
+  showSortSelector = false,
+  currentSort = "newest",
+  storefrontColors = {}, storefrontTheme = {},
 }) => {
   return (
     <Fragment>
@@ -23,6 +26,10 @@ const ShopTopbar = ({
         loadingCats={loadingCats}
         isStore464={isStore464}
         variantSearch={variantSearch}
+        showSortSelector={showSortSelector}
+        currentSort={currentSort}
+        storefrontColors={storefrontColors}
+        storefrontTheme={storefrontTheme}
       />
     </Fragment>
   );
@@ -37,6 +44,10 @@ ShopTopbar.propTypes = {
   loadingCats: PropTypes.bool,
   isStore464: PropTypes.bool,
   variantSearch: PropTypes.string,
+  showSortSelector: PropTypes.bool,
+  currentSort: PropTypes.string,
+  storefrontColors: PropTypes.object,
+  storefrontTheme: PropTypes.object,
 };
 
 export default ShopTopbar;

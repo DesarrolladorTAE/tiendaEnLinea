@@ -115,7 +115,7 @@ export default function SitioWeb({ onSelect }) {
   const progress = site ? Math.round((configuredItems / totalItems) * 100) : 0;
   const sections = [
     { title: "Identidad", detail: [site?.logo && "Logo", site?.titulo_1 && "título", site?.descripcion && "descripción"].filter(Boolean).join(", "), current: [site?.logo, site?.titulo_1, site?.descripcion].filter(Boolean).length, total: 3, icon: StorefrontRoundedIcon },
-    { title: "Portada y hero", detail: [site?.img_portada && "Portada", site?.hero_title && "mensaje", site?.hero_button_text && "botón"].filter(Boolean).join(", "), current: [site?.img_portada, site?.hero_title, site?.hero_button_text].filter(Boolean).length, total: 3, icon: ImageRoundedIcon },
+    { title: "Identidad destacada", detail: [site?.img_portada && "Portada", site?.hero_title && "mensaje", site?.hero_button_text && "botón"].filter(Boolean).join(", "), current: [site?.img_portada, site?.hero_title, site?.hero_button_text].filter(Boolean).length, total: 3, icon: ImageRoundedIcon },
     { title: "Carrusel", detail: `${carouselCount} de ${capabilities.max_carousel} imágenes`, current: carouselCount, total: capabilities.max_carousel, icon: DesignServicesRoundedIcon },
     { title: "Redes sociales", detail: `${socialCount} de 4 conectadas`, current: socialCount, total: 4, icon: LanguageRoundedIcon },
     { title: "Diseño y frases", detail: `${phrasesCount} de ${capabilities.max_phrases} frases`, current: phrasesCount, total: capabilities.max_phrases, icon: PaletteRoundedIcon },

@@ -19,6 +19,8 @@ export default function WhatsAppFloatingButton({
   storePhone,
   storeId,
   storeSlug,
+  storefrontTheme = {},
+  storefrontColors = {},
 }) {
   const items = useSelector((state) => state.whatsappCart.items || []);
   const dispatch = useDispatch();
@@ -197,6 +199,7 @@ export default function WhatsAppFloatingButton({
       />
 
       <div
+        className="sf-whatsapp-cart"
         style={{
           position: "fixed",
           right: 20,
@@ -206,6 +209,13 @@ export default function WhatsAppFloatingButton({
           flexDirection: "column",
           alignItems: "flex-end",
           gap: 12,
+          "--cart-primary": storefrontColors.primary || "#111827",
+          "--cart-secondary": storefrontColors.secondary || "#475569",
+          "--cart-accent": storefrontColors.accent || "#25d366",
+          "--cart-background": storefrontColors.background || "#ffffff",
+          "--cart-text": storefrontColors.text || "#111827",
+          "--cart-radius": `${storefrontTheme.radiusValue ?? 16}px`,
+          "--cart-shadow": storefrontTheme.shadowValue || "0 12px 30px rgba(0,0,0,.12)",
         }}
       >
         {open && (

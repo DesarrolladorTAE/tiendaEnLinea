@@ -12,6 +12,7 @@ const ShopProducts = ({
   columns = 3,
   template = "negocio",
   groupVariants = false,
+  storefrontSettings = {}, storefrontTheme = {}, storefrontColors = {}, storeSlug,
 }) => {
   const currency = {
     currencySymbol: "MX$",
@@ -29,6 +30,10 @@ const ShopProducts = ({
           columns={columns}
           template={template}
           groupVariants={groupVariants}
+          storefrontSettings={storefrontSettings}
+          storefrontTheme={storefrontTheme}
+          storefrontColors={storefrontColors}
+          storeSlug={storeSlug}
           spaceBottomClass="mb-25"
           currency={currency}
         />
@@ -49,6 +54,10 @@ ShopProducts.propTypes = {
   columns: PropTypes.number,
   template: PropTypes.string,
   groupVariants: PropTypes.bool,
+  storefrontSettings: PropTypes.object,
+  storefrontTheme: PropTypes.object,
+  storefrontColors: PropTypes.object,
+  storeSlug: PropTypes.string,
 };
 
 export default ShopProducts;

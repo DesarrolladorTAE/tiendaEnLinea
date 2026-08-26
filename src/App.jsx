@@ -81,6 +81,7 @@ const App = () => {
                 }
               />
             )}
+            {customStoreSlug && <Route path="/producto/:productId" element={<PersonalizacionSitio customStoreSlug={customStoreSlug} />} />}
 
             {/* ==========================================
                 LANDING PRINCIPAL
@@ -124,6 +125,7 @@ const App = () => {
               path="/tienda/:storeSlug"
               element={<PersonalizacionSitio />}
             />
+            <Route path="/tienda/:storeSlug/producto/:productId" element={<PersonalizacionSitio />} />
 
             {/* ==========================================
                 DEMÁS RUTAS
