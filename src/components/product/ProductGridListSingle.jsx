@@ -61,8 +61,11 @@ const ProductGridListSingle = ({
   const cardRef = useRef(null);
   const [modalShow, setModalShow] = useState(false);
 
-  const resolvedStoreId = Number(storeId ?? product?.store_id ?? product?.store?.id ?? product?.storeId);
-  const isStore464 = resolvedStoreId === 464;
+  const singleUnitMessage = String(storefrontSettings.single_unit_message || "").trim();
+  const wholesaleMessage = String(storefrontSettings.wholesale_message || "").trim();
+  const wholesaleMinQuantity = Math.max(0, Number(storefrontSettings.wholesale_min_quantity) || 0);
+  const wholesaleUnitPrice = Math.max(0, Number(storefrontSettings.wholesale_unit_price) || 0);
+  const hasWholesaleRule = wholesaleMinQuantity >= 2 && wholesaleUnitPrice > 0;
   const hasVariants = Boolean(product?.has_variants) || (Array.isArray(product?.variants) && product.variants.length > 0);
   const useWh = Boolean(product?.use_warehouse_inventory);
   const symbol = currency?.currencySymbol ?? "$";
@@ -79,10 +82,10 @@ const ProductGridListSingle = ({
 
   const safeMatchingVariants = Array.isArray(matchingVariants) ? matchingVariants.filter((item) => item?.variant?.id) : [];
   const totalRequestedQty = safeMatchingVariants.reduce((total, item) => total + (Number(item?.requestedQty) || 0), 0);
-  const hasGroupWholesalePrice = variantGroupCard && isStore464 && totalRequestedQty >= 7;
+  const hasGroupWholesalePrice = variantGroupCard && hasWholesaleRule && totalRequestedQty >= wholesaleMinQuantity;
 
   const getGroupVariantUnitPrice = (variant) => {
-    if (hasGroupWholesalePrice) return 320;
+    if (hasGroupWholesalePrice) return wholesaleUnitPrice;
     const base = Number(variant?.price ?? product?.price ?? 0);
     const discounted = getDiscountPrice(base, product?.discount);
     return money2((discounted !== null ? discounted : base) * rate);
@@ -106,8 +109,8 @@ const ProductGridListSingle = ({
   });
 
   const safeRequestedQty = Math.max(1, Number(requestedQty) || 1);
-  const hasWholesalePrice = variantCard && isStore464 && safeRequestedQty >= 7;
-  const variantCartPrice = hasWholesalePrice ? 320 : displayedVariantPrice;
+  const hasWholesalePrice = variantCard && hasWholesaleRule && safeRequestedQty >= wholesaleMinQuantity;
+  const variantCartPrice = hasWholesalePrice ? wholesaleUnitPrice : displayedVariantPrice;
   const canQuickAdd = variantCard || (!hasVariants && !useWh);
   const useProductPage = storefrontSettings.product_view === "page";
   const showShare = [true, 1, "1", "true"].includes(storefrontSettings.show_share);
@@ -150,6 +153,9 @@ const ProductGridListSingle = ({
           available_stock: stock,
           wholesale_price: hasGroupWholesalePrice,
           group_total_requested: totalRequestedQty,
+          regular_price: Number(getDiscountPrice(Number(variant?.price ?? product?.price ?? 0), product?.discount) ?? variant?.price ?? product?.price ?? 0) * rate,
+          wholesale_unit_price: wholesaleUnitPrice,
+          wholesale_min_quantity: wholesaleMinQuantity,
         },
       }));
     });
@@ -174,6 +180,9 @@ const ProductGridListSingle = ({
           requested_qty: safeRequestedQty,
           available_stock: Number(availableStock) || 0,
           wholesale_price: hasWholesalePrice,
+          regular_price: displayedVariantPrice,
+          wholesale_unit_price: wholesaleUnitPrice,
+          wholesale_min_quantity: wholesaleMinQuantity,
         },
       }));
       return;
@@ -274,14 +283,14 @@ const ProductGridListSingle = ({
                     : <span className="price-current">{symbol}{normalPrice}</span>}
           </div>
 
-          {variantGroupCard && isStore464 && <>
-            <div style={{ marginTop: 8, padding: "7px 8px", borderRadius: 9, color: "#76e0ff", background: "rgba(118,224,255,.08)", border: "1px solid rgba(118,224,255,.20)", fontSize: 10, fontWeight: 800 }}>1 pieza incluye playera + shorts</div>
-            <div style={{ marginTop: 6, padding: "7px 8px", borderRadius: 9, color: hasGroupWholesalePrice ? "#22c55e" : "#76e0ff", background: hasGroupWholesalePrice ? "rgba(34,197,94,.10)" : "rgba(118,224,255,.08)", border: hasGroupWholesalePrice ? "1px solid rgba(34,197,94,.25)" : "1px solid rgba(118,224,255,.20)", fontSize: 10, lineHeight: 1.4, fontWeight: 800 }}>{hasGroupWholesalePrice ? `✓ Mayoreo aplicado: ${symbol}320.00 por pieza` : `Desde 7 piezas: ${symbol}320.00 por pieza`}<br />Playera, shorts, nombre, número y calcetas</div>
+          {variantGroupCard && (singleUnitMessage || hasWholesaleRule || wholesaleMessage) && <>
+            {singleUnitMessage && <div style={{ marginTop: 8, padding: "7px 8px", borderRadius: 9, color: "#76e0ff", background: "rgba(118,224,255,.08)", border: "1px solid rgba(118,224,255,.20)", fontSize: 10, fontWeight: 800 }}>{singleUnitMessage}</div>}
+            {(hasWholesaleRule || wholesaleMessage) && <div style={{ marginTop: 6, padding: "7px 8px", borderRadius: 9, color: hasGroupWholesalePrice ? "#22c55e" : "#76e0ff", background: hasGroupWholesalePrice ? "rgba(34,197,94,.10)" : "rgba(118,224,255,.08)", border: hasGroupWholesalePrice ? "1px solid rgba(34,197,94,.25)" : "1px solid rgba(118,224,255,.20)", fontSize: 10, lineHeight: 1.4, fontWeight: 800 }}>{hasWholesaleRule && (hasGroupWholesalePrice ? `✓ Mayoreo aplicado: ${symbol}${money2(wholesaleUnitPrice)} por pieza` : `Desde ${wholesaleMinQuantity} piezas: ${symbol}${money2(wholesaleUnitPrice)} por pieza`)}{hasWholesaleRule && wholesaleMessage && <br />}{wholesaleMessage}</div>}
           </>}
 
-          {variantCard && isStore464 && <>
-            <div style={{ marginTop: 9, padding: "7px 8px", borderRadius: 9, color: "#76e0ff", background: "rgba(118,224,255,.08)", border: "1px solid rgba(118,224,255,.20)", fontSize: 10, fontWeight: 800 }}>1 pieza incluye playera + shorts</div>
-            <div style={{ marginTop: 6, padding: "7px 8px", borderRadius: 9, color: hasWholesalePrice ? "#22c55e" : "#76e0ff", background: hasWholesalePrice ? "rgba(34,197,94,.10)" : "rgba(118,224,255,.08)", border: hasWholesalePrice ? "1px solid rgba(34,197,94,.25)" : "1px solid rgba(118,224,255,.20)", fontSize: 10, lineHeight: 1.35, fontWeight: 800 }}>Desde 7 piezas: {symbol}320.00<br />Playera, shorts, nombre, número y calcetas</div>
+          {variantCard && (singleUnitMessage || hasWholesaleRule || wholesaleMessage) && <>
+            {singleUnitMessage && <div style={{ marginTop: 9, padding: "7px 8px", borderRadius: 9, color: "#76e0ff", background: "rgba(118,224,255,.08)", border: "1px solid rgba(118,224,255,.20)", fontSize: 10, fontWeight: 800 }}>{singleUnitMessage}</div>}
+            {(hasWholesaleRule || wholesaleMessage) && <div style={{ marginTop: 6, padding: "7px 8px", borderRadius: 9, color: hasWholesalePrice ? "#22c55e" : "#76e0ff", background: hasWholesalePrice ? "rgba(34,197,94,.10)" : "rgba(118,224,255,.08)", border: hasWholesalePrice ? "1px solid rgba(34,197,94,.25)" : "1px solid rgba(118,224,255,.20)", fontSize: 10, lineHeight: 1.35, fontWeight: 800 }}>{hasWholesaleRule && `Desde ${wholesaleMinQuantity} piezas: ${symbol}${money2(wholesaleUnitPrice)}`}{hasWholesaleRule && wholesaleMessage && <br />}{wholesaleMessage}</div>}
           </>}
 
           {variantGroupCard && <button type="button" onClick={handleAddVariantGroup} style={{ display: "flex", width: "100%", minHeight: 42, alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, padding: "9px 8px", border: 0, borderRadius: 10, color: "#0b0e12", background: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 950 }}><i className="pe-7s-cart" /> Agregar {totalRequestedQty} piezas</button>}
@@ -292,7 +301,7 @@ const ProductGridListSingle = ({
         </div>
       </article>
 
-      {!variantCard && !variantGroupCard && <ProductModal show={modalShow} onHide={() => setModalShow(false)} images={images} product={product} currency={currency} discountedPrice={normalDiscounted} finalProductPrice={normalPrice} finalDiscountedPrice={normalDiscountPrice} onWhatsapp={handleWhatsappFromModal} wishlistItem={wishlistItem} compareItem={compareItem} storefrontTheme={storefrontTheme} storefrontColors={storefrontColors} productLegend={storefrontSettings.product_legend || ""} />}
+      {!variantCard && !variantGroupCard && <ProductModal show={modalShow} onHide={() => setModalShow(false)} images={images} product={product} currency={currency} discountedPrice={normalDiscounted} finalProductPrice={normalPrice} finalDiscountedPrice={normalDiscountPrice} onWhatsapp={handleWhatsappFromModal} wishlistItem={wishlistItem} compareItem={compareItem} storefrontTheme={storefrontTheme} storefrontColors={storefrontColors} storefrontSettings={storefrontSettings} productLegend={storefrontSettings.product_legend || ""} shareUrl={productUrl} />}
     </Fragment>
   );
 };

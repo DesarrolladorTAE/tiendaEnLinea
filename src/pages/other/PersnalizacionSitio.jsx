@@ -137,8 +137,17 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
   const sectionVisibility = asObject(rawSettings.section_visibility);
   const hasGallery = Array.isArray(site.carousel) && site.carousel.some(Boolean);
   const hasPhrases = Array.isArray(site.phrases) && site.phrases.some((phrase) => String(phrase || "").trim());
+  const hasHero = [hero.title, hero.subtitle, hero.button_text]
+    .some((value) => String(value || "").trim());
+  const hasIdentity = [identity.title, identity.description, site.titulo_1, site.descripcion]
+    .some((value) => String(value || "").trim());
+  const hasSocials = [site.social?.facebook, site.social?.instagram, site.social?.twitter, site.social?.tiktok]
+    .some((value) => String(value || "").trim());
   const sectionsForPlan = sections.filter((section) => {
     if (section.id === "socials" && !advancedAccess) return false;
+    if (section.id === "hero" && !hasHero) return false;
+    if (section.id === "identity" && !hasIdentity) return false;
+    if (section.id === "socials" && !hasSocials) return false;
     if (planId === 2 && !["catalog", "carousel", "phrases"].includes(section.id)) return false;
     if (section.id === "carousel" && !hasGallery) return false;
     if (section.id === "phrases" && !hasPhrases) return false;
@@ -158,7 +167,7 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
     ...rawSettings,
     navigation_mode: professionalAccess ? (rawSettings.navigation_mode || "landing") : "landing",
     product_view: professionalAccess ? (rawSettings.product_view || "modal") : "modal",
-    show_share: professionalAccess && asBoolean(rawSettings.show_share),
+    show_share: advancedAccess && asBoolean(rawSettings.show_share),
     product_legend: professionalAccess ? (rawSettings.product_legend || "") : "",
     phrase_style: professionalAccess ? (rawSettings.phrase_style || "editorial") : "minimal",
     phrase_alignment: professionalAccess ? (rawSettings.phrase_alignment || "alternating") : "left",
@@ -220,6 +229,6 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
   return <Box className="storefront-shell" data-template={template} data-mode={isDark ? "dark" : "light"} data-navigation={settings.navigation_mode || "landing"} data-advanced-hero={asBoolean(settings.advanced_hero) ? "true" : "false"} data-header={theme.header_style} data-button={theme.button_style} data-width={theme.content_width} data-animation={theme.animation} data-spacing={theme.spacing} data-radius={theme.radius} data-shadow={theme.shadow} style={{ "--sf-primary": colors.primary, "--sf-secondary": colors.secondary, "--sf-accent": colors.accent, "--sf-background": background, "--sf-text": text, "--sf-radius": `${theme.radiusValue}px`, "--sf-shadow": theme.shadowValue }} sx={{ minHeight: "100vh", bgcolor: background, color: text, fontFamily: site.font_family || "Inter,Arial,sans-serif", scrollBehavior: asBoolean(theme.smooth_scroll, true) ? "smooth" : "auto", "@keyframes storefrontReveal": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "none" } } }}>
     {branches.length > 1 && <Box className="sf-branch-picker"><FormControl size="small"><InputLabel>Sucursal</InputLabel><Select value={branchSlug} label="Sucursal" onChange={(e) => { setBranchSlug(e.target.value); setParams({ branch: e.target.value }); }}>{branches.map((item) => <MenuItem key={item.id} value={item.slug}>{item.name}</MenuItem>)}</Select></FormControl></Box>}
     <FacebookHeader />
-    {productId ? (productLoading ? <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><CircularProgress /></Box> : selectedProduct ? <PublicProductDetail product={selectedProduct} colors={colors} radius={theme.radiusValue} shadow={theme.shadowValue} legend={settings.product_legend || ""} onBack={() => navigate(customStoreSlug ? "/#catalog" : `/tienda/${storeSlug}#catalog`)} /> : <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><Typography>Producto no disponible.</Typography></Box>) : sectionsForPlan.filter((section) => settings.navigation_mode !== "tabs" || section.id === activeSection).map((section) => <React.Fragment key={section.id}>{renderers[section.id]?.()}</React.Fragment>)}
+    {productId ? (productLoading ? <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><CircularProgress /></Box> : selectedProduct ? <PublicProductDetail product={selectedProduct} colors={colors} radius={theme.radiusValue} shadow={theme.shadowValue} legend={settings.product_legend || ""} showShare={advancedAccess && settings.show_share} showBack={advancedAccess} onBack={() => navigate(customStoreSlug ? "/#catalog" : `/tienda/${storeSlug}#catalog`)} /> : <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><Typography>Producto no disponible.</Typography></Box>) : sectionsForPlan.filter((section) => settings.navigation_mode !== "tabs" || section.id === activeSection).map((section) => <React.Fragment key={section.id}>{renderers[section.id]?.()}</React.Fragment>)}
   </Box>;
 }

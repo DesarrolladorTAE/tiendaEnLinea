@@ -12,11 +12,13 @@ import {
   Button,
   Divider,
   Paper,
+  TextField,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
+import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import StarRoundedIcon from "@mui/icons-material/StarRounded";
 import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
@@ -197,15 +199,16 @@ export default function ProductModal({
   show,
   onHide,
   onWhatsapp,
-  storefrontTheme = {}, storefrontColors = {}, productLegend = "",
+  storefrontTheme = {}, storefrontColors = {}, storefrontSettings = {}, productLegend = "", shareUrl = "",
 }) {
   const symbol = currency?.currencySymbol ?? "MX$";
 
-  const storeId = Number(
-    product?.store_id ?? product?.store?.id ?? product?.storeId,
-  );
-
-  const isStore464 = storeId === 464;
+  const singleUnitMessage = String(storefrontSettings.single_unit_message || "").trim();
+  const wholesaleMessage = String(storefrontSettings.wholesale_message || "").trim();
+  const wholesaleMinQuantity = Math.max(0, Number(storefrontSettings.wholesale_min_quantity) || 0);
+  const wholesaleUnitPrice = Math.max(0, Number(storefrontSettings.wholesale_unit_price) || 0);
+  const hasWholesaleRule = wholesaleMinQuantity >= 2 && wholesaleUnitPrice > 0;
+  const showShare = [true, 1, "1", "true"].includes(storefrontSettings.show_share);
 
   const hasOptions =
     Boolean(product?.has_variants) ||
@@ -269,9 +272,11 @@ export default function ProductModal({
   );
 
   const [selectedOptionId, setSelectedOptionId] = React.useState("");
+  const [quantity, setQuantity] = React.useState(1);
 
   React.useEffect(() => {
     if (!show) return;
+    setQuantity(1);
     if (hasOptions) {
       const first = options[0] || null;
       setSelectedOptionId(first ? String(first.id) : "");
@@ -346,6 +351,8 @@ export default function ProductModal({
   const effectiveUnitPrice = React.useMemo(() => {
     return computeEffectiveUnitPrice({ hasOptions, product, selectedOption });
   }, [hasOptions, product, selectedOption]);
+  const wholesaleApplied = hasWholesaleRule && quantity >= wholesaleMinQuantity;
+  const cartUnitPrice = wholesaleApplied ? wholesaleUnitPrice : effectiveUnitPrice;
 
   const baseOptionPrice = React.useMemo(() => {
     return Number(selectedOption?.price ?? product?.price ?? 0);
@@ -376,14 +383,31 @@ export default function ProductModal({
       warehouse_name: null,
       name: product?.name,
       display_name,
-      price: effectiveUnitPrice,
-      qty: 1,
+      price: cartUnitPrice,
+      qty: quantity,
       meta: {
         discount: Number(product?.discount) || 0,
         option_label: selectedOptionLabel || null,
         option_attributes: selectedOptionAttrs,
+        regular_price: effectiveUnitPrice,
+        wholesale_unit_price: wholesaleUnitPrice,
+        wholesale_min_quantity: wholesaleMinQuantity,
+        wholesale_price: wholesaleApplied,
       },
     });
+  };
+
+  const handleShare = async () => {
+    const url = shareUrl || window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: product?.name || "Producto", text: productLegend || product?.name || "", url });
+        return;
+      }
+      await navigator.clipboard?.writeText(url);
+    } catch (error) {
+      if (error?.name !== "AbortError") await navigator.clipboard?.writeText(url);
+    }
   };
 
   return (
@@ -718,7 +742,7 @@ export default function ProductModal({
                   }}
                 >
                   {symbol}
-                  {money(effectiveUnitPrice)}
+                  {money(cartUnitPrice)}
                 </Typography>
 
                 {Number(product?.discount) > 0 && (
@@ -735,9 +759,9 @@ export default function ProductModal({
                   </Typography>
                 )}
 
-                {isStore464 && (
+                {singleUnitMessage && (
                   <Chip
-                    label="1 pieza · Playera + shorts"
+                    label={singleUnitMessage}
                     size="small"
                     sx={{
                       height: 24,
@@ -760,7 +784,7 @@ export default function ProductModal({
                 )}
               </Stack>
 
-              {isStore464 && (
+              {(hasWholesaleRule || wholesaleMessage) && (
                 <Box
                   sx={{
                     display: "flex",
@@ -802,8 +826,7 @@ export default function ProductModal({
                         fontWeight: 700,
                       }}
                     >
-                      Desde 7 piezas · Incluye playera, shorts, nombre, número y
-                      calcetas
+                      {hasWholesaleRule && `Desde ${wholesaleMinQuantity} piezas`}{hasWholesaleRule && wholesaleMessage && " · "}{wholesaleMessage}
                     </Typography>
                   </Box>
 
@@ -816,7 +839,7 @@ export default function ProductModal({
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {symbol}320.00
+                    {hasWholesaleRule ? `${symbol}${money(wholesaleUnitPrice)}` : ""}
                   </Typography>
                 </Box>
               )}
@@ -1066,6 +1089,21 @@ export default function ProductModal({
               </Typography>
             )}
 
+            <TextField
+              label="Cantidad"
+              type="number"
+              size="small"
+              value={quantity}
+              onChange={(event) => {
+                const stock = hasOptions ? optionStockTotal : productStockTotal;
+                const nextQuantity = Math.max(1, Math.floor(Number(event.target.value) || 1));
+                setQuantity(stock > 0 ? Math.min(nextQuantity, stock) : nextQuantity);
+              }}
+              inputProps={{ min: 1, max: hasOptions ? optionStockTotal : productStockTotal, step: 1 }}
+              helperText={wholesaleApplied ? `Precio de mayoreo aplicado: ${symbol}${money(wholesaleUnitPrice)} por pieza` : hasWholesaleRule ? `Mayoreo a partir de ${wholesaleMinQuantity} piezas` : ""}
+              sx={{ mt: 1.5, width: 190 }}
+            />
+
             <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
               <Button
                 fullWidth
@@ -1090,6 +1128,16 @@ export default function ProductModal({
               >
                 Añadir al carrito
               </Button>
+              {showShare && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ShareRoundedIcon />}
+                  onClick={handleShare}
+                  sx={{ minWidth: 145, fontWeight: 900, borderRadius: 2, color: PALETTE.accent, borderColor: PALETTE.accent }}
+                >
+                  Compartir
+                </Button>
+              )}
             </Stack>
 
             {!canAdd && (
@@ -1128,7 +1176,9 @@ ProductModal.propTypes = {
   onWhatsapp: PropTypes.func,
   storefrontTheme: PropTypes.object,
   storefrontColors: PropTypes.object,
+  storefrontSettings: PropTypes.object,
   productLegend: PropTypes.string,
+  shareUrl: PropTypes.string,
 
   product: PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
