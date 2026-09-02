@@ -1,4 +1,3 @@
-import { patch } from "@mui/material";
 import React, { lazy } from "react";
 import { Navigate } from "react-router-dom";
 
@@ -6,6 +5,8 @@ const ProductList = lazy(() => import("../pages/admin/ProductList"));
 const ProductForm = lazy(() => import("../pages/admin/ProductForm"));
 const ProductDetails = lazy(() => import("../pages/admin/ProductDetails"));
 const ProductImages = lazy(() => import("../pages/admin/ProductImages"));
+const ServiceListPage = lazy(() => import("../pages/admin/ServiceListPage.jsx"));
+const ServiceFormPage = lazy(() => import("../pages/admin/ServiceFormPage.jsx"));
 const SitioWeb = lazy(() => import("../pages/admin/SitioWeb.jsx"));
 
 const Categorias = lazy(() => import("../pages/admin/ProductCategory"));
@@ -44,6 +45,10 @@ export const adminRouteConfig = [
   { path: "products/edit/:id", element: <ProductForm /> },
   { path: "products/images/:id", element: <ProductImages /> },
   { path: "products/:id", element: <ProductDetails /> },
+
+  { path: "services", element: <ServiceListPage /> },
+  { path: "services/new", element: <ServiceFormPage /> },
+  { path: "services/edit/:id", element: <ServiceFormPage /> },
 
   { path: "categorias", element: <Categorias /> },
   { path: "mi-sitio", element: <SitioWeb /> },
