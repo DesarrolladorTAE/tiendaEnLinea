@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
   Container,
+  Grid,
   Typography,
   Stack,
   Button,
@@ -31,6 +32,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 
 import { useNavigate } from "react-router-dom";
 
@@ -44,6 +46,7 @@ import BranchDetailsModal from "../../components/branches/BranchDetailsModal";
 
 // ✅ NUEVO: modal de confirmación de pagos offline
 import OfflinePaymentsModal from "../../components/offline/OfflinePaymentsModal";
+import StoreHubNav from "../../components/admin/StoreHubNav";
 
 const COLORS = {
   accent: "#f9b233",
@@ -143,6 +146,12 @@ export default function Sucursales() {
   }, [tiendaLoading, storeId, fetchBranches]);
 
   const handleOpenCreate = () => setCreateOpen(true);
+  const handleLogout = () => {
+    localStorage.removeItem("AUTH_TOKEN");
+    localStorage.removeItem("STORE_SLUG");
+    sessionStorage.removeItem("ADMIN_SELECTED_BRANCH");
+    navigate("/login-register", { replace: true });
+  };
 
   const handleOpenEdit = (branch) => {
     setSelected(branch);
@@ -186,108 +195,20 @@ export default function Sucursales() {
   };
 
   const header = (
-    <Stack
-      direction={isMobile ? "column" : "row"}
-      alignItems={isMobile ? "flex-start" : "center"}
-      justifyContent="space-between"
-      spacing={2}
-      sx={{ mb: 2 }}
-    >
+    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 3, px: { xs: 2, sm: 2.5 }, py: 1.5, borderRadius: 3, background: "rgba(255,255,255,.88)", border: "1px solid rgba(233,78,27,.1)", boxShadow: "0 10px 30px rgba(78,42,11,.07)", backdropFilter: "blur(10px)" }}>
       <Stack direction="row" spacing={1.5} alignItems="center">
-        <Box
-          component="img"
-          src="/assets/logo1.png"
-          alt="Logo"
-          sx={{
-            width: 192,
-            height: 192,
-            objectFit: "contain",
-            borderRadius: 1,
-          }}
-        />
+        <Box component="img" src="/assets/logo1.png" alt="Logo" sx={{ width: { xs: 48, sm: 58 }, height: { xs: 48, sm: 58 }, objectFit: "contain", borderRadius: 1 }} />
 
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 800, color: COLORS.black }}>
-            Sucursales
+          <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 950, color: "#202020", letterSpacing: "-.025em", lineHeight: 1.1 }}>
+            Hola{tienda?.name ? `, ${tienda.name}` : ""}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Selecciona una sucursal para empezar a trabajar.
+          <Typography variant="body2" sx={{ color: "#71717a", mt: 0.25, display: { xs: "none", sm: "block" } }}>
+            Panel principal de tu tienda
           </Typography>
         </Box>
       </Stack>
-
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1}
-        alignItems="center"
-        sx={{ width: isMobile ? "100%" : "auto" }}
-      >
-        <TextField
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar (nombre, código, ciudad)…"
-          size="small"
-          fullWidth={isMobile}
-          sx={{
-            minWidth: isMobile ? "100%" : 340,
-            "& .MuiOutlinedInput-root": {
-              backgroundColor: "#fff",
-              borderRadius: 2,
-            },
-          }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchRoundedIcon fontSize="small" />
-              </InputAdornment>
-            ),
-          }}
-        />
-
-        {/* ✅ NUEVO: acceso a Pagos offline */}
-        <Tooltip title="Ver solicitudes de pago offline (transferencia/depósito/OXXO)">
-          <span>
-            <Button
-              onClick={() => setOfflineOpen(true)}
-              variant="outlined"
-              startIcon={<ReceiptLongRoundedIcon />}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 900,
-                minWidth: 170,
-                borderColor: alpha(COLORS.black, 0.25),
-                color: COLORS.black,
-                bgcolor: alpha(COLORS.black, 0.02),
-                "&:hover": { bgcolor: alpha(COLORS.black, 0.05) },
-              }}
-            >
-              Pagos offline
-            </Button>
-          </span>
-        </Tooltip>
-
-        <Tooltip title={canCreate ? "Crear sucursal" : "Límite de sucursales alcanzado"}>
-          <span>
-            <Button
-              onClick={handleOpenCreate}
-              disabled={!canCreate}
-              variant="contained"
-              startIcon={<AddRoundedIcon />}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 800,
-                bgcolor: COLORS.black,
-                "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
-                minWidth: 170,
-              }}
-            >
-              Nueva sucursal
-            </Button>
-          </span>
-        </Tooltip>
-      </Stack>
+      <Button onClick={handleLogout} variant="outlined" startIcon={<LogoutRoundedIcon />} sx={{ borderColor: alpha(COLORS.danger, .28), color: COLORS.danger, bgcolor: "#fff", borderRadius: 2, px: { xs: 1.25, sm: 2 }, minWidth: { xs: 0, sm: 145 }, textTransform: "none", fontWeight: 850, "&:hover": { borderColor: COLORS.danger, bgcolor: alpha(COLORS.danger, .06) } }}>Cerrar sesión</Button>
     </Stack>
   );
 
@@ -330,10 +251,25 @@ export default function Sucursales() {
     ) : null;
 
   return (
-    <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: 3 }}>
+    <Box sx={{ background: "radial-gradient(circle at 10% 0%, rgba(249,178,51,.14), transparent 34%), radial-gradient(circle at 95% 15%, rgba(233,78,27,.1), transparent 28%), #fffaf2", minHeight: "100vh", py: { xs: 2, md: 4 } }}>
       <Container maxWidth="lg">
         {header}
-        {planBanner}
+        <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="flex-start">
+          <Grid size={{ xs: 12, md: 3.25 }}>
+            <Box sx={{ position: { md: "sticky" }, top: { md: 24 }, p: { xs: 2, md: 2.25 }, borderRadius: 3, bgcolor: "rgba(255,255,255,.7)", border: "1px solid rgba(32,32,32,.07)" }}><StoreHubNav /></Box>
+          </Grid>
+          <Grid size={{ xs: 12, md: 8.75 }}>
+            {planBanner}
+
+            <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" alignItems={{ lg: "flex-end" }} spacing={2} mb={2}>
+              <Box><Typography variant="h5" sx={{ fontWeight: 900, color: "#202020" }}>Tus sucursales</Typography><Typography variant="body2" sx={{ color: "#71717a" }}>Selecciona una para administrar sus productos, servicios y operación.</Typography></Box>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
+                <Button onClick={() => setOfflineOpen(true)} variant="outlined" startIcon={<ReceiptLongRoundedIcon />} sx={{ borderRadius: 2, textTransform: "none", fontWeight: 850, borderColor: alpha(COLORS.black, .2), color: COLORS.black }}>Pagos offline</Button>
+                <Button onClick={handleOpenCreate} disabled={!canCreate} variant="contained" startIcon={<AddRoundedIcon />} sx={{ borderRadius: 2, textTransform: "none", fontWeight: 850, bgcolor: COLORS.black, "&:hover": { bgcolor: alpha(COLORS.black, .84) } }}>Nueva sucursal</Button>
+              </Stack>
+            </Stack>
+
+            <TextField value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, código o ciudad…" size="small" fullWidth sx={{ mb: 2, "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 2.5 } }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon fontSize="small" /></InputAdornment> }} />
 
         <Card
           elevation={0}
@@ -521,6 +457,8 @@ export default function Sucursales() {
             )}
           </CardContent>
         </Card>
+          </Grid>
+        </Grid>
 
         <BranchFormModal
           open={createOpen}

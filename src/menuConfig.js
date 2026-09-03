@@ -11,10 +11,7 @@ const adminNavItems = [
   { path: "/admin/compra", label: "📦 Entradas Producto" },
   { path: "/admin/ticket", label: "📄 Personaliza tu Ticket" },
   { path: "/admin/mi-sitio", label: "🌐 Sitio Web" },
-  { path: "/admin/marca-blanca", label: "📍 Marca Blanca" },
-  { path: "/admin/complementos", label: "🔌 Complementos" },
-  { path: "/admin/membresia", label: "📑 Suscripciones" },
-  { path: "/admin/micuenta", label: "🪪 Mi Cuenta" },
+  { path: "/admin/marca-blanca", label: "🎨 Marca blanca" },
 ];
 
 export default adminNavItems;

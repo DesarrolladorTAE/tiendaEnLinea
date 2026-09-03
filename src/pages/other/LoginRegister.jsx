@@ -195,7 +195,7 @@ const LoginRegister = () => {
       );
       localStorage.setItem("AUTH_TOKEN", res.data.token);
       localStorage.setItem("STORE_SLUG", res.data.store.slug);
-      navigate("/admin");
+      navigate("/admin/sucursales", { replace: true });
     } catch (err) {
       const msg =
         err.response?.data?.message ||
@@ -244,7 +244,7 @@ const LoginRegister = () => {
       }
 
       await showSuccess("¡Cuenta creada y sesión iniciada! 🎉");
-      navigate("/admin");
+      navigate("/admin/sucursales", { replace: true });
     } catch (err) {
       if (err.response?.status === 422) {
         setErrors(err.response.data.errors || {});

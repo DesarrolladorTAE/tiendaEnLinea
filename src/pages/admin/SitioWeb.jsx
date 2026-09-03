@@ -18,6 +18,7 @@ import { useAdminUi } from "../../context/AdminUiContext";
 import { getBranchSite, getMyStore, upsertBranchSite } from "../../services/admin/branchSiteService";
 import { alertFromAxiosError, showSuccess } from "../../utils/alerts";
 import SiteEditorModal from "./modals/SiteEditorModal";
+import PublicStoreLinkCard from "../../components/admin/PublicStoreLinkCard";
 
 const PLANS = {
   1: { name: "Demo", tagline: "Explora todas las herramientas", description: "Prueba la experiencia completa y prepara la imagen digital de tu negocio.", gradient: "linear-gradient(135deg,#334155,#0f766e)", icon: RocketLaunchRoundedIcon },
@@ -127,6 +128,8 @@ export default function SitioWeb({ onSelect }) {
           <Box><Typography variant="h4" fontWeight={900}>Sitio Web</Typography><Typography color="text.secondary">Administra la presencia digital de <strong>{selectedBranch?.name || "tu sucursal"}</strong>.</Typography></Box>
           
         </Stack>
+
+        <PublicStoreLinkCard />
 
         {expired && <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>Tu plan está inactivo o vencido. Renueva tu suscripción para volver a editar el sitio.</Alert>}
 
