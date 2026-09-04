@@ -28,7 +28,7 @@ export const SERVICE_TYPES = [
   ["digital", "Digital", ComputerRoundedIcon],
 ];
 
-const fieldSx = { "& .MuiInputBase-root": { bgcolor: "#6c757d" } };
+const fieldSx = { "& .MuiInputBase-root": { bgcolor: "#fff" } };
 const money = (value) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(value || 0));
 const typeLabel = (value) => SERVICE_TYPES.find(([key]) => key === value)?.[1] || value;
 

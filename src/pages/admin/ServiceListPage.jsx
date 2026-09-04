@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Box, Button, Card, CircularProgress, InputAdornment, MenuItem, Pagination, Stack, TextField, Typography } from "@mui/material";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { useAdminUi } from "../../context/AdminUiContext";
 import { serviceService } from "../../services/admin/serviceService";
@@ -51,10 +53,10 @@ export default function ServiceListPage() {
   const hasFilters = useMemo(() => !!(search || type), [search, type]);
 
   return <Box sx={{ maxWidth: 1400, mx: "auto" }}>
-    <Card sx={{ p: { xs: 2, sm: 3 }, borderRadius: { xs: 2, md: 4 }, background: "linear-gradient(145deg, #20262e 0%, #171b20 100%)", color: "#fff", boxShadow: "0 18px 50px rgba(0,0,0,.2)", border: "1px solid rgba(255,255,255,.08)" }}>
+    <Card elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, bgcolor: "#fff", color: "#000", border: "1px solid rgba(0,0,0,.08)", "& .MuiTypography-root": { color: "#000" }, "& .MuiButton-outlined": { color: "#000", borderColor: "rgba(0,0,0,.18)", bgcolor: "#fff" }, "& .MuiTextField-root": { bgcolor: "#fff !important" }, "& .MuiInputBase-input, & .MuiSelect-select, & .MuiInputLabel-root, & .MuiSvgIcon-root": { color: "#000 !important" }, "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(0,0,0,.18) !important" } }}>
       <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2} mb={3}>
-        <Box><Typography variant="h4" fontWeight={900} color="white">🛠️ Lista de Servicios</Typography><Stack direction="row" alignItems="center" spacing={1} mt={1} flexWrap="wrap"><Typography sx={{ color: "#c7cbd1" }}>Sucursal:</Typography><Box component="span" sx={{ bgcolor: "#f9b233", color: "#171b20", borderRadius: 5, px: 1.25, py: .35, fontSize: 13, fontWeight: 900 }}>📍 {branch?.name || `#${branchId}`}</Box><Button size="small" onClick={() => navigate("/admin/sucursales")} sx={{ color: "#4fc3f7" }}>Cambiar sucursal</Button></Stack></Box>
-        <Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={() => toForm()} sx={{ color: "#fff", borderColor: "#fff", alignSelf: { xs: "stretch", md: "center" }, "&:hover": { borderColor: "#fff", bgcolor: "rgba(255,255,255,.08)" } }}>Crear servicio</Button>
+        <Box><Typography variant="h4" fontWeight={900}>🛠️ Lista de Servicios</Typography><Stack direction="row" alignItems="center" spacing={1} mt={1} flexWrap="wrap"><Typography color="text.secondary">Sucursal:</Typography><Box component="span" sx={{ bgcolor: "#f9b233", color: "#171b20", borderRadius: 5, px: 1.25, py: .35, fontSize: 13, fontWeight: 900 }}>📍 {branch?.name || `#${branchId}`}</Box></Stack></Box>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignSelf={{ md: "center" }}><Button variant="outlined" startIcon={<GroupsRoundedIcon />} onClick={() => navigate(`/admin/services/resources?branch_id=${branchId}`, { state: { branch } })}>Recursos</Button><Button variant="outlined" startIcon={<AddRoundedIcon />} onClick={() => toForm()}>Crear servicio</Button><Button variant="contained" startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate("/admin/sucursales")} sx={{ bgcolor: "#1976d2", color: "#fff", fontWeight: 900, textTransform: "none", borderRadius: 2, "&:hover": { bgcolor: "#1565c0" } }}>Volver a sucursales</Button></Stack>
       </Stack>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} mb={2}>
         <TextField value={search} onChange={(e) => { setSearch(e.target.value); setQuery("search", e.target.value); }} label="Buscar por nombre, código o descripción" size="small" fullWidth InputProps={{ startAdornment: <InputAdornment position="start"><SearchRoundedIcon sx={{ color: "#fff" }} /></InputAdornment> }} sx={{ bgcolor: "#1a1a1a", borderRadius: 3, input: { color: "#fff" }, label: { color: "#fdd835" }, "& fieldset": { borderColor: "#fff" }, "&:hover fieldset": { borderColor: "#fff !important" } }} />

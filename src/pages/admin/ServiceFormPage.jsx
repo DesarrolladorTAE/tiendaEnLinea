@@ -66,74 +66,78 @@ export default function ServiceFormPage() {
   const imageProps = { existingImages, deletedIds, files, primaryImageId, primaryNewIndex, onFiles: (next) => { setFiles(next); if (next.length && primaryNewIndex == null && !primaryImageId) setPrimaryNewIndex(0); }, onToggleDelete: toggleDelete, onPrimaryExisting: (imageId) => { setPrimaryImageId(imageId); setPrimaryNewIndex(null); }, onPrimaryNew: (index) => { setPrimaryNewIndex(index); setPrimaryImageId(null); }, onRemoveNew: removeNewImage };
   const stepContent = [<ServiceGeneralStep form={form} setField={setField} errors={errors} imageProps={imageProps} />, <ServicePriceStep form={form} setField={setField} setChecked={setChecked} errors={errors} />, <ServiceOperationStep form={form} setField={setField} setChecked={setChecked} errors={errors} />, <ServiceBookingStep form={form} setChecked={setChecked} />, <ServiceResourcesStep form={form} />, <ServiceFinalStep form={form} setField={setField} setChecked={setChecked} errors={errors} branch={branch} imageCount={existingImages.filter((image) => !deletedIds.includes(image.id)).length + files.length} />];
 
-  return <Box component="form" onSubmit={submit} sx={{ maxWidth: 1100, mx: "auto" }}>
-    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5} mb={2}>
-      <Box><Button startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate(listUrl, { state: { branch } })}>Volver a servicios</Button><Typography variant="h4" fontWeight={900}>{isEdit ? "✏️ Editar Servicio" : "📝 Crear Servicio"}</Typography><Typography color="text.secondary">Sucursal: {branch?.name || `#${branchId}`}</Typography></Box>
+  return <Box component="form" onSubmit={submit} sx={{ maxWidth: 1100, mx: "auto", p: { xs: 1, sm: 2 }, borderRadius: 4, bgcolor: "#f7f7f5" }}>
+    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5} mb={2} sx={{ bgcolor: "#fff", border: "1px solid rgba(0,0,0,.08)", borderLeft: "6px solid #f9b233", borderRadius: 3, p: { xs: 2, sm: 2.5 } }}>
+      <Box><Typography variant="h4" fontWeight={900}>{isEdit ? "✏️ Editar Servicio" : "📝 Crear Servicio"}</Typography><Typography color="text.secondary">Sucursal: {branch?.name || `#${branchId}`}</Typography></Box>
+      <Button className="service-back-button" variant="contained" startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate(listUrl, { state: { branch } })} sx={{ alignSelf: { xs: "stretch", sm: "center" }, bgcolor: "#1976d2", color: "#fff", fontWeight: 900, textTransform: "none", borderRadius: 2, "&:hover": { bgcolor: "#1565c0" } }}>Volver a servicios</Button>
     </Stack>
     {loadError && <Alert severity="error" sx={{ mb: 2 }}>{loadError}</Alert>}
     <Card
       sx={{
         borderRadius: { xs: 2, md: 4 },
         p: { xs: 2, sm: 3, md: 4 },
-        background: "linear-gradient(145deg, #20262e 0%, #171b20 100%)",
-        color: "#fff",
-        boxShadow: "0 18px 50px rgba(0,0,0,.2)",
-        border: "1px solid rgba(255,255,255,.08)",
+        background: "#fff",
+        color: "#000",
+        boxShadow: "0 12px 32px rgba(0,0,0,.10)",
+        border: "1px solid rgba(0,0,0,.08)",
         "& .MuiInputLabel-root, & .MuiFormLabel-root": {
-          color: "#fff",
+          color: "#000",
         },
         "& .MuiInputLabel-root.Mui-focused, & .MuiFormLabel-root.Mui-focused": {
-          color: "#fff",
+          color: "#000",
         },
         "& .MuiInputBase-root": {
-          backgroundColor: "rgba(255,255,255,.09)",
+          backgroundColor: "#fff",
           borderRadius: 2,
         },
         "& .MuiInputBase-input, & .MuiSelect-select": {
-          color: "#fff",
+          color: "#000",
         },
         "& .MuiInputBase-input::placeholder": {
-          color: "rgba(255,255,255,.7)",
+          color: "rgba(0,0,0,.55)",
           opacity: 1,
         },
         "& .MuiFormHelperText-root": {
-          color: "#d7dbe0",
+          color: "rgba(0,0,0,.65)",
         },
         "& .MuiFormHelperText-root.Mui-error": {
           color: "#ff8a80",
         },
         "& .MuiFormControlLabel-label": {
-          color: "#fff",
+          color: "#000",
         },
         "& .MuiAlert-root": {
-          color: "#fff",
-          bgcolor: "#303b49",
-          border: "1px solid rgba(255,255,255,.25)",
+          color: "#000",
+          bgcolor: "rgba(249,178,51,.10)",
+          border: "1px solid rgba(249,178,51,.25)",
         },
         "& .MuiAlert-message, & .MuiAlert-icon": {
-          color: "#fff",
+          color: "#000",
         },
         "& .MuiChip-label": {
-          color: "#fff",
+          color: "#000",
         },
         "& .MuiOutlinedInput-notchedOutline": {
-          borderColor: "rgba(255,255,255,.22)",
+          borderColor: "rgba(0,0,0,.18)",
         },
         "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: "#fff",
+          borderColor: "#000",
         },
         "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-          borderColor: "#fff",
+          borderColor: "#f9b233",
         },
         "& .MuiSvgIcon-root": {
-          color: "#fff",
+          color: "#000",
         },
+        "& .MuiTypography-root": { color: "#000" },
+        "& .MuiCard-root, & .MuiPaper-root": { backgroundColor: "#fff", color: "#000", borderColor: "rgba(0,0,0,.10)" },
+        "& .MuiButton-contained:not(.service-back-button)": { backgroundColor: "#000", color: "#fff", fontWeight: 900, "&:hover": { backgroundColor: "rgba(0,0,0,.85)" } },
       }}
     >
-      {mobile ? <Box mb={3}><Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}><Typography variant="overline" sx={{ color: "#f9b233", fontWeight: 900 }}>Paso {activeStep + 1} de {steps.length}</Typography><Typography variant="body2" sx={{ color: "#c7cbd1" }}>{steps[activeStep]}</Typography></Stack><LinearProgress variant="determinate" value={((activeStep + 1) / steps.length) * 100} sx={{ height: 7, borderRadius: 10, bgcolor: "rgba(255,255,255,.1)", "& .MuiLinearProgress-bar": { bgcolor: "#f9b233", borderRadius: 10 } }} /></Box> : <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 5, "& .MuiStepConnector-line": { borderColor: "rgba(255,255,255,.28)" }, "& .MuiStepLabel-label": { color: "#aeb5bd !important", mt: 1 }, "& .Mui-active .MuiStepLabel-label, & .Mui-completed .MuiStepLabel-label": { color: "#fff !important", fontWeight: "800 !important" }, "& .MuiStepIcon-root": { color: "rgba(255,255,255,.2)" }, "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": { color: "#f9b233" } }}>{steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}</Stepper>}
-      <Typography variant={mobile ? "h5" : "h4"} color="white" fontWeight={900} mb={3}>{steps[activeStep]}</Typography>
+      {mobile ? <Box mb={3}><Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}><Typography variant="overline" sx={{ color: "#b97400", fontWeight: 900 }}>Paso {activeStep + 1} de {steps.length}</Typography><Typography variant="body2" sx={{ color: "#52525b" }}>{steps[activeStep]}</Typography></Stack><LinearProgress variant="determinate" value={((activeStep + 1) / steps.length) * 100} sx={{ height: 7, borderRadius: 10, bgcolor: "rgba(249,178,51,.18)", "& .MuiLinearProgress-bar": { bgcolor: "#f9b233", borderRadius: 10 } }} /></Box> : <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 5, p: 2, borderRadius: 3, bgcolor: "rgba(249,178,51,.06)", "& .MuiStepConnector-line": { borderColor: "rgba(0,0,0,.18)" }, "& .MuiStepLabel-label": { color: "#71717a !important", mt: 1, fontWeight: 700 }, "& .Mui-active .MuiStepLabel-label, & .Mui-completed .MuiStepLabel-label": { color: "#000 !important", fontWeight: "900 !important" }, "& .MuiStepIcon-root": { color: "#d4d4d8" }, "& .MuiStepIcon-root.Mui-active, & .MuiStepIcon-root.Mui-completed": { color: "#f9b233" }, "& .MuiStepIcon-text": { fill: "#000", fontWeight: 900 } }}>{steps.map((label) => <Step key={label}><StepLabel>{label}</StepLabel></Step>)}</Stepper>}
+      <Typography variant={mobile ? "h5" : "h4"} sx={{ color: "#000", borderBottom: "3px solid #f9b233", pb: 1, display: "inline-block" }} fontWeight={900} mb={3}>{steps[activeStep]}</Typography>
       {stepContent[activeStep]}
-      <Stack direction={{ xs: "column-reverse", sm: "row" }} justifyContent="space-between" spacing={1.5} mt={4} p={2} sx={{ border: "1px solid rgba(255,255,255,.12)", position: "sticky", bottom: 8, bgcolor: "rgba(24,28,33,.96)", backdropFilter: "blur(12px)", zIndex: 5, borderRadius: 3, boxShadow: "0 8px 30px rgba(0,0,0,.3)" }}>
+      <Stack direction={{ xs: "column-reverse", sm: "row" }} justifyContent="space-between" spacing={1.5} mt={4} p={2} sx={{ border: "1px solid rgba(0,0,0,.08)", position: "sticky", bottom: 8, bgcolor: "rgba(255,255,255,.96)", backdropFilter: "blur(12px)", zIndex: 5, borderRadius: 3, boxShadow: "0 8px 30px rgba(0,0,0,.10)" }}>
         <Button variant="outlined" color="inherit" onClick={() => navigate(listUrl, { state: { branch } })} disabled={saving}>Cancelar</Button>
         <Stack direction={{ xs: "column-reverse", sm: "row" }} spacing={1}>
           {activeStep > 0 && <Button variant="outlined" color="inherit" onClick={() => { setErrors({}); setActiveStep((value) => value - 1); }} disabled={saving}>Atrás</Button>}

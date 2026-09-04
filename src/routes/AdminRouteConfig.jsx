@@ -7,6 +7,7 @@ const ProductDetails = lazy(() => import("../pages/admin/ProductDetails"));
 const ProductImages = lazy(() => import("../pages/admin/ProductImages"));
 const ServiceListPage = lazy(() => import("../pages/admin/ServiceListPage.jsx"));
 const ServiceFormPage = lazy(() => import("../pages/admin/ServiceFormPage.jsx"));
+const ResourceListPage = lazy(() => import("../pages/admin/ResourceListPage.jsx"));
 const SitioWeb = lazy(() => import("../pages/admin/SitioWeb.jsx"));
 
 const Categorias = lazy(() => import("../pages/admin/ProductCategory"));
@@ -49,6 +50,7 @@ export const adminRouteConfig = [
   { path: "services", element: <ServiceListPage /> },
   { path: "services/new", element: <ServiceFormPage /> },
   { path: "services/edit/:id", element: <ServiceFormPage /> },
+  { path: "services/resources", element: <ResourceListPage /> },
 
   { path: "categorias", element: <Categorias /> },
   { path: "mi-sitio", element: <SitioWeb /> },

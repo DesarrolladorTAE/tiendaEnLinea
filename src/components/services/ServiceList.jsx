@@ -40,7 +40,7 @@ export default function ServiceList({ services, onView, onEdit, onDelete }) {
     return (
       <Stack spacing={1.5}>
         {services.map((service) => (
-          <Card key={service.id} variant="outlined" sx={{ borderRadius: 2, bgcolor: "#292d32", color: "#fff", borderColor: "rgba(255,255,255,.35)" }}>
+          <Card key={service.id} variant="outlined" sx={{ borderRadius: 2, bgcolor: "#fff", color: "#000", borderColor: "rgba(0,0,0,.08)" }}>
             <CardContent>
               <Stack direction="row" spacing={1.5}>
                 <Avatar variant="rounded" src={imageOf(service)} sx={{ width: 72, height: 72, bgcolor: "grey.200" }}>
@@ -64,9 +64,9 @@ export default function ServiceList({ services, onView, onEdit, onDelete }) {
   }
 
   return (
-    <TableContainer sx={{ border: "1px solid #fff", borderRadius: 1 }}>
-      <Table sx={{ bgcolor: "#212529", "& .MuiTableCell-root": { color: "#fff", borderColor: "#495057" } }}>
-        <TableHead><TableRow sx={{ bgcolor: "#6c757d" }}>
+    <TableContainer sx={{ border: "1px solid rgba(0,0,0,.06)", borderRadius: 2 }}>
+      <Table sx={{ bgcolor: "#fff", "& .MuiTableCell-root": { color: "#000", borderColor: "rgba(0,0,0,.08)" } }}>
+        <TableHead><TableRow sx={{ bgcolor: "rgba(0,0,0,.02)", "& th": { fontWeight: 900 } }}>
           <TableCell>Servicio</TableCell><TableCell>Tipo</TableCell><TableCell>Precio</TableCell><TableCell>Duración</TableCell><TableCell>Estado</TableCell><TableCell align="right">Acciones</TableCell>
         </TableRow></TableHead>
         <TableBody>
