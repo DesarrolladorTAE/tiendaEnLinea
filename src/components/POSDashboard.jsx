@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { lazy, Suspense, useState } from "react";
 import {
   Box,
   Typography,
@@ -31,11 +31,14 @@ import PendingSalesPOS from "./PendingSalePos";
 import PosLocationPrintSettings from "./POS/PosLocationPrintSettings";
 import CreditoFiadoPOS from "./CreditoFiadoPOS";
 
+const ToursPage = lazy(() => import("../pages/tours/ToursPage"));
+
 const POSDashboard = ({
   posName = "Mi Punto de Venta",
   storeName = "Mi Tienda",
   posDesdeAdmin = false,
   posLocationId = null,
+  posBranchId = null,
 }) => {
   const [vista, setVista] = useState("menu");
   const [loadingLogout, setLoadingLogout] = useState(false);
@@ -43,6 +46,13 @@ const POSDashboard = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const opciones = [
+    {
+      id: "tours",
+      titulo: "Tours",
+      descripcion: "Consulta los tours de tu sucursal",
+      color: "#b97400",
+      icono: <RocketLaunchIcon sx={{ fontSize: 40 }} />,
+    },
     {
       id: "venta",
       titulo: "Venta",
@@ -125,6 +135,8 @@ const POSDashboard = ({
 
   const renderVista = () => {
     switch (vista) {
+      case "tours":
+        return <Suspense fallback={<CircularProgress />}><ToursPage mode="pos" posLocationId={posLocationId} posBranchId={posBranchId} onBack={() => setVista("menu")} /></Suspense>;
       case "venta":
         return (
           <POS

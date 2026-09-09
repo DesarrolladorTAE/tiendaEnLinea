@@ -1,4 +1,5 @@
 const adminNavItems = [
+  { path: "/admin/tours", label: "Tours" },
   { path: "/admin/products", label: "🛒 Productos" },
   { path: "/admin/services", label: "🛠️ Servicios" },
   // { path: "/admin/promociones", label: "🚨 Promociones" },

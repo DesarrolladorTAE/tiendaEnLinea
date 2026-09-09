@@ -5,6 +5,10 @@ const ProductList = lazy(() => import("../pages/admin/ProductList"));
 const ProductForm = lazy(() => import("../pages/admin/ProductForm"));
 const ProductDetails = lazy(() => import("../pages/admin/ProductDetails"));
 const ProductImages = lazy(() => import("../pages/admin/ProductImages"));
+const TourBookingsPage = lazy(() => import("../pages/tours/TourBookingsPage.jsx"));
+const TourBookingDetailPage = lazy(() => import("../pages/tours/TourBookingDetailPage.jsx"));
+const TourDeparturesPage = lazy(() => import("../pages/tours/TourDeparturesPage.jsx"));
+const ToursPage = lazy(() => import("../pages/tours/ToursPage.jsx"));
 const ServiceListPage = lazy(() => import("../pages/admin/ServiceListPage.jsx"));
 const ServiceFormPage = lazy(() => import("../pages/admin/ServiceFormPage.jsx"));
 const ResourceListPage = lazy(() => import("../pages/admin/ResourceListPage.jsx"));
@@ -46,6 +50,12 @@ export const adminRouteConfig = [
   { path: "products/edit/:id", element: <ProductForm /> },
   { path: "products/images/:id", element: <ProductImages /> },
   { path: "products/:id", element: <ProductDetails /> },
+
+  { path: "tours", element: <ToursPage /> },
+  { path: "branches/:branchId/tours", element: <ToursPage /> },
+  { path: "branches/:branchId/tours/:serviceId/departures", element: <TourDeparturesPage /> },
+  { path: "branches/:branchId/tours/:serviceId/departures/:departureId/bookings", element: <TourBookingsPage /> },
+  { path: "branches/:branchId/tours/:serviceId/departures/:departureId/bookings/:bookingId", element: <TourBookingDetailPage /> },
 
   { path: "services", element: <ServiceListPage /> },
   { path: "services/new", element: <ServiceFormPage /> },

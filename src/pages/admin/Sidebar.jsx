@@ -6,7 +6,9 @@ import adminNavItems from "../../menuConfig";
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const isActive = (path) => location.pathname.startsWith(path);
+  const isActive = (path) => path === "/admin/tours"
+    ? location.pathname === path || /^\/admin\/branches\/\d+\/tours(?:\/|$)/.test(location.pathname)
+    : location.pathname.startsWith(path);
 
   return (
     <>

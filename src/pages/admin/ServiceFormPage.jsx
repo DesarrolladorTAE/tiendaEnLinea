@@ -23,7 +23,7 @@ export default function ServiceFormPage() {
   const { id } = useParams(); const isEdit = !!id; const navigate = useNavigate(); const location = useLocation(); const [params] = useSearchParams();
   const { selectedBranch, setSelectedBranch, setHideLayout } = useAdminUi();
   const branchFromNav = location.state?.branch; const branchId = Number(branchFromNav?.id || selectedBranch?.id || params.get("branch_id") || 0); const branch = branchFromNav || selectedBranch || (branchId ? { id: branchId } : null);
-  const [form, setForm] = useState(INITIAL); const [existingImages, setExistingImages] = useState([]); const [files, setFiles] = useState([]); const [deletedIds, setDeletedIds] = useState([]); const [primaryImageId, setPrimaryImageId] = useState(null); const [primaryNewIndex, setPrimaryNewIndex] = useState(null); const [activeStep, setActiveStep] = useState(0); const [saveAndSchedule, setSaveAndSchedule] = useState(false);
+  const [form, setForm] = useState(() => ({ ...INITIAL, service_type: !isEdit && params.get("service_type") === "tour" ? "tour" : INITIAL.service_type })); const [existingImages, setExistingImages] = useState([]); const [files, setFiles] = useState([]); const [deletedIds, setDeletedIds] = useState([]); const [primaryImageId, setPrimaryImageId] = useState(null); const [primaryNewIndex, setPrimaryNewIndex] = useState(null); const [activeStep, setActiveStep] = useState(0); const [saveAndSchedule, setSaveAndSchedule] = useState(false);
   const [loading, setLoading] = useState(isEdit); const [saving, setSaving] = useState(false); const [errors, setErrors] = useState({}); const [loadError, setLoadError] = useState("");
   const listUrl = `/admin/services?branch_id=${branchId}`;
 
@@ -130,7 +130,7 @@ export default function ServiceFormPage() {
           color: "#000",
         },
         "& .MuiTypography-root": { color: "#000" },
-        "& .MuiCard-root, & .MuiPaper-root": { backgroundColor: "#fff", color: "#000", borderColor: "rgba(0,0,0,.10)" },
+        "& .MuiCard-root:not(.service-type-card), & .MuiPaper-root:not(.service-type-card)": { backgroundColor: "#fff", color: "#000", borderColor: "rgba(0,0,0,.10)" },
         "& .MuiButton-contained:not(.service-back-button)": { backgroundColor: "#000", color: "#fff", fontWeight: 900, "&:hover": { backgroundColor: "rgba(0,0,0,.85)" } },
       }}
     >

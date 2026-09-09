@@ -21,12 +21,15 @@ const POSWrapper = () => {
   const [posLocationId, setPosLocationId] =
     useState(null);
 
+  const [posBranchId, setPosBranchId] = useState(null);
+
   const location = useLocation();
 
   const posDesdeAdmin =
     location.state?.pos || null;
 
   const setPosContext = (posMeOrPosObj) => {
+    setPosBranchId(Number(posMeOrPosObj?.branch_id) || null);
     const id =
       Number(posMeOrPosObj?.id) ||
       Number(posMeOrPosObj?.pos_id) ||
@@ -161,6 +164,7 @@ const POSWrapper = () => {
             posName={posName}
             posDesdeAdmin={!!posDesdeAdmin}
             posLocationId={posLocationId}
+            posBranchId={posBranchId}
           />
 
           {/* <SupportTicketButton /> */}

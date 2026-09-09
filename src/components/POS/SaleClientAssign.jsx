@@ -12,6 +12,9 @@ export default function SaleClientAssign({
   clients = [],
   value = null,
   onChange,
+  title = "Cliente de la venta",
+  showCreditStatus = true,
+  disabled = false,
 }) {
   const renderCreditStatus = (client) => {
     const acc = client?.credit_account || null;
@@ -58,11 +61,12 @@ export default function SaleClientAssign({
   return (
     <Box sx={{ mt: 2 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 1 }}>
-        Cliente de la venta
+        {title}
       </Typography>
 
       <Autocomplete
         options={clients}
+        disabled={disabled}
         value={value}
         onChange={(_, newValue) => onChange?.(newValue)}
         getOptionLabel={(option) =>
@@ -87,7 +91,7 @@ export default function SaleClientAssign({
               </Typography>
 
               <Stack direction="row" sx={{ mt: 0.7 }}>
-                {renderCreditStatus(option)}
+                {showCreditStatus && renderCreditStatus(option)}
               </Stack>
             </Box>
           </li>
@@ -122,7 +126,7 @@ export default function SaleClientAssign({
           </Typography>
 
           <Stack direction="row" sx={{ mt: 1 }}>
-            {renderCreditStatus(value)}
+            {showCreditStatus && renderCreditStatus(value)}
           </Stack>
         </Box>
       )}
