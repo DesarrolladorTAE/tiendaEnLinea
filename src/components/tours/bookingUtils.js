@@ -15,7 +15,7 @@ export function bookingRecord(data) {
   return record;
 }
 export function bookingCollection(data) {
-  const collection = data?.bookings ?? data;
+  const collection = data?.bookings ?? (Array.isArray(data?.data?.data) ? data.data : data);
   const rows = Array.isArray(collection) ? collection : collection?.data;
   if (!Array.isArray(rows)) throw new Error("No se pudo leer el listado de reservaciones.");
   return { rows, lastPage: Number(collection?.last_page || collection?.meta?.last_page || data?.meta?.last_page || 1) };

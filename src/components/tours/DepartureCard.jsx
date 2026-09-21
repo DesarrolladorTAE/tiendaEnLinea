@@ -21,7 +21,7 @@ export default function DepartureCard({ departure, mode, onView, onEdit, onCance
         <Button variant="outlined" onClick={() => onView(departure)} disabled={busy}>Ver detalle</Button>
         {mode === "store" && <><Button onClick={() => onEdit(departure)} disabled={busy}>Editar</Button><Button color="error" onClick={() => onCancel(departure)} disabled={busy || departure.status === "cancelled"}>Cancelar salida</Button></>}
       </Stack>}
-      {onBookings && <Stack direction="row" gap={1} flexWrap="wrap"><Button variant="outlined" disabled={busy} onClick={() => onBookings(departure)}>Ver reservaciones</Button>{mode === "pos" && onNewBooking && <Button variant="contained" disabled={busy || !["scheduled", "boarding"].includes(departure.status) || !(Number(departure.available_capacity) > 0)} onClick={() => onNewBooking(departure)}>Nueva reservación</Button>}</Stack>}
+      {onBookings && <Stack direction="row" gap={1} flexWrap="wrap"><Button variant="outlined" disabled={busy} onClick={() => onBookings(departure)}>Ver reservaciones</Button>{mode === "pos" && onNewBooking && <Button variant="contained" disabled={busy || departure.status !== "scheduled" || !(Number(departure.available_capacity) > 0)} onClick={() => onNewBooking(departure)}>Nueva venta</Button>}</Stack>}
     </Stack></CardContent>
   </Card>;
 }

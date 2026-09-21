@@ -14,7 +14,7 @@ export async function getTourServices({ branchId, mode, signal }) {
   do {
     const { data } = await client.get(
       `/branches/${branchId}/services`,
-      { params: { page }, signal }
+      { baseURL: client.defaults.baseURL.replace(/\/api\/?$/, "/"), params: { page }, signal }
     );
     const services = data?.services;
     if (!Array.isArray(services?.data)) {
@@ -86,7 +86,7 @@ async function getCatalog(client, url, key, signal) {
   let lastPage = 1;
   do {
     const { data } = await client.get(url, { params: { page }, signal });
-    const collection = data?.[key] ?? data;
+    const collection = data?.[key] ?? data?.data ?? data;
     const items = Array.isArray(collection) ? collection : collection?.data;
     if (!Array.isArray(items)) throw new Error("No se pudo leer el catálogo del servidor.");
     rows.push(...items);
@@ -208,7 +208,7 @@ function bookingPaymentPayload(values) {
 }
 function checkPaymentResponse(response) {
   // Business errors may use HTTP 200 with success:false.
-  if (response.data?.success === false) {
+  if (response.data?.success === false || response.data?.ok === false) {
     const error = new Error(response.data.message || "No se pudo completar la operación de pago.");
     error.response = response;
     throw error;
@@ -230,4 +230,42 @@ export async function updateBookingPayment(context, bookingId, paymentId, values
 export async function cancelBookingPayment(context, bookingId, paymentId) {
   const { client, url } = bookingPaymentEndpoint(context, bookingId, paymentId);
   return checkPaymentResponse(await client.delete(url));
+}
+
+function operationEndpoint(context) {
+  const { client, toursPath } = departureContext(context);
+  return { client, url: `${toursPath}/tours/departures/${passengerEntityId(context.departureId)}` };
+}
+export async function createAssistedSale(context, values) {
+  const { client, url } = operationEndpoint(context);
+  return checkPaymentResponse(await client.post(url + "/sales", values));
+}
+export async function getManifest(context, posLocationId) {
+  const { client, url } = operationEndpoint(context);
+  return checkPaymentResponse(await client.get(url + "/manifest", {
+    params: posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}, signal: context.signal,
+  }));
+}
+export async function downloadManifest(context, posLocationId) {
+  const { client, url } = operationEndpoint(context);
+  let response;
+  try {
+    response = await client.get(url + "/manifest", { responseType: "blob", params: {
+      format: "xlsx", ...(posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}),
+    } });
+  } catch (error) {
+    if (error.response?.data instanceof Blob) {
+      try { error.response.data = JSON.parse(await error.response.data.text()); } catch { /* Preserve HTTP error. */ }
+    }
+    throw error;
+  }
+  if (response.data.type.includes("json")) {
+    const payload = JSON.parse(await response.data.text());
+    throw new Error(payload.message || "El servidor no generó el archivo Excel.");
+  }
+  const objectUrl = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = objectUrl; link.download = `tour-${context.departureId}-operacion.xlsx`;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
