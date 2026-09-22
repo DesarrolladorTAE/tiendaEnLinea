@@ -18,7 +18,7 @@ export function departureError(error) {
   return [message, ...Object.values(data?.errors || {}).flat()].join("\n");
 }
 export function departureCollection(data) {
-  const collection = data?.departures ?? data;
+  const collection = data?.departures ?? (Array.isArray(data?.data?.data) ? data.data : data);
   const rows = Array.isArray(collection) ? collection : collection?.data;
   if (!Array.isArray(rows)) throw new Error("No se pudo leer el listado de salidas del servidor.");
   return { rows, lastPage: Number(collection?.last_page || collection?.meta?.last_page || data?.meta?.last_page || 1) };

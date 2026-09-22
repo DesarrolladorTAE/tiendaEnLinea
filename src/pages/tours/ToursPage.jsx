@@ -52,17 +52,17 @@ export default function ToursPage({ mode = "store", posBranchId, posLocationId, 
     if (isStore) navigate(`/admin/branches/${branchId}/tours/${tour.id}/departures`, { state: { tourName: tour.name } });
     else setSelectedTour(tour);
   };
-  const back = onBack || (() => navigate("/admin/sucursales"));
+  const back = onBack || (() => navigate("/admin/services"));
   if (!validBranch) return <Alert severity="warning">{isStore ? "Selecciona una sucursal para ver Tours." : "El punto de venta no tiene una sucursal disponible. Vuelve a iniciar sesión."}<Button onClick={back}>Volver</Button></Alert>;
 
   if (!isStore && selectedTour) return <TourDeparturesPage mode="pos" posLocationId={posLocationId} posBranchId={posBranchId} posServiceId={selectedTour.id} tourName={selectedTour.name} onBack={() => setSelectedTour(null)} />;
 
   return <Box sx={{ maxWidth: 1400, mx: "auto", p: { xs: 2, sm: 3 }, bgcolor: "#fff", color: "#171b20", borderRadius: 3 }}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} mb={3}>
-      <Box><Typography variant="h4" fontWeight={900}>Tours</Typography><Typography color="text.secondary">Sucursal #{branchId}</Typography></Box>
+      <Box><Typography variant="h4" fontWeight={900}>{isStore ? "Salidas de tours" : "Ventas de servicios"}</Typography><Typography color="text.secondary">Sucursal #{branchId}</Typography></Box>
       <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap">
         {isStore && <Button variant="contained" onClick={() => navigate(`/admin/services/new?branch_id=${branchId}&service_type=tour`, { state: { branch: { id: branchId } } })}>Crear Tour</Button>}
-        <Button variant="outlined" onClick={back}>{isStore ? "Volver a sucursales" : "Volver al POS"}</Button>
+        <Button variant="outlined" onClick={back}>{isStore ? "Volver a servicios" : "Volver al POS"}</Button>
       </Stack>
     </Stack>
     {state.loading ? <Stack alignItems="center" py={6}><CircularProgress aria-label="Cargando Tours" /></Stack>

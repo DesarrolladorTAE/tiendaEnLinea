@@ -8,6 +8,7 @@ const ProductImages = lazy(() => import("../pages/admin/ProductImages"));
 const TourBookingsPage = lazy(() => import("../pages/tours/TourBookingsPage.jsx"));
 const TourBookingDetailPage = lazy(() => import("../pages/tours/TourBookingDetailPage.jsx"));
 const TourDeparturesPage = lazy(() => import("../pages/tours/TourDeparturesPage.jsx"));
+const TourReportsPage = lazy(() => import("../pages/tours/TourReportsPage.jsx"));
 const ToursPage = lazy(() => import("../pages/tours/ToursPage.jsx"));
 const ServiceListPage = lazy(() => import("../pages/admin/ServiceListPage.jsx"));
 const ServiceFormPage = lazy(() => import("../pages/admin/ServiceFormPage.jsx"));
@@ -72,6 +73,7 @@ export const adminRouteConfig = [
   { path: "ticket", element: <Ticket /> },
   { path: "membresia", element: <Membresia /> },
   { path: "micuenta", element: <MiCuenta /> },
+  { path: "reportes/servicios", element: <TourReportsPage /> },
   { path: "reportes", element: <Reporte /> },
   { path: "reportes/ventas", element: <ReporteVentas /> },
   { path: "prueba/pos", element: <POSHeader /> },

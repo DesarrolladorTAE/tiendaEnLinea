@@ -31,6 +31,7 @@ import PendingSalesPOS from "./PendingSalePos";
 import PosLocationPrintSettings from "./POS/PosLocationPrintSettings";
 import CreditoFiadoPOS from "./CreditoFiadoPOS";
 
+const TourReportsPage = lazy(() => import("../pages/tours/TourReportsPage"));
 const ToursPage = lazy(() => import("../pages/tours/ToursPage"));
 
 const POSDashboard = ({
@@ -46,10 +47,11 @@ const POSDashboard = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const opciones = [
+    { id: "reportes_servicios", titulo: "Reportes de servicios", descripcion: "Manifiesto de pasajeros y descarga Excel", color: "#0f766e", icono: <ReceiptLongIcon /> },
     {
-      id: "tours",
-      titulo: "Tours",
-      descripcion: "Consulta los tours de tu sucursal",
+      id: "ventas_servicios",
+      titulo: "Ventas de servicios",
+      descripcion: "Ventas, reservas, pasajeros y pagos de tours",
       color: "#b97400",
       icono: <RocketLaunchIcon sx={{ fontSize: 40 }} />,
     },
@@ -135,7 +137,9 @@ const POSDashboard = ({
 
   const renderVista = () => {
     switch (vista) {
-      case "tours":
+      case "reportes_servicios":
+        return <Suspense fallback={<CircularProgress />}><TourReportsPage mode="pos" posBranchId={posBranchId} posLocationId={posLocationId} onBack={() => setVista("menu")} /></Suspense>;
+      case "ventas_servicios":
         return <Suspense fallback={<CircularProgress />}><ToursPage mode="pos" posLocationId={posLocationId} posBranchId={posBranchId} onBack={() => setVista("menu")} /></Suspense>;
       case "venta":
         return (
