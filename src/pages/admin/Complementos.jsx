@@ -26,9 +26,8 @@ import WhatsAppIcon from "@mui/icons-material/WhatsApp";
 
 import axiosClient from "../../config/axiosClient";
 import complementosLocal from "../../utils/complementos";
-import PaypalModal from "../../components/gateways/PaypalForm";
-import OfflineAccountsModal from "../../components/gateways/OfflineAccountsModal";
 import WhatsAppConnectionModal from "../../components/whatsapp/WhatsAppConnectionModal";
+import PaymentMethodsModal from "../../components/gateways/PaymentMethodsModal";
 
 const moneyMX = (n) =>
   new Intl.NumberFormat("es-MX", {
@@ -55,9 +54,7 @@ export default function ComplementosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [paypalOpen, setPaypalOpen] = useState(false);
-  const [offlineOpen, setOfflineOpen] = useState(false);
-  // const [whatsappOpen, setWhatsappOpen] = useState(false);
+  const [paymentMethodsOpen, setPaymentMethodsOpen] = useState(false);
 
   const [whatsappOpen, setWhatsappOpen] = useState(false);
   const [whatsappAddon, setWhatsappAddon] = useState(null);
@@ -284,23 +281,13 @@ export default function ComplementosPage() {
                     }}
                     secondaryAction={
                       adquirido && esPasarela ? (
-                        <Stack direction="row" spacing={1}>
-                          <Button
-                            onClick={() => setPaypalOpen(true)}
-                            variant="contained"
-                            size="small"
-                          >
-                            Configurar PayPal
-                          </Button>
-
-                          <Button
-                            onClick={() => setOfflineOpen(true)}
-                            variant="contained"
-                            size="small"
-                          >
-                            Configurar cuentas
-                          </Button>
-                        </Stack>
+                        <Button
+                          onClick={() => setPaymentMethodsOpen(true)}
+                          variant="contained"
+                          size="small"
+                        >
+                          Configurar pasarela
+                        </Button>
                       ) : adquirido && esWhatsApp ? (
                         <Button
                           onClick={() => {
@@ -377,11 +364,9 @@ export default function ComplementosPage() {
           </List>
         )}
       </Paper>
-
-      <PaypalModal open={paypalOpen} onClose={() => setPaypalOpen(false)} />
-      <OfflineAccountsModal
-        open={offlineOpen}
-        onClose={() => setOfflineOpen(false)}
+      <PaymentMethodsModal
+        open={paymentMethodsOpen}
+        onClose={() => setPaymentMethodsOpen(false)}
       />
       <WhatsAppConnectionModal
         open={whatsappOpen}
