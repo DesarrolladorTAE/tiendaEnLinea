@@ -5,6 +5,7 @@ import { useLocation, useParams } from "react-router-dom";
 import axios from "axios";
 
 import SEO from "../../components/seo";
+import StorefrontLoading from "../../components/storefront/StorefrontLoading";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
 import ShopProducts from "../../wrappers/product/ShopProducts";
@@ -212,7 +213,7 @@ function getVariantStock(variant, useWarehouseInventory) {
  * Componente
  * ======================================================= */
 
-const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSettings = null, storefrontTemplate = "negocio", storefrontTheme = {}, storefrontColors = {} }) => {
+const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSettings = null, storefrontTemplate = "negocio", storefrontTheme = {}, storefrontColors = {}, storefrontBrand = null }) => {
   const params = useParams();
   const { pathname } = useLocation();
 
@@ -539,7 +540,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
    * Todos los hooks deben estar antes de este retorno.
    */
   if (isStoreValid === null) {
-    return <div>Cargando tienda...</div>;
+    return <StorefrontLoading storeSlug={storeSlug} brand={storefrontBrand} compact />;
   }
 
   return (
@@ -637,6 +638,7 @@ Catalogo.propTypes = {
   storefrontTemplate: PropTypes.string,
   storefrontTheme: PropTypes.object,
   storefrontColors: PropTypes.object,
+  storefrontBrand: PropTypes.object,
 };
 
 export default Catalogo;
