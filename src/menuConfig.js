@@ -7,7 +7,6 @@ const adminNavItems = [
   { path: "/admin/categorias", label: "📂 Categorías" },
   // { path: "/admin/inventario", label: "🏬 Inventario" },
   { path: "/admin/pos", label: "🏬 Punto de Venta" },
-  { path: "/admin/reportes/servicios", label: "Reportes de servicios" },
   { path: "/admin/reportes", label: "📓 Reportes" },
   { path: "/admin/compra", label: "📦 Entradas Producto" },
   { path: "/admin/ticket", label: "📄 Personaliza tu Ticket" },

@@ -1,6 +1,6 @@
-import React, { useState, Suspense } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Drawer, IconButton, Box, Button, CircularProgress, Stack, Typography } from "@mui/material";
+import { Drawer, IconButton, Box, Button, CircularProgress, Stack, Typography, useMediaQuery, useTheme } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import Sidebar from "../pages/admin/Sidebar";
@@ -13,6 +13,9 @@ const AdminContent = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const isDesktop = useMediaQuery(useTheme().breakpoints.up("md"));
+
+  useEffect(() => { setMobileOpen(false); }, [location.key, isDesktop]);
 
   // ✅ CORRECTO (tu contexto se llama tiendaLoading)
   const { tiendaLoading } = useTienda();
@@ -73,9 +76,9 @@ const AdminContent = () => {
       {!layoutHidden ? (
         <Drawer
           variant="temporary"
-          open={mobileOpen}
+          open={mobileOpen && !isDesktop}
           transitionDuration={350}
-          onClose={handleDrawerToggle}
+          onClose={() => setMobileOpen(false)}
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: "block", md: "none" },
@@ -85,7 +88,7 @@ const AdminContent = () => {
             },
           }}
         >
-          <Sidebar />
+          <Sidebar onNavigate={() => setMobileOpen(false)} />
         </Drawer>
       ) : null}
 
@@ -94,6 +97,7 @@ const AdminContent = () => {
         component="main"
         sx={{
           flexGrow: 1,
+          minWidth: 0,
           height: "100vh",
           overflowY: "auto",
           overflowX: "hidden",
@@ -106,7 +110,8 @@ const AdminContent = () => {
         {!layoutHidden ? (
           <IconButton
             color="inherit"
-            aria-label="open drawer"
+            aria-label="Abrir menú de administración"
+            aria-expanded={mobileOpen && !isDesktop}
             edge="start"
             onClick={handleDrawerToggle}
             sx={{ display: { md: "none" }, mb: 2 }}

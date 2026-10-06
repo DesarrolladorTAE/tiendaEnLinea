@@ -269,3 +269,30 @@ export async function downloadManifest(context, posLocationId) {
   document.body.appendChild(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
+
+function excelPath(branchId) {
+  if (!Number.isSafeInteger(Number(branchId)) || Number(branchId) <= 0) {
+    throw new Error("Selecciona una sucursal válida.");
+  }
+  return `branches/${branchId}/tours`;
+}
+
+export function importToursExcel(branchId, file, images = []) {
+  const path = excelPath(branchId);
+  const data = new FormData();
+  data.append("file", file);
+  images.forEach((image) => data.append("images[]", image));
+  return axiosClient.post(`${path}/import`, data);
+}
+
+export async function exportToursExcel(branchId) {
+  try {
+    return await axiosClient.get(`${excelPath(branchId)}/export`, { responseType: "blob" });
+  } catch (error) {
+    // Error responses also arrive as blobs for this request.
+    if (error.response?.data instanceof Blob) {
+      try { error.response.data = JSON.parse(await error.response.data.text()); } catch { /* Keep the original error. */ }
+    }
+    throw error;
+  }
+}

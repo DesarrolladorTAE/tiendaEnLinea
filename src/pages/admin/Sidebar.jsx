@@ -3,12 +3,12 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import adminNavItems from "../../menuConfig";
 
-const Sidebar = () => {
+const Sidebar = ({ onNavigate }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const isActive = (path) => path === "/admin/services"
     ? location.pathname.startsWith(path) || /^\/admin\/branches\/\d+\/tours(?:\/|$)/.test(location.pathname)
-    : path === "/admin/reportes" ? location.pathname.startsWith(path) && !location.pathname.startsWith("/admin/reportes/servicios")
+    : path === "/admin/reportes" ? location.pathname.startsWith(path)
     : location.pathname.startsWith(path);
 
   return (
@@ -61,7 +61,7 @@ const Sidebar = () => {
           />
 
           <button
-            onClick={() => navigate("/admin/sucursales")}
+            onClick={() => { onNavigate?.(); navigate("/admin/sucursales"); }}
             className="btn btn-outline-warning btn-sm w-100 mb-3"
           >
             ⬅ Regresar a sucursales
@@ -75,6 +75,8 @@ const Sidebar = () => {
               <li className="nav-item mb-2" key={item.path}>
                 <Link
                   to={item.path}
+                  onClick={onNavigate}
+                  aria-current={isActive(item.path) ? "page" : undefined}
                   className={`nav-link ${
                     isActive(item.path) ? "text-warning" : "text-white"
                   }`}
