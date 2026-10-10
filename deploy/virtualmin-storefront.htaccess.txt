@@ -1,0 +1,12 @@
+# Agregar al .htaccess existente DESPUES de las redirecciones HTTPS/dominio
+# y ANTES de la regla que envia las rutas React a index.html.
+# No reemplazar el .htaccess completo. Requiere Apache 2.4 + mod_rewrite + PHP.
+RewriteEngine On
+
+RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
+RewriteRule ^tienda/[a-zA-Z0-9_-]+(?:/producto/[0-9]+)?/?$ storefront-meta.php [END]
+
+# Dominio personalizado que ya existe en src/App.jsx.
+RewriteCond %{HTTP_HOST} ^(?:www\.)?latehuanita\.mx(?::[0-9]+)?$ [NC]
+RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
+RewriteRule ^(?:producto/[0-9]+/?)?$ storefront-meta.php [END]

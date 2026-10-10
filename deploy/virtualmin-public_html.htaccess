@@ -1,0 +1,67 @@
+############################################
+# REWRITE / HTTPS
+############################################
+RewriteEngine On
+
+# Detras de proxy / CDN
+RewriteCond %{HTTP:X-Forwarded-Proto} =http
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=308,L]
+
+# Sin proxy
+RewriteCond %{REQUEST_SCHEME} !https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=308,L]
+
+############################################
+# CORS (frontend + dev)
+############################################
+<IfModule mod_headers.c>
+  SetEnvIfNoCase Origin "^https?://(mitiendaenlineamx\.com\.mx|www\.mitiendaenlineamx\.com\.mx|localhost(:[0-9]+)?|127\.0\.0\.1(:[0-9]+)?)$" ORIGIN_OK=$0
+
+  Header always set Access-Control-Allow-Origin "%{ORIGIN_OK}e" env=ORIGIN_OK
+  Header always set Vary "Origin" env=ORIGIN_OK
+  Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE" env=ORIGIN_OK
+  Header always set Access-Control-Allow-Headers "X-Store-Name, Content-Type, Authorization, X-Requested-With" env=ORIGIN_OK
+  Header always set Access-Control-Allow-Credentials "true" env=ORIGIN_OK
+  Header always set Access-Control-Max-Age "86400" env=ORIGIN_OK
+</IfModule>
+
+############################################
+# OPTIONS preflight (solo frontend, no /api)
+############################################
+RewriteCond %{REQUEST_METHOD} =OPTIONS
+RewriteCond %{REQUEST_URI} !^/api/ [NC]
+RewriteRule ^ - [R=204,L]
+
+############################################
+# SECURITY HEADERS + CSP (GTM PERMITIDO)
+############################################
+<IfModule mod_headers.c>
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{REQUEST_SCHEME} == 'https'"
+
+  Header always set Content-Security-Policy "default-src 'self'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data: https:; script-src 'self' https: 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https:; connect-src 'self' https: wss: https://www.google-analytics.com https://www.googletagmanager.com; object-src 'none'; frame-src 'self' https: blob: https://www.googletagmanager.com; child-src 'self' https: blob:; worker-src 'self' blob:; upgrade-insecure-requests; block-all-mixed-content"
+
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  Header always set Permissions-Policy "geolocation=(), microphone=(), camera=(), usb=(), payment=()"
+</IfModule>
+
+############################################
+# METADATOS DE TIENDAS Y PRODUCTOS
+############################################
+RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
+RewriteRule ^tienda/[a-zA-Z0-9_-]+(?:/producto/[0-9]+)?/?$ storefront-meta.php [END]
+
+# Dominio personalizado configurado en React
+RewriteCond %{HTTP_HOST} ^(?:www\.)?latehuanita\.mx(?::[0-9]+)?$ [NC]
+RewriteCond %{REQUEST_METHOD} ^(?:GET|HEAD)$
+RewriteRule ^(?:producto/[0-9]+/?)?$ storefront-meta.php [END]
+
+############################################
+# SPA FALLBACK (React)
+############################################
+Options -MultiViews
+RewriteCond %{REQUEST_URI} !^/(api|storage|uploads|assets|build|dist|vendor)/ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.html [QSA,L]

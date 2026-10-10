@@ -156,6 +156,33 @@
 }
 .neo-media:hover .neo-actions{ transform: translateY(0); opacity: 1; }
 
+.neo-card .neo-actions--mobile{ display: none; }
+
+@media (max-width: 767.98px) {
+  .neo-card .neo-actions--desktop{ display: none; }
+
+  .neo-card .neo-content .neo-actions--mobile{
+    display: flex;
+    position: static;
+    transform: none !important;
+    opacity: 1;
+    width: 100%;
+    margin: 12px 0 0;
+    padding: 0;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .neo-card .neo-content .neo-actions--mobile .btn-glow{
+    flex: 1 1 auto;
+    justify-content: center;
+    margin: 0;
+    min-height: 32px;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+}
+
 .btn-glow{
   border: 0; border-radius: 12px; padding: 9px 13px; font-weight: 800; font-size: 13px; color: #0B0E12; background: #fff;
   box-shadow: 0 12px 26px rgba(118,224,255,0.30), inset 0 0 0 1px rgba(0,0,0,0.06);
@@ -241,13 +268,14 @@
     box-shadow: 0 6px 14px rgba(0,0,0,0.45);
   }
 
-  /* Las acciones YA NO flotan sobre la imagen */
+  /* Las acciones conservan su espacio en el flujo */
   .neo-media{
     padding-bottom: 8px; /* un respiro antes de las acciones */
   }
 
   .neo-actions{
-    position: static;          /* sale del overlay */
+    position: relative;        /* activa el z-index sobre las imágenes */
+    inset: auto;
     bottom: auto;
     right: auto;
     transform: none !important;

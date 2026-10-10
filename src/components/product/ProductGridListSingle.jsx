@@ -115,11 +115,14 @@ const ProductGridListSingle = ({
   const useProductPage = storefrontSettings.product_view === "page";
   const showShare = [true, 1, "1", "true"].includes(storefrontSettings.show_share);
   const storefrontBase = window.location.pathname.startsWith("/tienda/") && storeSlug ? `/tienda/${encodeURIComponent(storeSlug)}` : "";
-  const productUrl = `${window.location.origin}${storefrontBase}/producto/${product.id}`;
+  const productLink = new URL(`${storefrontBase}/producto/${product.id}`, window.location.origin);
+  const branchSlug = new URLSearchParams(window.location.search).get("branch");
+  if (branchSlug) productLink.searchParams.set("branch", branchSlug);
+  const productUrl = productLink.href;
 
   const openModal = () => {
     if (variantCard || variantGroupCard) return;
-    if (useProductPage && storeSlug) { navigate(`${storefrontBase}/producto/${product.id}`); return; }
+    if (useProductPage && storeSlug) { navigate(`${productLink.pathname}${productLink.search}`); return; }
     setModalShow(true);
   };
 
@@ -227,6 +230,13 @@ const ProductGridListSingle = ({
     if (cardRef.current) cardRef.current.style.transform = "";
   };
 
+  const renderActions = (placement) => (
+    <div className={`neo-actions neo-actions--${placement}`}>
+      <button type="button" className="btn-glow" onClick={(e) => { e.stopPropagation(); setModalShow(true); }}><i className="pe-7s-look" /> Ver</button>
+      <button type="button" className="btn-glow" onClick={(e) => { e.stopPropagation(); handleQuickAdd(); }}><i className="pe-7s-cart" /> {canQuickAdd ? "Añadir" : "Seleccionar"}</button>
+    </div>
+  );
+
   return (
     <Fragment>
       <article ref={cardRef} data-product-template={storefrontTemplate} className={clsx("neo-card sf-product-card is-compact", `sf-product-card--${storefrontTemplate}`, { "neo-variant-card sf-product-card--variant": variantCard || variantGroupCard }, spaceBottomClass)} onMouseMove={enableEffects ? onMouseMove : undefined} onMouseLeave={enableEffects ? onMouseLeave : undefined}>
@@ -237,10 +247,7 @@ const ProductGridListSingle = ({
           {(product.discount || product.new) && <div className="neo-badges">{product.discount ? <span className="badge-off">-{product.discount}%</span> : null}{product.new ? <span className="badge-new">Nuevo</span> : null}</div>}
           {variantGroupCard && <div style={{ position: "absolute", top: 12, right: 12, zIndex: 3, padding: "6px 12px", borderRadius: 999, color: "#0b0e12", background: "#76e0ff", fontSize: 12, fontWeight: 950 }}>{totalRequestedQty} piezas</div>}
           {variantCard && <div style={{ position: "absolute", top: 12, right: 12, zIndex: 3, padding: "6px 12px", borderRadius: 999, color: "#0b0e12", background: "#76e0ff", fontSize: 13, fontWeight: 950 }}>Talla {sizeLabel}</div>}
-          {!variantCard && !variantGroupCard && <div className="neo-actions">
-            <button type="button" className="btn-glow" onClick={(e) => { e.stopPropagation(); setModalShow(true); }}><i className="pe-7s-look" /> Ver</button>
-            <button type="button" className="btn-glow" onClick={(e) => { e.stopPropagation(); handleQuickAdd(); }}><i className="pe-7s-cart" /> {canQuickAdd ? "Añadir" : "Seleccionar"}</button>
-          </div>}
+          {!variantCard && !variantGroupCard && renderActions("desktop")}
         </div>
 
         <div className="neo-content">
@@ -282,6 +289,8 @@ const ProductGridListSingle = ({
                   : normalDiscountPrice !== null ? <><span className="price-current">{symbol}{normalDiscountPrice}</span><span className="price-old">{symbol}{normalPrice}</span></>
                     : <span className="price-current">{symbol}{normalPrice}</span>}
           </div>
+
+          {!variantCard && !variantGroupCard && renderActions("mobile")}
 
           {variantGroupCard && (singleUnitMessage || hasWholesaleRule || wholesaleMessage) && <>
             {singleUnitMessage && <div style={{ marginTop: 8, padding: "7px 8px", borderRadius: 9, color: "#76e0ff", background: "rgba(118,224,255,.08)", border: "1px solid rgba(118,224,255,.20)", fontSize: 10, fontWeight: 800 }}>{singleUnitMessage}</div>}

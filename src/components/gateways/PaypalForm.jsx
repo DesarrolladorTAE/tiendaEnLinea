@@ -45,10 +45,10 @@ export default function PaypalModal({ open, onClose }) {
     axiosClient
       .get("/paypal/credentials")
       .then(({ data }) => {
-        const exists = !!(data && data.client_id);
+        const exists = !!(data?.client_id && data?.has_secret);
         setHasSecret(exists);
         setForm({
-          client_id: exists ? data.client_id : "",
+          client_id: data?.client_id || "",
           client_secret: "",
         });
       })
@@ -109,7 +109,8 @@ export default function PaypalModal({ open, onClose }) {
 
   // 🔹 Eliminar credenciales
   const onDelete = async () => {
-    if (!confirm("¿Seguro que deseas eliminar tus credenciales PayPal?")) return;
+    if (!confirm("¿Seguro que deseas eliminar tus credenciales PayPal?"))
+      return;
     try {
       setLoading(true);
       await axiosClient.delete("/paypal/credentials");

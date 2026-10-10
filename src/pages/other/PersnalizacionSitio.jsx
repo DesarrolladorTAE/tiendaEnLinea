@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Box, Button, Chip, CircularProgress, Container, Dialog, FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, Container, Dialog, FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography } from "@mui/material";
 import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import XIcon from "@mui/icons-material/X";
@@ -18,6 +18,9 @@ import Catalogo from "../shop/Catalogo";
 import PublicProductDetail from "../../components/storefront/PublicProductDetail";
 import { getPublicStoreProducts, getPublicStorefront, getStorefrontBranches } from "../../services/public/storefrontService";
 import "./storefront-themes.css";
+import StorefrontLoading from "../../components/storefront/StorefrontLoading";
+import StorefrontMetadata from "../../components/storefront/StorefrontMetadata";
+import { getStorefrontBrand, rememberStorefrontBrand } from "../../utils/storefrontBranding";
 
 const DEFAULT_SECTIONS = ["hero", "identity", "catalog", "carousel", "phrases", "socials"];
 const parseStructured = (value, fallback) => { if (value && typeof value === "object") return value; try { return typeof value === "string" && value.trim() ? JSON.parse(value) : fallback; } catch { return fallback; } };
@@ -106,25 +109,26 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
   const [branchSlug, setBranchSlug] = useState(params.get("branch") || "");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingBrand, setLoadingBrand] = useState(null);
   const [activeSection, setActiveSection] = useState("catalog");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productLoading, setProductLoading] = useState(false);
 
-  useEffect(() => { let alive = true; if (!storeSlug) { setLoading(false); return undefined; } setLoading(true); getStorefrontBranches(storeSlug).then(({ data: response }) => { if (!alive) return; const list = response?.branches || []; setBranches(list); const requested = params.get("branch"); setBranchSlug(list.find((b) => b.slug === requested)?.slug || list[0]?.slug || storeSlug); }).catch(() => { if (alive) setBranchSlug(storeSlug); }); return () => { alive = false; }; }, [storeSlug]);
-  useEffect(() => { let alive = true; if (!branchSlug) return undefined; setLoading(true); getPublicStorefront(branchSlug).then(({ data: response }) => { if (!alive) return; const payload = response?.sitio || response?.store ? response : response?.data || response; setData(payload); }).catch(() => { if (alive) setData({ ok: false, expired: true }); }).finally(() => { if (alive) setLoading(false); }); return () => { alive = false; }; }, [branchSlug]);
+  useEffect(() => { let alive = true; if (!storeSlug) { setLoading(false); return undefined; } setLoading(true); getStorefrontBranches(storeSlug).then(({ data: response }) => { if (!alive) return; const list = response?.branches || []; setBranches(list); const brand = getStorefrontBrand(response); if (brand.logo) setLoadingBrand({ slug: storeSlug, branch: params.get("branch") || "", brand }); const requested = params.get("branch"); setBranchSlug(list.find((b) => b.slug === requested)?.slug || list[0]?.slug || storeSlug); }).catch(() => { if (alive) setBranchSlug(storeSlug); }); return () => { alive = false; }; }, [storeSlug]);
+  useEffect(() => { let alive = true; if (!branchSlug) return undefined; setLoading(true); getPublicStorefront(branchSlug).then(({ data: response }) => { if (!alive) return; const payload = response?.sitio || response?.store ? response : response?.data || response; setData(payload); const brand = rememberStorefrontBrand(storeSlug, params.get("branch") || "", payload); setLoadingBrand({ slug: storeSlug, branch: params.get("branch") || "", brand }); }).catch(() => { if (alive) setData({ ok: false, expired: true }); }).finally(() => { if (alive) setLoading(false); }); return () => { alive = false; }; }, [branchSlug]);
   useEffect(() => { let alive = true; if (!productId || !storeSlug) { setSelectedProduct(null); setProductLoading(false); return undefined; } setProductLoading(true); getPublicStoreProducts(storeSlug).then(({ data: response }) => { if (!alive) return; const products = Array.isArray(response) ? response : response?.data || []; setSelectedProduct(products.find((product) => String(product.id) === String(productId)) || null); }).catch(() => { if (alive) setSelectedProduct(null); }).finally(() => { if (alive) setProductLoading(false); }); return () => { alive = false; }; }, [productId, storeSlug]);
 
   const site = data?.sitio || data?.site || {};
   const theme = useMemo(() => resolveTheme(site.theme), [site.theme]);
   const sections = useMemo(() => normalizeSections(site.sections), [site.sections]);
-  if (loading) return <Box sx={{ minHeight: "70vh", display: "grid", placeItems: "center" }}><Stack alignItems="center" spacing={2}><CircularProgress /><Typography color="text.secondary">Preparando la tienda…</Typography></Stack></Box>;
+  if (loading) return <StorefrontLoading storeSlug={storeSlug} brand={loadingBrand?.slug === storeSlug && loadingBrand.branch === (params.get("branch") || "") ? loadingBrand.brand : undefined} />;
   if (!data?.ok || data?.expired) return <TiendaNoDisponible />;
 
   const store = data.store || {};
   const branch = data.branch || {};
-  const rawBranding = site.branding || {};
+  const rawBranding = asObject(site.branding);
   const branding = {
-    logo: resolveAssetUrl(rawBranding.logo || site.logo || data.logo),
+    logo: getStorefrontBrand(data).logo,
     cover: resolveAssetUrl(rawBranding.cover || rawBranding.img_portada || site.img_portada || data.img_portada),
   };
   const identity = site.identity || {};
@@ -220,7 +224,7 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
   const renderers = {
     hero: () => <FeaturedIdentity />,
     identity: () => <Identity />,
-    catalog: () => <Box component="section" id="catalog" sx={sectionSx}><Container {...containerProps}><Stack direction="row" justifyContent="space-between" alignItems="end" sx={{ mb: 1 }}><Box><Typography className="sf-kicker">SELECCIÓN / CATÁLOGO</Typography><Typography variant="h2" fontWeight={950}>Encuentra lo tuyo</Typography></Box><GridViewRoundedIcon sx={{ color: colors.accent, fontSize: 34 }} /></Stack></Container><Catalogo storeId={store.id} storeSlug={store.slug || storeSlug} storefrontSettings={settings} storefrontTemplate={template} storefrontTheme={theme} storefrontColors={colors} /></Box>,
+    catalog: () => <Box component="section" id="catalog" sx={sectionSx}><Container {...containerProps}><Stack direction="row" justifyContent="space-between" alignItems="end" sx={{ mb: 1 }}><Box><Typography className="sf-kicker">SELECCIÓN / CATÁLOGO</Typography><Typography variant="h2" fontWeight={950}>Encuentra lo tuyo</Typography></Box><GridViewRoundedIcon sx={{ color: colors.accent, fontSize: 34 }} /></Stack></Container><Catalogo storeId={store.id} storeSlug={store.slug || storeSlug} storefrontSettings={settings} storefrontTemplate={template} storefrontTheme={theme} storefrontColors={colors} storefrontBrand={getStorefrontBrand(data)} /></Box>,
     carousel: () => site.carousel?.length ? <Box component="section" id="carousel" sx={sectionSx}><Container {...containerProps}><Stack direction="row" justifyContent="space-between" alignItems="end" sx={{ mb: 2.5 }}><Typography variant="h2" fontWeight={950}>Conoce más sobre {store.name}</Typography><Typography variant="body2" sx={{ opacity: .7 }}>Galería</Typography></Stack><StoreGallery images={site.carousel} theme={theme} /></Container></Box> : null,
     phrases: () => site.phrases?.filter(Boolean).length ? <Box component="section" id="phrases" className={`sf-phrases sf-phrases--${settings.phrase_style}`} data-align={settings.phrase_alignment} sx={sectionSx}><Container {...containerProps}><Stack spacing={2}>{site.phrases.filter(Boolean).map((phrase, index) => <Typography key={index} className="sf-phrase" sx={{ animation, animationDelay: `${index * 80}ms` }}>“{phrase}”</Typography>)}</Stack></Container></Box> : null,
     socials: () => <Box component="footer" id="socials" sx={{ ...sectionSx, bgcolor: colors.primary, color: "white" }}><Container {...containerProps}><Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={3}><Box><Typography variant="h4" fontWeight={950}>{store.name}</Typography><Stack direction="row" alignItems="center" spacing={.75} sx={{ mt: 1, opacity: .8 }}><LocationOnRoundedIcon fontSize="small" /><Typography variant="body2">{[branch.address?.line1, branch.address?.city, branch.address?.state].filter(Boolean).join(", ") || branch.name}</Typography></Stack></Box><SocialLinks social={site.social} accent="#fff" /></Stack></Container></Box>,
@@ -228,7 +232,8 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
 
   return <Box className="storefront-shell" data-template={template} data-mode={isDark ? "dark" : "light"} data-navigation={settings.navigation_mode || "landing"} data-advanced-hero={asBoolean(settings.advanced_hero) ? "true" : "false"} data-header={theme.header_style} data-button={theme.button_style} data-width={theme.content_width} data-animation={theme.animation} data-spacing={theme.spacing} data-radius={theme.radius} data-shadow={theme.shadow} style={{ "--sf-primary": colors.primary, "--sf-secondary": colors.secondary, "--sf-accent": colors.accent, "--sf-background": background, "--sf-text": text, "--sf-radius": `${theme.radiusValue}px`, "--sf-shadow": theme.shadowValue }} sx={{ minHeight: "100vh", bgcolor: background, color: text, fontFamily: site.font_family || "Inter,Arial,sans-serif", scrollBehavior: asBoolean(theme.smooth_scroll, true) ? "smooth" : "auto", "@keyframes storefrontReveal": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "none" } } }}>
     {branches.length > 1 && <Box className="sf-branch-picker"><FormControl size="small"><InputLabel>Sucursal</InputLabel><Select value={branchSlug} label="Sucursal" onChange={(e) => { setBranchSlug(e.target.value); setParams({ branch: e.target.value }); }}>{branches.map((item) => <MenuItem key={item.id} value={item.slug}>{item.name}</MenuItem>)}</Select></FormControl></Box>}
+    <StorefrontMetadata payload={data} product={productId && !productLoading ? selectedProduct : null} />
     <FacebookHeader />
-    {productId ? (productLoading ? <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><CircularProgress /></Box> : selectedProduct ? <PublicProductDetail product={selectedProduct} colors={colors} radius={theme.radiusValue} shadow={theme.shadowValue} legend={settings.product_legend || ""} showShare={advancedAccess && settings.show_share} showBack={advancedAccess} onBack={() => navigate(customStoreSlug ? "/#catalog" : `/tienda/${storeSlug}#catalog`)} /> : <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><Typography>Producto no disponible.</Typography></Box>) : sectionsForPlan.filter((section) => settings.navigation_mode !== "tabs" || section.id === activeSection).map((section) => <React.Fragment key={section.id}>{renderers[section.id]?.()}</React.Fragment>)}
+    {productId ? (productLoading ? <StorefrontLoading storeSlug={storeSlug} brand={getStorefrontBrand(data)} compact /> : selectedProduct ? <PublicProductDetail product={selectedProduct} colors={colors} radius={theme.radiusValue} shadow={theme.shadowValue} legend={settings.product_legend || ""} showShare={advancedAccess && settings.show_share} showBack={advancedAccess} onBack={() => navigate(customStoreSlug ? "/#catalog" : `/tienda/${storeSlug}#catalog`)} /> : <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><Typography>Producto no disponible.</Typography></Box>) : sectionsForPlan.filter((section) => settings.navigation_mode !== "tabs" || section.id === activeSection).map((section) => <React.Fragment key={section.id}>{renderers[section.id]?.()}</React.Fragment>)}
   </Box>;
 }

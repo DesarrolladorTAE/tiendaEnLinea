@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import DirectionsBusRoundedIcon from "@mui/icons-material/DirectionsBusRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useAdminUi } from "../../context/AdminUiContext";
 import { getTourServices, getDepartures, getManifest, downloadManifest } from "../../services/tours/tourService";
 import { departureCollection, departureDate, departureMoney } from "../../components/tours/departureUtils";
@@ -8,11 +11,13 @@ import { bookingError } from "../../components/tours/bookingUtils";
 const columns = [["numero", "N.º"], ["folio", "Folio"], ["registro", "Registró"], ["nombre", "Pasajero"], ["telefono", "Teléfono"], ["transporte", "Transporte"], ["total", "Total"], ["deposito", "Anticipo"], ["fecha_deposito", "Fecha de anticipo"], ["resto", "Saldo"], ["abordaje", "Parada"], ["ida", "Ida"], ["vuelta", "Regreso"], ["referencia_pago", "Referencia"], ["observaciones", "Observaciones"], ["estatus", "Estado"]];
 
 export default function TourReportsPage({ mode = "store", posBranchId, posLocationId, onBack }) {
+  const navigate = useNavigate();
+  const back = mode === "store" ? () => navigate("/admin/reportes") : onBack;
   const { selectedBranch, setHideLayout } = useAdminUi();
   const branchId = Number(mode === "pos" ? posBranchId : selectedBranch?.id);
   useEffect(() => { if (mode === "store") setHideLayout(false); }, [mode, setHideLayout]);
-  if (!Number.isSafeInteger(branchId) || branchId <= 0) return <Alert severity="warning">Selecciona una sucursal para generar reportes.</Alert>;
-  return <Reports key={`${mode}-${branchId}`} context={{ mode, branchId }} posLocationId={posLocationId} onBack={onBack} />;
+  if (!Number.isSafeInteger(branchId) || branchId <= 0) return <Stack spacing={2}><Button startIcon={<ArrowBackRoundedIcon />} onClick={back} sx={{ alignSelf: "flex-start" }}>{mode === "store" ? "Regresar a Reportes" : "Volver al POS"}</Button><Alert severity="warning">Selecciona una sucursal para generar reportes.</Alert></Stack>;
+  return <Reports key={`${mode}-${branchId}`} context={{ mode, branchId }} posLocationId={posLocationId} onBack={back} />;
 }
 
 function Reports({ context, posLocationId, onBack }) {
@@ -60,7 +65,9 @@ function Reports({ context, posLocationId, onBack }) {
     finally { downloadPending.current = false; setDownloading(false); }
   };
   return <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "background.paper", color: "text.primary", borderRadius: 3 }}><Stack spacing={2}>
-    <Stack direction="row" justifyContent="space-between"><Typography variant="h4">Reportes de servicios</Typography>{onBack && <Button onClick={onBack}>Volver al POS</Button>}</Stack>
+    <Button startIcon={<ArrowBackRoundedIcon />} onClick={onBack} sx={{ alignSelf: "flex-start" }}>{mode === "store" ? "Regresar a Reportes" : "Volver al POS"}</Button>
+    <Stack direction="row" alignItems="center" spacing={1.5}><DirectionsBusRoundedIcon color="primary" sx={{ fontSize: 36 }} /><Typography variant="h4" fontWeight={700}>Reporte de Servicios</Typography></Stack>
+    <Typography color="text.secondary">Tours: consulta pasajeros, reservaciones, anticipos y saldos por salida.</Typography>
     <Typography>Manifiesto de pasajeros por salida · Sucursal #{branchId}</Typography>
     <TextField select label="Servicio" value={serviceId} disabled={downloading} onChange={e => { setServiceId(e.target.value); setDepartureId(""); setDepartures([]); setManifest(null); }}>{services.map(s => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}</TextField>
     <TextField select label="Salida" value={departureId} disabled={!serviceId || downloading} onChange={e => { setDepartureId(e.target.value); setManifest(null); }}>{departures.map(d => <MenuItem key={d.id} value={d.id}>{departureDate(d.departure_date)} · {d.departure_time?.slice(0, 5)} · #{d.id}</MenuItem>)}</TextField>

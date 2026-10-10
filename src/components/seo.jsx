@@ -169,7 +169,7 @@ const SEO = ({
 
         <meta
           property="og:site_name"
-          content="Mi Tienda en Línea MX"
+          content={openGraph?.siteName || "Mi Tienda en Línea MX"}
         />
 
         <meta

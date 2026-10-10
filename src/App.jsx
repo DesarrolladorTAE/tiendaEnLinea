@@ -1,4 +1,5 @@
 import React, { Suspense, lazy } from "react";
+import StorefrontLoading from "./components/storefront/StorefrontLoading";
 import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminRoutes from "./routes/AdminRoutes";
@@ -60,7 +61,7 @@ const App = () => {
 
         <Suspense
           fallback={
-            <div className="flone-preloader-wrapper">
+            customStoreSlug || window.location.pathname.startsWith("/tienda/") ? <StorefrontLoading storeSlug={customStoreSlug || decodeURIComponent(window.location.pathname.split("/")[2] || "")} /> : <div className="flone-preloader-wrapper">
               <div className="flone-preloader">
                 <span />
                 <span />
