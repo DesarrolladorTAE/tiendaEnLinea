@@ -1,7 +1,6 @@
 import React, {
   lazy,
   useEffect,
-  useRef,
   useState,
   Suspense,
   useMemo,
@@ -22,6 +21,8 @@ import Taebanner from "../../components/admin/promociones/Taebanner";
 import LabelModal from "./modals/LabelModal";
 import { useTienda } from "../../context/TiendaContext";
 import CategoryModal from "../../components/products-list/CategoryModal";
+import ImportProductsModal from "../../components/products-list/ImportProductsModal";
+import { FiUploadCloud } from "react-icons/fi";
 
 // ✅ sucursal seleccionada + layout
 import { useAdminUi } from "../../context/AdminUiContext";
@@ -43,7 +44,7 @@ const ProductList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
-  const [cargandoCSV, setCargandoCSV] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
   const [error, setError] = useState(null);
 
   // categorías
@@ -51,7 +52,6 @@ const ProductList = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   // modal etiquetas
-  const fileInputRef = useRef();
   const [openLabels, setOpenLabels] = useState(false);
   const [labelProduct, setLabelProduct] = useState(null);
 
@@ -60,7 +60,7 @@ const ProductList = () => {
   const [catProduct, setCatProduct] = useState(null);
   const [savingCats, setSavingCats] = useState(false);
 
-  const { puedeCrear, cargando, totalProductos, limitePermitido } =
+  const { puedeCrear, cargando, totalProductos, limitePermitido, actualizarLimite, errorLimite } =
     useLimiteProductos();
   const productsPerPage = 10;
   const { tieneComplemento } = useComplementosActivos();
@@ -196,38 +196,10 @@ const ProductList = () => {
     try {
       await axiosClient.delete(`/admin/products/${id}`);
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      await actualizarLimite();
     } catch (error) {
       console.error("Error al eliminar producto:", error);
       alert("Error al eliminar.");
-    }
-  };
-
-  const cargarCSV = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append("archivo", file);
-
-    setCargandoCSV(true);
-    try {
-      const res = await axiosClient.post("/cargar/importarDesdeCSV", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        params: activeBranch?.id ? { branch_id: activeBranch.id } : undefined,
-      });
-
-      await fetchProductos();
-      alert(res?.data?.message || "Archivo cargado correctamente.");
-    } catch (error) {
-      console.error("Error al cargar CSV:", error);
-      alert("Error al importar el archivo CSV.");
-    } finally {
-      setCargandoCSV(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -311,7 +283,7 @@ const ProductList = () => {
           <p className="text-white small mb-0 text-end">
             {cargando
               ? "Cargando límites..."
-              : `Tienes ${totalProductos} / ${
+              : errorLimite ? "No se pudo consultar el total de productos" : `Tienes ${totalProductos ?? "—"} / ${
                   limitePermitido === Infinity ? "∞" : limitePermitido
                 } productos creados`}
           </p>
@@ -324,32 +296,12 @@ const ProductList = () => {
 
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
           {!tiendaLoading && puedeImportarMasivo && (
-            <div>
-              <input
-                type="file"
-                accept=".csv"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                style={{ display: "none" }}
-              />
-              <button
-                className="btn btn-warning me-2"
-                onClick={cargarCSV}
-                disabled={cargandoCSV}
-              >
-                {cargandoCSV
-                  ? "Importando CSV..."
-                  : "📤 Importar productos CSV"}
-              </button>
-
-              <a
-                href="/assets/ejemploCSV/CSVejemplo.csv"
-                download
-                className="text-decoration-underline text-info d-block mt-1"
-              >
-                📄 Descargar CSV de ejemplo
-              </a>
-            </div>
+            <button
+              className="btn btn-warning d-inline-flex align-items-center gap-2"
+              onClick={() => setOpenImport(true)}
+            >
+              <FiUploadCloud size={20} /> Importar productos
+            </button>
           )}
 
           {puedeCrear ? (
@@ -359,6 +311,10 @@ const ProductList = () => {
             >
               <span className="fs-5">➕</span> Crear Producto
             </Link>
+          ) : cargando ? (
+            <span className="text-light small">Consultando disponibilidad...</span>
+          ) : errorLimite ? (
+            <button className="btn btn-outline-warning" onClick={actualizarLimite}>Reintentar consulta de límite</button>
           ) : (
             <div className="text-warning text-end">
               Límite alcanzado (
@@ -381,6 +337,15 @@ const ProductList = () => {
           categoriesLoading={categoriesLoading}
           onOpenCategories={handleOpenCats}
         />
+
+        {openImport && (
+          <ImportProductsModal
+            open={openImport}
+            onClose={() => setOpenImport(false)}
+            branch={activeBranch}
+            onImported={() => Promise.all([fetchProductos(), actualizarLimite()])}
+          />
+        )}
 
         <LabelModal
           open={openLabels}

@@ -1,11 +1,12 @@
 import { useTienda } from "../context/TiendaContext";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import axiosClient from "../config/axiosClient";
 
 const useLimiteProductos = () => {
   const { tienda, loading } = useTienda();
-  const [totalProductos, setTotalProductos] = useState(0);
+  const [totalProductos, setTotalProductos] = useState(null);
   const [cargandoProductos, setCargandoProductos] = useState(true);
+  const [errorLimite, setErrorLimite] = useState(null);
 
   const limites = {
     1: 10,
@@ -16,29 +17,46 @@ const useLimiteProductos = () => {
 
   const limitePermitido = tienda?.plan_id ? limites[tienda.plan_id] ?? 0 : 0;
 
-  useEffect(() => {
-    const fetchProductos = async () => {
-      if (!tienda || loading) return;
-
+  const actualizarLimite = useCallback(async () => {
+      if (!tienda || loading) {
+        setCargandoProductos(false);
+        return;
+      }
+      setCargandoProductos(true);
+      setErrorLimite(null);
       try {
         const res = await axiosClient.get("/admin/products");
-        setTotalProductos(res.data.length || 0);
+        const data = res.data;
+        // Laravel may return a collection or a paginated resource.
+        const total = data?.total ?? data?.meta?.total ?? data?.products?.total ?? data?.data?.total;
+        const list = Array.isArray(data) ? data : data?.products ?? data?.data;
+        if (total != null && Number.isFinite(Number(total)) && Number(total) >= 0) {
+          setTotalProductos(Number(total));
+        } else if (Array.isArray(list)) {
+          setTotalProductos(list.length);
+        } else {
+          throw new Error("La respuesta no incluye un total de productos válido.");
+        }
       } catch (error) {
         console.error("Error al obtener productos:", error);
+        setErrorLimite("No se pudo consultar el total de productos.");
       } finally {
         setCargandoProductos(false);
       }
-    };
-
-    fetchProductos();
   }, [tienda, loading]);
 
-  const puedeCrear = totalProductos < limitePermitido;
+  useEffect(() => {
+    actualizarLimite();
+  }, [actualizarLimite]);
+
+  const puedeCrear = !loading && !cargandoProductos && !errorLimite && totalProductos !== null && totalProductos < limitePermitido;
 
   return {
     puedeCrear,
     totalProductos,
     limitePermitido,
+    actualizarLimite,
+    errorLimite,
     cargando: loading || cargandoProductos,
   };
 };

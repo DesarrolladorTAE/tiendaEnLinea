@@ -6,6 +6,7 @@ import axios from "axios";
 
 import SEO from "../../components/seo";
 import StorefrontLoading from "../../components/storefront/StorefrontLoading";
+import { rememberStorefrontBrand } from "../../utils/storefrontBranding";
 import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import ShopTopbar from "../../wrappers/product/ShopTopbar";
 import ShopProducts from "../../wrappers/product/ShopProducts";
@@ -219,7 +220,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
 
   const storeSlug = storeSlugProp ?? params.storeSlug;
 
-  const { isStoreValid, products, storePhone, storeName } =
+  const { isStoreValid, products, storePhone, storeName, loadingProducts, productsError } =
     useStoreData(storeSlug);
 
   /*
@@ -228,6 +229,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
    */
   const storeId = Number(storeIdProp ?? 0) || null;
   const [siteSettings, setSiteSettings] = useState(() => normalizeSettings(storefrontSettings));
+  const [catalogBrand, setCatalogBrand] = useState(null);
   const pageLimit = Number(siteSettings.products_per_page) || DEFAULT_PAGE_LIMIT;
   const variantSearchEnabled = settingEnabled(siteSettings.variant_search_enabled);
   const embeddedStorefront = storefrontSettings !== null;
@@ -239,7 +241,10 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
     }
     let alive = true;
     axios.get(`${API_BASE}/public/tienda/${encodeURIComponent(storeSlug)}/sitio`)
-      .then(({ data }) => { if (alive) setSiteSettings(normalizeSettings(data?.sitio?.settings)); })
+      .then(({ data }) => { if (alive) {
+        setSiteSettings(normalizeSettings(data?.sitio?.settings));
+        setCatalogBrand({ slug: storeSlug, brand: rememberStorefrontBrand(storeSlug, "", data) });
+      } })
       .catch(() => { if (alive) setSiteSettings({}); });
     return () => { alive = false; };
   }, [storeSlug, storefrontSettings]);
@@ -539,9 +544,11 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
   /*
    * Todos los hooks deben estar antes de este retorno.
    */
-  if (isStoreValid === null) {
-    return <StorefrontLoading storeSlug={storeSlug} brand={storefrontBrand} compact />;
+  if (isStoreValid === null || loadingProducts) {
+    return <StorefrontLoading storeSlug={storeSlug} brand={storefrontBrand || (catalogBrand?.slug === storeSlug ? catalogBrand.brand : null)} label="Cargando productos…" compact />;
   }
+
+  if (productsError) return <div role="alert" className="alert alert-warning my-4">{productsError}</div>;
 
   return (
     <Fragment>

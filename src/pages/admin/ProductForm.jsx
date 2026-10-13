@@ -75,7 +75,7 @@ export default function ProductForm() {
     },
   });
 
-  const { puedeCrear, cargando, limitePermitido } = useLimiteProductos();
+  const { puedeCrear, cargando, limitePermitido, errorLimite, actualizarLimite } = useLimiteProductos();
 
   const { ui, actions } = useProductFormLogic({
     reset,
@@ -83,10 +83,17 @@ export default function ProductForm() {
     setValue,
   });
 
-  if (cargando)
+  if (!ui.id && cargando)
     return <p className="text-center text-muted">Cargando datos...</p>;
 
-  if (!puedeCrear) {
+  if (!ui.id && errorLimite) {
+    return <div className="alert alert-warning text-center mt-5">
+      <p>{errorLimite}</p>
+      <button className="btn btn-outline-dark" onClick={actualizarLimite}>Reintentar</button>
+    </div>;
+  }
+
+  if (!ui.id && !puedeCrear) {
     return (
       <div className="alert alert-warning text-center mt-5">
         🚫 Has alcanzado el límite de <strong>{limitePermitido}</strong>{" "}
