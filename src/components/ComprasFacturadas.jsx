@@ -19,6 +19,7 @@ import PointOfSaleRoundedIcon from "@mui/icons-material/PointOfSaleRounded";
 import axiosClient from "../config/axiosClientPOS";
 import FiltersBar from "./FiltersBar";
 import SalesTable from "./SalesTable";
+import { posDate, saleInfo, uniqueSales, summarizeSales, saleAmounts, posMoney } from "../utils/posSaleInfo";
 import FacturarVentaDialog from "./ventas/FacturarVentaDialog";
 import FacturaPdfDialog from "./ventas/FacturaPdfDialog";
 import FacturaXmlDialog from "./ventas/FacturaXmlDialog";
@@ -38,13 +39,6 @@ const formatMoney = (n) =>
   Number(n || 0).toLocaleString("es-MX", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  });
-
-const formatDate = (d) =>
-  new Date(d).toLocaleDateString("es-MX", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
   });
 
 const paymentLabel = (code) => {
@@ -70,6 +64,7 @@ export default function ComprasSuscripcionesView({
   const defaultMes = toYYYYMM(new Date());
   const [mes, setMes] = useState(defaultMes);
   const [folio, setFolio] = useState("");
+  const [saleFilter, setSaleFilter] = useState("all");
 
   const [ventasRaw, setVentasRaw] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -142,8 +137,9 @@ export default function ComprasSuscripcionesView({
         params,
       });
 
-      setVentasRaw(Array.isArray(data?.data) ? data.data : []);
+      setVentasRaw(Array.isArray(data?.data) ? uniqueSales(data.data) : []);
     } catch {
+      showError("No fue posible cargar las ventas facturables.");
       setVentasRaw([]);
     } finally {
       setLoading(false);
@@ -182,19 +178,22 @@ export default function ComprasSuscripcionesView({
     );
   };
 
+  const summary = useMemo(() => summarizeSales(ventasRaw), [ventasRaw]);
+
   const ventasRows = useMemo(() => {
     return (ventasRaw || [])
       .filter((v) => {
         const f = String(folioFromSale(v)).toLowerCase();
         const byFolio = folio ? f.includes(folio.toLowerCase()) : true;
-        return byFolio;
+        const info = saleInfo(v); return byFolio && (saleFilter === "all" || saleFilter === info.type || (saleFilter === "invoiced" && info.invoiced) || (saleFilter === "pending" && !info.invoiced));
       })
       .map((v) => ({
+        ...v,
         id: v.id,
         folio: folioFromSale(v),
         fechaISO: v.created_at,
-        fecha: formatDate(v.created_at),
-        total: `$${formatMoney(v.total_amount)}`,
+        fecha: posDate(v.created_at),
+        total: posMoney(saleAmounts(v).net),
         tipoPago: paymentLabel(v.payment_method),
         invoice_status: v.invoice_status,
         invoice_status_name:
@@ -202,7 +201,7 @@ export default function ComprasSuscripcionesView({
           (v.invoice_status === "timbrada"
             ? "Facturada"
             : "Disponible para facturar"),
-        facturable: !!v.facturable,
+        facturable: v.facturable === true,
         fuera_de_rango: !!v.fuera_de_rango,
         puede_ver_documentos:
           v.puede_ver_documentos ?? v.invoice_status === "timbrada",
@@ -212,32 +211,14 @@ export default function ComprasSuscripcionesView({
         invoice: v.invoice || null,
         items: v.items || [],
       }));
-  }, [ventasRaw, folio]);
+  }, [ventasRaw, folio, saleFilter]);
 
   const onChangeMes = (e) => setMes(e.target.value);
   const onChangeFolio = (e) => setFolio(e.target.value);
   const onSearch = () => {};
-  const puedeFacturarMesAnteriorEn72Horas = (fechaVentaISO) => {
-    const ahora = new Date();
-
-    const fechaVenta = new Date(fechaVentaISO);
-
-    const ultimoDiaMesVenta = new Date(
-      fechaVenta.getFullYear(),
-      fechaVenta.getMonth() + 1,
-      0,
-      23,
-      59,
-      59,
-    );
-
-    const limite72Horas = new Date(ultimoDiaMesVenta);
-    limite72Horas.setHours(limite72Horas.getHours() + 72);
-
-    return ahora <= limite72Horas;
-  };
 
   const onFacturar = (row) => {
+    if (row?.facturable !== true) { showError("Esta venta no está disponible para facturar."); return; }
     if (!allowed) {
       showError("Acceso restringido", {
         html: "Esta acción requiere el plan/complemento de Taeconta activos.",
@@ -247,16 +228,6 @@ export default function ComprasSuscripcionesView({
 
     if (row?.invoice_status === "timbrada") {
       showError("Esta venta ya está facturada.");
-      return;
-    }
-
-    if (
-      row?.fuera_de_rango &&
-      !puedeFacturarMesAnteriorEn72Horas(row.fechaISO)
-    ) {
-      showError("Venta fuera de rango", {
-        html: "Esta venta pertenece a un mes anterior y ya no entra dentro del margen de 72 horas posteriores al cierre del mes.",
-      });
       return;
     }
 
@@ -682,6 +653,22 @@ export default function ComprasSuscripcionesView({
           </Stack>
         </Paper>
 
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+          {[
+            ["Total facturable", "facturable"], ["Ventas de contado", "cash"],
+            ["Créditos liquidados", "credit_paid"], ["Ventas facturadas", "invoiced"],
+          ].map(([label, key]) => <Paper key={key} sx={{ p: 2, flex: "1 1 200px", borderRadius: 3 }}>
+            <Typography color="text.secondary">{label}</Typography>
+            <Typography fontWeight={800}>{summary.unknown.count > 0 && summary[key].count === 0 && ["cash", "credit_paid"].includes(key) ? "No disponible" : summary[key].missing > 0 && summary[key].missing === summary[key].count ? "No disponible" : posMoney(summary[key].amount)}</Typography>
+            <Typography variant="caption">{summary[key].count} ventas{summary.unknown.count > 0 && ["cash", "credit_paid"].includes(key) ? " identificadas · información incompleta" : " recibidas del mes"}</Typography>
+            {summary[key].missing > 0 && <Typography variant="caption" color="warning.main" display="block">Importe incompleto: {summary[key].missing} ventas sin neto válido.</Typography>}
+          </Paper>)}
+        </Stack>
+        <Typography variant="body2" sx={{ mb: 2 }} color="text.secondary">ISR retenido del periodo: {summary.retention.missing === ventasRaw.length && ventasRaw.length > 0 ? "No disponible" : posMoney(summary.retention.amount)}{summary.retention.missing > 0 ? ` · Faltan importes en ${summary.retention.missing} ventas` : ""}</Typography>
+        {summary.unknown.count > 0 && <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
+          <Typography>{summary.unknown.count} ventas por {summary.unknown.missing ? "importe neto incompleto" : posMoney(summary.unknown.amount)} sin tipo confirmado.</Typography>
+          <Typography variant="body2" color="text.secondary">Falta un indicador explícito de contado/crédito en la respuesta. Los importes de contado y crédito muestran únicamente ventas identificadas.</Typography>
+        </Paper>}
         <GateTaeconta posLocationId={resolvedPosLocationId}>
           <Paper
             elevation={0}
@@ -751,6 +738,10 @@ export default function ComprasSuscripcionesView({
                 pb: 1,
               }}
             >
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+                {[["all", "Todas las ventas"], ["cash", "Ventas de contado"], ["credit_paid", "Créditos liquidados"], ["invoiced", "Facturadas"], ["pending", "Pendientes de facturar"]].map(([value, label]) =>
+                  <Chip key={value} label={label} color={saleFilter === value ? "primary" : "default"} onClick={() => setSaleFilter(value)} />)}
+              </Stack>
               <FiltersBar
                 mes={mes}
                 folio={folio}
@@ -797,6 +788,7 @@ export default function ComprasSuscripcionesView({
           open={openFacturar}
           onClose={() => setOpenFacturar(false)}
           venta={{
+            ...ventaActiva,
             id: ventaActiva?.id,
             folio: ventaActiva?.folio,
             fecha: ventaActiva?.fecha,

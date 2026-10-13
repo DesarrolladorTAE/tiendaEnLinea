@@ -24,8 +24,9 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import axiosClient from "../config/axiosClientPOS";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import POSSaleInformation from "./POSSaleInformation";
+import { posDate, saleInfo } from "../utils/posSaleInfo";
+
 
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ShoppingBagRoundedIcon from "@mui/icons-material/ShoppingBagRounded";
@@ -103,11 +104,11 @@ const getPagoConcepto = (index, pago, pagos, totalVenta) => {
 
   if (pagos.length === 1 && liquida) return "Pago completo";
   if (esPrimero && !liquida) return "Anticipo inicial";
-  if (!esPrimero && liquida) return "Liquidación pendiente";
-  return "Abono pendiente";
+  if (!esPrimero && liquida) return "Liquidación registrada";
+  return "Abono registrado";
 };
 
-export default function ModalDetallesVenta({ open, onClose, ventaId }) {
+export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResumen }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -115,24 +116,27 @@ export default function ModalDetallesVenta({ open, onClose, ventaId }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let active = true;
     const cargarDetalles = async () => {
       setLoading(true);
+      setDetalles(null);
 
       try {
         const { data } = await axiosClient.get(`/ventas/${ventaId}`);
-        setDetalles(data?.sale ? data : null);
+        if (active) setDetalles(data?.sale ? data : null);
       } catch (error) {
         console.error("Error al cargar detalles", error);
-        setDetalles(null);
+        if (active) setDetalles(null);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     if (ventaId && open) cargarDetalles();
+    return () => { active = false; };
   }, [ventaId, open]);
 
-  const sale = detalles?.sale;
+  const sale = useMemo(() => detalles?.sale ? { ...ventaResumen, ...detalles.sale, credit_movements: detalles.credit_movements ?? detalles.sale.credit_movements ?? ventaResumen?.credit_movements } : null, [detalles, ventaResumen]);
 
   const statusConfig = useMemo(() => {
     return (
@@ -144,13 +148,13 @@ export default function ModalDetallesVenta({ open, onClose, ventaId }) {
     );
   }, [sale]);
 
-  const pagos = Array.isArray(detalles?.payments) ? detalles.payments : [];
+  const pagos = Array.isArray(detalles?.payments) ? detalles.payments : Array.isArray(sale?.payments) ? sale.payments : [];
   const items = Array.isArray(detalles?.items) ? detalles.items : [];
   const creditMovements = Array.isArray(detalles?.credit_movements)
     ? detalles.credit_movements
     : [];
 
-  const totals = sale?.totals || {};
+  const totals = sale?.totals || sale || {};
 
   return (
     <Dialog
@@ -226,6 +230,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId }) {
           </Box>
         ) : detalles && sale ? (
           <Stack spacing={2.5}>
+            <POSSaleInformation sale={sale} payments={pagos} />
             <Grid container spacing={2}>
               <Grid item xs={12} md={8}>
                 <Paper
@@ -250,11 +255,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId }) {
                         Fecha
                       </Typography>
                       <Typography fontWeight={850}>
-                        {sale.created_at
-                          ? format(new Date(sale.created_at), "d MMM yyyy, HH:mm", {
-                              locale: es,
-                            })
-                          : "—"}
+                        {posDate(sale.created_at, true)}
                       </Typography>
                     </Grid>
 
@@ -263,7 +264,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId }) {
                         Cliente
                       </Typography>
                       <Typography fontWeight={850}>
-                        {sale?.client?.name || "Cliente general"}
+                        {sale?.client?.name || sale?.client?.nombre_alias || sale?.client?.razon_social || "Cliente general"}
                       </Typography>
                       {sale?.client?.phone ? (
                         <Typography variant="caption" color="text.secondary">
@@ -537,7 +538,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId }) {
                     </Stack>
                   ) : (
                     <Typography color="text.secondary">
-                      Esta venta no pertenece a crédito.
+                      {saleInfo(sale).type === "cash" ? "Venta de contado." : "Información de crédito no disponible."}
                     </Typography>
                   )}
                 </Paper>

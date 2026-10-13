@@ -47,45 +47,17 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import LockClockRoundedIcon from "@mui/icons-material/LockClockRounded";
 
+import { SaleAmountDisplay } from "./POSSaleAmounts";
+import { SaleTypeChip } from "./POSSaleInformation";
+import { posDate, posDateValue, saleInfo, saleDayKey, sumSaleAmounts, posMoney } from "../utils/posSaleInfo";
+
 // --- Helpers ---
 const capitalizeFirst = (s) =>
   s ? s.replace(/^\p{L}/u, (m) => m.toUpperCase()) : s;
 
-const isValidDate = (d) => d instanceof Date && !isNaN(d.getTime());
 
-const safeDateFrom = (val) => {
-  if (!val) return null;
-  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
-    const [y, m, day] = val.split("-").map(Number);
-    const d = new Date(y, m - 1, day);
-    return isValidDate(d) ? d : null;
-  }
-  if (val instanceof Date) return isValidDate(val) ? val : null;
-  const d = new Date(val);
-  return isValidDate(d) ? d : null;
-};
-const puedeFacturarPorCierreMensual72h = (row) => {
-  const raw = row?.fechaISO ?? row?.created_at ?? row?.fecha;
-  const fechaVenta = safeDateFrom(raw);
 
-  if (!fechaVenta) return false;
-
-  const ahora = new Date();
-
-  const cierreMes = new Date(
-    fechaVenta.getFullYear(),
-    fechaVenta.getMonth() + 1,
-    0,
-    23,
-    59,
-    59,
-  );
-
-  const limite = new Date(cierreMes);
-  limite.setHours(limite.getHours() + 72);
-
-  return ahora <= limite;
-};
+const safeDateFrom = posDateValue;
 
 const fmtDay = (yyyyMMdd) => {
   const d = safeDateFrom(yyyyMMdd);
@@ -106,18 +78,11 @@ const groupByDay = (rows = []) => {
   const sinFecha = [];
 
   rows.forEach((r) => {
-    const raw = r.fechaISO ?? r.created_at ?? r.fecha;
-    const d = safeDateFrom(raw);
-
-    if (!d) {
+    const key = saleDayKey(r);
+    if (!key) {
       sinFecha.push(r);
       return;
     }
-
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    const key = `${y}-${m}-${day}`;
 
     if (!map.has(key)) map.set(key, []);
     map.get(key).push(r);
@@ -147,73 +112,12 @@ const chipPago = (tipoPago) => {
   }
 };
 
-const chipStatus = (row) => {
-  const status = String(row?.invoice_status || "").toLowerCase();
-  const hasError = !!row?.error_message;
-
-  // ✅ Ya facturada
-  if (status === "timbrada") {
-    return {
-      label: row?.invoice_status_name || "Facturada",
-      color: "success",
-      variant: "filled",
-      clickable: false,
-    };
-  }
-
-  // ✅ Mes anterior pero aún puede facturarse
-  if (row?.fuera_de_rango && puedeFacturarPorCierreMensual72h(row)) {
-    return {
-      label: "72 hrs disponibles",
-      color: "info",
-      variant: "filled",
-      clickable: false,
-    };
-  }
-
-  // ✅ Ya no entra en las 72 horas
-  if (row?.fuera_de_rango) {
-    return {
-      label: "Fuera de plazo",
-      color: "default",
-      variant: "filled",
-      clickable: false,
-    };
-  }
-
-  // ✅ Error de timbrado
-  if (status === "error" || hasError) {
-    return {
-      label: row?.invoice_status_name || "Error al facturar",
-      color: "error",
-      variant: "filled",
-      clickable: true,
-    };
-  }
-
-  // ✅ Pendiente
-  return {
-    label: row?.invoice_status_name || "Pendiente",
-    color: "warning",
-    variant: "filled",
-    clickable: false,
-  };
-};
-
+const chipStatus = (row) => { const info = saleInfo(row); return { label: info.invoiceLabel, color: info.invoiceColor, variant: "outlined", clickable: info.invoiceColor === "error" }; };
 const getClienteNombre = (row) => {
   const c = row?.client;
   if (!c) return "Sin cliente";
   return c?.nombre_alias || c?.razon_social || c?.rfc || "Cliente";
 };
-
-const parseMoney = (s) =>
-  Number(String(s || "").replace(/[^0-9.-]+/g, "")) || 0;
-
-const fmtMoney = (n) =>
-  n.toLocaleString("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 
 function DocumentoSelector({ row, onVerPdf, onVerXml, dense = false }) {
   const [value, setValue] = useState("");
@@ -236,7 +140,7 @@ function DocumentoSelector({ row, onVerPdf, onVerXml, dense = false }) {
     <FormControl
       size="small"
       sx={{
-        minWidth: dense ? 130 : 145,
+        width: "100%", minWidth: 0,
         "& .MuiOutlinedInput-root": {
           borderRadius: 2.5,
           fontWeight: 700,
@@ -294,7 +198,7 @@ function WhatsappSelector({ row, onEnviarWhatsapp, dense = false }) {
     <FormControl
       size="small"
       sx={{
-        minWidth: dense ? 150 : 170,
+        width: "100%", minWidth: 0,
         "& .MuiOutlinedInput-root": {
           borderRadius: 2.5,
           fontWeight: 700,
@@ -338,7 +242,7 @@ export default function SalesTable({
   onEnviarWhatsapp,
 }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
 
   const { days, grouped, sinFecha } = useMemo(() => {
     const { map, sinFecha } = groupByDay(rows);
@@ -363,12 +267,11 @@ export default function SalesTable({
   }, [days.length]);
 
   const hasDays = days.length > 0;
-  const dayKey = hasDays ? days[dayIndex] : null;
-  const dayRows = hasDays ? grouped.get(dayKey) : [];
-  const rowsShown = viewAll ? rows : dayRows;
+  const dayKey = hasDays ? days[Math.min(dayIndex, days.length - 1)] : null;
+  const rowsShown = useMemo(() => viewAll || !dayKey ? rows : grouped.get(dayKey) || [], [viewAll, rows, grouped, dayKey, sinFecha]);
 
   const totalDia = useMemo(
-    () => rowsShown.reduce((acc, r) => acc + parseMoney(r.total), 0),
+    () => sumSaleAmounts(rowsShown),
     [rowsShown],
   );
 
@@ -387,10 +290,8 @@ export default function SalesTable({
     const pago = chipPago(row.tipoPago);
     const status = chipStatus(row);
     const cliente = getClienteNombre(row);
-    const facturada = row.facturable === false && !row?.fuera_de_rango;
     const fueraDeRango = !!row?.fuera_de_rango;
-    const puedeUsarMargen72h = puedeFacturarPorCierreMensual72h(row);
-    const bloqueadaPorRango = fueraDeRango && !puedeUsarMargen72h;
+    const bloqueadaPorRango = fueraDeRango && row.facturable !== true;
     const puedeVerDocumentos = !!row?.puede_ver_documentos;
 
     return (
@@ -434,18 +335,11 @@ export default function SalesTable({
               </Typography>
             </Box>
 
-            <Typography
-              sx={{
-                fontWeight: 900,
-                fontSize: "1rem",
-                color: "success.main",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {row.total}
-            </Typography>
+            <SaleAmountDisplay sale={row} />
           </Stack>
 
+          <SaleTypeChip sale={row} />
+          <Typography variant="body2">Fecha de pago / liquidación: {posDate(saleInfo(row).paymentDate)}</Typography>
           <Divider />
 
           <Stack direction="row" spacing={1} alignItems="center">
@@ -456,7 +350,7 @@ export default function SalesTable({
               variant="body2"
               sx={{ color: "text.secondary", fontSize: ".83rem" }}
             >
-              {row.fecha}
+              Fecha de venta: {posDate(row.created_at)}
             </Typography>
           </Stack>
 
@@ -531,7 +425,7 @@ export default function SalesTable({
           ) : bloqueadaPorRango ? (
             <Chip
               icon={<LockClockRoundedIcon />}
-              label="No facturable por mes anterior"
+              label={row.fuera_de_rango_reason || "Fuera del periodo permitido"}
               color="default"
               variant="outlined"
               sx={{ fontWeight: 700 }}
@@ -543,6 +437,7 @@ export default function SalesTable({
               color="primary"
               size="small"
               startIcon={<ReceiptLongIcon />}
+              disabled={row.facturable !== true}
               onClick={() => onFacturar?.(row)}
               sx={{
                 textTransform: "none",
@@ -708,7 +603,7 @@ export default function SalesTable({
           }}
         >
           <Chip
-            label={`Total ${viewAll ? "listado" : "del día"}: $${fmtMoney(totalDia)}`}
+            label={`Total neto ${viewAll ? "listado" : "del día"}: ${totalDia.missing === rowsShown.length && rowsShown.length > 0 ? "No disponible" : posMoney(totalDia.amount)}${totalDia.missing ? " · Importe incompleto" : ""}`}
             color="success"
             variant="outlined"
             sx={{ fontWeight: 800 }}
@@ -719,7 +614,7 @@ export default function SalesTable({
               size="small"
               variant="outlined"
               color="warning"
-              label={`Registros sin fecha: ${sinFecha.length}`}
+              label={`Sin fecha de periodo: ${sinFecha.length} · Ver todos`}
               sx={{ fontWeight: 700 }}
             />
           )}
@@ -768,12 +663,10 @@ export default function SalesTable({
         ) : (
           <TableContainer
             sx={{
-              overflowX: "auto",
-              maxHeight: 600,
-              WebkitOverflowScrolling: "touch",
+              overflow: "visible",
             }}
           >
-            <Table stickyHeader size={dense ? "small" : "medium"}>
+            <Table size={dense ? "small" : "medium"} sx={{ tableLayout: "fixed", width: "100%", "& th, & td": { px: 1, overflowWrap: "anywhere" }, "& .MuiChip-root": { maxWidth: "100%", height: "auto", minHeight: 24 }, "& .MuiChip-label": { whiteSpace: "normal", py: 0.5 } }}>
               <TableHead>
                 <TableRow
                   sx={{
@@ -788,47 +681,20 @@ export default function SalesTable({
                     },
                   }}
                 >
-                  <TableCell>Folio</TableCell>
-                  <TableCell>Fecha</TableCell>
+                  <TableCell sx={{ width: "9%" }}>Folio</TableCell>
+                  <TableCell>Venta y fechas</TableCell>
                   <TableCell>Cliente</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell>Tipo de pago</TableCell>
-                  <TableCell align="center">Acciones</TableCell>
+                  <TableCell>Estado de facturación</TableCell>
+                  <TableCell align="right">Total neto</TableCell>
+                  <TableCell>Método de pago</TableCell>
+                  <TableCell align="center" sx={{ width: "18%" }}>Acciones</TableCell>
                 </TableRow>
               </TableHead>
 
               <TableBody>
                 {loading ? (
                   Array.from({ length: 6 }).map((_, i) => (
-                    <TableRow key={`sk-${i}`}>
-                      <TableCell>
-                        <Skeleton variant="text" width={80} />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton variant="text" width={140} />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton variant="text" width={140} />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton variant="rounded" width={120} height={28} />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Skeleton variant="text" width={80} />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton variant="text" width={120} />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Skeleton
-                          variant="rounded"
-                          width={220}
-                          height={32}
-                          sx={{ mx: "auto" }}
-                        />
-                      </TableCell>
-                    </TableRow>
+                    <TableRow key={i}>{Array.from({ length: 7 }, (_, cell) => <TableCell key={cell}><Skeleton variant="text" width="100%" /></TableCell>)}</TableRow>
                   ))
                 ) : rowsShown.length > 0 ? (
                   rowsShown.map((r, idx) => {
@@ -836,10 +702,8 @@ export default function SalesTable({
                     const status = chipStatus(r);
                     const cliente = getClienteNombre(r);
                     const fueraDeRango = !!r?.fuera_de_rango;
-                    const puedeUsarMargen72h =
-                      puedeFacturarPorCierreMensual72h(r);
                     const bloqueadaPorRango =
-                      fueraDeRango && !puedeUsarMargen72h;
+                      fueraDeRango && r.facturable !== true;
                     const puedeVerDocumentos = !!r?.puede_ver_documentos;
 
                     return (
@@ -865,7 +729,7 @@ export default function SalesTable({
                           {r.folio}
                         </TableCell>
 
-                        <TableCell>{r.fecha}</TableCell>
+                        <TableCell><Stack spacing={0.5}><SaleTypeChip sale={r} /><Typography variant="caption">Venta: {posDate(r.created_at)}</Typography><Typography variant="caption">Pago / liquidación: {posDate(saleInfo(r).paymentDate)}</Typography></Stack></TableCell>
 
                         <TableCell sx={{ fontWeight: 600 }}>
                           {cliente}
@@ -890,7 +754,7 @@ export default function SalesTable({
                         </TableCell>
 
                         <TableCell align="right" sx={{ fontWeight: 800 }}>
-                          {r.total}
+                          <SaleAmountDisplay sale={r} />
                         </TableCell>
 
                         <TableCell>
@@ -906,7 +770,7 @@ export default function SalesTable({
                         <TableCell align="center">
                           {puedeVerDocumentos ? (
                             <Stack
-                              direction="row"
+                              direction="column"
                               spacing={0.8}
                               justifyContent="center"
                               flexWrap="wrap"
@@ -928,7 +792,7 @@ export default function SalesTable({
                           ) : bloqueadaPorRango ? (
                             <Chip
                               icon={<LockClockRoundedIcon />}
-                              label="Mes anterior / bloqueada"
+                              label={r.fuera_de_rango_reason || "Fuera del periodo permitido"}
                               color="default"
                               variant="outlined"
                               sx={{ fontWeight: 700 }}
@@ -939,6 +803,7 @@ export default function SalesTable({
                               color="primary"
                               size={dense ? "small" : "medium"}
                               startIcon={<ReceiptLongIcon />}
+                              disabled={r.facturable !== true}
                               onClick={() => onFacturar?.(r)}
                               sx={{
                                 textTransform: "none",

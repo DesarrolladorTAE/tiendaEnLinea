@@ -1,216 +1,143 @@
-// src/components/ventas/FacturaWhatsAppDialog.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  IconButton,
-  Stack,
-  TextField,
-  Typography,
-  Alert,
-  CircularProgress,
-  FormControlLabel,
-  Switch,
-  Box,
+  Alert, Button, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, IconButton, Stack, Typography,
+  useMediaQuery, Tooltip, Divider,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import WhatsAppIcon from "@mui/icons-material/WhatsApp";
-import axiosClientPOS from "../../config/axiosClientPOS";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import CodeRoundedIcon from "@mui/icons-material/CodeRounded";
+import { Light as SyntaxHighlighter } from "react-syntax-highlighter";
+import xml from "react-syntax-highlighter/dist/esm/languages/hljs/xml";
+import atomOneDark from "react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
+import { formatXml } from "../../utils/formatXml";
 
-export default function FacturaWhatsAppDialog({
-  open,
-  onClose,
-  saleId,
-  cliente,
-  tipoDocumento, // "pdf" | "xml"
-}) {
-  const telefonoCliente =
-    cliente?.telefono ||
-    cliente?.phone ||
-    cliente?.celular ||
-    cliente?.mobile ||
-    "";
+SyntaxHighlighter.registerLanguage("xml", xml);
 
-  const [usarTelefonoCliente, setUsarTelefonoCliente] = React.useState(true);
-  const [phone, setPhone] = React.useState("");
-  const [loading, setLoading] = React.useState(false);
-  const [errorMsg, setErrorMsg] = React.useState("");
+export default function FacturaXmlDialog({ open, onClose, xmlUrl, folio, fileName }) {
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const [document, setDocument] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const [blobUrl, setBlobUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const currentDocument = document?.url === xmlUrl ? document : null;
 
-  React.useEffect(() => {
-    if (!open) return;
+  useEffect(() => {
+    const controller = new AbortController();
+    setDocument(null);
+    setCopied(false);
+    setActionError("");
+    setError("");
+    setLoading(false);
+    if (!open || !xmlUrl) return () => controller.abort();
 
-    setErrorMsg("");
+    setLoading(true);
+    (async () => {
+      try {
+        const response = await fetch(xmlUrl, { signal: controller.signal });
+        if (!response.ok) throw new Error(`No se pudo cargar el XML (HTTP ${response.status}).`);
+        const text = await response.text();
+        const parsed = new DOMParser().parseFromString(text, "application/xml");
+        if (!text.trim() || parsed.getElementsByTagName("parsererror").length || parsed.documentElement?.localName.toLowerCase() === "html") {
+          throw new Error("El archivo recibido no es un XML válido.");
+        }
+        if (!controller.signal.aborted) setDocument({ url: xmlUrl, text, formattedText: formatXml(text) });
+      } catch (err) {
+        if (!controller.signal.aborted) setError(err.message || "No se pudo cargar el XML.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [open, xmlUrl, attempt]);
 
-    // Ya no dependemos del teléfono del cliente para activar el switch,
-    // porque el backend lo resuelve con es_cliente=true.
-    setUsarTelefonoCliente(true);
-    setPhone("");
-  }, [open, saleId, tipoDocumento]);
+  useEffect(() => {
+    if (!open || !currentDocument) { setBlobUrl(""); return; }
+    const url = URL.createObjectURL(new Blob([currentDocument.text], { type: "application/xml;charset=utf-8" }));
+    setBlobUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [open, currentDocument]);
 
-  const handleToggle = (e) => {
-    const checked = e.target.checked;
-    setUsarTelefonoCliente(checked);
-    setErrorMsg("");
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1200);
+    return () => clearTimeout(timer);
+  }, [copied]);
 
-    if (checked) {
-      setPhone("");
-    }
+  const handleDownload = () => {
+    if (!currentDocument || !blobUrl) return;
+    const link = window.document.createElement("a");
+    link.href = blobUrl;
+    link.download = fileName || "factura_" + (folio || "documento") + ".xml";
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
   };
 
-  const handleSend = async () => {
-    if (!saleId || !tipoDocumento) return;
+  const openInNew = () => {
+    if (currentDocument && blobUrl) window.open(blobUrl, "_blank", "noopener,noreferrer");
+  };
 
-    if (!usarTelefonoCliente && !phone.trim()) {
-      setErrorMsg("Debes capturar un número para envío externo.");
-      return;
-    }
-
+  const copyToClipboard = async () => {
+    if (!currentDocument) return;
     try {
-      setLoading(true);
-      setErrorMsg("");
-
-      const payload = usarTelefonoCliente
-        ? {
-            tipo: tipoDocumento,
-            es_cliente: true,
-          }
-        : {
-            phone: phone.trim(),
-            tipo: tipoDocumento,
-            es_cliente: false,
-          };
-
-      await axiosClientPOS.post(
-        `/pos/facturacion/ventas/${saleId}/send-whatsapp`,
-        payload
-      );
-
-      onClose?.();
-    } catch (error) {
-      const backendError =
-        error?.response?.data?.error ||
-        error?.response?.data?.message ||
-        error?.response?.data?.details ||
-        "No se pudo enviar el documento por WhatsApp.";
-
-      setErrorMsg(backendError);
-      console.error("Error enviando WhatsApp:", error);
-    } finally {
-      setLoading(false);
+      await navigator.clipboard.writeText(currentDocument.formattedText);
+      setCopied(true);
+      setActionError("");
+    } catch {
+      setActionError("No se pudo copiar el XML. Intenta seleccionarlo y copiarlo manualmente.");
     }
   };
 
-  return (
-    <Dialog
-      open={open}
-      onClose={loading ? undefined : onClose}
-      fullWidth
-      maxWidth="sm"
-    >
-      <DialogTitle sx={{ pr: 7 }}>
-        Enviar por WhatsApp
-        <IconButton
-          onClick={onClose}
-          disabled={loading}
-          sx={{ position: "absolute", right: 12, top: 12 }}
-        >
-          <CloseRoundedIcon />
-        </IconButton>
-      </DialogTitle>
-
-      <DialogContent dividers>
-        <Stack spacing={2}>
-          <Alert severity="info">
-            Se enviará el archivo <b>{tipoDocumento?.toUpperCase()}</b> por WhatsApp.
-          </Alert>
-
-          {!!errorMsg && (
-            <Alert severity="error">
-              {errorMsg}
-            </Alert>
-          )}
-
-          <Box
-            sx={{
-              p: 1.5,
-              borderRadius: 2,
-              border: "1px solid",
-              borderColor: "divider",
-              bgcolor: "background.default",
-            }}
-          >
-            <FormControlLabel
-              sx={{ m: 0, width: "100%", alignItems: "flex-start" }}
-              control={
-                <Switch
-                  checked={usarTelefonoCliente}
-                  onChange={handleToggle}
-                  disabled={loading}
-                />
-              }
-              label={
-                <Box>
-                  <Typography fontWeight={700}>
-                    Enviar al teléfono del cliente
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {usarTelefonoCliente
-                      ? telefonoCliente
-                        ? `Se intentará usar el teléfono registrado: ${telefonoCliente}`
-                        : "El backend buscará el teléfono registrado del cliente."
-                      : "Se enviará a un número externo capturado manualmente."}
-                  </Typography>
-                </Box>
-              }
-            />
-          </Box>
-
-          <TextField
-            label="Número externo"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            fullWidth
-            disabled={loading || usarTelefonoCliente}
-            placeholder="Ej. 7441234567"
-            helperText={
-              usarTelefonoCliente
-                ? "Activado: se usará el teléfono del cliente desde backend."
-                : "Captura aquí el número al que deseas enviar el documento."
-            }
-          />
-
-          <Typography variant="body2" color="text.secondary">
-            {usarTelefonoCliente
-              ? "Se enviará con mensaje para cliente registrado."
-              : "Se enviará con mensaje para un número externo."}
-          </Typography>
+  return <Dialog open={open} onClose={onClose} fullWidth maxWidth={false} fullScreen={fullScreen}
+    PaperProps={{ sx: { width: { xs: "100%", sm: "92vw", md: "82vw", lg: "78vw" }, maxWidth: { xs: "none", sm: 1100 }, height: { xs: "100%", sm: "72dvh" }, m: { xs: 0, sm: 2 }, borderRadius: { xs: 0, sm: 3 }, overflow: "hidden" } }}>
+    <DialogTitle sx={{ px: { xs: 1.5, sm: 2 }, py: { xs: 1.5, sm: 1 } }}>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <CodeRoundedIcon color="primary" />
+        <Typography component="span" variant="subtitle1" fontWeight={800} sx={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>XML de factura {folio ? "#" + folio : ""}</Typography>
+        <Stack direction="row" spacing={0.25} alignItems="center">
+          <Tooltip title={copied ? "Copiado" : "Copiar XML"}><span><IconButton size="small" aria-label={copied ? "XML copiado" : "Copiar XML"} onClick={copyToClipboard} disabled={!currentDocument || loading}>{copied ? <CheckRoundedIcon color="success" /> : <ContentCopyRoundedIcon />}</IconButton></span></Tooltip>
+          <Tooltip title="Abrir en pestaña"><span><IconButton size="small" aria-label="Abrir XML en otra pestaña" onClick={openInNew} disabled={!currentDocument || !blobUrl || loading}><OpenInNewRoundedIcon /></IconButton></span></Tooltip>
+          <Tooltip title="Descargar XML"><span><IconButton size="small" aria-label="Descargar XML" onClick={handleDownload} disabled={!currentDocument || !blobUrl || loading}><DownloadRoundedIcon /></IconButton></span></Tooltip>
+          <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+          <IconButton size="small" onClick={onClose} aria-label="Cerrar visor XML"><CloseRoundedIcon /></IconButton>
         </Stack>
-      </DialogContent>
-
-      <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} variant="outlined" disabled={loading}>
-          Cancelar
-        </Button>
-
-        <Button
-          onClick={handleSend}
-          variant="contained"
-          color="success"
-          startIcon={
-            loading ? (
-              <CircularProgress size={18} color="inherit" />
-            ) : (
-              <WhatsAppIcon />
-            )
-          }
-          disabled={loading || !saleId || !tipoDocumento || (!usarTelefonoCliente && !phone.trim())}
-        >
-          {loading ? "Enviando..." : "Enviar"}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
+      </Stack>
+    </DialogTitle>
+    {actionError && <Alert severity="warning" onClose={() => setActionError("")}>{actionError}</Alert>}
+    <DialogContent dividers sx={{ p: 0, flex: 1, minHeight: 0, bgcolor: "#0b1020", color: "#abb2bf", "& > .MuiStack-root, & > .MuiAlert-root": { m: 2 } }}>
+      {!xmlUrl ? <Alert severity="info">No hay XML disponible para esta factura.</Alert>
+        : loading ? <Stack alignItems="center" spacing={2} sx={{ py: 5 }}><CircularProgress /><Typography>Cargando XML...</Typography></Stack>
+        : error ? <Stack spacing={2}>
+          <Alert severity="error">{error}</Alert>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Button onClick={() => setAttempt(value => value + 1)}>Reintentar</Button>
+            <Button component="a" href={xmlUrl} target="_blank" rel="noopener noreferrer">Abrir archivo original</Button>
+          </Stack>
+        </Stack>
+        : currentDocument && <SyntaxHighlighter
+            language="xml"
+            style={atomOneDark}
+            showLineNumbers={false}
+            wrapLines={fullScreen}
+            wrapLongLines={fullScreen}
+            customStyle={{ margin: 0, padding: fullScreen ? 12 : 16, background: "transparent", borderRadius: 0, fontSize: fullScreen ? 12 : 13, lineHeight: 1.6, overflowWrap: "anywhere" }}
+            codeTagProps={{ style: { whiteSpace: fullScreen ? "pre-wrap" : "pre", overflowWrap: fullScreen ? "anywhere" : "normal" } }}
+            aria-label="Contenido XML de la factura"
+          >{currentDocument.formattedText}</SyntaxHighlighter>}
+    </DialogContent>
+    <DialogActions sx={{ p: { xs: 2, sm: 1.25 }, flexDirection: { xs: "column", sm: "row" }, alignItems: "stretch", justifyContent: "flex-start", gap: 1.5, "& > :not(style) ~ :not(style)": { ml: 0 } }}>
+      <Button onClick={onClose} variant="outlined" fullWidth={fullScreen}>Cerrar</Button>
+      <Button onClick={openInNew} variant="contained" startIcon={<OpenInNewRoundedIcon />} disabled={!currentDocument || !blobUrl || loading} fullWidth={fullScreen}>Abrir en pestaña</Button>
+      <Button onClick={handleDownload} variant="contained" color="secondary" startIcon={<DownloadRoundedIcon />} disabled={!currentDocument || !blobUrl || loading} fullWidth={fullScreen}>Descargar XML</Button>
+    </DialogActions>
+  </Dialog>;
 }

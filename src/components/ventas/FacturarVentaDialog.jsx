@@ -1,5 +1,8 @@
 // src/components/ventas/FacturarVentaDialog.jsx
 import React from "react";
+import { SaleAmountBreakdown } from "../POSSaleAmounts";
+import { posMoney, saleAmounts } from "../../utils/posSaleInfo";
+import POSSaleInformation from "../POSSaleInformation";
 import {
   Dialog,
   DialogTitle,
@@ -522,8 +525,8 @@ export default function FacturarVentaDialog({
                 <Grid item xs={12} sm={6} md={3}>
                   <DataMiniCard
                     icon={<AttachMoneyRoundedIcon fontSize="small" />}
-                    label="Total"
-                    value={venta?.total ?? "—"}
+                    label="Total neto"
+                    value={posMoney(saleAmounts(venta).net)}
                     color="success"
                   />
                 </Grid>
@@ -538,6 +541,9 @@ export default function FacturarVentaDialog({
               </Grid>
             </Stack>
           </Paper>
+
+          {venta && <SaleAmountBreakdown sale={venta} />}
+          {venta && <POSSaleInformation sale={venta} payments={Array.isArray(venta.payments) ? venta.payments : []} />}
 
           {/* Conceptos a facturar */}
           <Paper
