@@ -176,6 +176,7 @@ export default function ClienteFormDialog({
           background: "linear-gradient(135deg, #111827 0%, #0ea5e9 100%)",
           color: "white",
           display: "flex",
+          flexShrink: 0,
           alignItems: "center",
           gap: 1.5,
         }}
@@ -236,11 +237,15 @@ export default function ClienteFormDialog({
         </Typography>
       </Popover>
 
-      <form onSubmit={handleSubmit}>
+      <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", flex: "1 1 auto", minHeight: 0, minWidth: 0, overflow: "hidden" }}>
         <DialogContent
           dividers
           sx={{
             p: { xs: 2, sm: 3 },
+            minHeight: 0,
+            minWidth: 0,
+            overflowX: "hidden",
+            overflowY: "auto",
             bgcolor:
               theme.palette.mode === "dark"
                 ? alpha(theme.palette.background.default, 0.96)
@@ -264,7 +269,7 @@ export default function ClienteFormDialog({
               </Typography>
             </Stack>
 
-            <Grid container spacing={2}>
+            <Grid container spacing={2} sx={{ "& > .MuiGrid-item": { minWidth: 0 }, "& .MuiFormControl-root": { minWidth: 0 } }}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   label="Nombre"
@@ -341,9 +346,18 @@ export default function ClienteFormDialog({
                   value={form.regimen_codigo || ""}
                   onChange={handleChange("regimen_codigo")}
                   fullWidth
+                  SelectProps={{
+                    renderValue: (value) => regimenesFiscales.find((r) => r.codigo === String(value))?.nombre || value,
+                    MenuProps: {
+                      PaperProps: {
+                        sx: { width: "min(560px, calc(100vw - 32px))", maxWidth: "calc(100vw - 32px)", maxHeight: "min(400px, 60dvh)", "& .MuiMenuItem-root": { whiteSpace: "normal", overflowWrap: "anywhere", py: 1.5 } },
+                      },
+                    },
+                  }}
+                  sx={{ "& .MuiSelect-select": { minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, "& .MuiFormHelperText-root": { overflowWrap: "anywhere" } }}
                   helperText={
                     form.regimen_codigo
-                      ? `Seleccionado: ${form.regimen_codigo}`
+                      ? regimenesFiscales.find((r) => r.codigo === String(form.regimen_codigo))?.nombre || `Seleccionado: ${form.regimen_codigo}`
                       : "Selecciona el régimen"
                   }
                 >
@@ -435,6 +449,8 @@ export default function ClienteFormDialog({
         <DialogActions
           sx={{
             p: { xs: 1.5, sm: 2 },
+            flexShrink: 0,
+            pb: { xs: "max(12px, env(safe-area-inset-bottom))", sm: 2 },
             borderTop: "1px solid",
             borderColor: "divider",
             bgcolor: "background.paper",
@@ -443,7 +459,7 @@ export default function ClienteFormDialog({
           <Stack
             direction="row"
             spacing={1}
-            sx={{ width: "100%", justifyContent: "flex-end" }}
+            sx={{ width: "100%", justifyContent: "flex-end", flexWrap: "wrap", gap: 1 }}
           >
             <Button
               onClick={onClose}
@@ -460,7 +476,7 @@ export default function ClienteFormDialog({
                 textTransform: "none",
                 borderRadius: 2,
                 fontWeight: 800,
-                minWidth: 160,
+                minWidth: { xs: 0, sm: 160 },
               }}
             >
               {submitting ? (
@@ -476,7 +492,7 @@ export default function ClienteFormDialog({
             </Button>
           </Stack>
         </DialogActions>
-      </form>
+      </Box>
     </Dialog>
   );
 }

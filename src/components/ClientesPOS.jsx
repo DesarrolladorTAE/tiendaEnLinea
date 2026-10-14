@@ -31,6 +31,8 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import axiosClient from "../config/axiosClientPOS";
 import ClientesTable from "./clientes/ClientesTable";
 import ClienteFormDialog from "./clientes/ClienteFormDialog";
+import ImportClientesModal from "./clientes/ImportClientesModal";
+import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 import ClienteHistoryModal from "./clientes/ClienteHistoryModal";
 import ClienteFiadoModal from "../components/clientes/ClienteFiadoModal";
 // import GateTaeconta from "./auth/GateTaeconta";
@@ -50,6 +52,7 @@ export default function ClientesPOS({ cambiarVista }) {
   const [error, setError] = useState("");
 
   const [openForm, setOpenForm] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editing, setEditing] = useState(null);
 
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -82,7 +85,7 @@ export default function ClientesPOS({ cambiarVista }) {
     setSnackbar({ open: true, message, severity });
   };
 
-  const load = async () => {
+  const load = async (throwOnError = false) => {
     setLoading(true);
     setError("");
 
@@ -119,6 +122,7 @@ export default function ClientesPOS({ cambiarVista }) {
     } catch (e) {
       setRows([]);
       setError("No se pudieron cargar los clientes. Intenta de nuevo.");
+      if (throwOnError === true) throw e;
     } finally {
       setLoading(false);
     }
@@ -239,7 +243,7 @@ export default function ClientesPOS({ cambiarVista }) {
   }, [planId, rows.length]);
 
   return (
-    <Box p={{ xs: 1.5, sm: 3, md: 4 }}>
+    <Box p={{ xs: 1.5, sm: 3, md: 4 }} sx={{ minWidth: 0, width: "100%" }}>
       <Box
         sx={{
           mb: 2,
@@ -272,7 +276,7 @@ export default function ClientesPOS({ cambiarVista }) {
           background:
             t.palette.mode === "dark"
               ? alpha(t.palette.primary.main, 0.08)
-              : alpha(t.palette.primary.main, 0.06),
+              : "linear-gradient(120deg, #ede9fe, #ccfbf1)",
         })}
       >
         <Grid container spacing={2} alignItems="center">
@@ -362,6 +366,7 @@ export default function ClientesPOS({ cambiarVista }) {
               spacing={1.2}
               justifyContent="flex-end"
               alignItems={{ xs: "stretch", sm: "center" }}
+              sx={{ flexWrap: "wrap", gap: 1.2, "& > *": { minWidth: 0 } }}
             >
               <TextField
                 size="small"
@@ -382,10 +387,18 @@ export default function ClientesPOS({ cambiarVista }) {
                     </InputAdornment>
                   ) : null,
                 }}
-                sx={{ minWidth: { xs: "100%", sm: 300 } }}
+                sx={{ width: { xs: "100%", sm: 260 }, flexGrow: 1 }}
               />
 
-              <Stack direction="row" spacing={1}>
+              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<FileUploadOutlinedIcon />}
+                  onClick={() => setImportOpen(true)}
+                  sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800, color: "#6d28d9", borderColor: "#c4b5fd" }}
+                >
+                  Importar / exportar
+                </Button>
                 <Tooltip title="Recargar">
                   <span>
                     <Button
@@ -523,6 +536,13 @@ export default function ClientesPOS({ cambiarVista }) {
         }}
         onSubmit={onSubmit}
         initialValues={editing}
+      />
+      <ImportClientesModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        canImport={canCreate}
+        blockedReason={reasonClientsBlocked}
+        onImported={() => load(true)}
       />
       <ClienteFiadoModal
         open={creditOpen}

@@ -159,6 +159,8 @@ export default function RestockEntryModal({
   onClose,
   branchId,
   suppliers = [],
+  sharedProducts,
+  sharedLoadingProducts = false,
   onSaved,
   readOnly = false,
   movement = null,
@@ -177,12 +179,15 @@ export default function RestockEntryModal({
   const [pdfFile, setPdfFile] = useState(null);
   const [xmlFile, setXmlFile] = useState(null);
 
-  const [products, setProducts] = useState([]);
+  const [fetchedProducts, setProducts] = useState([]);
+  const products = sharedProducts ?? fetchedProducts;
   const [warehouses, setWarehouses] = useState([]);
   const [lines, setLines] = useState([EMPTY_LINE()]);
 
   const [loading, setLoading] = useState(false);
-  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [fetchingProducts, setLoadingProducts] = useState(false);
+  const loadingProducts = sharedProducts !== undefined ? sharedLoadingProducts : fetchingProducts;
+  const hasSharedProducts = sharedProducts !== undefined;
 
   const [productSearch, setProductSearch] = useState("");
   const debouncedProductSearch = useDebounce(productSearch, 500);
@@ -267,10 +272,10 @@ export default function RestockEntryModal({
 
     fetchWarehouses();
 
-    if (!isReadOnly) {
+    if (!isReadOnly && !hasSharedProducts) {
       fetchProducts();
     }
-  }, [open, branchId, fetchWarehouses, fetchProducts, isReadOnly]);
+  }, [open, branchId, fetchWarehouses, fetchProducts, isReadOnly, hasSharedProducts]);
 
   useEffect(() => {
     if (!open) return;

@@ -41,6 +41,9 @@ const COLORS = {
   black: "#000000",
 };
 
+const MemoRestockHistoryTable = React.memo(RestockHistoryTable);
+const MemoLowStockProductsPanel = React.memo(LowStockProductsPanel);
+
 const money = (n) =>
   Number(n || 0).toLocaleString("es-MX", {
     style: "currency",
@@ -68,6 +71,7 @@ export default function StockEntryForm() {
   const [restockOpen, setRestockOpen] = useState(false);
 
   const [suppliers, setSuppliers] = useState([]);
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
   const [products, setProducts] = useState([]);
 
   const [stockHistory, setStockHistory] = useState([]);
@@ -129,10 +133,11 @@ export default function StockEntryForm() {
     }
   }, [activeBranch?.id]);
 
-  const fetchSuppliers = useCallback(async () => {
+  const fetchSuppliers = useCallback(async (throwOnError = false) => {
     if (!activeBranch?.id) return;
 
     try {
+      setLoadingSuppliers(true);
       const { data } = await axiosClient.get("/restocks/suppliers", {
         params: {
           branch_id: activeBranch.id,
@@ -144,8 +149,12 @@ export default function StockEntryForm() {
         : data?.suppliers || data?.data || [];
 
       setSuppliers(list);
-    } catch {
+    } catch (error) {
       setSuppliers([]);
+      if (throwOnError === true) throw error;
+      toast.error("No se pudieron cargar los proveedores.");
+    } finally {
+      setLoadingSuppliers(false);
     }
   }, [activeBranch?.id]);
 
@@ -245,16 +254,18 @@ export default function StockEntryForm() {
     fetchProducts();
     fetchSuppliers();
     fetchStockHistory();
-    fetchLowStock();
   }, [
     activeBranch?.id,
     fetchProducts,
     fetchSuppliers,
     fetchStockHistory,
-    fetchLowStock,
   ]);
 
-  const downloadLowStockReport = (type) => {
+  useEffect(() => {
+    if (activeBranch?.id) fetchLowStock();
+  }, [activeBranch?.id, fetchLowStock]);
+
+  const downloadLowStockReport = useCallback((type) => {
     if (!activeBranch?.id) return;
 
     const url = `/restocks/low-stock/report/${type}?branch_id=${
@@ -262,9 +273,9 @@ export default function StockEntryForm() {
     }&min_stock=${minStock || 20}`;
 
     window.open(url, "_blank");
-  };
+  }, [activeBranch?.id, minStock]);
 
-  const openDetail = (item) => {
+  const openDetail = useCallback((item) => {
     setDetailItem({
       item_type: item.item_type,
       product_id: item.product_id,
@@ -274,9 +285,10 @@ export default function StockEntryForm() {
     setDetailScope(item.scope || "global");
     setDetailWarehouseId(item.warehouse_id || null);
     setDetailOpen(true);
-  };
+  }, []);
 
   const refreshAll = () => {
+    fetchProducts();
     fetchSuppliers();
     fetchStockHistory();
     fetchLowStock();
@@ -541,7 +553,7 @@ export default function StockEntryForm() {
                   </Box>
                 </Stack>
 
-                <RestockHistoryTable
+                <MemoRestockHistoryTable
                   rows={stockHistory}
                   loading={loadingHistory}
                 />
@@ -549,7 +561,7 @@ export default function StockEntryForm() {
             </Card>
           </Stack>
 
-          <LowStockProductsPanel
+          <MemoLowStockProductsPanel
             lowStock={lowStock}
             loadingLowStock={loadingLowStock}
             minStock={minStock}
@@ -560,35 +572,39 @@ export default function StockEntryForm() {
           />
         </Stack>
 
-        <SupplierModal
+        {supplierOpen && <SupplierModal
+          key={activeBranch?.id}
           open={supplierOpen}
           onClose={() => setSupplierOpen(false)}
           branchId={activeBranch?.id}
-          onSaved={() => {
-            fetchSuppliers();
-          }}
-        />
+          suppliers={suppliers}
+          loading={loadingSuppliers}
+          onReload={() => fetchSuppliers(true)}
+        />}
 
-        <RestockEntryModal
+        {restockOpen && <RestockEntryModal
+          key={activeBranch?.id}
           open={restockOpen}
           onClose={() => setRestockOpen(false)}
           branchId={activeBranch?.id}
           suppliers={suppliers}
+          sharedProducts={products}
+          sharedLoadingProducts={loadingProducts}
           onSaved={() => {
             setRestockOpen(false);
             refreshAll();
           }}
-        />
+        />}
 
-        <SupplierRestockHistory
+        {supplierHistoryOpen && <SupplierRestockHistory
           open={supplierHistoryOpen}
           onClose={() => setSupplierHistoryOpen(false)}
           branchId={activeBranch?.id}
           suppliers={suppliers}
           renderHistoryCard={renderHistoryCard}
-        />
+        />}
 
-        <RestockEntryModal
+        {movementDetailOpen && <RestockEntryModal
           open={movementDetailOpen}
           onClose={() => {
             setMovementDetailOpen(false);
@@ -598,24 +614,24 @@ export default function StockEntryForm() {
           suppliers={suppliers}
           readOnly
           movement={movementDetail}
-        />
+        />}
 
-        <ProductRestockHistory
+        {productHistoryOpen && <ProductRestockHistory
           open={productHistoryOpen}
           onClose={() => setProductHistoryOpen(false)}
           branchId={activeBranch?.id}
           products={products}
           loadingProducts={loadingProducts}
           renderHistoryCard={renderHistoryCard}
-        />
+        />}
 
-        <InventoryDetailModal
+        {detailOpen && <InventoryDetailModal
           open={detailOpen}
           onClose={() => setDetailOpen(false)}
           item={detailItem}
           scope={detailScope}
           warehouseId={detailWarehouseId}
-        />
+        />}
       </Container>
     </Box>
   );

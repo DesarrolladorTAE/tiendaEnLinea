@@ -119,6 +119,9 @@ export default function ClientesTable({
               sx={(t) => ({
                 borderRadius: 3,
                 p: 1.5,
+                backgroundImage: t.palette.mode === "dark" ? "none" : "linear-gradient(140deg, #faf8ff, #ffffff 65%, #f0fdfa)",
+                boxShadow: "0 4px 16px #17203308",
+                "& .MuiIconButton-root": { minWidth: 44, minHeight: 44 },
                 border: `1px solid ${alpha(t.palette.divider, 0.9)}`,
                 bgcolor:
                   t.palette.mode === "dark"
@@ -279,13 +282,13 @@ export default function ClientesTable({
       elevation={0}
       sx={(t) => ({
         borderRadius: 3,
-        overflow: "hidden",
+        minWidth: 0,
         border: `1px solid ${alpha(t.palette.divider, 0.9)}`,
         bgcolor: t.palette.mode === "dark" ? alpha("#0b1220", 0.5) : "#fff",
       })}
     >
-      <TableContainer sx={{ overflowX: "auto" }}>
-        <Table stickyHeader size="medium">
+      <TableContainer sx={{ overflow: "visible" }}>
+        <Table size="medium" sx={{ tableLayout: "fixed", width: "100%", "& th, & td": { px: { md: 1, lg: 1.5 }, overflowWrap: "anywhere" }, "& .MuiChip-root": { maxWidth: "100%", height: "auto", minHeight: 24 }, "& .MuiChip-label": { whiteSpace: "normal", py: 0.5 } }}>
           <TableHead>
             <TableRow
               sx={{
@@ -293,7 +296,7 @@ export default function ClientesTable({
                   bgcolor: (t) =>
                     t.palette.mode === "dark"
                       ? alpha(t.palette.background.paper, 0.95)
-                      : "#f8fafc",
+                      : "#ede9fe",
                   color: "text.primary",
                   fontWeight: 800,
                   borderBottom: (t) => `1px solid ${t.palette.divider}`,
@@ -327,6 +330,9 @@ export default function ClientesTable({
                   key={r.id}
                   hover
                   sx={{
+                    transition: "background-color 180ms ease",
+                    "&:nth-of-type(even)": { bgcolor: (t) => t.palette.mode === "dark" ? "transparent" : "#faf8ff" },
+                    "&:hover": { bgcolor: (t) => t.palette.mode === "dark" ? alpha(t.palette.primary.main, 0.08) : "#f0fdfa" },
                     "& td": {
                       borderBottom: (t) =>
                         `1px solid ${alpha(t.palette.divider, 0.6)}`,
@@ -342,7 +348,7 @@ export default function ClientesTable({
                   <TableCell>{r.razon_social || "—"}</TableCell>
                   <TableCell>{renderCreditChip(r)}</TableCell>
 
-                  <TableCell align="center" sx={{ whiteSpace: "nowrap" }}>
+                  <TableCell align="center">
                     <Tooltip title="Configurar fiado">
                       <span>
                         <IconButton

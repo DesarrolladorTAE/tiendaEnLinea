@@ -32,7 +32,7 @@ export default function ImportResultSummary({ result }) {
           <Box component="summary" sx={{ cursor: "pointer", fontWeight: 700 }}>Ver detalle de errores</Box>
           <Box sx={{ maxHeight: 220, overflowY: "auto", mt: 1 }}>
             {result.errors.slice(0, 20).map((error, index) => <Box key={index} sx={{ py: 1, borderBottom: "1px solid #e2e8f0", overflowWrap: "anywhere" }}>
-              <Typography variant="body2" sx={{ fontWeight: 700 }}>Fila {error.fila} · SKU {error.sku}</Typography>
+              <Typography variant="body2" sx={{ fontWeight: 700 }}>Fila {error.fila} · {result.entity === "clientes" ? "Cliente/RFC" : result.entity === "proveedores" ? "Proveedor/RFC" : "SKU"} {error.sku}</Typography>
               <Typography variant="body2">{error.motivo}</Typography>
             </Box>)}
           </Box>

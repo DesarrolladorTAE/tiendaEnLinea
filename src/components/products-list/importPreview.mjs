@@ -1,5 +1,5 @@
 // Read quoted CSV records, including escaped quotes and multiline descriptions.
-export function summarizeProductCsv(text) {
+export function summarizeProductCsv(text, namePattern = /^(name|nombre|descripcion|producto|nombre del producto|descripcion del producto)$/i) {
   const source = text.replace(/^\uFEFF/, "");
   const firstLine = source.split(/\r?\n/, 1)[0];
   const delimiter = [",", ";", "\t"].sort((a, b) => firstLine.split(b).length - firstLine.split(a).length)[0];
@@ -16,7 +16,7 @@ export function summarizeProductCsv(text) {
     if (row.some(Boolean)) {
       if (!headers) {
         headers = row;
-        nameIndex = headers.findIndex((value) => /^(name|nombre|descripcion|producto|nombre del producto|descripci[oó]n del producto)$/i.test(value.normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
+        nameIndex = headers.findIndex((value) => namePattern.test(value.normalize("NFD").replace(/[\u0300-\u036f]/g, "")));
       } else {
         total += 1;
         if (nameIndex >= 0 && row[nameIndex] && names.length < 50) names.push(row[nameIndex]);

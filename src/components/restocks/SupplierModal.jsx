@@ -1,738 +1,158 @@
-// src/components/restocks/SupplierModal.jsx
-import React, { useEffect, useState } from "react";
-import {
-  Box,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-  useMediaQuery,
-  Divider,
-} from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
-
+﻿import React, { useMemo, useRef, useState } from "react";
+import { Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, IconButton, Pagination, Paper, Stack, Switch, TextField, Typography, useMediaQuery } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import LocalShippingRoundedIcon from "@mui/icons-material/LocalShippingRounded";
-import BusinessRoundedIcon from "@mui/icons-material/BusinessRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
-import PhoneIphoneRoundedIcon from "@mui/icons-material/PhoneIphoneRounded";
-import EmailRoundedIcon from "@mui/icons-material/EmailRounded";
-import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
-import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
-import NotesRoundedIcon from "@mui/icons-material/NotesRounded";
-import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
-import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
-import AddRoundedIcon from "@mui/icons-material/AddRounded";
-
+import FileUploadOutlinedIcon from "@mui/icons-material/FileUploadOutlined";
 import axiosClient from "../../config/axiosClient";
-import {
-  showError,
-  showConfirm,
-  showToastSuccess,
-  alertFromAxiosError,
-} from "../../utils/alerts";
+import { showConfirm, showToastSuccess, alertFromAxiosError } from "../../utils/alerts";
+import ImportSuppliersModal from "./ImportSuppliersModal";
+import SupplierDetailModal from "./SupplierDetailModal";
+import { EMPTY_SUPPLIER, supplierToForm, supplierPayload, validateSupplier } from "./supplierForm.mjs";
 
-const COLORS = {
-  accent: "#f9b233",
-  black: "#0B0B0B",
-  paper: "#ffffff",
-  softBg: "#F6F7FB",
-};
+const SECTIONS = [
+  { title: "Información general", fields: [["name", "Nombre del proveedor"], ["alias", "Alias"], ["contact_name", "Contacto"]] },
+  { title: "Datos fiscales", fields: [["rfc", "RFC"], ["curp", "CURP"]] },
+  { title: "Contacto", fields: [["phone", "Teléfono"], ["celular", "Celular"], ["email", "Correo electrónico"]] },
+  { title: "Ubicación", fields: [["address", "Calle / dirección"], ["numero_exterior", "Número exterior"], ["numero_interior", "Número interior"], ["colonia", "Colonia"], ["codigo_postal", "Código postal"], ["localidad", "Localidad"], ["municipio", "Municipio"], ["estado", "Estado"], ["pais", "País"]] },
+  { title: "Crédito", fields: [["limite_credito", "Límite de crédito"], ["dias_credito", "Días de crédito"]] },
+  { title: "Notas internas", fields: [["notes", "Notas"]] },
+];
+const PAGE_SIZE = 12;
+const buttonSx = { textTransform: "none", borderRadius: 2, fontWeight: 700 };
 
-const EMPTY_SUPPLIER = {
-  name: "",
-  rfc: "",
-  phone: "",
-  email: "",
-  contact_name: "",
-  address: "",
-  notes: "",
-};
-
-const fieldSx = {
-  "& .MuiOutlinedInput-root": {
-    borderRadius: 2,
-    bgcolor: "#fff",
-  },
-};
-
-const sxBtnOutlined = {
-  borderRadius: 2.5,
-  textTransform: "none",
-  fontWeight: 900,
-  borderColor: alpha("#000", 0.15),
-  color: COLORS.black,
-  bgcolor: "#fff",
-  "&:hover": { bgcolor: alpha("#000", 0.03) },
-};
-
-const sxBtnBlack = {
-  borderRadius: 2.5,
-  textTransform: "none",
-  fontWeight: 900,
-  bgcolor: COLORS.black,
-  color: "#fff",
-  "&:hover": { bgcolor: alpha(COLORS.black, 0.86) },
-};
-
-function Section({ title, subtitle, icon, children }) {
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        borderRadius: 3,
-        bgcolor: COLORS.paper,
-        border: `1px solid ${alpha("#000", 0.08)}`,
-        p: { xs: 1.5, sm: 2 },
-      }}
-    >
-      <Stack spacing={0.6} sx={{ mb: 1.4 }}>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Box
-            sx={{
-              width: 30,
-              height: 30,
-              borderRadius: 2,
-              bgcolor: alpha(COLORS.accent, 0.18),
-              border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            {icon}
-          </Box>
-
-          <Typography sx={{ fontWeight: 950, fontSize: 14 }}>
-            {title}
-          </Typography>
-        </Stack>
-
-        {subtitle && (
-          <Typography variant="caption" color="text.secondary">
-            {subtitle}
-          </Typography>
-        )}
-      </Stack>
-
-      <Stack spacing={1.2}>{children}</Stack>
-    </Paper>
-  );
-}
-
-export default function SupplierModal({ open, onClose, branchId, onSaved }) {
+export default function SupplierModal({ open, onClose, branchId, suppliers = [], loading = false, onReload }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
-
-  const [form, setForm] = useState(EMPTY_SUPPLIER);
-  const [suppliers, setSuppliers] = useState([]);
+  const [form, setForm] = useState({ ...EMPTY_SUPPLIER });
   const [editingId, setEditingId] = useState(null);
-
-  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-
-  const isEditing = Boolean(editingId);
-
-  const setField = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  const [errors, setErrors] = useState({});
+  const [notice, setNotice] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [detailId, setDetailId] = useState(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const submitting = useRef(false);
+  const filtered = useMemo(() => {
+    const term = query.trim().toLocaleLowerCase("es");
+    return suppliers.filter((supplier) => [supplier.name, supplier.alias, supplier.rfc, supplier.email, supplier.phone, supplier.celular].some((value) => String(value || "").toLocaleLowerCase("es").includes(term)));
+  }, [suppliers, query]);
+  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pages);
+  const visibleSuppliers = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const resetForm = () => { setForm({ ...EMPTY_SUPPLIER }); setEditingId(null); setErrors({}); setNotice(""); };
+  const handleClose = () => { if (submitting.current || importOpen || detailId !== null) return; resetForm(); onClose?.(); };
+  const handleEdit = (supplier) => { if (submitting.current) return; setEditingId(supplier.id); setForm(supplierToForm(supplier)); setErrors({}); setNotice(""); };
+  const refresh = async () => {
+    try { await onReload(); }
+    catch { setNotice("Los cambios se guardaron, pero no se pudo actualizar el listado. Presiona Recargar."); }
   };
-
-  const resetForm = () => {
-    setForm(EMPTY_SUPPLIER);
-    setEditingId(null);
-  };
-
-  const loadSuppliers = async () => {
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    if (submitting.current || !branchId) return;
+    const nextErrors = validateSupplier(form);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length) return;
+    submitting.current = true; setSaving(true); setNotice("");
     try {
-      setLoading(true);
-
-      const { data } = await axiosClient.get("/restocks/suppliers", {
-        params: {
-          branch_id: branchId,
-        },
-      });
-
-      const list = Array.isArray(data)
-        ? data
-        : data?.suppliers || data?.data || [];
-
-      setSuppliers(list);
-    } catch (err) {
-      alertFromAxiosError(err, "No se pudieron cargar los proveedores.");
-    } finally {
-      setLoading(false);
-    }
+      const payload = supplierPayload(form, branchId);
+      if (editingId) await axiosClient.put(`/restocks/suppliers/${editingId}`, payload);
+      else await axiosClient.post("/restocks/suppliers", payload);
+      showToastSuccess(editingId ? "Proveedor actualizado correctamente" : "Proveedor creado correctamente");
+      resetForm(); await refresh();
+    } catch (error) { alertFromAxiosError(error, "No se pudo guardar el proveedor."); }
+    finally { submitting.current = false; setSaving(false); }
   };
-
-  useEffect(() => {
-    if (open) loadSuppliers();
-  }, [open, branchId]);
-
-  const handleClose = () => {
-    if (saving) return;
-    resetForm();
-    onClose?.();
-  };
-
-  const handleEdit = (supplier) => {
-    setEditingId(supplier.id);
-
-    setForm({
-      name: supplier.name || "",
-      rfc: supplier.rfc || "",
-      phone: supplier.phone || "",
-      email: supplier.email || "",
-      contact_name: supplier.contact_name || "",
-      address: supplier.address || "",
-      notes: supplier.notes || "",
-    });
-  };
-
-  const handleSubmit = async () => {
-    if (!form.name.trim()) {
-      showError("Ingrese el nombre del proveedor.");
-      return;
-    }
-
-    try {
-      setSaving(true);
-
-      const payload = {
-        ...form,
-        branch_id: branchId,
-      };
-
-      if (isEditing) {
-        await axiosClient.put(`/restocks/suppliers/${editingId}`, payload);
-        showToastSuccess("Proveedor actualizado correctamente");
-      } else {
-        await axiosClient.post("/restocks/suppliers", payload);
-        showToastSuccess("Proveedor creado correctamente");
-      }
-
-      onSaved?.();
-      resetForm();
-      await loadSuppliers();
-    } catch (err) {
-      alertFromAxiosError(
-        err,
-        "No se pudo guardar la información del proveedor."
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-
   const handleDelete = async (supplier) => {
-    const ok = await showConfirm(
-      `¿Desea eliminar el proveedor "${supplier.name}"?`,
-      "Sí, eliminar"
-    );
-
-    if (!ok) return;
-
+    if (submitting.current) return;
+    submitting.current = true; setSaving(true);
     try {
+      if (!await showConfirm(`¿Desea eliminar el proveedor "${supplier.name}"?`, "Sí, eliminar")) return;
       await axiosClient.delete(`/restocks/suppliers/${supplier.id}`);
-
       showToastSuccess("Proveedor eliminado correctamente");
-
       if (editingId === supplier.id) resetForm();
-
-      await loadSuppliers();
-    } catch (err) {
-      alertFromAxiosError(err, "No se pudo eliminar el proveedor.");
-    }
+      await refresh();
+    } catch (error) { alertFromAxiosError(error, "No se pudo eliminar el proveedor."); }
+    finally { submitting.current = false; setSaving(false); }
   };
-
   return (
-    <Dialog
-      open={open}
-      onClose={(event, reason) => {
-        if (reason === "backdropClick") return;
-        if (saving) return;
-        handleClose();
-      }}
-      fullWidth
-      maxWidth="lg"
-      fullScreen={fullScreen}
-      PaperProps={{
-        sx: {
-          height: fullScreen ? "100dvh" : "90vh",
-          maxHeight: fullScreen ? "100dvh" : "90vh",
-          borderRadius: fullScreen ? 0 : 4,
-          overflow: "hidden",
-          bgcolor: COLORS.paper,
-        },
-      }}
-    >
-      <DialogTitle
-        sx={{
-          px: 3,
-          py: 2,
-          bgcolor: COLORS.paper,
-          borderBottom: `1px solid ${alpha("#000", 0.08)}`,
-          flexShrink: 0,
-        }}
-      >
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Box
-            sx={{
-              width: 42,
-              height: 42,
-              borderRadius: 2,
-              bgcolor: alpha(COLORS.accent, 0.2),
-              border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            <LocalShippingRoundedIcon sx={{ color: COLORS.black }} />
-          </Box>
-
-          <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontWeight: 1000, fontSize: 18 }}>
-              Proveedores
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary">
-              Registre, edite, consulte y elimine proveedores.
-            </Typography>
-          </Box>
-
-          <IconButton onClick={handleClose} disabled={saving}>
-            <CloseRoundedIcon />
-          </IconButton>
-        </Stack>
-      </DialogTitle>
-
-      <DialogContent
-        sx={{
-          bgcolor: COLORS.softBg,
-          p: { xs: 1.5, sm: 2 },
-          flex: 1,
-          minHeight: 0,
-          overflow: "hidden",
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          sx={{
-            height: "100%",
-            minHeight: 0,
-          }}
-        >
-          <Box
-            sx={{
-              width: { xs: "100%", md: "45%" },
-              height: "100%",
-              minHeight: 0,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                bgcolor: COLORS.paper,
-                border: `1px solid ${alpha("#000", 0.08)}`,
-                p: 2,
-                mb: 1.5,
-                flexShrink: 0,
-              }}
-            >
-              <Stack direction="row" alignItems="center" spacing={1}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontWeight: 950 }}>
-                    {isEditing ? "Editar proveedor" : "Nuevo proveedor"}
-                  </Typography>
-
-                  <Typography variant="caption" color="text.secondary">
-                    {isEditing
-                      ? "Modifique los datos del proveedor seleccionado."
-                      : "Complete los datos para registrar un proveedor."}
-                  </Typography>
-                </Box>
-
-                {isEditing && (
-                  <Button
-                    size="small"
-                    startIcon={<AddRoundedIcon />}
-                    onClick={resetForm}
-                    sx={sxBtnOutlined}
-                  >
-                    Nuevo
-                  </Button>
-                )}
+    <>
+      <Dialog open={open} onClose={handleClose} fullWidth maxWidth="lg" fullScreen={fullScreen} aria-labelledby="supplier-modal-title"
+        PaperProps={{ sx: { borderRadius: { xs: 0, sm: 4 }, height: fullScreen ? "100dvh" : "90dvh", maxHeight: fullScreen ? "100dvh" : "90dvh", overflow: "hidden" } }}>
+        <DialogTitle id="supplier-modal-title" sx={{ p: { xs: 2, sm: 3 }, background: "linear-gradient(120deg, #ede9fe, #ccfbf1)", flexShrink: 0 }}>
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box sx={{ p: 1.5, borderRadius: 3, display: "flex", bgcolor: "white", color: "#6d28d9" }}><LocalShippingRoundedIcon /></Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography component="span" sx={{ display: "block", fontWeight: 800, fontSize: 22 }}>Proveedores</Typography>
+              <Typography variant="body2">Registra, edita o importa los proveedores de tu sucursal.</Typography>
+            </Box>
+            <IconButton aria-label="Cerrar proveedores" onClick={handleClose} disabled={saving}><CloseRoundedIcon /></IconButton>
+          </Stack>
+        </DialogTitle>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, minWidth: 0 }}>
+          <DialogContent dividers sx={{ p: { xs: 2, sm: 3 }, minHeight: 0, overflowY: "auto", overflowX: "hidden", bgcolor: "#f8fafc" }}>
+            {notice && <Alert severity="warning" sx={{ mb: 2 }}>{notice}</Alert>}
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "minmax(0, 1fr) minmax(0, 1fr)" }, gap: 3, alignItems: "start" }}>
+              <Stack spacing={2} sx={{ minWidth: 0 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                  <Typography sx={{ fontWeight: 800 }}>{editingId ? "Editar proveedor" : "Nuevo proveedor"}</Typography>
+                  {editingId && <Button disabled={saving} onClick={resetForm} sx={buttonSx}>Nuevo</Button>}
+                </Stack>
+                <FormControlLabel control={<Switch checked={form.is_active} disabled={saving} onChange={(event) => setForm((prev) => ({ ...prev, is_active: event.target.checked }))} />} label="Proveedor activo" />
+                {form.origen_sicar && <Chip label="Importado desde SICAR" color="success" variant="outlined" sx={{ alignSelf: "flex-start" }} />}
+                {SECTIONS.map(({ title, fields }) => (
+                  <Paper key={title} variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+                    <Typography sx={{ fontWeight: 800, mb: 2, color: "#6d28d9" }}>{title}</Typography>
+                    <Box sx={{ display: "grid", gridTemplateColumns: fields.length > 1 ? { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" } : "minmax(0, 1fr)", gap: 2 }}>
+                      {fields.map(([key, label]) => (
+                        <TextField key={key} label={label} value={form[key]} fullWidth disabled={saving}
+                          required={key === "name"} type={key === "email" ? "email" : ["limite_credito", "dias_credito"].includes(key) ? "number" : "text"}
+                          multiline={key === "notes"} minRows={key === "notes" ? 3 : undefined} error={!!errors[key]} helperText={errors[key] || ""}
+                          inputProps={key === "rfc" ? { maxLength: 13 } : key === "curp" ? { maxLength: 18 } : key === "codigo_postal" ? { maxLength: 5, inputMode: "numeric" } : key === "limite_credito" ? { min: 0, step: "0.000001" } : key === "dias_credito" ? { min: 0, step: 1 } : {}}
+                          onChange={(event) => setForm((prev) => ({ ...prev, [key]: ["rfc", "curp"].includes(key) ? event.target.value.toUpperCase() : event.target.value }))}
+                          sx={{ minWidth: 0, gridColumn: ["name", "address", "contact_name", "email"].includes(key) ? "1 / -1" : undefined, "& .MuiOutlinedInput-root": { borderRadius: 2 } }} />
+                      ))}
+                    </Box>
+                  </Paper>
+                ))}
               </Stack>
-            </Paper>
-
-            <Box
-              sx={{
-                flex: 1,
-                minHeight: 0,
-                overflowY: "auto",
-                pr: 0.5,
-                pb: 1,
-              }}
-            >
-              <Stack spacing={1.5}>
-                <Section
-                  title="Información general"
-                  subtitle="Datos principales para identificar al proveedor."
-                  icon={
-                    <BusinessRoundedIcon
-                      sx={{ fontSize: 17, color: COLORS.black }}
-                    />
-                  }
-                >
-                  <TextField
-                    label="Nombre del proveedor"
-                    value={form.name}
-                    onChange={(e) => setField("name", e.target.value)}
-                    fullWidth
-                    sx={fieldSx}
-                  />
-
-                  <TextField
-                    label="Contacto"
-                    value={form.contact_name}
-                    onChange={(e) => setField("contact_name", e.target.value)}
-                    fullWidth
-                    sx={fieldSx}
-                    InputProps={{
-                      startAdornment: (
-                        <Box sx={{ mr: 1, display: "flex" }}>
-                          <PersonRoundedIcon fontSize="small" />
-                        </Box>
-                      ),
-                    }}
-                  />
-                </Section>
-
-                <Section
-                  title="Datos fiscales"
-                  subtitle="Información fiscal opcional del proveedor."
-                  icon={
-                    <ReceiptLongRoundedIcon
-                      sx={{ fontSize: 17, color: COLORS.black }}
-                    />
-                  }
-                >
-                  <TextField
-                    label="RFC"
-                    value={form.rfc}
-                    onChange={(e) => setField("rfc", e.target.value)}
-                    fullWidth
-                    sx={fieldSx}
-                  />
-                </Section>
-
-                <Section
-                  title="Contacto"
-                  subtitle="Medios para comunicarse con el proveedor."
-                  icon={
-                    <PhoneIphoneRoundedIcon
-                      sx={{ fontSize: 17, color: COLORS.black }}
-                    />
-                  }
-                >
-                  <TextField
-                    label="Teléfono"
-                    value={form.phone}
-                    onChange={(e) => setField("phone", e.target.value)}
-                    fullWidth
-                    sx={fieldSx}
-                  />
-
-                  <TextField
-                    label="Correo electrónico"
-                    value={form.email}
-                    onChange={(e) => setField("email", e.target.value)}
-                    fullWidth
-                    sx={fieldSx}
-                    InputProps={{
-                      startAdornment: (
-                        <Box sx={{ mr: 1, display: "flex" }}>
-                          <EmailRoundedIcon fontSize="small" />
-                        </Box>
-                      ),
-                    }}
-                  />
-                </Section>
-
-                <Section
-                  title="Ubicación"
-                  subtitle="Dirección o referencia del proveedor."
-                  icon={
-                    <HomeRoundedIcon
-                      sx={{ fontSize: 17, color: COLORS.black }}
-                    />
-                  }
-                >
-                  <TextField
-                    label="Dirección"
-                    value={form.address}
-                    onChange={(e) => setField("address", e.target.value)}
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    sx={fieldSx}
-                  />
-                </Section>
-
-                <Section
-                  title="Notas internas"
-                  subtitle="Observaciones adicionales para uso administrativo."
-                  icon={
-                    <NotesRoundedIcon
-                      sx={{ fontSize: 17, color: COLORS.black }}
-                    />
-                  }
-                >
-                  <TextField
-                    label="Notas"
-                    value={form.notes}
-                    onChange={(e) => setField("notes", e.target.value)}
-                    fullWidth
-                    multiline
-                    minRows={4}
-                    sx={fieldSx}
-                  />
-                </Section>
+              <Stack spacing={2} sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 800 }}>Listado de proveedores · {filtered.length}</Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+                  <Button variant="outlined" startIcon={<FileUploadOutlinedIcon />} disabled={saving || loading || !branchId} onClick={() => setImportOpen(true)} sx={{ ...buttonSx, color: "#6d28d9", borderColor: "#c4b5fd" }}>Importar / exportar</Button>
+                  <Button disabled={loading || saving} onClick={() => onReload().catch(() => setNotice("No se pudo actualizar el listado."))} sx={buttonSx}>Recargar</Button>
+                </Stack>
+                <TextField size="small" label="Buscar proveedor" value={query} onChange={(event) => { setQuery(event.target.value); setPage(1); }} fullWidth />
+                {loading && <Stack direction="row" alignItems="center" spacing={1}><CircularProgress size={20} /><Typography variant="body2">Actualizando proveedores...</Typography></Stack>}
+                {!loading && !filtered.length && <Alert severity="info">No se encontraron proveedores.</Alert>}
+                {visibleSuppliers.map((supplier) => (
+                  <Paper key={supplier.id} variant="outlined" sx={{ p: 2, borderRadius: 3, borderColor: editingId === supplier.id ? "#6d28d9" : "#e2e8f0", background: "linear-gradient(140deg, #faf8ff, #fff 65%, #f0fdfa)", overflowWrap: "anywhere" }}>
+                    <Typography sx={{ fontWeight: 800 }}>{supplier.name}</Typography>
+                    {supplier.alias && <Typography variant="body2" color="text.secondary">Alias: {supplier.alias}</Typography>}
+                    <Typography variant="body2" color="text.secondary">{supplier.contact_name || "Sin contacto"} · {supplier.celular || supplier.phone || "Sin teléfono"}</Typography>
+                    <Typography variant="body2" color="text.secondary">RFC: {supplier.rfc || "N/A"} · {supplier.email || "Sin correo"}</Typography>
+                    <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                      {supplier.origen_sicar === true || supplier.origen_sicar === 1 || supplier.origen_sicar === "1" ? <Chip size="small" label="SICAR" color="success" variant="outlined" /> : null}
+                      {supplier.is_active === false || supplier.is_active === 0 || supplier.is_active === "0" ? <Chip size="small" label="Inactivo" /> : null}
+                      <Button size="small" disabled={saving} onClick={() => setDetailId(supplier.id)} sx={buttonSx}>Ver datos</Button>
+                      <Button size="small" disabled={saving} onClick={() => handleEdit(supplier)} sx={buttonSx}>Editar</Button>
+                      <Button size="small" disabled={saving} color="error" onClick={() => handleDelete(supplier)} sx={buttonSx}>Eliminar</Button>
+                    </Stack>
+                  </Paper>
+                ))}
+                {pages > 1 && <Pagination count={pages} page={currentPage} onChange={(_, value) => setPage(value)} size="small" siblingCount={0} sx={{ "& ul": { flexWrap: "wrap" } }} />}
               </Stack>
             </Box>
-          </Box>
-
-          <Box
-            sx={{
-              width: { xs: "100%", md: "55%" },
-              height: "100%",
-              minHeight: 0,
-              display: "flex",
-              flexDirection: "column",
-            }}
-          >
-            <Paper
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                bgcolor: COLORS.paper,
-                border: `1px solid ${alpha("#000", 0.08)}`,
-                overflow: "hidden",
-                height: "100%",
-                minHeight: 0,
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
-              <Stack
-                direction="row"
-                alignItems="center"
-                spacing={1}
-                sx={{
-                  p: 2,
-                  flexShrink: 0,
-                  bgcolor: COLORS.paper,
-                }}
-              >
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontWeight: 950 }}>
-                    Listado de proveedores
-                  </Typography>
-
-                  <Typography variant="caption" color="text.secondary">
-                    La lista queda fija y puede desplazarse con scroll.
-                  </Typography>
-                </Box>
-
-                <Button
-                  onClick={loadSuppliers}
-                  disabled={loading}
-                  startIcon={
-                    loading ? (
-                      <CircularProgress size={16} />
-                    ) : (
-                      <RefreshRoundedIcon />
-                    )
-                  }
-                  sx={sxBtnOutlined}
-                >
-                  Recargar
-                </Button>
-              </Stack>
-
-              <Divider />
-
-              <Box
-                sx={{
-                  flex: 1,
-                  minHeight: 0,
-                  overflowY: "auto",
-                  p: 1.5,
-                  bgcolor: "#fff",
-                }}
-              >
-                {loading ? (
-                  <Stack alignItems="center" sx={{ py: 5 }}>
-                    <CircularProgress />
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1 }}
-                    >
-                      Cargando proveedores...
-                    </Typography>
-                  </Stack>
-                ) : suppliers.length === 0 ? (
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      borderRadius: 3,
-                      border: `1px dashed ${alpha("#000", 0.2)}`,
-                      p: 3,
-                      textAlign: "center",
-                      bgcolor: alpha("#000", 0.02),
-                    }}
-                  >
-                    <Typography sx={{ fontWeight: 900 }}>
-                      No hay proveedores registrados
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Cuando registre proveedores aparecerán aquí.
-                    </Typography>
-                  </Paper>
-                ) : (
-                  <Stack spacing={1.2}>
-                    {suppliers.map((supplier) => (
-                      <Paper
-                        key={supplier.id}
-                        elevation={0}
-                        sx={{
-                          p: 1.5,
-                          borderRadius: 3,
-                          border: `1px solid ${
-                            editingId === supplier.id
-                              ? COLORS.accent
-                              : alpha("#000", 0.08)
-                          }`,
-                          bgcolor:
-                            editingId === supplier.id
-                              ? alpha(COLORS.accent, 0.08)
-                              : "#fff",
-                        }}
-                      >
-                        <Stack
-                          direction={{ xs: "column", sm: "row" }}
-                          spacing={1.2}
-                          alignItems={{ xs: "stretch", sm: "center" }}
-                        >
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontWeight: 950 }}>
-                              {supplier.name}
-                            </Typography>
-
-                            <Typography variant="body2" color="text.secondary">
-                              {supplier.contact_name || "Sin contacto"} ·{" "}
-                              {supplier.phone || "Sin teléfono"}
-                            </Typography>
-
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              RFC: {supplier.rfc || "N/A"} · Correo:{" "}
-                              {supplier.email || "N/A"}
-                            </Typography>
-                          </Box>
-
-                          <Stack direction="row" spacing={1}>
-                            <Button
-                              size="small"
-                              startIcon={<EditRoundedIcon />}
-                              onClick={() => handleEdit(supplier)}
-                              sx={sxBtnOutlined}
-                            >
-                              Editar
-                            </Button>
-
-                            <Button
-                              size="small"
-                              color="error"
-                              startIcon={<DeleteRoundedIcon />}
-                              onClick={() => handleDelete(supplier)}
-                              sx={{
-                                borderRadius: 2,
-                                textTransform: "none",
-                                fontWeight: 900,
-                              }}
-                            >
-                              Eliminar
-                            </Button>
-                          </Stack>
-                        </Stack>
-                      </Paper>
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-            </Paper>
-          </Box>
-        </Stack>
-      </DialogContent>
-
-      <DialogActions
-        sx={{
-          p: 2,
-          bgcolor: COLORS.paper,
-          borderTop: `1px solid ${alpha("#000", 0.08)}`,
-          gap: 1,
-          flexShrink: 0,
-        }}
-      >
-        <Button
-          onClick={handleClose}
-          disabled={saving}
-          startIcon={<CloseRoundedIcon />}
-          variant="outlined"
-          sx={sxBtnOutlined}
-        >
-          Cerrar
-        </Button>
-
-        <Box sx={{ flex: 1 }} />
-
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={saving}
-          startIcon={
-            saving ? (
-              <CircularProgress size={18} color="inherit" />
-            ) : (
-              <SaveRoundedIcon />
-            )
-          }
-          sx={sxBtnBlack}
-        >
-          {saving
-            ? "Guardando..."
-            : isEditing
-              ? "Actualizar proveedor"
-              : "Guardar proveedor"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+          </DialogContent>
+          <DialogActions sx={{ p: 2, flexShrink: 0, flexWrap: "wrap", gap: 1, pb: "max(16px, env(safe-area-inset-bottom))" }}>
+            <Button onClick={handleClose} disabled={saving} sx={buttonSx}>Cerrar</Button>
+            <Button type="submit" variant="contained" disabled={saving || !branchId} startIcon={saving ? <CircularProgress size={18} color="inherit" /> : undefined} sx={{ ...buttonSx, bgcolor: "#6d28d9", "&:hover": { bgcolor: "#5b21b6" } }}>{saving ? "Guardando..." : editingId ? "Actualizar proveedor" : "Guardar proveedor"}</Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
+      {importOpen && <ImportSuppliersModal open onClose={() => setImportOpen(false)} branchId={branchId} onImported={onReload} />}
+      {detailId !== null && <SupplierDetailModal supplierId={detailId} branchId={branchId} sections={SECTIONS} onClose={() => setDetailId(null)} onEdit={(supplier) => { handleEdit(supplier); setDetailId(null); }} />}
+    </>
   );
 }
