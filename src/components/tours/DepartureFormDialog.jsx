@@ -1,3 +1,4 @@
+import { tourDialogSx, tourMenuProps } from "./tourFormStyles.mjs";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, Switch, TextField, useMediaQuery, useTheme } from "@mui/material";
 import { createDeparture, getTourResources, getTourRoutes, updateDeparture } from "../../services/tours/tourService";
@@ -34,7 +35,7 @@ export default function DepartureFormDialog({ context, departure, onClose, onSav
     return () => { active = false; controller.abort(); };
   }, [branchId, serviceId, mode, revision]);
 
-  const field = (name, label, props = {}) => <TextField fullWidth name={name} label={label} value={form[name]} onChange={(event) => { const value = event.target.value; setForm((prev) => ({ ...prev, [name]: value })); }} error={!!errors[name]} helperText={Array.isArray(errors[name]) ? errors[name].join(" ") : errors[name]} {...props} />;
+  const field = (name, label, props = {}) => <TextField SelectProps={{ MenuProps: tourMenuProps }} fullWidth name={name} label={label} value={form[name]} onChange={(event) => { const value = event.target.value; setForm((prev) => ({ ...prev, [name]: value })); }} error={!!errors[name]} helperText={Array.isArray(errors[name]) ? errors[name].join(" ") : errors[name]} {...props} />;
   const resources = catalogs.resources.filter((resource) => !vehiclesOnly || resource.type === "vehicle" || String(resource.id) === String(form.resource_id));
   const selectedOption = (rows, id, label) => id !== "" && id != null && !rows.some((row) => String(row.id) === String(id)) ? <MenuItem value={id}>{label} #{id} (actual)</MenuItem> : null;
   const submit = async (event) => {
@@ -58,7 +59,7 @@ export default function DepartureFormDialog({ context, departure, onClose, onSav
     } finally { pending.current = false; setSaving(false); }
   };
   if (mode !== "store") return null;
-  return <Dialog open fullWidth maxWidth="sm" fullScreen={mobile} onClose={saving ? undefined : onClose} PaperProps={{ component: "form", onSubmit: submit }}>
+  return <Dialog sx={tourDialogSx} open fullWidth maxWidth="sm" fullScreen={mobile} onClose={saving ? undefined : onClose} PaperProps={{ component: "form", onSubmit: submit }}>
     <DialogTitle>{departure ? "Editar salida" : "Nueva salida"}</DialogTitle>
     <DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       {error && <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{error}</Alert>}

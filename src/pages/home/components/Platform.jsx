@@ -140,7 +140,8 @@ const businessModules = [
   },
 ];
 
-const Platform = () => {
+const Platform = ({ preview = false }) => {
+  const Heading = preview ? "h2" : "h1";
   useScrollReveal();
 
   return (
@@ -162,9 +163,9 @@ const Platform = () => {
             Todo lo que necesita tu negocio
           </span>
 
-          <h1 id="platform-title" className="platform-section__title">
+          <Heading id="platform-title" className="platform-section__title">
             Una plataforma para vender, administrar y hacer crecer tu negocio
-          </h1>
+          </Heading>
 
           <p className="platform-section__description">
             <strong>Mi Tienda en Línea MX</strong> reúne tus ventas,

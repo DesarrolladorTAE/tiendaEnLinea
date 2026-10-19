@@ -9,6 +9,8 @@ import { serviceService } from "../../services/admin/serviceService";
 import { alertFromAxiosError, showSuccess } from "../../utils/alerts";
 import { ServiceBookingStep, ServiceFinalStep, ServiceGeneralStep, ServiceOperationStep, ServicePriceStep, ServiceResourcesStep } from "../../components/services/ServiceFormFields";
 
+import ServiceTourSection from "../../components/tours/ServiceTourSection";
+
 const INITIAL = {
   name: "", code: "", short_description: "", description: "", service_type: "general", base_price: "",
   duration_minutes: "", requires_booking: false, requires_resource: false, requires_address: false,
@@ -36,6 +38,8 @@ export default function ServiceFormPage() {
     return () => { active = false; };
   }, [branchId, id, isEdit]);
 
+  useEffect(() => { if (id && location.state?.configureTour) setActiveStep(5); }, [id, location.state?.configureTour]);
+
   const setField = (key) => (event) => setForm((prev) => {
     const value = event.target.value;
     if (key === "service_type" && value === "onsite") return { ...prev, service_type: value, requires_address: true, is_home_service: true };
@@ -48,23 +52,26 @@ export default function ServiceFormPage() {
     if (step === 0) { if (!form.name.trim()) next.name = "El nombre es obligatorio."; if (!form.service_type) next.service_type = "Selecciona un tipo de servicio."; }
     if (step === 1) { if (form.base_price === "" || Number(form.base_price) < 0) next.base_price = "Ingresa un precio igual o mayor a cero."; if (form.requires_deposit && !form.deposit_type) next.deposit_type = "Selecciona el tipo de anticipo."; if (form.requires_deposit && (form.deposit_value === "" || Number(form.deposit_value) < 0)) next.deposit_value = "Captura el valor del anticipo."; if (form.requires_deposit && form.deposit_type === "percentage" && Number(form.deposit_value) > 100) next.deposit_value = "El porcentaje debe estar entre 0 y 100."; }
     if (step === 2) { [["duration_minutes", "La duración debe ser mayor a cero."], ["default_capacity", "La capacidad debe ser mayor a cero."], ["capacity_override", "La capacidad debe ser mayor a cero."]].forEach(([key, message]) => { if (form[key] !== "" && Number(form[key]) <= 0) next[key] = message; }); }
-    if (step === 5 && (Number(form.iva_percentage) < 0 || Number(form.iva_percentage) > 100)) next.iva_percentage = "El IVA debe estar entre 0 y 100.";
+    if (step === (form.service_type === "tour" ? 6 : 5) && (Number(form.iva_percentage) < 0 || Number(form.iva_percentage) > 100)) next.iva_percentage = "El IVA debe estar entre 0 y 100.";
     return next;
   };
   const validateStep = (step) => { const next = validationForStep(step); setErrors(next); return Object.keys(next).length === 0; };
-  const goNext = () => { if (validateStep(activeStep)) setActiveStep((value) => Math.min(value + 1, 5)); };
+  const goNext = () => { if (validateStep(activeStep)) setActiveStep((value) => Math.min(value + 1, steps.length - 1)); };
   const submit = async (event) => {
-    event.preventDefault(); const allErrors = [0, 1, 2, 5].reduce((result, step) => ({ ...result, ...validationForStep(step) }), {}); setErrors(allErrors); if (Object.keys(allErrors).length) { const first = [0, 1, 2, 5].find((step) => Object.keys(validationForStep(step)).length); setActiveStep(first ?? 0); return; } setSaving(true);
-    try { const payload = { ...form, images: files, delete_image_ids: deletedIds, ...(primaryImageId && !deletedIds.includes(primaryImageId) ? { primary_image_id: primaryImageId } : {}), ...(!isEdit && files.length ? { primary_image_index: primaryNewIndex ?? 0 } : {}) }; const { data } = isEdit ? await serviceService.update(branchId, id, payload) : await serviceService.create(branchId, payload); await showSuccess(data?.message || (isEdit ? "Servicio actualizado correctamente." : "Servicio creado correctamente.")); navigate(listUrl, { state: { branch, configureSchedule: saveAndSchedule && form.requires_booking } }); }
+    event.preventDefault(); const allErrors = [0, 1, 2, form.service_type === "tour" ? 6 : 5].reduce((result, step) => ({ ...result, ...validationForStep(step) }), {}); setErrors(allErrors); if (Object.keys(allErrors).length) { const first = [0, 1, 2, 5].find((step) => Object.keys(validationForStep(step)).length); setActiveStep(first ?? 0); return; } setSaving(true);
+    try { const payload = { ...(form.service_type === "tour" ? Object.fromEntries(Object.keys(INITIAL).map((key) => [key, form[key]])) : form), images: files, delete_image_ids: deletedIds, ...(primaryImageId && !deletedIds.includes(primaryImageId) ? { primary_image_id: primaryImageId } : {}), ...(!isEdit && files.length ? { primary_image_index: primaryNewIndex ?? 0 } : {}) }; const { data } = isEdit ? await serviceService.update(branchId, id, payload) : await serviceService.create(branchId, payload); await showSuccess(data?.message || (isEdit ? "Servicio actualizado correctamente." : "Servicio creado correctamente.")); if (!isEdit && form.service_type === "tour") { const createdId = data?.service?.id ?? data?.data?.id; if (createdId) { navigate(`/admin/services/edit/${createdId}?branch_id=${branchId}`, { replace: true, state: { branch, configureTour: true } }); return; } } navigate(listUrl, { state: { branch, configureSchedule: saveAndSchedule && form.requires_booking } }); }
     catch (err) { const apiErrors = err?.response?.data?.errors || {}; setErrors(Object.fromEntries(Object.entries(apiErrors).map(([key, value]) => [key, Array.isArray(value) ? value[0] : value]))); alertFromAxiosError(err, "No se pudo guardar el servicio"); }
     finally { setSaving(false); }
   };
 
   if (loading) return <Stack alignItems="center" py={10}><CircularProgress /></Stack>;
   const steps = ["Información general", "Precio y cobro", "Operación", "Reservaciones", "Recursos", "Fiscal y publicación"];
+  if (form.service_type === "tour") steps.splice(5, 0, "Rutas, salidas y paradas");
   const removeNewImage = (index) => { setFiles((current) => current.filter((_, itemIndex) => itemIndex !== index)); setPrimaryNewIndex((current) => current === index ? null : current > index ? current - 1 : current); };
   const imageProps = { existingImages, deletedIds, files, primaryImageId, primaryNewIndex, onFiles: (next) => { setFiles(next); if (next.length && primaryNewIndex == null && !primaryImageId) setPrimaryNewIndex(0); }, onToggleDelete: toggleDelete, onPrimaryExisting: (imageId) => { setPrimaryImageId(imageId); setPrimaryNewIndex(null); }, onPrimaryNew: (index) => { setPrimaryNewIndex(index); setPrimaryImageId(null); }, onRemoveNew: removeNewImage };
   const stepContent = [<ServiceGeneralStep form={form} setField={setField} errors={errors} imageProps={imageProps} />, <ServicePriceStep form={form} setField={setField} setChecked={setChecked} errors={errors} />, <ServiceOperationStep form={form} setField={setField} setChecked={setChecked} errors={errors} />, <ServiceBookingStep form={form} setChecked={setChecked} />, <ServiceResourcesStep form={form} />, <ServiceFinalStep form={form} setField={setField} setChecked={setChecked} errors={errors} branch={branch} imageCount={existingImages.filter((image) => !deletedIds.includes(image.id)).length + files.length} />];
+
+  if (form.service_type === "tour") stepContent.splice(5, 0, <Box><ServiceTourSection embedded key={`${branchId}-${id || "new"}`} branchId={branchId} serviceId={id} disabled={saving || !!loadError} />{!isEdit && <Button type="submit" variant="contained" sx={{ mt: 2 }} disabled={saving || !!loadError}>Guardar servicio y configurar tour</Button>}</Box>);
 
   return <Box component="form" onSubmit={submit} sx={{ maxWidth: 1100, mx: "auto", p: { xs: 1, sm: 2 }, borderRadius: 4, bgcolor: "#f7f7f5" }}>
     <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ sm: "center" }} spacing={1.5} mb={2} sx={{ bgcolor: "#fff", border: "1px solid rgba(0,0,0,.08)", borderLeft: "6px solid #f9b233", borderRadius: 3, p: { xs: 2, sm: 2.5 } }}>
@@ -80,6 +87,8 @@ export default function ServiceFormPage() {
         color: "#000",
         boxShadow: "0 12px 32px rgba(0,0,0,.10)",
         border: "1px solid rgba(0,0,0,.08)",
+        "& .MuiButton-root": { minHeight: 42, borderRadius: 2, textTransform: "none", fontWeight: 800 },
+        "& .MuiButton-outlined": { color: "#171b20", borderColor: "rgba(0,0,0,.18)", "&:hover": { bgcolor: "#fff9eb", borderColor: "#b97400" } },
         "& .MuiInputLabel-root, & .MuiFormLabel-root": {
           color: "#000",
         },
@@ -101,7 +110,7 @@ export default function ServiceFormPage() {
           color: "rgba(0,0,0,.65)",
         },
         "& .MuiFormHelperText-root.Mui-error": {
-          color: "#ff8a80",
+          color: "#b91c1c",
         },
         "& .MuiFormControlLabel-label": {
           color: "#000",

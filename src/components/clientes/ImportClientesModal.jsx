@@ -1,3 +1,4 @@
+import ImportFileDropZone from "../common/ImportFileDropZone";
 import { saveAs } from "file-saver";
 import React, { useRef, useState } from "react";
 import {
@@ -111,6 +112,23 @@ export default function ImportClientesModal({ open, onClose, onImported, canImpo
     }
   };
 
+  const selectFile = (next) => {
+    if (busy || downloading || !canImport) return;
+    setNotice(null);
+    setResult(null);
+    if (!next) return;
+    if (!next.size || (mode === "normal" && !/\.(csv|xlsx|xls)$/i.test(next.name))) {
+      clearFile();
+      setNotice({ severity: "error", message: !next.size ? "El archivo está vacío." : "Selecciona un archivo CSV, XLSX o XLS de clientes." });
+      return;
+    }
+    setFile(next);
+  };
+  const receiveFiles = (files) => {
+    if (files.length !== 1) { setNotice({ severity: "error", message: "Selecciona un solo archivo de datos a la vez." }); return; }
+    selectFile(files[0]);
+  };
+
   return (
     <Dialog open={open} onClose={() => !busy && !downloading && onClose()} fullWidth maxWidth="sm"
       aria-labelledby="import-clients-title" PaperProps={{ sx: { m: { xs: 1, sm: 4 }, width: { xs: "calc(100% - 16px)", sm: "100%" }, maxHeight: { xs: "calc(100% - 16px)", sm: "calc(100% - 64px)" }, borderRadius: 4, bgcolor: "#fff", color: "#172033" } }}>
@@ -183,23 +201,14 @@ export default function ImportClientesModal({ open, onClose, onImported, canImpo
           {mode === "normal" && <Button disabled={!!downloading} onClick={() => downloadFile("template")} startIcon={downloading === "template" ? <CircularProgress size={16} /> : <FiDownload />} sx={{ color: selected.color, textTransform: "none" }}>Descargar plantilla</Button>}
         </Box>
         <Button onClick={() => downloadFile("export")} disabled={!!downloading} startIcon={downloading === "export" ? <CircularProgress size={16} /> : <FiDownload />} sx={{ mb: 2, color: selected.color, textTransform: "none" }}>Exportar clientes actuales</Button>
+        <ImportFileDropZone onFiles={receiveFiles} disabled={busy || !!downloading || !canImport} color={selected.color}>
         <Box sx={{ p: 3, border: "2px dashed #cbd5e1", borderRadius: 3, textAlign: "center" }}>
           <FiUploadCloud size={32} color={selected.color} aria-hidden="true" />
           <Typography sx={{ mt: 1, mb: 1.5, fontWeight: 600, overflowWrap: "anywhere" }}>{file ? file.name : "2. Selecciona tu archivo de clientes"}</Typography>
-          <input ref={inputRef} type="file" accept={mode === "normal" ? ".csv,.xlsx,.xls" : undefined} hidden onChange={(event) => {
-            const next = event.target.files?.[0];
-            setNotice(null);
-            setResult(null);
-            if (!next) return;
-            if (!next.size || (mode === "normal" && !/\.(csv|xlsx|xls)$/i.test(next.name))) {
-              clearFile();
-              setNotice({ severity: "error", message: !next.size ? "El archivo está vacío." : "Selecciona un archivo CSV, XLSX o XLS de clientes." });
-              return;
-            }
-            setFile(next);
-          }} />
+          <input ref={inputRef} type="file" accept={mode === "normal" ? ".csv,.xlsx,.xls" : undefined} hidden onChange={(event) => selectFile(event.target.files?.[0])} />
           <Button variant="outlined" disabled={busy} onClick={() => inputRef.current?.click()} sx={{ color: selected.color, borderColor: selected.color, textTransform: "none" }}>{file ? "Cambiar archivo" : "Seleccionar archivo"}</Button>
         </Box>
+        </ImportFileDropZone>
         {notice && <Alert severity={notice.severity} sx={{ mt: 2 }}>{notice.message}</Alert>}
         </>
         )}

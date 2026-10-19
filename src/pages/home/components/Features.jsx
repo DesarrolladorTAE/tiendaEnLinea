@@ -128,7 +128,8 @@ const additionalAdvantages = [
   },
 ];
 
-const Features = () => {
+const Features = ({ preview = false }) => {
+  const Heading = preview ? "h2" : "h1";
   useScrollReveal();
 
   return (
@@ -150,9 +151,9 @@ const Features = () => {
             Una experiencia diferente
           </span>
 
-          <h1 id="features-title" className="features-section__title">
+          <Heading id="features-title" className="features-section__title">
             Más que una plataforma, un equipo que te acompaña
-          </h1>
+          </Heading>
 
           <p className="features-section__description">
             A diferencia de soluciones genéricas, en Mi Tienda en Línea MX

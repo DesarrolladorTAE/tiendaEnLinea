@@ -9,7 +9,7 @@ const Footer = () => {
           <div className="col-lg-5 col-md-6">
             <img
               src="/assets/logo3.png"
-              alt="Logo"
+              alt="Mi Tienda en Línea MX"
               className="img-fluid mb-3"
               style={{ maxWidth: "240px" }}
             />
@@ -39,11 +39,12 @@ const Footer = () => {
                   Inicio
                 </Link>
               </li>
-              <li>
+              <li className="mb-2">
                 <Link to="/login-register" className="footer-link">
                   Iniciar sesión
                 </Link>
               </li>
+              <li><Link to="/login-register?mode=register" className="footer-link">Crear cuenta</Link></li>
             </ul>
           </div>
         </div>

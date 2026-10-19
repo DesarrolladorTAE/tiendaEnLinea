@@ -23,7 +23,7 @@ const navigationLinks = [
     label: "Contacto",
   },
   {
-    path: "/Blogs",
+    path: "/blogs",
     label: "Blog"
   }
 ];
@@ -84,6 +84,10 @@ export default function Navbar({
       onLogin();
     }
   };
+  const followLink = (event, callback) => {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    event.preventDefault(); callback();
+  };
 
   return (
     <>
@@ -100,10 +104,10 @@ export default function Navbar({
           .join(" ")}
       >
         <div className="landing-navbar__container">
-          <button
-            type="button"
+          <a
+            href="/"
             className="landing-navbar__brand"
-            onClick={() => handleNavigate("/")}
+            onClick={(event) => followLink(event, () => handleNavigate("/"))}
             aria-label="Ir al inicio"
           >
             <img
@@ -111,7 +115,7 @@ export default function Navbar({
               alt="Mi Tienda en Línea MX"
               className="landing-navbar__logo"
             />
-          </button>
+          </a>
 
           <nav
             id="landing-mobile-navigation"
@@ -137,8 +141,8 @@ export default function Navbar({
                     key={link.path}
                     className="landing-navbar__item"
                   >
-                    <button
-                      type="button"
+                    <a
+                      href={link.path}
                       className={[
                         "landing-navbar__link",
                         isActive
@@ -147,22 +151,22 @@ export default function Navbar({
                       ]
                         .filter(Boolean)
                         .join(" ")}
-                      onClick={() => handleNavigate(link.path)}
+                      onClick={(event) => followLink(event, () => handleNavigate(link.path))}
                       aria-current={
                         isActive ? "page" : undefined
                       }
                     >
                       {link.label}
-                    </button>
+                    </a>
                   </li>
                 );
               })}
             </ul>
 
-            <button
-              type="button"
+            <a
+              href="/login-register"
               className="landing-navbar__login"
-              onClick={handleLogin}
+              onClick={(event) => followLink(event, handleLogin)}
             >
               <span>Iniciar sesión</span>
 
@@ -180,7 +184,7 @@ export default function Navbar({
                   strokeLinejoin="round"
                 />
               </svg>
-            </button>
+            </a>
           </nav>
 
           <button

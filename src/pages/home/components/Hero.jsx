@@ -40,10 +40,10 @@ const Hero = ({ onStart, onDemo }) => {
             className="landing-hero__actions"
             aria-label="Acciones principales"
           >
-            <button
-              type="button"
+            <a
+              href="/login-register?mode=register"
               className="landing-hero__button landing-hero__button--primary"
-              onClick={onStart}
+              onClick={(event) => { if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && onStart) { event.preventDefault(); onStart(); } }}
             >
               <span>Crear mi tienda</span>
 
@@ -61,12 +61,12 @@ const Hero = ({ onStart, onDemo }) => {
                   strokeLinejoin="round"
                 />
               </svg>
-            </button>
+            </a>
 
-            <button
-              type="button"
+            <a
+              href="/contact"
               className="landing-hero__button landing-hero__button--secondary"
-              onClick={onDemo}
+              onClick={(event) => { if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && onDemo) { event.preventDefault(); onDemo(); } }}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -89,7 +89,7 @@ const Hero = ({ onStart, onDemo }) => {
               </svg>
 
               <span>Solicitar demostración</span>
-            </button>
+            </a>
           </div>
 
           <ul className="landing-hero__benefits">

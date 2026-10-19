@@ -31,7 +31,8 @@ const contacts = [
   },
 ];
 
-const Contact = () => {
+const Contact = ({ preview = false }) => {
+  const Heading = preview ? "h2" : "h1";
   useScrollReveal();
 
   const [formData, setFormData] = useState(initialFormData);
@@ -158,9 +159,9 @@ const Contact = () => {
             Hablemos de tu negocio
           </span>
 
-          <h2 id="contact-title" className="contact-section__title">
+          <Heading id="contact-title" className="contact-section__title">
             ¿Listo para llevar tu negocio al siguiente nivel?
-          </h2>
+          </Heading>
 
           <p className="contact-section__description">
             Cuéntanos sobre tu proyecto y descubre cómo Mi Tienda en Línea MX

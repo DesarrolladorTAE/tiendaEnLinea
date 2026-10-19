@@ -1,7 +1,7 @@
 // src/pages/other/LoginRegister.jsx
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import SEO from "../../components/seo";
+import LandingSeo from "../home/LandingSeo";
 import axios from "axios";
 import axiosClient from "../../config/axiosClient";
 import axiosSuperadmin from "../../config/axiosSuperadmin";
@@ -31,7 +31,7 @@ const VIDEO_MS = 15000;
 
 const LoginRegister = () => {
   const navigate = useNavigate();
-  const [modo, setModo] = useState("login");
+  const [modo, setModo] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "register" ? "register" : "login");
 
   const [loginData, setLoginData] = useState({ login: "", password: "" });
   const [registerData, setRegisterData] = useState({
@@ -280,7 +280,7 @@ const LoginRegister = () => {
 
   return (
     <>
-      <SEO titleTemplate="Login" description="Inicio de sesión y registro" />
+      <LandingSeo pathname="/login-register" />
 
       <section
         className={`auth-neo ${isLogin ? "is-login" : "is-register"}`}

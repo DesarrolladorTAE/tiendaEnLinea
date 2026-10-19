@@ -66,7 +66,7 @@ export function ServiceOperationStep({ form, setField, setChecked, errors }) {
   const toggles = [["requires_confirmation", "¿Requiere confirmación manual?"], ["requires_resource", "¿Requiere algún recurso?"], ["requires_address", "¿Necesita dirección del cliente?"], ["is_home_service", "¿Puede realizarse a domicilio?"]];
   return <Stack spacing={2.5}>
     {form.service_type === "onsite" && <Alert severity="info">Para servicios a domicilio se recomienda solicitar la dirección y activar la atención a domicilio.</Alert>}
-    {form.service_type === "tour" && <Alert severity="info">Después podrás configurar rutas, paradas, salidas, pasajeros y vehículos.</Alert>}
+    {form.service_type === "tour" && <Alert severity="info">Configura el recorrido y los puntos de abordaje en el paso «Rutas, salidas y paradas». Los recursos corresponden al vehículo o chofer que puede asignarse a una salida.</Alert>}
     {form.service_type === "repair" && <Alert severity="info">Después podrás configurar órdenes de servicio, diagnóstico, estados y seguimiento.</Alert>}
     <TextField label="Duración aproximada (minutos)" type="number" inputProps={{ min: 1 }} value={form.duration_minutes} onChange={setField("duration_minutes")} error={!!errors.duration_minutes} helperText={errors.duration_minutes} fullWidth sx={fieldSx} />
     <TextField label="Capacidad simultánea" type="number" inputProps={{ min: 1 }} value={form.default_capacity} onChange={setField("default_capacity")} error={!!errors.default_capacity} helperText={errors.default_capacity} fullWidth sx={fieldSx} />
