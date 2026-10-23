@@ -711,6 +711,23 @@
     25px;
 
   padding-left: 25px;
+  list-style-position: outside;
+}
+
+.blog-detail-content ul {
+  list-style-type: disc;
+}
+
+.blog-detail-content ol {
+  list-style-type: decimal;
+}
+
+.blog-detail-content ul ul {
+  list-style-type: circle;
+}
+
+.blog-detail-content ul ul ul {
+  list-style-type: square;
 }
 
 .blog-detail-content li {

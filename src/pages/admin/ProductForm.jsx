@@ -97,7 +97,7 @@ export default function ProductForm() {
     return (
       <div className="alert alert-warning text-center mt-5">
         🚫 Has alcanzado el límite de <strong>{limitePermitido}</strong>{" "}
-        productos para tu plan. <br />
+        productos en esta sucursal para tu plan. <br />
         Elimina productos o mejora tu plan para seguir agregando más.
       </div>
     );

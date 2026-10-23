@@ -1,71 +1,85 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import "../styles/Footer.css";
+
+const pages = [
+  ["/", "Inicio"],
+  ["/platform", "Plataforma"],
+  ["/features", "Características"],
+  ["/services", "Planes"],
+  ["/blogs", "Blog"],
+  ["/contact", "Contacto"],
+];
 
 const Footer = () => {
+  const year = new Date().getFullYear();
+
   return (
-    <footer className="footer">
-      <div className="container">
-        <div className="row justify-content-between align-items-start g-4">
-          <div className="col-lg-5 col-md-6">
-            <img
-              src="/assets/logo3.png"
-              alt="Logo"
-              className="img-fluid mb-3"
-              style={{ maxWidth: "240px" }}
-            />
-            <p
-              className="mb-0"
-              style={{
-                color: "#d1d5db",
-                lineHeight: "1.8",
-                maxWidth: "420px",
-              }}
-            >
-              Transformamos negocios con soluciones innovadoras y tecnología de
-              vanguardia.
+    <footer className="landing-footer">
+      <div className="landing-footer__container">
+        <div className="landing-footer__intro">
+          <div>
+            <span className="landing-footer__eyebrow">TU NEGOCIO, CONECTADO</span>
+            <h2>Tu tienda en línea y tu operación, en un solo lugar.</h2>
+          </div>
+          <Link to="/services" className="landing-footer__cta">
+            Conocer los planes <span aria-hidden="true">↗</span>
+          </Link>
+        </div>
+
+        <div className="landing-footer__grid">
+          <div className="landing-footer__brand">
+            <Link to="/" aria-label="Mi Tienda en Línea MX, ir al inicio">
+              <img src="/assets/logoc.png" alt="Mi Tienda en Línea MX" width="280" height="60" />
+            </Link>
+            <p>
+              Crea tu tienda en línea y administra productos, inventarios,
+              ventas y sucursales desde una misma plataforma. Herramientas
+              para acompañar el crecimiento de tu negocio en México.
             </p>
+            <span className="landing-footer__signature">Una plataforma de Tecnologías Administrativas.</span>
           </div>
 
-          <div className="col-lg-3 col-md-4">
-            <h5 className="text-white mb-3 fw-bold">Legal</h5>
-            <ul className="list-unstyled mb-0">
-              <li className="mb-2">
-                <Link to="/terminos-y-condiciones" className="footer-link">
-                  Términos y Condiciones
-                </Link>
-              </li>
-              <li className="mb-2">
-                <Link to="/" className="footer-link">
-                  Inicio
-                </Link>
-              </li>
-              <li>
-                <Link to="/login-register" className="footer-link">
-                  Iniciar sesión
-                </Link>
-              </li>
+          <nav aria-label="Páginas del sitio">
+            <h3>Explora</h3>
+            <ul>
+              {pages.map(([to, label]) => (
+                <li key={to}><Link to={to}>{label}</Link></li>
+              ))}
             </ul>
+          </nav>
+
+          <nav aria-label="Acceso y términos del servicio">
+            <h3>Tu cuenta</h3>
+            <ul>
+              <li><Link to="/login-register">Iniciar sesión o registrarte</Link></li>
+              <li><Link to="/contact">Ayuda y contacto</Link></li>
+              <li><Link to="/terminos-y-condiciones">Términos y condiciones</Link></li>
+            </ul>
+          </nav>
+
+          <div className="landing-footer__contact">
+            <h3>Hablemos de tu negocio</h3>
+            <address>
+              <a href="mailto:contacto@tecnologiasadministrativas.com">contacto@tecnologiasadministrativas.com</a>
+              <a href="tel:+527442188925">+52 (744) 218 8925</a>
+              <a href="https://wa.me/527442188925" target="_blank" rel="noopener noreferrer">Escríbenos por WhatsApp <span aria-hidden="true">↗</span></a>
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=C.+24+202,+Las+Cruces,+39770+Acapulco+de+Juárez,+Gro."
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                C. 24 202, Las Cruces, 39770<br />
+                Acapulco de Juárez, Guerrero.
+                <span className="landing-footer__map">Ver en Google Maps <span aria-hidden="true">↗</span></span>
+              </a>
+            </address>
           </div>
         </div>
 
-        <hr
-          className="my-4"
-          style={{ borderColor: "rgba(255,255,255,0.08)" }}
-        />
-
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
-          <p className="text-white mb-0">
-            © 2026 TAE. Todos los derechos reservados.
-          </p>
-
-          <div className="d-flex gap-3">
-            <Link to="/terminos-y-condiciones" className="footer-link">
-              Términos
-            </Link>
-            <Link to="/login-register" className="footer-link">
-              Acceder
-            </Link>
-          </div>
+        <div className="landing-footer__bottom">
+          <p>© {year} Mi Tienda en Línea MX. Todos los derechos reservados.</p>
+          <Link to="/terminos-y-condiciones">Términos y condiciones</Link>
         </div>
       </div>
     </footer>

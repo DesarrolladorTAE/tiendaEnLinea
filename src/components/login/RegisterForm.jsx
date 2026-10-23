@@ -27,7 +27,7 @@ const RegisterForm = ({
         top: "100%",
         left: 0,
         marginTop: 8,
-        width: 360,
+        width: "min(360px, 100%)",
         background: "#fff",
         borderRadius: 12,
         boxShadow: "0 10px 20px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.08)",

@@ -60,8 +60,6 @@ const ProductList = () => {
   const [catProduct, setCatProduct] = useState(null);
   const [savingCats, setSavingCats] = useState(false);
 
-  const { puedeCrear, cargando, totalProductos, limitePermitido, actualizarLimite, errorLimite } =
-    useLimiteProductos();
   const productsPerPage = 10;
   const { tieneComplemento } = useComplementosActivos();
 
@@ -82,6 +80,9 @@ const ProductList = () => {
     if (branchIdFromUrl) return { id: Number(branchIdFromUrl) };
     return null;
   }, [branchFromNav, selectedBranch, branchIdFromUrl]);
+
+  const { puedeCrear, cargando, totalProductos, limitePermitido, actualizarLimite, errorLimite } =
+    useLimiteProductos(activeBranch?.id ?? null);
 
   // ✅ en productos siempre se muestra layout
   useEffect(() => {
@@ -285,7 +286,7 @@ const ProductList = () => {
               ? "Cargando límites..."
               : errorLimite ? "No se pudo consultar el total de productos" : `Tienes ${totalProductos ?? "—"} / ${
                   limitePermitido === Infinity ? "∞" : limitePermitido
-                } productos creados`}
+                } productos en esta sucursal`}
           </p>
         </div>
 

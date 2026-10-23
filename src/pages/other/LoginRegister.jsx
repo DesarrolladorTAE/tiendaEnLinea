@@ -1,8 +1,9 @@
 // src/pages/other/LoginRegister.jsx
 import React, { useRef, useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { FiHome, FiArrowLeft, FiMonitor } from "react-icons/fi";
 import SEO from "../../components/seo";
-import axios from "axios";
+import { getLoginBanners } from "../../utils/loginBannerCache";
 import axiosClient from "../../config/axiosClient";
 import axiosSuperadmin from "../../config/axiosSuperadmin";
 import LoginForm from "../../components/login/LoginForm";
@@ -11,8 +12,6 @@ import { Modal, Box, Typography, TextField, Button } from "@mui/material";
 import PasswordResetModal from "../../components/login/PasswordResetModal";
 import { showError, showSuccess } from "../../utils/alerts";
 import "./LoginRegister.motion.css";
-
-const API_URL = "https://mitiendaenlineamx.com.mx/api";
 
 const getExt = (u = "") => {
   try {
@@ -108,8 +107,7 @@ const LoginRegister = () => {
 
     (async () => {
       try {
-        const res = await axios.get(`${API_URL}/admin/publicidad`);
-        const arr = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        const arr = await getLoginBanners();
 
         const candidates = arr.filter((b) => isActive(b) && urlOf(b));
 
@@ -274,6 +272,15 @@ const LoginRegister = () => {
   const isVid = hasMedia && isVideoUrl(current.url);
   const isImg = hasMedia && isImageUrl(current.url);
 
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const next = slides[(active + 1) % slides.length];
+    if (!isImageUrl(next?.url)) return;
+    const image = new Image();
+    image.decoding = "async";
+    image.src = next.url;
+  }, [active, slides]);
+
   const panelClass =
     `auth-panel ${isLogin ? "grid-login img-left" : "grid-register img-right"} ` +
     (!hasMedia ? "no-media" : "");
@@ -295,13 +302,14 @@ const LoginRegister = () => {
             {/* MEDIA */}
             {hasMedia ? (
               <aside className="col-media">
-                <div key={`${modo}-${active}`} className="auth-banner">
+                <div key={current.url} className="auth-banner">
                   <div className="frame">
                     {isImg && (
                       <img
                         src={current.url}
                         alt={current.titulo || "banner"}
                         className="auth-img"
+                        decoding="async"
                         style={{
                           width: "100%",
                           height: "auto",
@@ -316,6 +324,7 @@ const LoginRegister = () => {
                         key={current.url}
                         className="auth-video"
                         src={current.url}
+                        preload="metadata"
                         autoPlay
                         muted
                         playsInline
@@ -359,6 +368,11 @@ const LoginRegister = () => {
 
             {/* FORM */}
             <main className="col-form">
+              <Link to="/" className="auth-home-link">
+                <FiArrowLeft aria-hidden="true" />
+                <FiHome aria-hidden="true" />
+                <span>Volver al inicio</span>
+              </Link>
               {/* CABECERA LOGO + CERTIFICACIÓN */}
               <Box
                 sx={{
@@ -366,10 +380,12 @@ const LoginRegister = () => {
                   width: "100%",
                   mb: 3,
                   minHeight: {
-                    xs: 105,
-                    sm: 120,
+                    xs: 0,
+                    sm: 100,
                   },
                   display: "flex",
+                  flexWrap: "wrap",
+                  gap: 2,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
@@ -427,15 +443,7 @@ const LoginRegister = () => {
                   onClick={() => setShowCertificateModal(true)}
                   aria-label="Ver certificado de Empresa Guerrerense"
                   sx={{
-                    position: "absolute",
-                    top: {
-                      xs: -10,
-                      sm: -25,
-                    },
-                    right: {
-                      xs: -4,
-                      sm: 0,
-                    },
+                    position: "relative",
                     p: 0,
                     border: "none",
                     bgcolor: "transparent",
@@ -484,7 +492,8 @@ const LoginRegister = () => {
                     >
                       <Box
                         component="img"
-                        src="/assets/images/certificado.png"
+                        src="/assets/images/certificado-thumb.jpg"
+                        decoding="async"
                         alt="Empresa Guerrerense Certificada"
                         sx={{
                           width: "100%",
@@ -539,6 +548,8 @@ const LoginRegister = () => {
 
               <div className="text-center mb-3">
                 <Button
+                  className="auth-pos-link"
+                  startIcon={<FiMonitor aria-hidden="true" />}
                   type="button"
                   variant="outlined"
                   fullWidth
@@ -645,7 +656,7 @@ const LoginRegister = () => {
       >
         <Box
           sx={{
-            width: 400,
+            width: "min(400px, calc(100vw - 32px))",
             p: 4,
             bgcolor: "background.paper",
             borderRadius: 2,
