@@ -64,4 +64,4 @@ Options -MultiViews
 RewriteCond %{REQUEST_URI} !^/(api|storage|uploads|assets|build|dist|vendor)/ [NC]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.html [QSA,L]
+RewriteRule ^ spa.html [QSA,L]

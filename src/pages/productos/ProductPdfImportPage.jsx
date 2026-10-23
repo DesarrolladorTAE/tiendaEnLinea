@@ -1,3 +1,4 @@
+import ImportFileDropZone from "../../components/common/ImportFileDropZone";
 import React, { useState } from "react";
 
 import {
@@ -29,8 +30,8 @@ export default function ProductPdfImportPage() {
 
   const MAX_PDF_SIZE = 500 * 1024 * 1024;
 
-  const handleArchivo = (event) => {
-    const file = event.target.files?.[0];
+  const handleArchivo = (file) => {
+    if (loading) return;
 
     if (!file) {
       return;
@@ -171,6 +172,7 @@ export default function ProductPdfImportPage() {
         >
           <Stack spacing={3}>
             <Box>
+              <ImportFileDropZone disabled={loading} onFiles={(files) => { if (files.length !== 1) { setError("Selecciona un solo PDF a la vez."); return; } handleArchivo(files[0]); }}>
               <Button
                 component="label"
                 variant="outlined"
@@ -185,9 +187,10 @@ export default function ProductPdfImportPage() {
                   hidden
                   type="file"
                   accept="application/pdf"
-                  onChange={handleArchivo}
+                  onChange={(event) => handleArchivo(event.target.files?.[0])}
                 />
               </Button>
+              </ImportFileDropZone>
 
               {archivo && (
                 <Box

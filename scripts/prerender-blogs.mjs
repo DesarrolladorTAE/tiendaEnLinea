@@ -310,7 +310,7 @@ function buildSeoHtml(post) {
     seo?.canonical_url ||
     post?.url ||
     openGraph?.url ||
-    "";
+    `https://mitiendaenlineamx.com.mx/blogs/${safeSlug(post.slug)}`;
 
   const keywords =
     Array.isArray(
@@ -637,11 +637,15 @@ async function prerenderPost(
   const seoHtml =
     buildSeoHtml(post);
 
+  const articleText = String(post.content || "").replace(/<\/(?:p|h[1-6]|li)>|<br\s*\/?>/gi, "\n");
+  const paragraphs = articleText.split(/\n+/).map(cleanText).filter(Boolean)
+    .map((text) => `<p>${escapeHtml(text).replace(/&amp;(#\d+|#x[\da-f]+|amp|lt|gt|quot|apos|nbsp);/gi, '&$1;')}</p>`).join("\n");
+  const article = `<main class="container" style="max-width:900px;margin:40px auto;padding:24px"><nav><a href="/">Inicio</a> · <a href="/blogs">Blog</a> · <a href="/login-register">Iniciar sesión y registro</a></nav><article><h1>${escapeHtml(post.title || responseSlug)}</h1>${post.excerpt ? `<p>${escapeHtml(cleanText(post.excerpt))}</p>` : ""}${paragraphs}</article></main>`;
   const rendered =
     cleanHtml.replace(
       /<\/head>/i,
       `    ${seoHtml}\n  </head>`
-    );
+    ).replace(/<div id="root"><\/div>/, () => `<div id="root">${article}</div>`);
 
   const outputDirectory =
     path.join(
@@ -672,6 +676,7 @@ async function prerenderPost(
   console.log(
     `✓ /blogs/${responseSlug}`
   );
+  return { slug: responseSlug, title: post.title || responseSlug, indexable: post.seo?.robots_index !== false };
 }
 
 /* =========================================================
@@ -682,7 +687,7 @@ async function main() {
   const baseIndexPath =
     path.join(
       DIST_DIR,
-      "index.html"
+      "spa.html"
     );
 
   console.log("");
@@ -737,17 +742,28 @@ async function main() {
   }
 
   let generated = 0;
+  const generatedPosts = [];
 
   for (
     const post of posts
   ) {
-    await prerenderPost(
+    const result = await prerenderPost(
       baseHtml,
       post.slug
     );
+    generatedPosts.push(result);
 
     generated += 1;
   }
+
+  const sitemapFile = path.join(DIST_DIR, "sitemap.xml");
+  const sitemap = await fs.readFile(sitemapFile, "utf8");
+  const postUrls = generatedPosts.filter((post) => post.indexable).map((post) => `<url><loc>https://mitiendaenlineamx.com.mx/blogs/${post.slug}</loc></url>`).join("\n");
+  await fs.writeFile(sitemapFile, sitemap.replace("</urlset>", `${postUrls}\n</urlset>`));
+  const listingFile = path.join(DIST_DIR, "blogs/index.html");
+  const listing = await fs.readFile(listingFile, "utf8");
+  const links = `<section class="container" aria-label="Publicaciones del blog"><ul>${generatedPosts.map((post) => `<li><a href="/blogs/${post.slug}">${escapeHtml(post.title)}</a></li>`).join("")}</ul></section>`;
+  await fs.writeFile(listingFile, listing.replace("</main>", `${links}</main>`));
 
   console.log("");
   console.log(

@@ -6,6 +6,8 @@ import { getTourServices } from "../../services/tours/tourService";
 import TourCard from "../../components/tours/TourCard";
 import TourDeparturesPage from "./TourDeparturesPage";
 
+import TourExcelActions from "../../components/tours/TourExcelActions";
+
 const PAGE_SIZE = 12;
 
 export default function ToursPage({ mode = "store", posBranchId, posLocationId, onBack }) {
@@ -65,6 +67,7 @@ export default function ToursPage({ mode = "store", posBranchId, posLocationId, 
         <Button variant="outlined" onClick={back}>{isStore ? "Volver a servicios" : "Volver al POS"}</Button>
       </Stack>
     </Stack>
+    {isStore && <TourExcelActions key={branchId} branchId={branchId} onImported={() => setRevision((value) => value + 1)} />}
     {state.loading ? <Stack alignItems="center" py={6}><CircularProgress aria-label="Cargando Tours" /></Stack>
       : state.error ? <Alert severity="error" action={<Button onClick={() => setRevision((value) => value + 1)}>Reintentar</Button>}>{state.error}</Alert>
       : !state.rows.length ? <Alert severity="info">Esta sucursal todavía no tiene servicios tipo tour.</Alert>

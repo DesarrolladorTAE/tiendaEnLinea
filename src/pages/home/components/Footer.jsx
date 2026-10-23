@@ -52,7 +52,8 @@ const Footer = () => {
           <nav aria-label="Acceso y términos del servicio">
             <h3>Tu cuenta</h3>
             <ul>
-              <li><Link to="/login-register">Iniciar sesión o registrarte</Link></li>
+              <li><Link to="/login-register">Iniciar sesión</Link></li>
+              <li><Link to="/login-register?mode=register">Crear cuenta</Link></li>
               <li><Link to="/contact">Ayuda y contacto</Link></li>
               <li><Link to="/terminos-y-condiciones">Términos y condiciones</Link></li>
             </ul>

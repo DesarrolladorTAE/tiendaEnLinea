@@ -60,7 +60,7 @@
   },
   "scripts": {
   "dev": "vite",
-  "build": "vite build && node scripts/prerender-blogs.mjs",
+  "build": "vite build --manifest && node scripts/prerender-landing.mjs && node scripts/prerender-blogs.mjs",
   "test": "react-scripts test",
   "eject": "react-scripts eject"
 },

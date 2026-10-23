@@ -101,6 +101,62 @@ export async function getTourRoutes(context) {
   return getCatalog(client, toursPath + "/tour-routes", "routes", context.signal);
 }
 
+export async function getTourRoute(context, routeId) {
+  const { client, toursPath } = departureContext(context);
+  return client.get(`${toursPath}/tour-routes/${passengerEntityId(routeId)}`, { signal: context.signal });
+}
+
+const routeFields = ["name", "origin", "destination", "description", "is_active"];
+const stopFields = ["name", "address", "lat", "lng", "reference", "is_active"];
+const routeStopFields = ["stop_order", "default_departure_time", "boarding_minutes", "price_adjustment"];
+const onlyFields = (values, fields) => Object.fromEntries(fields.filter((key) => values[key] !== undefined).map((key) => [key, values[key]]));
+
+function tourCatalogEndpoint(context, entity, id, write = false) {
+  const { client, toursPath } = departureContext(context, write);
+  return { client, url: `${toursPath}/${entity}${id == null ? "" : `/${passengerEntityId(id)}`}` };
+}
+
+export function createTourRoute(context, values) {
+  const { client, url } = tourCatalogEndpoint(context, "tour-routes", null, true);
+  return client.post(url, onlyFields(values, routeFields));
+}
+export function updateTourRoute(context, id, values) {
+  const { client, url } = tourCatalogEndpoint(context, "tour-routes", id, true);
+  return client.put(url, onlyFields(values, routeFields));
+}
+export function getTourStops(context) {
+  const { client, url } = tourCatalogEndpoint(context, "tour-stops");
+  return getCatalog(client, url, "stops", context.signal);
+}
+export function getTourStop(context, id) {
+  const { client, url } = tourCatalogEndpoint(context, "tour-stops", id);
+  return client.get(url, { signal: context.signal });
+}
+export function createTourStop(context, values) {
+  const { client, url } = tourCatalogEndpoint(context, "tour-stops", null, true);
+  return client.post(url, onlyFields(values, stopFields));
+}
+export function updateTourStop(context, id, values) {
+  const { client, url } = tourCatalogEndpoint(context, "tour-stops", id, true);
+  return client.put(url, onlyFields(values, stopFields));
+}
+function routeStopEndpoint(context, routeId, stopId) {
+  const { client, url } = tourCatalogEndpoint(context, "tour-routes", routeId, true);
+  return { client, url: `${url}/stops${stopId == null ? "" : `/${passengerEntityId(stopId)}`}` };
+}
+export function addTourRouteStop(context, routeId, stopId, values) {
+  const { client, url } = routeStopEndpoint(context, routeId);
+  return client.post(url, { tour_stop_id: passengerEntityId(stopId), ...onlyFields(values, routeStopFields) });
+}
+export function updateTourRouteStop(context, routeId, stopId, values) {
+  const { client, url } = routeStopEndpoint(context, routeId, stopId);
+  return client.put(url, onlyFields(values, routeStopFields));
+}
+export function removeTourRouteStop(context, routeId, stopId) {
+  const { client, url } = routeStopEndpoint(context, routeId, stopId);
+  return client.delete(url);
+}
+
 export async function getTourResources(context) {
   const { client, branchPath } = departureContext(context);
   return getCatalog(client, branchPath + "/resources", "resources", context.signal);
@@ -191,7 +247,11 @@ export async function removeBookingPassenger(context, bookingId, assignmentId) {
 }
 export async function getRouteStops(context, routeId) {
   const { client, url } = passengerEndpoint(context, `/tour-routes/${passengerEntityId(routeId)}/stops`);
-  return getCatalog(client, url, "stops", context.signal);
+  const { data } = await client.get(url, { signal: context.signal });
+  const collection = data?.stops ?? data?.data ?? data;
+  const rows = Array.isArray(collection) ? collection : collection?.data;
+  if (!Array.isArray(rows)) throw new Error("No se pudieron leer las paradas de la ruta.");
+  return rows;
 }
 
 
@@ -277,12 +337,12 @@ function excelPath(branchId) {
   return `branches/${branchId}/tours`;
 }
 
-export function importToursExcel(branchId, file, images = []) {
+export function importToursExcel(branchId, file, images = [], { onUploadProgress } = {}) {
   const path = excelPath(branchId);
   const data = new FormData();
   data.append("file", file);
   images.forEach((image) => data.append("images[]", image));
-  return axiosClient.post(`${path}/import`, data);
+  return axiosClient.post(`${path}/import`, data, { onUploadProgress });
 }
 
 export async function exportToursExcel(branchId) {

@@ -186,6 +186,7 @@
 }
 
 .landing-hero__button {
+  text-decoration: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -232,6 +233,7 @@
 }
 
 .landing-hero__button--secondary:hover {
+  color: #292a2d;
   border-color: rgba(233, 78, 27, 0.2);
   background: #ffffff;
 }

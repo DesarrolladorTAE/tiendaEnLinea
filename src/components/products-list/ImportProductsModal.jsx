@@ -1,3 +1,4 @@
+import ImportFileDropZone from "../common/ImportFileDropZone";
 import React, { useRef, useState } from "react";
 import {
   Alert, Box, Button, ButtonBase, CircularProgress, Dialog,
@@ -89,6 +90,23 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
     }
   };
 
+  const selectFile = (next) => {
+    if (busy) return;
+    setNotice(null);
+    setResult(null);
+    if (!next) return;
+    if (!next.size || (mode === "normal" && !/\.csv$/i.test(next.name))) {
+      clearFile();
+      setNotice({ severity: "error", message: !next.size ? "El archivo está vacío." : "Selecciona un archivo CSV para la importación normal." });
+      return;
+    }
+    setFile(next);
+  };
+  const receiveFiles = (files) => {
+    if (files.length !== 1) { setNotice({ severity: "error", message: "Selecciona un solo archivo de datos a la vez." }); return; }
+    selectFile(files[0]);
+  };
+
   return (
     <Dialog open={open} onClose={() => !busy && onClose()} fullWidth maxWidth="sm"
       aria-labelledby="import-products-title" PaperProps={{ sx: { borderRadius: 4, bgcolor: "#fff", color: "#172033" } }}>
@@ -163,22 +181,14 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
           </Typography>
           {mode === "normal" && <Button component="a" href="/assets/ejemploCSV/CSVejemplo.csv" download startIcon={<FiDownload />} sx={{ color: selected.color, textTransform: "none" }}>Descargar CSV de ejemplo</Button>}
         </Box>
+        <ImportFileDropZone onFiles={receiveFiles} disabled={busy} color={selected.color}>
         <Box sx={{ p: 3, border: "2px dashed #cbd5e1", borderRadius: 3, textAlign: "center" }}>
           <FiUploadCloud size={32} color={selected.color} aria-hidden="true" />
           <Typography sx={{ mt: 1, mb: 1.5, fontWeight: 600, overflowWrap: "anywhere" }}>{file ? file.name : "2. Selecciona tu archivo de productos"}</Typography>
-          <input ref={inputRef} type="file" accept={mode === "normal" ? ".csv" : undefined} hidden onChange={(event) => {
-            const next = event.target.files?.[0];
-            setNotice(null);
-            if (!next) return;
-            if (!next.size || (mode === "normal" && !/\.csv$/i.test(next.name))) {
-              clearFile();
-              setNotice({ severity: "error", message: !next.size ? "El archivo está vacío." : "Selecciona un archivo CSV para la importación normal." });
-              return;
-            }
-            setFile(next);
-          }} />
+          <input ref={inputRef} type="file" accept={mode === "normal" ? ".csv" : undefined} hidden onChange={(event) => selectFile(event.target.files?.[0])} />
           <Button variant="outlined" disabled={busy} onClick={() => inputRef.current?.click()} sx={{ color: selected.color, borderColor: selected.color, textTransform: "none" }}>{file ? "Cambiar archivo" : "Seleccionar archivo"}</Button>
         </Box>
+        </ImportFileDropZone>
         {notice && <Alert severity={notice.severity} sx={{ mt: 2 }}>{notice.message}</Alert>}
         </>
         )}

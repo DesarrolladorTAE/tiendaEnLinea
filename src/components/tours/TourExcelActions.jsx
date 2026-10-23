@@ -1,5 +1,7 @@
+import { saveAs } from "file-saver";
 import React, { useRef, useState } from "react";
-import { Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography, useMediaQuery } from "@mui/material";
+import ImportFileDropZone from "../common/ImportFileDropZone";
+import { Alert, Box, Button, Chip, CircularProgress, LinearProgress, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography, useMediaQuery } from "@mui/material";
 import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
 import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
 import DirectionsBusRoundedIcon from "@mui/icons-material/DirectionsBusRounded";
@@ -7,7 +9,7 @@ import ImageRoundedIcon from "@mui/icons-material/ImageRounded";
 import { exportToursExcel, importToursExcel } from "../../services/tours/tourService";
 import { alertFromAxiosError, showToastSuccess } from "../../utils/alerts";
 
-const importColor = "#1565c0";
+const importColor = "#6d28d9";
 const exportColor = "#15803d";
 const colorButton = (color) => ({ bgcolor: color, color: "#fff", minHeight: 44, textTransform: "none", fontWeight: 700, "&:hover": { bgcolor: color, filter: "brightness(.9)" } });
 const dialogStyle = {
@@ -37,7 +39,8 @@ function downloadName(disposition, branchId) {
 
 export default function TourExcelActions({ branchId, onImported }) {
   const [open, setOpen] = useState(false);
-  const [action, setAction] = useState(null);
+  const [progress, setProgress] = useState(null);
+  const [phase, setPhase] = useState("uploading");
   const [file, setFile] = useState(null);
   const [images, setImages] = useState([]);
   const [busy, setBusy] = useState(false);
@@ -48,6 +51,23 @@ export default function TourExcelActions({ branchId, onImported }) {
   const exportPending = useRef(false);
   const mobile = useMediaQuery("(max-width: 599.95px)");
   const validBranch = Number.isSafeInteger(Number(branchId)) && Number(branchId) > 0;
+
+  const receiveFiles = (files) => {
+    if (busy || exporting || result || !validBranch) return;
+    const spreadsheets = files.filter((item) => /\.xlsx$/i.test(item.name));
+    const incomingImages = files.filter((item) => IMAGE_EXTENSIONS.test(item.name));
+    if (spreadsheets.length + incomingImages.length !== files.length) return setError("Selecciona un XLSX o imágenes con los formatos permitidos.");
+    if (spreadsheets.length > 1) return setError("Selecciona un solo archivo XLSX a la vez.");
+    if (files.some((item) => !item.size || item.size > MAX_SIZE)) return setError("Cada archivo debe tener contenido y pesar como máximo 20 MB.");
+    const merged = [...images];
+    incomingImages.forEach((item) => {
+      if (!merged.some((existing) => existing.name === item.name && existing.size === item.size && existing.lastModified === item.lastModified)) merged.push(item);
+    });
+    if (merged.length > 50) return setError("Selecciona como máximo 50 imágenes.");
+    setError("");
+    if (spreadsheets.length) setFile(spreadsheets[0]);
+    setImages(merged);
+  };
 
   const exportExcel = async () => {
     if (!validBranch || exportPending.current) return;
@@ -71,13 +91,14 @@ export default function TourExcelActions({ branchId, onImported }) {
     if (pending.current || !validBranch || result) return;
     setError("");
     if (!file || !/\.xlsx$/i.test(file.name)) return setError("Selecciona un archivo XLSX.");
+    if (!file.size) return setError("El archivo está vacío.");
     if (file.size > MAX_SIZE) return setError("El Excel debe pesar como máximo 20 MB.");
     if (images.length > 50) return setError("Selecciona como máximo 50 imágenes.");
     const invalid = images.find((image) => image.size > MAX_SIZE || !IMAGE_EXTENSIONS.test(image.name));
     if (invalid) return setError(`La imagen ${invalid.name} debe tener un formato permitido y pesar como máximo 20 MB.`);
-    pending.current = true; setBusy(true);
+    pending.current = true; setBusy(true); setProgress(null); setPhase("uploading");
     try {
-      const { data, status } = await importToursExcel(branchId, file, images);
+      const { data, status } = await importToursExcel(branchId, file, images, { onUploadProgress: ({ loaded, total }) => { if (total > 0) { setProgress(Math.min(100, Math.round(loaded / total * 100))); if (loaded >= total) setPhase("processing"); } } });
       const created = Array.isArray(data.created) ? data.created : [];
       const duplicates = Array.isArray(data.duplicates) ? data.duplicates : [];
       const errors = Array.isArray(data.errors) ? data.errors : [];
@@ -85,8 +106,9 @@ export default function TourExcelActions({ branchId, onImported }) {
       if (data.success === false && status !== 207 && !summary.created && !duplicates.length && !errors.length) {
         setError(data.message || "No se pudo importar el archivo."); return;
       }
-      setResult({ summary, duplicates, errors, partial: status === 207, message: data.message });
-      if (summary.created > 0) await onImported();
+      setResult({ summary, duplicates, errors, partial: status === 207, message: data.message, filename: file.name, date: new Date().toISOString() });
+      setFile(null); setImages([]);
+      if (summary.created > 0) { setPhase("refreshing"); try { await onImported(); } catch { setError("La importación terminó, pero no se pudo actualizar el listado. Revisa tus tours antes de volver a importar."); } }
     } catch (err) {
       const status = err.response?.status;
       const data = err.response?.data;
@@ -95,44 +117,39 @@ export default function TourExcelActions({ branchId, onImported }) {
     } finally { pending.current = false; setBusy(false); }
   };
 
-  const accent = action === "export" ? exportColor : importColor;
-
+  const downloadReport = () => {
+    const lines = ["REPORTE DE IMPORTACIÓN DE TOURS", "Fecha: " + result.date, "Sucursal: " + branchId, "Archivo: " + result.filename, result.message || "", "Creados: " + result.summary.created, "Duplicados: " + result.summary.duplicates, "Errores: " + result.summary.errors,
+      ...[["Duplicado", result.duplicates], ["Error", result.errors]].flatMap(([label, rows]) => rows.map(row => label + " | Fila " + (row.row ?? "—") + " | " + (row.name || "") + " | " + (row.message || "") + " | " + (row.date || "") + " " + (row.time || "")))];
+    saveAs(new Blob(["\uFEFF", lines.join("\r\n")], { type: "text/plain;charset=utf-8" }), "reporte-importacion-tours-" + result.date.slice(0,10) + ".txt");
+  };
   return <>
-    <Typography variant="subtitle2" fontWeight={800} mb={1}>Importación y exportación de servicios</Typography>
     <Stack direction={{ xs: "column", sm: "row" }} spacing={1} mb={2}>
-      <Button variant="contained" startIcon={<UploadFileRoundedIcon />} sx={colorButton(importColor)} disabled={!validBranch || exporting || open} onClick={() => setAction("import")}>Importar Excel</Button>
-      <Button variant="contained" startIcon={<FileDownloadRoundedIcon />} sx={colorButton(exportColor)} disabled={!validBranch || exporting || open} onClick={() => setAction("export")}>Exportar Excel</Button>
+      <Button variant="contained" startIcon={<UploadFileRoundedIcon />} sx={colorButton(importColor)} disabled={!validBranch || exporting || open} onClick={() => { setError(""); setOpen(true); }}>Importar Excel</Button>
+      <Button variant="outlined" startIcon={exporting ? <CircularProgress size={18} /> : <FileDownloadRoundedIcon />} sx={{ color: importColor, textTransform: "none", minHeight: 44 }} disabled={!validBranch || exporting || open} onClick={exportExcel}>{exporting ? "Exportando…" : "Exportar Excel"}</Button>
     </Stack>
-    {action && <Dialog open fullWidth maxWidth="sm" fullScreen={mobile} sx={dialogStyle} onClose={exporting ? undefined : () => setAction(null)}>
-      <DialogTitle sx={{ bgcolor: accent, color: "#fff", fontWeight: 800 }}>{action === "import" ? "Importar Excel de servicios" : "Exportar Excel de servicios"}</DialogTitle>
-      <DialogContent dividers><Stack spacing={2} pt={1}>
-        <Typography variant="overline" fontWeight={800}>Servicios disponibles</Typography><Typography color="text.secondary">Selecciona el tipo de servicio.</Typography>
-        <Box sx={{ borderLeft: "4px solid #9333ea", bgcolor: "action.hover", p: 2 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1} mb={1}><Stack direction="row" spacing={1} alignItems="center"><DirectionsBusRoundedIcon sx={{ color: "#9333ea" }} /><Typography variant="h6">Tours</Typography></Stack><Chip label="Disponible" color="success" size="small" /></Stack>
-          <Typography variant="body2" color="text.secondary" mb={2}>Tours y paradas de esta sucursal.</Typography>
-          <Button fullWidth variant="contained" sx={colorButton(accent)} startIcon={action === "export" ? <FileDownloadRoundedIcon /> : <UploadFileRoundedIcon />} disabled={!validBranch || exporting} onClick={async () => {
-            if (action === "export") { await exportExcel(); }
-            else { setAction(null); setFile(null); setImages([]); setError(""); setResult(null); setOpen(true); }
-          }}>{exporting ? "Exportando…" : action === "import" ? "Importar tours" : "Exportar tours"}</Button>
-        </Box>
-        <Typography variant="overline" fontWeight={800}>Próximamente</Typography><Box sx={{ borderLeft: "4px solid #64748b", p: 2, bgcolor: "action.hover" }}>
-          <Typography fontWeight={700}>Más servicios próximamente</Typography>
-          <Typography variant="body2" color="text.secondary">Aquí estarán disponibles otros tipos de servicios.</Typography>
-        </Box>
-      </Stack></DialogContent>
-      <DialogActions><Button disabled={exporting} onClick={() => setAction(null)}>Cerrar</Button></DialogActions>
-    </Dialog>}
-    {open && <Dialog key={branchId} open fullWidth maxWidth="sm" fullScreen={mobile} sx={dialogStyle} onClose={busy ? undefined : () => setOpen(false)} PaperProps={{ component: "form", onSubmit: submit }}>
-      <DialogTitle sx={{ bgcolor: importColor, color: "#fff", fontWeight: 800 }}>Importar tours desde Excel</DialogTitle>
+    {open && <Dialog key={branchId} open fullWidth maxWidth="sm" fullScreen={mobile} sx={dialogStyle} onClose={busy ? undefined : () => setOpen(false)} PaperProps={{ component: "form", onSubmit: submit, sx: { bgcolor: "#fff", color: "#172033" } }}>
+      <DialogTitle sx={{ p: 3, background: "linear-gradient(120deg, #ede9fe, #ccfbf1)", color: "#172033", fontWeight: 800, fontSize: 23 }}>Importar tours desde Excel<Typography variant="body2">Importa tus tours y paradas con el formato del sistema.</Typography></DialogTitle>
       <DialogContent dividers><Stack spacing={2} pt={1}>
         {error && <Alert severity="error">{error}</Alert>}
-        {!result ? <>
+        {busy ? <Box sx={{ py: 3, textAlign: "center" }} aria-busy="true">
+          <Typography sx={{ fontSize: 22, fontWeight: 800 }}>Importación de tours</Typography>
+          <Box sx={{ position: "relative", width: 152, height: 152, mx: "auto", my: 3 }}>
+            <CircularProgress size={152} thickness={2.5} variant={phase === "uploading" && progress !== null ? "determinate" : "indeterminate"} value={progress || 0} sx={{ color: importColor }} />
+            <Box component="img" src="/assets/logo1.png" alt="Mi Tienda en Línea MX" sx={{ position: "absolute", inset: "20%", width: "60%", height: "60%", objectFit: "contain" }} />
+          </Box>
+          <Typography role="status" aria-live="polite" sx={{ color: importColor, fontWeight: 750 }}>{phase === "refreshing" ? "Actualizando tus tours…" : phase === "processing" ? "Importando tus tours…" : "Subiendo archivos" + (progress !== null ? " · " + progress + "%" : "…")}</Typography>
+          <LinearProgress variant={phase === "uploading" && progress !== null ? "determinate" : "indeterminate"} value={progress || 0} sx={{ my: 2, bgcolor: "#f5f3ff", "& .MuiLinearProgress-bar": { bgcolor: importColor } }} />
+          <Typography variant="body2">Mantén esta ventana abierta hasta que termine.</Typography>
+        </Box> : !result ? <>
+          <Box sx={{ p: 2, borderRadius: 3, bgcolor: "#f5f3ff", border: "2px solid #6d28d9" }}><Typography fontWeight={750}>Importación de tours</Typography><Typography variant="body2">Un solo formato Excel con las hojas Tours y Paradas.</Typography></Box>
           <Typography variant="overline" fontWeight={800}>1. Archivo de tours</Typography>
-          <Button component="label" variant="outlined" startIcon={<UploadFileRoundedIcon />} sx={{ minHeight: 44 }} disabled={busy}>Seleccionar Excel<input hidden type="file" accept=".xlsx" onChange={(e) => setFile(e.target.files?.[0] || null)} /></Button>
+          <ImportFileDropZone onFiles={receiveFiles} disabled={busy || !validBranch} color={importColor} label="Arrastrar o pegar Excel e imágenes de tours">
+          <Button component="label" variant="outlined" startIcon={<UploadFileRoundedIcon />} sx={{ minHeight: 88, border: "2px dashed #cbd5e1", borderRadius: 3, color: importColor }} disabled={busy}>Seleccionar Excel<input hidden type="file" accept=".xlsx" onChange={(e) => { receiveFiles(Array.from(e.target.files || [])); e.target.value = ""; }} /></Button>
           <Typography variant="body2">{file?.name || "Ningún XLSX seleccionado"} · Máximo 20 MB</Typography>
-          <Typography variant="overline" fontWeight={800}>2. Imágenes opcionales</Typography><Button component="label" variant="outlined" startIcon={<ImageRoundedIcon />} sx={{ minHeight: 44 }} disabled={busy}>Seleccionar imágenes (opcional)<input hidden type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.heif,.heic,.svg,.bmp,.tif,.tiff" onChange={(e) => setImages(Array.from(e.target.files || []))} /></Button>
+          <Typography variant="overline" fontWeight={800}>2. Imágenes opcionales</Typography><Button component="label" variant="outlined" startIcon={<ImageRoundedIcon />} sx={{ minHeight: 44 }} disabled={busy}>Seleccionar imágenes (opcional)<input hidden type="file" multiple accept=".jpg,.jpeg,.png,.webp,.gif,.avif,.heif,.heic,.svg,.bmp,.tif,.tiff" onChange={(e) => { receiveFiles(Array.from(e.target.files || [])); e.target.value = ""; }} /></Button>
           <Typography variant="body2">{images.length} imágenes seleccionadas · Máximo 50 archivos, 20 MB por imagen</Typography>
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>{images.map((image, index) => <Chip sx={{ maxWidth: "100%", "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} key={`${image.name}-${index}`} label={image.name} onDelete={busy ? undefined : () => setImages((current) => current.filter((_, i) => i !== index))} />)}</Box>
+          </ImportFileDropZone>
           <Alert severity="info"><Typography fontWeight={700}>Formato esperado</Typography><Typography variant="body2">Las columnas deben seguir este orden.</Typography><Typography variant="body2"><b>Tours:</b> Nombre, Descripción, Precio, Fecha, Hora, Origen, Destino, Capacidad, Anticipo, Imagen, Visible.</Typography><Typography variant="body2"><b>Paradas:</b> Tour, Fecha, Parada, Hora, Referencia.</Typography><Typography variant="body2" mt={1}>El nombre indicado en la columna Imagen debe coincidir con el nombre del archivo de imagen seleccionado. Las paradas se relacionan por Tour y Fecha. El anticipo va de 0 a 100; Visible acepta Sí o No.</Typography></Alert>
         </> : <>
           <Alert severity={result.partial || result.summary.errors || result.summary.duplicates ? "warning" : "success"}>{result.partial ? "Importación parcial" : "Importación finalizada"}{result.message && <Typography variant="body2">{result.message}</Typography>}</Alert>
@@ -140,7 +157,7 @@ export default function TourExcelActions({ branchId, onImported }) {
           {[["Duplicado", result.duplicates, "warning"], ["Error", result.errors, "error"]].flatMap(([label, rows, severity]) => rows.map((row, index) => <Alert key={`${label}-${index}`} severity={severity}><Typography fontWeight={700}>Fila {row.row}{row.name ? ` · ${row.name}` : ""}</Typography>{label}: {row.message}{row.date && <Typography variant="body2">{row.date} {row.time}</Typography>}</Alert>))}
         </>}
       </Stack></DialogContent>
-      <DialogActions><Button disabled={busy} onClick={() => setOpen(false)}>{result ? "Cerrar" : "Cancelar"}</Button>{!result && <Button type="submit" variant="contained" startIcon={<UploadFileRoundedIcon />} sx={colorButton(importColor)} disabled={busy || !file || !validBranch}>{busy ? "Importando…" : "Importar"}</Button>}</DialogActions>
+      <DialogActions><Button disabled={busy} onClick={() => setOpen(false)}>{result ? "Cerrar" : "Cancelar"}</Button>{result && !busy && <Button onClick={() => { setResult(null); setError(""); }}>Nueva importación</Button>}{!result && <Button type="submit" variant="contained" startIcon={<UploadFileRoundedIcon />} sx={colorButton(importColor)} disabled={busy || !file || !validBranch}>{busy ? "Importando…" : "Importar"}</Button>}</DialogActions>
     </Dialog>}
   </>;
 }

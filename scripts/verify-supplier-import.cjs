@@ -64,7 +64,9 @@ async function main() {
     compiled._compile(code, filename);
     return compiled.exports.default;
   };
+  const DropZone = compile("src/components/common/ImportFileDropZone.jsx", {});
   const ImportModal = compile("src/components/restocks/ImportSuppliersModal.jsx", {
+    "../common/ImportFileDropZone": DropZone,
     "../../config/axiosClient": axios,
     "../products-list/importPreview.mjs": preview,
     "../products-list/importResult.mjs": results,

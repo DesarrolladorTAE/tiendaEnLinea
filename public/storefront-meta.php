@@ -185,7 +185,9 @@ function sf_serve(): void
 {
     header('Content-Type: text/html; charset=UTF-8');
     header('Cache-Control: no-cache');
-    $html = @file_get_contents(__DIR__ . '/index.html');
+    // Keep the marketing homepage out of store/product HTML after landing prerender.
+    $shell = is_file(__DIR__ . '/spa.html') ? '/spa.html' : '/index.html';
+    $html = @file_get_contents(__DIR__ . $shell);
     if ($html === false) { http_response_code(503); echo 'Publica el build completo para cargar la tienda.'; return; }
     $route = sf_route($_SERVER['REQUEST_URI'] ?? '/', $_SERVER['HTTP_HOST'] ?? '');
     if ($route === null) { http_response_code(404); echo $html; return; }

@@ -7,9 +7,9 @@ export default function DepartureCard({ departure, mode, onView, onEdit, onCance
   const routeName = route?.name || [route?.origin, route?.destination].filter(Boolean).join(" → ") || "Sin ruta";
   const state = DEPARTURE_STATUSES.find(([key]) => key === departure.status)?.[1] || departure.status || "Sin estado";
   const color = departure.status === "cancelled" ? "error" : departure.status === "completed" ? "success" : departure.status === "boarding" ? "warning" : "info";
-  return <Card variant="outlined" sx={{ height: "100%", borderRadius: 3, bgcolor: "#fff", color: "#171b20" }}>
+  return <Card variant="outlined" sx={{ height: "100%", borderRadius: 3, bgcolor: "#fff", color: "#171b20", borderColor: "rgba(0,0,0,.1)", boxShadow: "0 4px 16px rgba(0,0,0,.04)" }}>
     <CardContent><Stack spacing={2}>
-      <Stack direction="row" justifyContent="space-between" gap={1} flexWrap="wrap">
+      <Stack direction="row" justifyContent="space-between" gap={1} flexWrap="wrap" sx={{ bgcolor: "#fff9eb", borderLeft: "4px solid #f9b233", borderRadius: 2, p: 1.5 }}>
         <Box><Typography variant="h6" fontWeight={800}>{departureDate(departure.departure_date)}</Typography><Typography fontWeight={700}>{departure.departure_time?.slice(0, 5) || "—"}</Typography></Box>
         <Chip label={state} color={color} size="small" />
       </Stack>

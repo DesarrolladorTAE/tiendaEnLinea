@@ -10,6 +10,7 @@ import "./styles/index.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import ScrollTopButton from "./components/ScrollTopButton";
+import LandingSeo from "./LandingSeo";
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -89,6 +90,7 @@ export default function LandingPage() {
         .filter(Boolean)
         .join(" ")}
     >
+      <LandingSeo pathname={location.pathname} />
       <Navbar
         scrolled={scrolled}
         transparent={usesTransparentNavbar}

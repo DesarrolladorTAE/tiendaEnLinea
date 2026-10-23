@@ -42,7 +42,8 @@ const formatMoney = (value) => {
   }).format(Number(value));
 };
 
-const Plans = () => {
+const Plans = ({ preview = false }) => {
+  const Heading = preview ? "h2" : "h1";
   const [planes, setPlanes] = useState([]);
   const [activeTab, setActiveTab] = useState("monthly");
 
@@ -286,10 +287,10 @@ const Plans = () => {
               Planes flexibles para tu negocio
             </div>
 
-            <h1 className="plans-hero__title">
+            <Heading className="plans-hero__title">
               Un plan para cada etapa de
               <span> tu negocio.</span>
-            </h1>
+            </Heading>
 
             <p className="plans-hero__description">
               Elige las herramientas que necesitas hoy
