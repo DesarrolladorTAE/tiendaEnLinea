@@ -28,7 +28,7 @@ const LoginOverlayResponsiveMUI = () => {
     const token =
       localStorage.getItem("TOKEN") || localStorage.getItem("POS_TOKEN");
     if (token) {
-      navigate("/home-fashion-three", { replace: true });
+      navigate("/inicio", { replace: true });
     }
   }, [navigate]);
 

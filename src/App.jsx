@@ -22,6 +22,9 @@ import AdminRoutes from "./routes/AdminRoutes";
 import AdminLayout from "./layouts/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import axios from "../src/axiosConfig.js";
+import SEO from "./components/seo";
+import { LEGACY_ROUTES } from "./utils/publicSeo.mjs";
+import { MARKETING_PAGES } from "./content/marketing.mjs";
 
 // Home pages
 const HomeFashionThree = lazy(() =>
@@ -52,6 +55,8 @@ const RecargarSaldo = lazy(() => import("./pages/other/RecargarSaldo.jsx"));
 const HistorialRecargas = lazy(() =>
   import("./pages/other/HistorialRecargas.jsx")
 );
+const Integraciones = lazy(() => import("./pages/other/Integraciones.jsx"));
+const PublicPackages = lazy(() => import("./pages/other/PublicPackages.jsx"));
 const Agentes = lazy(() => import("./pages/other/Agentes.jsx"));
 const Loginmui = lazy(() => import("./pages/other/loginmui.jsx"));
 const InicioAgente = lazy(() => import("./pages/home/InicioAgente.jsx"));
@@ -73,13 +78,13 @@ const AppContent = () => {
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Detecta si estamos en la ruta de login
-  const isLoginRoute = location.pathname === "/loginmui";
+  const isLoginRoute = location.pathname === "/iniciar-sesion";
 
   // Cierra sesión y oculta el modal
   const handleLogout = () => {
     setShowTermsModal(false);
     dispatch(clearUser());
-    navigate("/loginmui");
+    navigate("/iniciar-sesion");
   };
 
   // Carga usuario al iniciar
@@ -124,6 +129,7 @@ const AppContent = () => {
 
   return (
     <ScrollToTop>
+      <SEO />
       <ToastContainer
         position="top-right"
         autoClose={4000}
@@ -155,27 +161,34 @@ const AppContent = () => {
         }
       >
         <Routes>
+          {Object.entries(LEGACY_ROUTES).map(([from, to]) => <Route key={from} path={from} element={<Navigate to={{ pathname: to, search: location.search, hash: location.hash }} replace />} />)}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/home-fashion-three" element={<HomeFashionThree />} />
+          {Object.keys(MARKETING_PAGES).filter(path => path !== "/").map(path => <Route key={path} path={path} element={<LandingPage />} />)}
+          <Route path="/paquetes" element={<PublicPackages />} />
+          <Route path="/paquetes/companias/:companySlug" element={<PublicPackages />} />
+          <Route path="/paquetes/recargas/:airtimeSlug" element={<PublicPackages />} />
+          <Route path="/paquetes/:slug" element={<PublicPackages />} />
+          <Route path="/inicio" element={<HomeFashionThree />} />
           <Route
-            path="/shop-grid-right-sidebar"
+            path="/recargas"
             element={<ShopGridRightSidebar />}
           />
-          <Route path="/shop-grid-paquet" element={<ShopGridPaquet />} />
+          <Route path="/ventas/paquetes" element={<ShopGridPaquet />} />
           <Route path="/product/:id" element={<Product />} />
           {/* <Route path="/contact" element={<Contact />} /> */}
-          <Route path="/my-account" element={<MyAccount />} />
-          <Route path="/wallet" element={<Wallet />} />
-          <Route path="/saldo-recarga" element={<SaldoRecarga />} />
-          <Route path="/mycontacts" element={<MyContacts />} />
-          <Route path="/wishlist" element={<Wishlist />} />
-          <Route path="/compare" element={<Compare />} />
-          <Route path="/historial-recargas" element={<HistorialRecargas />} />
-          <Route path="/agent-mipages" element={<Agentes />} />
-          <Route path="/landing" element={<LandingPage />} />
+          <Route path="/mi-cuenta" element={<MyAccount />} />
+          <Route path="/monedero" element={<Wallet />} />
+          <Route path="/recargar-saldo" element={<SaldoRecarga />} />
+          <Route path="/contactos" element={<MyContacts />} />
+          <Route path="/favoritos" element={<Wishlist />} />
+          <Route path="/comparar" element={<Compare />} />
+          <Route path="/ventas" element={<HistorialRecargas />} />
+          <Route path="/tokens" element={<Integraciones />} />
+          <Route path="/agentes" element={<Agentes />} />
+          <Route path="/landing" element={<Navigate to="/" replace />} />
           <Route path="/terminos-condiciones" element={<LegalTerms />} />
           <Route
-            path="/loginmui"
+            path="/iniciar-sesion"
             element={
               <PublicOnlyRoute>
                 <Loginmui />

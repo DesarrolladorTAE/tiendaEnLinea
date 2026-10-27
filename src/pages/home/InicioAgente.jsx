@@ -12,7 +12,7 @@ const HomeFashionThree = () => {
     <Fragment>
       <SEO
         titleTemplate="Inicio"
-        description="Fashion home of flone react minimalist eCommerce template."
+        description="Administra tus recargas y consulta las herramientas para agentes de TeLoRecargo."
       />
       <LayoutOne
         headerContainerClass="container-fluid"

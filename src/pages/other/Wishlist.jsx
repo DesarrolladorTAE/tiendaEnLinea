@@ -134,7 +134,7 @@ const Wishlist = () => {
               <Typography variant="h6" gutterBottom mt={2}>
                 No tienes productos en favoritos.
               </Typography>
-              <Button variant="outlined" component={Link} to="/shop-grid-right-sidebar">
+              <Button variant="outlined" component={Link} to="/recargas">
                 Agregar productos
               </Button>
             </Box>
@@ -143,7 +143,7 @@ const Wishlist = () => {
 
         {wishlistItems.length > 0 && (
           <Box display="flex" flexDirection={isMobile ? "column" : "row"} justifyContent="space-between" mt={3} px={3} gap={2}>
-            <Button component={Link} to="/shop-grid-right-sidebar" variant="outlined">
+            <Button component={Link} to="/recargas" variant="outlined">
               Seguir comprando
             </Button>
             <Button color="error" variant="contained" onClick={() => dispatch(deleteAllFromWishlist())}>

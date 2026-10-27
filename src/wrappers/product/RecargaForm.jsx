@@ -28,6 +28,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { updateSaldo } from "../../store/slices/userSlice";
 import axios from "../../axiosConfig";
 import { motion } from "framer-motion";
+import PackageShare from "../../components/packages/PackageShare";
 
 const BLUE_GRADIENT =
   "linear-gradient(90deg, #00A8FF 0%, #007BFF 55%, #0056D2 100%)";
@@ -452,6 +453,7 @@ const RecargaForm = ({ carrier, productos, onNext, onCancel }) => {
                     </Typography>
                   </Grid>
                 </Grid>
+                {String(producto.Categoria || carrier?.Categoria).toLowerCase() === "paquetes" && <PackageShare product={producto} />}
               </Paper>
             </motion.div>
           </Collapse>

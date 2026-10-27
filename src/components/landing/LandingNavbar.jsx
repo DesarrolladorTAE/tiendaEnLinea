@@ -96,7 +96,7 @@ const LandingNavbar = () => {
 
             <Button
               component={RouterLink}
-              to="/loginmui"
+              to="/iniciar-sesion"
               variant="contained"
               sx={{
                 backgroundColor: "#00B4D8",
@@ -207,7 +207,7 @@ const LandingNavbar = () => {
             Soporte de 9am a 6pm (L-V)
           </Typography>
           <Typography variant="body2" color="gray">
-            contacto@telorecargo.com
+            contacto@tecnologiasadministrativas.com
           </Typography>
           <Typography variant="caption" color="gray" display="block" mt={2}>
             © {new Date().getFullYear()} TeLoRecargo

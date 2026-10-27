@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import axios from "../../axiosConfig";
 import withAuth from "../../components/withAuth";
 import LayoutOne from "../../layouts/LayoutOne";
@@ -288,6 +288,9 @@ const HistorialRecargas = () => {
         />
 
         <Container sx={{ position: "relative", zIndex: 1, pb: 8 }}>
+          <Button component={Link} to="/tokens" variant="outlined" sx={{ mb: 2 }}>
+            Tokens
+          </Button>
           <Box sx={{ mb: 2 }}>
             <Typography
               sx={{

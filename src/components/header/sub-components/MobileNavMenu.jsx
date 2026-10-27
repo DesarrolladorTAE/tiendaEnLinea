@@ -27,7 +27,7 @@ const MobileNavMenu = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link to={"/home-fashion-three"}>
+                  <Link to={"/inicio"}>
                     {t("home_fashion_three")}
                   </Link>
                 </li>
@@ -262,7 +262,7 @@ const MobileNavMenu = () => {
                 </li>
                 <li>
                   <Link
-                    to={"/shop-grid-right-sidebar"}
+                    to={"/recargas"}
                   >
                     {t("shop_grid_right_sidebar")}
                   </Link>
@@ -357,17 +357,17 @@ const MobileNavMenu = () => {
               </Link>
             </li>
             <li>
-              <Link to={"/wishlist"}>
+              <Link to={"/favoritos"}>
                 {t("wishlist")}
               </Link>
             </li>
             <li>
-              <Link to={"/compare"}>
+              <Link to={"/comparar"}>
                 {t("compare")}
               </Link>
             </li>
             <li>
-              <Link to={"/my-account"}>
+              <Link to={"/mi-cuenta"}>
                 {t("my_account")}
               </Link>
             </li>

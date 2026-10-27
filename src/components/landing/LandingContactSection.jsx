@@ -85,7 +85,7 @@ const LandingContactSection = () => {
                 <Typography variant="subtitle1" fontWeight="bold">
                   Email
                 </Typography>
-                <Typography>contacto@telorecargo.com</Typography>
+                <Typography>contacto@tecnologiasadministrativas.com</Typography>
               </Box>
             </Box>
 
@@ -106,10 +106,10 @@ const LandingContactSection = () => {
                   Ubicación
                 </Typography>
                 <Typography>
-                  Carretera Cayaco Puerto Marques Oficina 106 A,
+                  C. 24 202, Las Cruces, 39770,
                 </Typography>
                 <Typography>
-                  El Coloso, 39810, Acapulco de Juárez, Gro.
+                  Acapulco de Juárez, Guerrero.
                 </Typography>
               </Box>
             </Box>

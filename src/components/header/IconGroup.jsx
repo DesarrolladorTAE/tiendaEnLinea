@@ -55,7 +55,7 @@ const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
     setShowByeModal(true);
     setTimeout(() => {
       setShowByeModal(false);
-      navigate("/loginmui", { replace: true });
+      navigate("/iniciar-sesion", { replace: true });
     }, 3000);
   };
 
@@ -76,7 +76,7 @@ const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
           <Tooltip title="Comparar">
             <IconButton
               component={Link}
-              to="/compare"
+              to="/comparar"
               sx={{ color: iconColor }}
             >
               <Badge badgeContent={compareItems.length || 0} color="primary">
@@ -88,7 +88,7 @@ const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
           <Tooltip title="Favoritos">
             <IconButton
               component={Link}
-              to="/wishlist"
+              to="/favoritos"
               sx={{ color: iconColor }}
             >
               <Badge badgeContent={wishlistItems.length || 0} color="secondary">
@@ -158,7 +158,7 @@ const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
           <Tooltip title="Recargar Saldo">
             <IconButton
               component={Link}
-              to="/saldo-recarga"
+              to="/recargar-saldo"
               sx={{ color: iconColor }}
             >
               <WalletIcon />
@@ -183,14 +183,14 @@ const IconGroup = ({ isMobile = false, iconColor = "black" }) => {
           open={Boolean(anchorAccount)}
           onClose={() => setAnchorAccount(null)}
         >
-          <MenuItem component={Link} to="/my-account">
+          <MenuItem component={Link} to="/mi-cuenta">
             <ListItemIcon>
               <PersonIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Mi Cuenta</ListItemText>
           </MenuItem>
 
-          <MenuItem component={Link} to="/agent-mipages">
+          <MenuItem component={Link} to="/agentes">
             <ListItemIcon>
               <Group fontSize="small" />
             </ListItemIcon>

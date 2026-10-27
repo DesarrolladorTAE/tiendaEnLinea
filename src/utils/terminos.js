@@ -171,7 +171,7 @@ TeLoRecargo.com se reserva el derecho de modificar estos términos y el esquema 
     {
       titulo: "📬 2️⃣1️⃣ Contacto",
       contenido:
-        "📧 contacto@telorecargo.com\n📱 Soporte disponible en WhatsApp desde tu sesión.\nGracias por confiar en una solución 100% mexicana.\nTeLoRecargo.com® – Recarga, factura y gana.",
+        "📧 contacto@tecnologiasadministrativas.com\n📱 Soporte disponible en WhatsApp desde tu sesión.\nGracias por confiar en una solución 100% mexicana.\nTeLoRecargo.com® – Recarga, factura y gana.",
     },
   ],
 };

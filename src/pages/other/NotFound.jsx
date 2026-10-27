@@ -11,8 +11,9 @@ const NotFound = () => {
   return (
     <Fragment>
       <SEO
-        titleTemplate="Not Found"
-        description="404 of flone react minimalist eCommerce template."
+        titleTemplate="Página no encontrada"
+        description="Esta página no está disponible. Consulta el catálogo de paquetes de TeLoRecargo."
+        noindex
       />
       <LayoutOne headerTop="visible">
         {/* breadcrumb */}

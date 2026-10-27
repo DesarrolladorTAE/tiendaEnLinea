@@ -15,6 +15,7 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import "leaflet/dist/leaflet.css";
 import { CssBaseline } from "@mui/material";
+import { HelmetProvider } from "react-helmet-async";
 import NavidadToggle from "./components/NavidadToggle";
 
 // ✅ Registro del Service Worker (solo en producción)
@@ -45,7 +46,7 @@ root.render(
           {/* 🎄 Botón y nieve global */}
       {/* <NavidadToggle /> */}
       <CssBaseline />
-      <App />
+      <HelmetProvider><App /></HelmetProvider>
     </PersistProvider>
   </Provider>
 );

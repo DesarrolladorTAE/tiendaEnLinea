@@ -30,7 +30,7 @@ const Contact = () => {
             </Button>
             <Button
               component={RouterLink}
-              to="/loginmui"
+              to="/iniciar-sesion"
               variant="contained"
               sx={{
                 bgcolor: "#00B4D8",
@@ -79,7 +79,7 @@ const Contact = () => {
       <div className="contact-area pt-100 pb-100">
         <div className="container">
           <div className="contact-map mb-10">
-            <GoogleMap lat={16.84769437234485} lng={-99.81158903334735} />
+            <GoogleMap />
           </div>
           <div className="custom-row-2">
             <div className="col-12 col-lg-4 col-md-5">
@@ -99,7 +99,7 @@ const Contact = () => {
                   </div>
                   <div className="contact-info-dec">
                     <p>
-                      <a href="mailto:contacto@telorecargo.com">contacto@telorecargo.com</a>
+                      <a href="mailto:contacto@tecnologiasadministrativas.com">contacto@tecnologiasadministrativas.com</a>
                     </p>
                     <p>
                       <a href="https://telorecargo.com">
@@ -113,9 +113,9 @@ const Contact = () => {
                     <i className="fa fa-map-marker" />
                   </div>
                   <div className="contact-info-dec">
-                    <p>Carr. Cayaco - Puerto Marqués,</p>
-                    <p>Piedra Roja, El Coloso,</p>
-                    <p>39810 Acapulco de Juárez, Gro. </p>
+                    <p>C. 24 202, Las Cruces,</p>
+                    <p>39770 Acapulco de Juárez,</p>
+                    <p>Guerrero.</p>
                   </div>
                 </div>
                 <div className="contact-social text-center">

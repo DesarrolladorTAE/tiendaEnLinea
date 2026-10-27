@@ -166,7 +166,7 @@ export default HeaderOne;
 
 //             {/* CENTRO: Logo */}
 //             <Box sx={{ flexGrow: 1, textAlign: "center" }}>
-//               <Link to="/home-fashion-three">
+//               <Link to="/inicio">
 //                 <Box
 //                   component="img"
 //                   src="/assets/img/logo/logo.png"
@@ -283,7 +283,7 @@ export default HeaderOne;
 
 //           {/* Logo */}
 //           <Box sx={{ display: "flex", justifyContent: "center", mb: 1, mt: 4 }}>
-//             <Link to="/home-fashion-three" onClick={toggleDrawer}>
+//             <Link to="/inicio" onClick={toggleDrawer}>
 //               <Box
 //                 component="img"
 //                 src="/assets/img/logo/logo.png"

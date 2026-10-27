@@ -130,11 +130,11 @@ const Sidebar = ({ open, onClose, variant = "temporary" }) => {
     setShowByeModal(true);
     setTimeout(() => {
       setShowByeModal(false);
-      navigate("/loginmui");
+      navigate("/iniciar-sesion");
     }, 3000);
   };
 
-  const goToStore = () => navigate("/home-fashion-three");
+  const goToStore = () => navigate("/inicio");
 
   return (
     <>

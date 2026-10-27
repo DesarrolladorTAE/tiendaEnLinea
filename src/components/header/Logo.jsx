@@ -13,7 +13,7 @@ const Logo = ({ imageUrl, logoClass, height = 64, maxLogoHeight = 46 }) => (
       minWidth: 140,          // ✅ evita que el menú lo aplaste
     }}
   >
-    <Link to="/home-fashion-three" style={{ display: "inline-flex" }}>
+    <Link to="/inicio" style={{ display: "inline-flex" }}>
       <Box
         component="img"
         src={imageUrl}

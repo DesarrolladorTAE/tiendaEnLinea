@@ -8,11 +8,12 @@ const NavMenu = ({ menuWhiteClass, sidebarMenu }) => {
   const { t } = useTranslation();
 
   const links = [
-    { to: "/home-fashion-three", label: t("Inicio") },
-    { to: "/shop-grid-right-sidebar", label: t("Recargas") },
-    { to: "/shop-grid-paquet", label: t("Paquetes") },
-    { to: "/mycontacts", label: t("Contactos") },
-    { to: "/historial-recargas", label: t("Ventas") },
+    { to: "/inicio", label: t("Inicio") },
+    { to: "/recargas", label: t("Recargas") },
+    { to: "/ventas/paquetes", label: t("Paquetes") },
+    { to: "/contactos", label: t("Contactos") },
+    { to: "/ventas", label: t("Ventas") },
+    { to: "/tokens", label: "Tokens" },
   ];
 
   return (

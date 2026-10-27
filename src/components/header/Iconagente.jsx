@@ -40,7 +40,7 @@ const IconGroup = ({ iconWhiteClass }) => {
 
     if (!hasToken) {
       dispatch(clearUser());
-      navigate("/loginmui", { replace: true });
+      navigate("/iniciar-sesion", { replace: true });
       return;
     }
 
@@ -57,7 +57,7 @@ const IconGroup = ({ iconWhiteClass }) => {
       setShowByeModal(true);
       setTimeout(() => {
         setShowByeModal(false);
-        navigate("/loginmui", { replace: true });
+        navigate("/iniciar-sesion", { replace: true });
       }, 3000);
     } catch (error) {
       // También limpiar en caso de error
@@ -69,7 +69,7 @@ const IconGroup = ({ iconWhiteClass }) => {
       setShowByeModal(true);
       setTimeout(() => {
         setShowByeModal(false);
-        navigate("/loginmui", { replace: true });
+        navigate("/iniciar-sesion", { replace: true });
       }, 3000);
     }
   };
@@ -88,13 +88,13 @@ const IconGroup = ({ iconWhiteClass }) => {
         {/* 🖥️ SOLO VISIBLE EN ESCRITORIO */}
         <div className="d-none d-lg-flex align-items-center gap-3">
           {/* <div className="same-style header-compare">
-            <Link to={"/compare"}>
+            <Link to={"/comparar"}>
               <i className="pe-7s-shuffle" />
               <span className="count-style">{compareItems?.length || 0}</span>
             </Link>
           </div>
           <div className="same-style header-wishlist">
-            <Link to={"/wishlist"}>
+            <Link to={"/favoritos"}>
               <i className="pe-7s-like" />
               <span className="count-style">{wishlistItems?.length || 0}</span>
             </Link>
@@ -122,9 +122,9 @@ const IconGroup = ({ iconWhiteClass }) => {
             </button>
             <div className="account-dropdown">
               <ul>
-                {/* <li><Link to={"/my-account"}>Mi Cuenta</Link></li>
-                <li><Link to={"/agent-mipages"}>Agentes</Link></li>
-                <li><Link to={"/wallet"}>Tarjetas</Link></li>
+                {/* <li><Link to={"/mi-cuenta"}>Mi Cuenta</Link></li>
+                <li><Link to={"/agentes"}>Agentes</Link></li>
+                <li><Link to={"/monedero"}>Tarjetas</Link></li>
                 <li><Link to={"*"}>Librerías</Link></li>
                 {user?.role === "superadmin" && (
                   <li><Link to={"/admin/dashboard"}>Administración</Link></li>
@@ -226,14 +226,14 @@ export default IconGroup;
 //     <Box>
 //       <List>
 //         <ListItem disablePadding>
-//           <ListItemButton component={RouterLink} to="/compare" onClick={onItemClick}>
+//           <ListItemButton component={RouterLink} to="/comparar" onClick={onItemClick}>
 //             <ListItemIcon><Compare /></ListItemIcon>
 //             <ListItemText primary={`Comparar (${compareItems?.length || 0})`} />
 //           </ListItemButton>
 //         </ListItem>
 
 //         <ListItem disablePadding>
-//           <ListItemButton component={RouterLink} to="/wishlist" onClick={onItemClick}>
+//           <ListItemButton component={RouterLink} to="/favoritos" onClick={onItemClick}>
 //             <ListItemIcon><Favorite /></ListItemIcon>
 //             <ListItemText primary={`Favoritos (${wishlistItems?.length || 0})`} />
 //           </ListItemButton>
@@ -247,7 +247,7 @@ export default IconGroup;
 //         </ListItem> */}
 
 //         <ListItem disablePadding>
-//           <ListItemButton component={RouterLink} to="/mycontacts" onClick={onItemClick}>
+//           <ListItemButton component={RouterLink} to="/contactos" onClick={onItemClick}>
 //             <ListItemIcon><People /></ListItemIcon>
 //             <ListItemText primary="Mis Contactos" />
 //           </ListItemButton>
@@ -270,21 +270,21 @@ export default IconGroup;
 
 //       <List>
 //         <ListItem disablePadding>
-//           <ListItemButton component={RouterLink} to="/my-account" onClick={onItemClick}>
+//           <ListItemButton component={RouterLink} to="/mi-cuenta" onClick={onItemClick}>
 //             <ListItemIcon><Person /></ListItemIcon>
 //             <ListItemText primary="Mi Cuenta" />
 //           </ListItemButton>
 //         </ListItem>
 
 //         <ListItem disablePadding>
-//           <ListItemButton component={RouterLink} to="/wallet" onClick={onItemClick}>
+//           <ListItemButton component={RouterLink} to="/monedero" onClick={onItemClick}>
 //             <ListItemIcon><AccountBalanceWallet /></ListItemIcon>
 //             <ListItemText primary="Tarjetas" />
 //           </ListItemButton>
 //         </ListItem>
 
 //         <ListItem disablePadding>
-//           <ListItemButton component={RouterLink} to="/historial-recargas" onClick={onItemClick}>
+//           <ListItemButton component={RouterLink} to="/ventas" onClick={onItemClick}>
 //             <ListItemIcon><ShoppingBag /></ListItemIcon>
 //             <ListItemText primary="Mis Compras" />
 //           </ListItemButton>

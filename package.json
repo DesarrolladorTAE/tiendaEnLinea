@@ -65,6 +65,11 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "seo:generate": "node scripts/generate-public-seo.mjs",
+    "test:seo": "node scripts/test-public-seo.mjs",
+    "test:marketing": "node scripts/test-marketing.mjs",
+    "test:marketing:dev": "node scripts/test-marketing-vite.mjs",
+    "test:catalog": "node scripts/test-catalog.mjs",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -86,6 +91,7 @@
     ]
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@vitejs/plugin-react": "^4.7.0",
     "redux-devtools-extension": "^2.13.8",
     "sass": "^1.79.1",

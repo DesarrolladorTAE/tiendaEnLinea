@@ -20,8 +20,8 @@ const Product = () => {
   return (
     <Fragment>
       <SEO
-        titleTemplate="Product Page"
-        description="Product Page of flone react minimalist eCommerce template."
+        titleTemplate={product?.name || "Detalle del producto"}
+        description={product?.shortDescription || "Consulta los detalles del producto en TeLoRecargo."}
       />
 
       <LayoutOne headerTop="visible">

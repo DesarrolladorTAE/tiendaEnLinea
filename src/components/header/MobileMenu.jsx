@@ -33,7 +33,7 @@ const MobileMenu = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     dispatch(clearUser());
-    navigate("/login");
+    navigate("/iniciar-sesion");
     closeMobileMenu();
   };
 
@@ -49,26 +49,27 @@ const MobileMenu = () => {
 
           <nav className="offcanvas-navigation">
             <ul>
-              <li><Link to="/home-fashion-three" onClick={closeMobileMenu}>Inicio</Link></li>
-              <li><Link to="/shop-grid-right-sidebar" onClick={closeMobileMenu}>Recargas</Link></li>
-              <li><Link to="/shop-grid-paquet" onClick={closeMobileMenu}>Paquetes</Link></li>
-              <li><Link to="/mycontacts" onClick={closeMobileMenu}>Contactos</Link></li>
-              <li><Link to="/historial-recargas" onClick={closeMobileMenu}>Compras</Link></li>
-              <li><Link to="/wishlist" onClick={closeMobileMenu}>Favoritos ({wishlistItems?.length || 0})</Link></li>
-              <li><Link to="/compare" onClick={closeMobileMenu}>Comparar ({compareItems?.length || 0})</Link></li>
+              <li><Link to="/inicio" onClick={closeMobileMenu}>Inicio</Link></li>
+              <li><Link to="/recargas" onClick={closeMobileMenu}>Recargas</Link></li>
+              <li><Link to="/ventas/paquetes" onClick={closeMobileMenu}>Paquetes</Link></li>
+              <li><Link to="/contactos" onClick={closeMobileMenu}>Contactos</Link></li>
+              <li><Link to="/ventas" onClick={closeMobileMenu}>Compras</Link></li>
+              <li><Link to="/tokens" onClick={closeMobileMenu}>Tokens</Link></li>
+              <li><Link to="/favoritos" onClick={closeMobileMenu}>Favoritos ({wishlistItems?.length || 0})</Link></li>
+              <li><Link to="/comparar" onClick={closeMobileMenu}>Comparar ({compareItems?.length || 0})</Link></li>
               <li><Link to="/cart" onClick={closeMobileMenu}>Carrito ({cartItems?.length || 0})</Link></li>
               <li><Link to="/recargar-saldo" onClick={closeMobileMenu}>Recargar Saldo</Link></li>
               {user ? (
                 <>
-                  <li><Link to="/my-account" onClick={closeMobileMenu}>Mi Cuenta</Link></li>
-                  <li><Link to="/wallet" onClick={closeMobileMenu}>Tarjetas</Link></li>
+                  <li><Link to="/mi-cuenta" onClick={closeMobileMenu}>Mi Cuenta</Link></li>
+                  <li><Link to="/monedero" onClick={closeMobileMenu}>Tarjetas</Link></li>
                   {user.role === "superadmin" && (
                     <li><Link to="/admin/dashboard" onClick={closeMobileMenu}>Administración</Link></li>
                   )}
                   <li><Link to="/" onClick={handleLogout}>Cerrar Sesión</Link></li>
                 </>
               ) : (
-                <li><Link to="/login-register" onClick={closeMobileMenu}>Iniciar Sesión</Link></li>
+                <li><Link to="/iniciar-sesion" onClick={closeMobileMenu}>Iniciar Sesión</Link></li>
               )}
             </ul>
           </nav>

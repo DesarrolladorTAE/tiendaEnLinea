@@ -9,7 +9,7 @@ const AdminRoutes = () => {
   // Evita flicker/redirecciones hasta cargar sesión
   if (!sessionLoaded) return null; // o un spinner
 
-  if (!user) return <Navigate to="/loginmui" />;
+  if (!user) return <Navigate to="/iniciar-sesion" />;
   if (!["admin", "superadmin"].includes(user.role)) {
     return <Navigate to="/" />;
   }

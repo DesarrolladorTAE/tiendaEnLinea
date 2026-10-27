@@ -82,7 +82,7 @@ const LoginOverlay = () => {
         if (user.role === "superadmin") {
           navigate("/admin/dashboard");
         } else {
-          navigate("/home-fashion-three");
+          navigate("/inicio");
         }
       }, 3000);
     } catch (error) {

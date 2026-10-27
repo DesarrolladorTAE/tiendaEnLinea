@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Slider from "react-slick";
 import {
   Box,
+  Button,
   Typography,
   Paper,
   CircularProgress,
@@ -130,6 +131,7 @@ const LandingCarrierSection = () => {
         cualquier dispositivo de forma segura.
       </Typography>
 
+      <Box textAlign="center" sx={{ mb: 4 }}><Button component="a" href="/paquetes/" variant="contained" sx={{ borderRadius: 3, px: 3, py: 1.5 }}>Explorar paquetes y compartir beneficios</Button></Box>
       {loading ? (
         <Box textAlign="center" my={5}>
           <CircularProgress />

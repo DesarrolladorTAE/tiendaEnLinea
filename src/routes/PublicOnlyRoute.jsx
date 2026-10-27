@@ -9,7 +9,7 @@ const PublicOnlyRoute = ({ children }) => {
 
   if (!sessionLoaded) return null;
 
-  if ((isAuthenticated || token) && location.pathname === "/loginmui") {
+  if ((isAuthenticated || token) && location.pathname === "/iniciar-sesion") {
     const storedUser = JSON.parse(localStorage.getItem("user"));
     const role = storedUser?.role;
 
@@ -17,7 +17,7 @@ const PublicOnlyRoute = ({ children }) => {
       return <Navigate to="/admin/dashboard" replace />;
     }
 
-    return <Navigate to="/home-fashion-three" replace />;
+    return <Navigate to="/inicio" replace />;
   }
 
   return children;

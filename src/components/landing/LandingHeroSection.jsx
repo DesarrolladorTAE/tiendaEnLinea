@@ -105,7 +105,7 @@ const LandingHeroSectionResponsive = () => {
             
             <Button
               variant="contained"
-              onClick={() => navigate("/loginmui")}
+              onClick={() => navigate("/iniciar-sesion")}
               sx={{
                 backgroundColor: "#00B4D8",
                 px: 4,

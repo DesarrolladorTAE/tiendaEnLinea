@@ -6,6 +6,7 @@ import Breadcrumb from "../../wrappers/breadcrumb/Breadcrumb";
 import CarrierGrid from "../../wrappers/product/CarrierGrid";
 import withAuth from "../../components/withAuth";
 import axios from "../../axiosConfig";
+import { Button, Container } from "@mui/material";
 
 const ShopGridRightSidebar = () => {
   const [carriers, setCarriers] = useState([]);
@@ -39,6 +40,7 @@ const ShopGridRightSidebar = () => {
             { label: "Paquetes", path: pathname },
           ]}
         />
+          <Container sx={{ py: 2 }}><Button component="a" href="/paquetes/" variant="outlined">Ver catálogo público para compartir</Button></Container>
           <CarrierGrid carriers={carriers} />
       </LayoutOne>
     </Fragment>

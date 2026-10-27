@@ -143,7 +143,7 @@ const LandingFooterSection = ({ showLinks = true }) => {
               Soporte disponible de 9am a 5pm (L-V)
             </Typography>
             <Typography variant="body2" color="white" fontSize={16}>
-              contacto@telorecargo.com
+              contacto@tecnologiasadministrativas.com
             </Typography>
           </Grid>
         </Grid>

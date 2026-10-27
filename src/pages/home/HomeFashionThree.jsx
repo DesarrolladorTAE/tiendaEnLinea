@@ -16,7 +16,7 @@ const HomeFashionThree = () => {
     <Fragment>
       <SEO
         titleTemplate="Inicio"
-        description="Fashion home of flone react minimalist eCommerce template."
+        description="Accede al panel de TeLoRecargo para vender recargas, consultar tu saldo y administrar tu negocio."
       />
       <LayoutOne
         headerContainerClass="container-fluid"

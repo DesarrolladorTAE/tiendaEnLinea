@@ -160,7 +160,7 @@ const ModalTimbrado = ({ open, onClose, compra, onFacturada }) => {
             correctos. No podrás timbrar esta compra una segunda vez.
           </Typography>
           <Typography color="info.main" variant="body2">
-            Si presentas problemas, contacta a soporte contacto@telorecargo.com.
+            Si presentas problemas, contacta a soporte contacto@tecnologiasadministrativas.com.
           </Typography>
           <Typography color="info.main" variant="body2">
             Recibirás tu factura por correo electrónico una vez timbrada.

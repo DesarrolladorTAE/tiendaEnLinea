@@ -49,27 +49,27 @@ const LandingFooterSection = () => {
             </Typography>
             <Box display="flex" flexDirection="column" gap={0.5}>
               <Link
-                href="/home-fashion-three"
+                href="/inicio"
                 color="inherit"
                 underline="hover"
               >
                 Inicio
               </Link>
               <Link
-                href="/shop-grid-right-sidebar"
+                href="/recargas"
                 color="inherit"
                 underline="hover"
               >
                 Recargas
               </Link>
-              <Link href="/shop-grid-paquet" color="inherit" underline="hover">
+              <Link href="/ventas/paquetes" color="inherit" underline="hover">
                 Paquetes
               </Link>
-              <Link href="/mycontacts" color="inherit" underline="hover">
+              <Link href="/contactos" color="inherit" underline="hover">
                 Contactos
               </Link>
               <Link
-                href="/historial-recargas"
+                href="/ventas"
                 color="inherit"
                 underline="hover"
               >
@@ -166,7 +166,7 @@ const LandingFooterSection = () => {
               Soporte disponible de 9am a 5pm (L-V)
             </Typography>
             <Typography variant="body2" color="white" fontSize={16}>
-              contacto@telorecargo.com
+              contacto@tecnologiasadministrativas.com
             </Typography>
           </Grid>
         </Grid>

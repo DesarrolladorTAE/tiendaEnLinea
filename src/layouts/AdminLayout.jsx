@@ -21,7 +21,7 @@ const AdminLayout = () => {
   const { isAuthenticated, sessionLoaded } = useSelector((state) => state.user);
 
   if (!sessionLoaded) return null;
-  if (!isAuthenticated) return <Navigate to="/loginmui" replace />;
+  if (!isAuthenticated) return <Navigate to="/iniciar-sesion" replace />;
 
   useRealtimeUserData(5000);
 

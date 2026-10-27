@@ -42,7 +42,7 @@ const HeaderTop = ({ borderStyle, toggleDrawer }) => {
               {isBajoSaldo && !isAgente && (
                 <Button
                   component={Link}
-                  to="/saldo-recarga"
+                  to="/recargar-saldo"
                   size="small"
                   sx={{
                     px: 3,
@@ -115,7 +115,7 @@ const HeaderTop = ({ borderStyle, toggleDrawer }) => {
                 {isBajoSaldo && !isAgente && (
                   <Button
                     component={Link}
-                    to="/saldo-recarga"
+                    to="/recargar-saldo"
                     size="small"
                     sx={{
                       mt: 1,
