@@ -9,7 +9,7 @@ const airtimeCarrier = publicCarrier({Nombre:'Telcel',Categoria:'Tiempo Aire',Lo
 assert.equal(publicCarrier({Nombre:'Otro',Categoria:'Servicios'}),null);
 const packageProduct = publicPackage({proID:1,Nombre:'Internet',Monto:100,Descripcion:'5 GB',Vigencia:'7 días'}, {Nombre:'Paquetes BAIT',Categoria:'Paquetes'});
 const airtimeProduct = publicPackage({proID:2,Nombre:'EMPTY',Monto:20},{Nombre:'Telcel',Categoria:'Tiempo Aire'});
-assert.equal(airtimeProduct.path,'');
+assert.equal(airtimeProduct.path,'/paquetes/telcel-recarga-20-00-2/');
 assert.equal(airtimeProduct.name,'Recarga $20.00');
 const apiCalls=[];
 const fakeApi = async (url,options) => {
@@ -60,10 +60,20 @@ try {
   assert.equal(requests[0].options.credentials,'omit');
   assert(dialog.textContent.includes('$100.00'));
   assert(dialog.querySelector(`a[href="${packageProduct.path}"]`));
+  assert.equal(dialog.querySelector('#carrier-dialog-title .carrier-logo').getAttribute('src'),packageCarrier.logo);
+  assert.equal(dialog.querySelector('.package-card .carrier-logo').getAttribute('src'),packageCarrier.logo);
+  assert.equal(dialog.querySelectorAll('.package-share-links svg').length,3);
+  const cardLogo=dialog.querySelector('.package-card .carrier-logo');
+  cardLogo.dispatchEvent(new window.Event('error'));
+  assert(cardLogo.hidden);
+  assert(dialog.querySelector('.package-card .carrier').textContent.includes(packageCarrier.name));
   click(dialog.querySelector('[data-dialog-close]')); assert(!dialog.open);
   click(links[1]); await delay(0);
   assert(dialog.textContent.includes('$20.00'));
-  assert(!dialog.querySelector('.package-card-action'));
+  assert(dialog.querySelector('.package-card-action'));
+  assert(dialog.querySelector('[data-copy]'));
+  click(dialog.querySelector('[data-copy]')); await delay(0);
+  assert.equal(copied,'https://example.com'+airtimeProduct.path);
   assert(!dialog.querySelector('[data-share]'));
   assert.equal(new URL(dialog.querySelector('[data-company-page]').href).pathname,airtimeCarrier.path);
   dialog.close();
@@ -78,7 +88,7 @@ try {
   dialog.close();
   const image=links[0].querySelector('img');image.dispatchEvent(new window.Event('error'));
   assert(image.hidden);assert(!links[0].querySelector('.carrier-fallback').hidden);
-  console.log('PASS: selección de compañía, modal, montos separados, enlace a ficha sólo para paquetes, búsqueda, ubicación, compartir, 429 y logos alternativos.');
+  console.log('PASS: selección de compañía, modal, montos separados, fichas y enlaces para todos los montos, búsqueda, ubicación, compartir, 429 y logos alternativos.');
 } finally {
   dispose?.();
   for (const [key,descriptor] of Object.entries(original)) { if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key]; }

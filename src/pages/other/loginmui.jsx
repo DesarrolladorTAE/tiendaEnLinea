@@ -19,7 +19,7 @@ import RegisterForm from "../../components/login/RegisterForm";
 
 const LoginOverlayResponsiveMUI = () => {
   const [loginType, setLoginType] = useState(null);
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).get("modo") === "registro" ? "register" : "login");
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));

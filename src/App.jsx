@@ -1,4 +1,7 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
+import ViewReady from './components/loading/ViewReady';
+import InstallPWAButton from './components/pwa/InstallPWAButton';
+import AppLoading from './components/loading/AppLoading';
 import ScrollToTop from "./helpers/scroll-top";
 import {
   BrowserRouter as Router,
@@ -150,16 +153,7 @@ const AppContent = () => {
           onAccept={aceptarTerminos}
         />
       )}
-      <Suspense
-        fallback={
-          <div className="flone-preloader-wrapper">
-            <div className="flone-preloader">
-              <span></span>
-              <span></span>
-            </div>
-          </div>
-        }
-      >
+      <ViewReady key={location.key}><Suspense fallback={<AppLoading />}>
         <Routes>
           {Object.entries(LEGACY_ROUTES).map(([from, to]) => <Route key={from} path={from} element={<Navigate to={{ pathname: to, search: location.search, hash: location.hash }} replace />} />)}
           <Route path="/" element={<LandingPage />} />
@@ -206,7 +200,8 @@ const AppContent = () => {
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </Suspense>
+      </Suspense></ViewReady>
+      {!MARKETING_PAGES[location.pathname] && !location.pathname.startsWith("/paquetes") && <InstallPWAButton floating />}
     </ScrollToTop>
   );
 };

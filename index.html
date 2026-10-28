@@ -2,14 +2,19 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>TELORECARGO</title>
+    <title>TeLoRecargo</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="manifest" href="/manifest.json" />
-    <!-- <link rel="stylesheet" href="/style.css" />  -->
+    <link rel="manifest" href="/manifest.json?v=tlr-20261027" />
+    <meta name="application-name" content="TeLoRecargo"><meta name="apple-mobile-web-app-title" content="TeLoRecargo">
+    <meta name="theme-color" content="#073252" />
+    <link rel="apple-touch-icon" href="/icons/tlr-192.png" />
+    <script src="/pwa.js" defer></script>
+    <link rel="stylesheet" href="/app-loading.css" />
+    <link rel="preload" as="image" href="/assets/img/logo3.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="tlr-loading tlr-loading--fullscreen" role="status" aria-live="polite" aria-label="Cargando TeLoRecargo" aria-busy="true"><div class="tlr-loading__content"><div class="tlr-loading__visual" aria-hidden="true"><span class="tlr-loading__orbit"></span><span class="tlr-loading__orbit tlr-loading__orbit--inner"></span><svg class="tlr-loading__logo" viewBox="15 110 482 295" preserveAspectRatio="xMidYMid meet"><image href="/assets/img/logo3.png" width="512" height="512" /></svg></div><div class="tlr-loading__copy"><span class="tlr-loading__eyebrow">TODO LISTO PARA CONECTAR</span><h2 class="tlr-loading__title">Preparando tu espacio</h2><p class="tlr-loading__message">En un momento estar&#225; listo.</p></div><div class="tlr-loading__track" aria-hidden="true"><span></span></div><span class="tlr-loading__signature">TeLoRecargo <span aria-hidden="true">&middot;</span> Siempre contigo</span></div></div></div>
     <script type="module" src="/src/index.jsx"></script>
   </body>
 </html>

@@ -18,21 +18,6 @@ import { CssBaseline } from "@mui/material";
 import { HelmetProvider } from "react-helmet-async";
 import NavidadToggle from "./components/NavidadToggle";
 
-// ✅ Registro del Service Worker (solo en producción)
-// ✅ Registro del Service Worker en DEV y PROD
-if ("serviceWorker" in navigator && import.meta.env.PROD) {
-  window.addEventListener("load", async () => {
-    try {
-      await navigator.serviceWorker.register("/sw.js");
-      console.log("[PWA] prod SW registrado");
-    } catch (e) {
-      console.warn("[PWA] No se pudo registrar el SW:", e);
-    }
-  });
-}
-
-
-
 // 🧩 Inicializa los productos en Redux
 store.dispatch(setProducts(products));
 

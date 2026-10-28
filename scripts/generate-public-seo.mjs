@@ -82,7 +82,7 @@ export async function generatePublicSeo({ outDir = 'dist', env = { ...loadEnv('p
   await fs.mkdir(path.join(output, 'og'), { recursive: true });
   await fs.mkdir(path.join(output, 'fonts'), { recursive: true });
   await fs.writeFile(path.join(output, 'og/te-lo-recargo.png'), new Resvg(ogSvg(MARKETING_PAGES['/'], logo), imageOptions).render().asPng());
-  for (const file of ['public-seo.php', 'google7e9bcb6a75203673.html', 'seo-catalog.css', 'marketing.css', 'assets/img/logo3.png', 'fonts/Lato-Regular.ttf', 'fonts/OFL.txt', 'fonts/Manrope-Variable.ttf', 'fonts/Manrope-OFL.txt']) {
+  for (const file of ['icons/site.webmanifest', 'manifest.json', 'pwa.js', 'offline.html', 'icons/tlr-192.png', 'icons/tlr-512.png', 'icons/tlr-maskable-512.png', 'app-loading.css', 'public-seo.php', 'google7e9bcb6a75203673.html', 'seo-catalog.css', 'marketing.css', 'assets/img/logo3.png', 'fonts/Lato-Regular.ttf', 'fonts/OFL.txt', 'fonts/Manrope-Variable.ttf', 'fonts/Manrope-OFL.txt']) {
     await fs.mkdir(path.dirname(path.join(output, file)), { recursive:true });
     await fs.copyFile(path.join('public', file), path.join(output, file));
   }
@@ -95,15 +95,16 @@ export async function generatePublicSeo({ outDir = 'dist', env = { ...loadEnv('p
     const directory = route === '/' ? output : path.join(output, route);
     await fs.mkdir(directory, { recursive:true });
     const head = metaHead({ ...config, title:page.title, description:page.description, pathname:route, image:page.image, schema:pageSchema(route, page, origin) });
-    const html = `<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${head}<meta name="theme-color" content="#0077b6"><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/marketing.css"><script type="module" src="/marketing.js"></script></head><body>${renderMarketing(route)}</body></html>`;
+    const html = `<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${head}<meta name="application-name" content="TeLoRecargo"><meta name="apple-mobile-web-app-title" content="TeLoRecargo"><meta name="theme-color" content="#073252"><link rel="manifest" href="/manifest.json?v=tlr-20261027"><link rel="apple-touch-icon" href="/icons/tlr-192.png"><link rel="stylesheet" href="/app-loading.css"><script src="/pwa.js" defer></script><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/marketing.css"><script type="module" src="/marketing.js"></script></head><body>${renderMarketing(route)}</body></html>`;
     await fs.writeFile(path.join(directory, 'index.html'), html);
     await fs.writeFile(path.join(output, page.image), new Resvg(ogSvg(page, logo), imageOptions).render().asPng());
   }
   await fs.writeFile(path.join(output, 'spa.html'), replaceHead(template, metaHead({ ...config, title: 'Panel de usuarios | TeLoRecargo', description: 'Accede a tu cuenta de TeLoRecargo para gestionar recargas, ventas e integraciones.', pathname: '/', image: '/og/te-lo-recargo.png', noindex: true })));
   await fs.writeFile(path.join(output, 'robots.txt'), `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /admin/\nDisallow: /spa.html\nSitemap: ${origin}/sitemap.xml\n`);
   const redirects = Object.entries(LEGACY_ROUTES).map(([from, to]) => `RewriteRule ^${from.slice(1)}/?$ ${to} [R=301,L]`).join('\n');
-  const publicRoutes = Object.keys(MARKETING_PAGES).filter(route => route !== '/').map(route => `RewriteRule ^${route.slice(1)}/$ ${route} [R=301,L]\nRewriteRule ^${route.slice(1)}$ ${route.slice(1)}/index.html [L]`).join('\n');
-  await fs.writeFile(path.join(output, '.htaccess'), `Options -MultiViews\nDirectoryIndex index.html\nRewriteEngine On\nRewriteRule ^google7e9bcb6a75203673\\.html$ - [L]\n${redirects}\nRewriteRule ^landing/?$ / [R=301,L]\nRewriteRule ^api(?:/|$) - [L]\n${publicRoutes}\n# Procesar antes de -f/-d para reemplazar también fichas de builds anteriores.\nRewriteRule ^(?:paquetes(?:/.*)?|catalogo-(?:paquetes|companias)\\.json|sitemap\\.xml|og/paquete-[0-9]+\\.png)$ public-seo.php [L]\nRewriteCond %{REQUEST_FILENAME} -f [OR]\nRewriteCond %{REQUEST_FILENAME} -d\nRewriteRule ^ - [L]\nRewriteRule ^(?:assets|og|fonts|marketing)(?:/|$) - [R=404,L]\nRewriteRule ^ spa.html [L]\n`);
+  const publicRoutes = Object.keys(MARKETING_PAGES).filter(route => route !== '/').map(route => `RewriteRule ^${route.slice(1)}/?$ ${route.slice(1)}/index.html [END]`).join('\n');
+  // El .htaccess real pertenece al VPS: el build solo entrega reglas de referencia.
+  await fs.writeFile(path.join(output, 'htaccess.example'), `Options -MultiViews\nDirectoryIndex index.html\nRewriteEngine On\nRewriteRule ^google7e9bcb6a75203673\\.html$ - [L]\n${redirects}\nRewriteRule ^landing/?$ / [R=301,L]\nRewriteRule ^api(?:/|$) - [L]\n${publicRoutes}\n# Procesar antes de -f/-d para reemplazar también fichas de builds anteriores.\nRewriteRule ^(?:paquetes(?:/.*)?|catalogo-(?:paquetes|companias)\\.json|sitemap\\.xml|og/paquete-[0-9]+\\.png)$ public-seo.php [L]\nRewriteCond %{REQUEST_FILENAME} -f [OR]\nRewriteCond %{REQUEST_FILENAME} -d\nRewriteRule ^ - [L]\nRewriteRule ^(?:assets|og|fonts|marketing)(?:/|$) - [R=404,L]\nRewriteRule ^ spa.html [L]\n`);
   // Netlify no ejecuta PHP. Este despliegue necesita Apache + PHP como el hosting actual.
   await fs.writeFile(path.join(output, '_redirects'), '# Las rutas públicas se resuelven con PHP y .htaccess en el hosting Apache.\n');
   console.log(`SEO listo bajo petición: PHP, caché de 120 segundos, imágenes y sitemap dinámicos. Search Console: archivo google7e9bcb6a75203673.html incluido${verification ? ' y etiqueta configurada' : ''}.`);

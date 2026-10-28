@@ -1,3 +1,4 @@
+import AppLoading from '../../components/loading/AppLoading';
 // src/pages/admin/Dashboard.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import {
@@ -316,6 +317,7 @@ const Dashboard = () => {
   });
   const [actividades, setActividades] = useState([]);
   const [datos, setDatos] = useState(null);
+  const [loadError,setLoadError] = useState(false);
 
   useEffect(() => {
     cargarDatos();
@@ -329,6 +331,7 @@ const Dashboard = () => {
       setActividades(res.data.actividades);
       setDatos(res.data.graficas);
     } catch (err) {
+      setLoadError(true);
       console.error("Error al cargar dashboard:", err);
     }
   };
@@ -383,15 +386,8 @@ const Dashboard = () => {
     return (actividades || []).slice().sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
   }, [actividades]);
 
-  if (!datos) {
-    return (
-      <Box sx={{ p: { xs: 1, md: 2 } }}>
-        <Typography sx={{ fontWeight: 900, color: "rgba(15,23,42,.9)" }}>
-          Cargando datos del dashboard...
-        </Typography>
-      </Box>
-    );
-  }
+  if (loadError) return <Box role="alert" sx={{ p:4 }}><Typography>No pudimos cargar el panel. Revisa tu conexión.</Typography><button type="button" onClick={cargarDatos}>Volver a intentar</button></Box>;
+  if (!datos) return <AppLoading label="Cargando tu panel" />;
 
   return (
     <Box sx={{ p: { xs: 1.2, sm: 2, md: 2.5 } }}>

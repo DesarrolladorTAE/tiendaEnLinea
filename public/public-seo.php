@@ -48,8 +48,8 @@ function tlr_product(array $raw, array $carrier): array
     // No serializar la respuesta original: excluye suscrip/comisiones/saldo/tokens.
     $product = ['id'=>$id, 'carrier'=>tlr_text($carrier['Nombre']), 'logo'=>tlr_logo($carrier['Logotipo'] ?? ''), 'kind'=>$kind, 'name'=>$name, 'price'=>$price,
         'validity'=>tlr_text($raw['Vigencia'] ?? ''), 'description'=>tlr_text($raw['Descripcion'] ?? '')];
-    $product['path'] = $kind === 'paquetes' ? '/paquetes/' . (tlr_slug($product['carrier'] . ' ' . $name) ?: 'paquete') . '-' . $id . '/' : '';
-    $product['image'] = $kind === 'paquetes' ? '/og/paquete-' . $id . '.png?v=' . substr(hash('sha256', 'blue-brand-v2' . json_encode($product, JSON_UNESCAPED_UNICODE)), 0, 12) : '';
+    $product['path'] = '/paquetes/' . (tlr_slug($product['carrier'] . ' ' . $name) ?: 'paquete') . '-' . $id . '/';
+    $product['image'] = '/og/paquete-' . $id . '.png?v=' . substr(hash('sha256', 'carrier-logo-v3' . json_encode($product, JSON_UNESCAPED_UNICODE)), 0, 12);
     return $product;
 }
 function tlr_public_carrier(array $raw): ?array
@@ -117,7 +117,7 @@ function tlr_catalog(callable $fetch): array
     $products = [];
     $ids = [];
     foreach ($carriers as $carrier) {
-        if (!is_array($carrier) || strtolower(tlr_text($carrier['Categoria'] ?? '')) !== 'paquetes') continue;
+        if (!is_array($carrier) || !in_array(strtolower(tlr_text($carrier['Categoria'] ?? '')), ['paquetes','tiempo aire'], true)) continue;
         $list = $fetch($api . '/producto?carrier=' . rawurlencode($carrier['Nombre']));
         if ($list === null) throw new RuntimeException('Public carrier unavailable');
         foreach ($list as $raw) {
@@ -136,7 +136,7 @@ function tlr_cached_catalog(callable $load, ?string $directory = null, ?int $now
 {
     $now = $now ?? time();
     $directory = $directory ?? sys_get_temp_dir() . '/tlr-public-seo-' . substr(hash('sha256', __DIR__), 0, 16);
-    $file = $directory . '/catalog-v3.json';
+    $file = $directory . '/catalog-v5.json';
     $read = static function () use ($file, $now) {
         if (!is_file($file)) return null;
         $value = json_decode((string) @file_get_contents($file), true);
@@ -202,14 +202,22 @@ function tlr_page(string $head, string $body, ?array $config = null): string
 {
     $header = $config['publicHeader'] ?? '<header class="public-nav"><div class="shell nav-inner"><a class="brand" href="/">TeLoRecargo</a><nav class="nav-links"><a href="/paquetes/">Paquetes</a><a href="/contacto">Contacto</a><a href="/iniciar-sesion">Mi cuenta</a></nav></div></header>';
     $footer = $config['publicFooter'] ?? '<footer><div class="shell"><span>TeLoRecargo</span><a href="/terminos-condiciones">Términos y condiciones</a></div></footer>';
-    return '<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' . $head . '<link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/seo-catalog.css"><link rel="stylesheet" href="/marketing.css"><script type="module" src="/seo-catalog.js"></script><script type="module" src="/marketing.js"></script></head><body><div class="m-site m-packages" data-marketing id="arriba">' . $header . '<main id="contenido">' . $body . '</main>' . $footer . '</div></body></html>';
+    return '<!doctype html><html lang="es-MX"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' . $head . '<link rel="manifest" href="/manifest.json?v=tlr-20261027"><link rel="apple-touch-icon" href="/icons/tlr-192.png"><link rel="stylesheet" href="/app-loading.css"><script src="/pwa.js" defer></script><meta name="application-name" content="TeLoRecargo"><meta name="apple-mobile-web-app-title" content="TeLoRecargo"><meta name="theme-color" content="#073252"><link rel="icon" href="/favicon.ico"><link rel="stylesheet" href="/seo-catalog.css"><link rel="stylesheet" href="/marketing.css"><script type="module" src="/seo-catalog.js"></script><script type="module" src="/marketing.js"></script></head><body><div class="m-site m-packages" data-marketing id="arriba">' . $header . '<main id="contenido">' . $body . '</main>' . $footer . '</div></body></html>';
+}
+
+function tlr_share_links(array $product, ?string $origin = null): string
+{
+    static $config = null;
+    if ($config === null) $config = json_decode(@file_get_contents(__DIR__ . '/seo-runtime-config.json'), true) ?: ['origin'=>'https://telorecargo.com'];
+    $url = ($origin ?? $config['origin']) . $product['path'];
+    return '<div class="package-share-links" aria-label="Compartir paquete"><a href="https://wa.me/?text=' . tlr_escape(rawurlencode($product['name'] . ' - ' . $url)) . '" target="_blank" rel="noopener noreferrer" class="share-whatsapp"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l1.8-5.4A8.4 8.4 0 1 1 21 11.5Z"/><path d="M8 7c0 4 3 7 7 7l1-2-3-1-1 1-2-2 1-1-1-2Z"/></svg><span>WhatsApp</span></a><a href="https://www.facebook.com/sharer/sharer.php?u=' . tlr_escape(rawurlencode($url)) . '" target="_blank" rel="noopener noreferrer" class="share-facebook"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 21v-8h3l.5-4H14V7c0-1 .5-1.5 1.5-1.5H18V2h-3c-3 0-5 2-5 5v2H7v4h3v8"/></svg><span>Facebook</span></a><button type="button" class="share-copy" aria-label="Copiar enlace del paquete" data-copy="' . tlr_escape($url) . '"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3"/></svg><span>Copiar</span></button><span class="share-status" data-share-status role="status"></span></div>';
 }
 
 function tlr_card(array $product): string
 {
     $isPackage = ($product['kind'] ?? 'paquetes') === 'paquetes';
-    $action = $isPackage ? '<a class="btn package-card-action" href="' . tlr_escape($product['path']) . '">Ver ficha completa <span aria-hidden="true">↗</span></a>' : '<p class="airtime-note">Solicita este monto en tu punto de recarga.</p>';
-    return '<article class="package-card" data-package="' . tlr_escape($product['name'] . ' ' . $product['description']) . '"><div class="package-card-top"><span class="package-kind">' . ($isPackage ? 'PAQUETE' : 'RECARGA') . '</span><span class="package-card-dot" aria-hidden="true"></span></div><h2>' . tlr_escape($product['name']) . '</h2><div class="price">' . tlr_money($product['price']) . '<span class="currency">MXN</span></div><div class="package-card-rule"></div><div class="validity"><span>Vigencia</span><strong>' . tlr_escape($product['validity'] ?: 'Consulta con tu proveedor') . '</strong></div><p class="summary">' . tlr_escape($product['description'] ?: 'Consulta los beneficios con tu proveedor.') . '</p><div class="card-actions">' . $action . '</div></article>';
+    $action = !empty($product['path']) ? '<a class="btn package-card-action" href="' . tlr_escape($product['path']) . '">Consultar detalles <span aria-hidden="true">↗</span></a>' : '<p class="airtime-note">Solicita este monto en tu punto de recarga.</p>';
+    return '<article class="package-card" data-package="' . tlr_escape($product['name'] . ' ' . $product['description']) . '"><div class="package-card-top"><span class="package-kind">' . ($isPackage ? 'PAQUETE' : 'RECARGA') . '</span><span class="package-card-dot" aria-hidden="true"></span></div>' . tlr_carrier_label($product) . '<h2>' . tlr_escape($product['name']) . '</h2><div class="price">' . tlr_money($product['price']) . '<span class="currency">MXN</span></div><div class="package-card-rule"></div><div class="validity"><span>Vigencia</span><strong>' . tlr_escape($product['validity'] ?: 'Consulta con tu proveedor') . '</strong></div><p class="summary">' . tlr_escape($product['description'] ?: 'Consulta los beneficios con tu proveedor.') . '</p><div class="card-actions">' . $action . '</div>' . tlr_share_links($product) . '</article>';
 }
 function tlr_browser_dialog(): string
 {
@@ -269,13 +277,21 @@ function tlr_detail_html(array $product, array $products, array $config, int $fe
     $whatsapp = tlr_escape('https://wa.me/?text=' . rawurlencode($product['name'] . ' de ' . $product['carrier'] . '. Consulta sus beneficios y pídelo con tu proveedor más cercano: ' . $url));
     $share = tlr_escape($url);
     $date = (new DateTimeImmutable('@' . $fetchedAt))->setTimezone(new DateTimeZone('America/Mexico_City'))->format('d/m/Y H:i');
+    $benefits = preg_split('~\s*(?://+|\r?\n)\s*~u', $product['description'] ?: 'Consulta los beneficios con tu proveedor.', -1, PREG_SPLIT_NO_EMPTY);
+    $benefitHtml = '<ul class="offer-benefits">';
+    foreach ($benefits as $benefit) $benefitHtml .= '<li><span aria-hidden="true">&#10003;</span>' . tlr_escape($benefit) . '</li>';
+    $benefitHtml .= '</ul>';
+    $social = tlr_share_links($product, $config['origin']);
     $body = <<<HTML
-<section class="hero"><div class="shell"><nav class="crumbs" aria-label="Ruta de navegación"><a href="/">Inicio</a><span>/</span><a href="/paquetes/">Paquetes</a><span>/</span><span>{$carrier}</span></nav>{$carrierLabel}<h1>{$name}</h1><p>Conoce lo que incluye y pídelo con tu proveedor más cercano.</p></div></section>
-<div class="shell detail-grid"><section class="detail-panel"><h2>Todo lo que incluye</h2><p class="description">{$description}</p><div class="fact"><span>Vigencia</span><strong>{$validity}</strong></div><div class="fact"><span>Compañía o servicio</span><strong>{$carrier}</strong></div><div class="fact"><span>Precio del catálogo</span><strong>{$price} MXN</strong></div><p class="note">Confirma con tu proveedor la disponibilidad, el precio final, la cobertura y las condiciones del paquete antes de solicitarlo. Catálogo consultado: {$date} (hora de Ciudad de México).</p><a class="btn secondary" href="/paquetes/">← Volver a todos los paquetes</a></section>
-<aside class="detail-aside"><span class="eyebrow">TU PRÓXIMO PAQUETE</span><div class="price">{$price} <span class="currency">MXN</span></div><h2>Pídelo en un punto de recarga</h2><p>Muestra esta ficha y confirma el precio y la disponibilidad con el negocio.</p><button class="btn" type="button" data-location-open>Ubicar un punto de recarga ↗</button><a class="btn secondary" href="{$whatsapp}" target="_blank" rel="noopener noreferrer">Compartir por WhatsApp</a><button class="btn secondary" data-share="{$share}" data-title="{$name}">Compartir enlace</button><p class="share-status" data-share-status role="status"></p></aside></div>
+<section class="offer-stage shell"><nav class="crumbs" aria-label="Ruta de navegaci&#243;n"><a href="/paquetes/">Cat&#225;logo</a><span>/</span><span>{$carrier}</span></nav>
+<article class="offer-ticket"><header class="offer-ticket-head">{$carrierLabel}<span class="offer-tag">RECARGAS Y PAQUETES</span><h1>{$name}</h1><div class="offer-amount">{$price}<span>MXN</span></div><div class="offer-validity">Vigencia <strong>{$validity}</strong></div></header>
+<div class="offer-ticket-body"><span class="eyebrow">TU CONEXI&#211;N, A TU MEDIDA</span><h2>Esto es lo que incluye</h2>{$benefitHtml}<div class="offer-share"><strong>Comp&#225;rtelo con quien quieras</strong>{$social}<button type="button" class="offer-native-share" data-share="{$share}" data-title="{$name}">M&#225;s opciones para compartir &#8599;</button><p data-share-status class="share-status" role="status"></p></div><p class="note">Confirma precio, cobertura, disponibilidad y condiciones con tu proveedor. Cat&#225;logo consultado: {$date} (Ciudad de M&#233;xico).</p></div></article>
+<div class="offer-next"><a href="/paquetes/"><span>ENCUENTRA TU SIGUIENTE OPCI&#211;N</span><strong>Explorar m&#225;s paquetes &#8599;</strong><p>Compara otras compa&#241;&#237;as, montos y beneficios.</p></a><a href="/iniciar-sesion?modo=registro"><span>DA EL SIGUIENTE PASO</span><strong>Crea tu cuenta &#8599;</strong><p>Empieza con TeLoRecargo y administra tus recargas.</p></a></div></section>
 HTML;
-    $related = array_slice(array_filter($products, static function ($item) use ($product) { return $item['carrier'] === $product['carrier'] && $item['id'] !== $product['id']; }), 0, 3);
-    if ($related) $body .= '<section class="shell related"><h2>Más paquetes de ' . $carrier . '</h2><div class="grid">' . implode('', array_map('tlr_card', $related)) . '</div></section>';
+    $related = array_values(array_filter($products, static function ($item) use ($product) { return $item['id'] !== $product['id']; }));
+    usort($related, static function ($a, $b) use ($product) { return (($a['carrier'] !== $product['carrier']) <=> ($b['carrier'] !== $product['carrier'])) ?: (abs($a['price'] - $product['price']) <=> abs($b['price'] - $product['price'])); });
+    $related = array_slice($related, 0, 3);
+    if ($related) $body .= '<section class="shell related"><div class="offer-related-head"><div><span class="eyebrow">SIGUE EXPLORANDO</span><h2>Otras opciones para ti</h2></div><a href="/paquetes/">Ver todo el cat&#225;logo &#8599;</a></div><div class="grid">' . implode('', array_map('tlr_card', $related)) . '</div></section>';
     $body .= tlr_location_dialog($product['carrier']);
     return tlr_page($head, $body, $config);
 }
@@ -302,7 +318,43 @@ function tlr_image_lines(string $text, string $font, int $size, int $width, int 
     return $lines;
 }
 
-function tlr_png(array $product, string $font): ?string
+// Only public HTTPS image hosts from the carrier catalog; no redirects or credentials.
+function tlr_carrier_logo_bytes(string $url): ?string
+{
+    if ($url === '' || !function_exists('curl_init')) return null;
+    $parts = parse_url($url);
+    if (!is_array($parts) || ($parts['scheme'] ?? '') !== 'https' || isset($parts['user']) || isset($parts['pass']) || (isset($parts['port']) && $parts['port'] !== 443)) return null;
+    $host = $parts['host'] ?? '';
+    if (!preg_match('/^[a-z0-9.-]+$/iD', $host)) return null;
+    $cache = sys_get_temp_dir() . '/tlr-carrier-logos-v1';
+    $file = $cache . '/' . hash('sha256', $url) . '.bin';
+    if (is_file($file) && filemtime($file) > time() - 86400) { $bytes = @file_get_contents($file); return $bytes ?: null; }
+    $ips = @gethostbynamel($host) ?: [];
+    $publicIp = null;
+    foreach ($ips as $ip) {
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) return null;
+        $publicIp = $ip;
+    }
+    if ($publicIp === null) return null;
+    $bytes = '';
+    $curl = curl_init($url);
+    curl_setopt_array($curl, [CURLOPT_FOLLOWLOCATION=>false, CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,
+        CURLOPT_CONNECTTIMEOUT_MS=>500, CURLOPT_TIMEOUT_MS=>1500, CURLOPT_RESOLVE=>[$host . ':443:' . $publicIp],
+        CURLOPT_HTTPHEADER=>['Accept: image/png,image/jpeg,image/webp,image/gif'],
+        CURLOPT_WRITEFUNCTION=>static function ($handle, string $chunk) use (&$bytes): int {
+            if (strlen($bytes) + strlen($chunk) > 2 * 1024 * 1024) return 0;
+            $bytes .= $chunk; return strlen($chunk);
+        }]);
+    if (PHP_OS_FAMILY === 'Windows' && defined('CURLSSLOPT_NATIVE_CA')) curl_setopt($curl, CURLOPT_SSL_OPTIONS, CURLSSLOPT_NATIVE_CA);
+    $success = curl_exec($curl); $status = curl_getinfo($curl, CURLINFO_HTTP_CODE); curl_close($curl);
+    if ($success === false || $status !== 200) return null;
+    $size = @getimagesizefromstring($bytes);
+    if (!$size || $size[0] < 1 || $size[1] < 1 || $size[0] * $size[1] > 4000000 || !in_array($size[2], [IMAGETYPE_PNG,IMAGETYPE_JPEG,IMAGETYPE_GIF,IMAGETYPE_WEBP], true)) return null;
+    if (is_dir($cache) || @mkdir($cache,0700,true)) @file_put_contents($file,$bytes,LOCK_EX);
+    return $bytes;
+}
+
+function tlr_png(array $product, string $font, ?string $carrierLogoBytes = null): ?string
 {
     if (!function_exists('imagecreatetruecolor') || !function_exists('imagettftext') || !is_file($font)) return null;
     $image = imagecreatetruecolor(1200, 630);
@@ -324,6 +376,17 @@ function tlr_png(array $product, string $font): ?string
     $draw = static function ($value, $size, $x, $y, $width, $count, $spacing, $color) use ($font, $image) {
         foreach (tlr_image_lines($value, $font, $size, $width, $count) as $index=>$line) imagettftext($image, $size, 0, $x, $y + $index * $spacing, $color, $font, $line);
     };
+    // White logo plate keeps all carrier colors legible, without stretching the image.
+    imagefilledrectangle($image, 850, 18, 1136, 96, $white);
+    $logoBytes = $carrierLogoBytes ?? tlr_carrier_logo_bytes($product['logo'] ?? '');
+    $carrierImage = $logoBytes ? @imagecreatefromstring($logoBytes) : false;
+    if ($carrierImage) {
+        $scale = min(254 / imagesx($carrierImage), 54 / imagesy($carrierImage));
+        $logoWidth = max(1, (int) round(imagesx($carrierImage) * $scale));
+        $logoHeight = max(1, (int) round(imagesy($carrierImage) * $scale));
+        imagecopyresampled($image, $carrierImage, 866 + (int) ((254 - $logoWidth) / 2), 30 + (int) ((54 - $logoHeight) / 2), 0, 0, $logoWidth, $logoHeight, imagesx($carrierImage), imagesy($carrierImage));
+        imagedestroy($carrierImage);
+    } else $draw($product['carrier'], 15, 866, 53, 254, 2, 23, $background);
     $draw($product['carrier'], 16, 64, 160, 1072, 1, 28, $blue);
     $draw($product['name'], 32, 64, 225, 780, 2, 53, $white);
     $draw($product['description'] ?: 'Consulta los beneficios con tu proveedor.', 19, 64, 350, 1072, 3, 36, $muted);
@@ -444,7 +507,7 @@ function tlr_serve(?array $config = null, ?callable $loader = null, ?string $cac
     $font = __DIR__ . '/fonts/Lato-Regular.ttf';
     $fallback = __DIR__ . '/og/te-lo-recargo.png';
     $canRender = function_exists('imagecreatetruecolor') && function_exists('imagettftext') && is_file($font);
-    $renderer = $canRender ? 'gd-v2-blue-logo' : 'fallback-' . (is_file($fallback) ? hash_file('sha256', $fallback) : 'missing');
+    $renderer = $canRender ? 'gd-v3-carrier-logo' : 'fallback-' . (is_file($fallback) ? hash_file('sha256', $fallback) : 'missing');
     $etag = '"' . hash('sha256', $renderer . json_encode($product)) . '"';
     header('ETag: ' . $etag);
     if (($_SERVER['HTTP_IF_NONE_MATCH'] ?? '') === $etag) { http_response_code(304); return; }

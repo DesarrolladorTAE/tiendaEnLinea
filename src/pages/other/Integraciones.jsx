@@ -1,3 +1,4 @@
+import AppLoading from '../../components/loading/AppLoading';
 import React, { useEffect, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -338,7 +339,7 @@ export function PanelIntegraciones() {
 
 export default function Integraciones() {
   const { sessionLoaded, isAuthenticated, user } = useSelector(state => state.user);
-  if (!sessionLoaded) return null;
+  if (!sessionLoaded) return <AppLoading label="Recuperando tu sesión" />;
   if (!isAuthenticated) return <Navigate to="/iniciar-sesion" replace />;
   return <PanelIntegraciones key={user?.id} />;
 }

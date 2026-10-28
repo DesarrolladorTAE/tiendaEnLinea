@@ -1,3 +1,4 @@
+export function shareIcon(name) { const paths={"whatsapp":"<path d=\"M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l1.8-5.4A8.4 8.4 0 1 1 21 11.5Z\"/><path d=\"M8 7c0 4 3 7 7 7l1-2-3-1-1 1-2-2 1-1-1-2Z\"/>","facebook":"<path d=\"M14 21v-8h3l.5-4H14V7c0-1 .5-1.5 1.5-1.5H18V2h-3c-3 0-5 2-5 5v2H7v4h3v8\"/>","copy":"<rect x=\"8\" y=\"8\" width=\"12\" height=\"13\" rx=\"2\"/><path d=\"M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3\"/>"}; return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name] || paths.copy)+'</svg>'; }
 const mounted = new WeakMap();
 const money = value => Number(value).toLocaleString('es-MX',{style:'currency',currency:'MXN'});
 const normalize = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
@@ -8,22 +9,36 @@ const node = (tag, className, text) => {
   return element;
 };
 
+function carrierIdentity(name, logo) {
+  const identity=node('div','carrier-identity');
+  if(logo){const img=node('img','carrier-logo');img.src=logo;img.alt='Logo de '+name;img.width=96;img.height=56;img.loading='lazy';img.decoding='async';img.referrerPolicy='no-referrer';img.setAttribute('data-carrier-logo','');identity.append(img);}
+  identity.append(node('span','carrier',name));return identity;
+}
 function productCard(product, carrier) {
   const article = node('article','package-card');
   article.dataset.package = `${product.name} ${product.description}`;
   const top = node('div','package-card-top');
   top.append(node('span','package-kind',carrier.kind === 'paquetes' ? 'PAQUETE' : 'RECARGA'),node('span','package-card-dot'));
-  article.append(top,node('h2','',product.name));
+  article.append(top,carrierIdentity(product.carrier || carrier.name,product.logo || carrier.logo),node('h2','',product.name));
   const price = node('div','price',money(product.price));
   price.append(node('span','currency','MXN'));
   const validity = node('div','validity');
   validity.append(node('span','','Vigencia'),node('strong','',product.validity || 'Consulta con tu proveedor'));
   article.append(price,node('div','package-card-rule'),validity,node('p','summary',product.description || 'Consulta los beneficios con tu proveedor.'));
   const actions = node('div','card-actions');
-  if (carrier.kind === 'paquetes' && /^\/paquetes\/[a-z0-9-]+-[0-9]+\/$/.test(product.path || '')) {
-    const link = node('a','btn package-card-action','Ver ficha completa ↗');
+  if (/^\/paquetes\/[a-z0-9-]+-[0-9]+\/$/.test(product.path || '')) {
+    const link = node('a','btn package-card-action','Consultar detalles ↗');
     link.href = product.path;
     actions.append(link);
+    const social=node('div','package-share-links');
+    social.setAttribute('aria-label','Compartir paquete');
+    const url=new URL(product.path,window.location.origin).href;
+    for (const [label,href] of [['WhatsApp','https://wa.me/?text='+encodeURIComponent(product.name+' - '+url)],['Facebook','https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(url)]]) {
+      const a=node('a',label === 'WhatsApp' ? 'share-whatsapp' : 'share-facebook'); a.innerHTML=shareIcon(label === 'WhatsApp' ? 'whatsapp' : 'facebook'); a.append(node('span','',label)); a.href=href; a.target='_blank'; a.rel='noopener noreferrer'; social.append(a);
+    }
+    const copy=node('button','share-copy'); copy.innerHTML=shareIcon('copy'); copy.append(node('span','','Copiar')); copy.setAttribute('aria-label','Copiar enlace del paquete'); copy.type='button'; copy.dataset.copy=url; social.append(copy);
+    const status=node('span','share-status',''); status.setAttribute('data-share-status',''); status.setAttribute('role','status'); social.append(status);
+    actions.append(social);
   } else actions.append(node('p','airtime-note','Solicita este monto en tu punto de recarga.'));
   article.append(actions);
   return article;
@@ -69,7 +84,11 @@ export function mountCatalog(root, { loadCompany } = {}) {
       const current = new AbortController(); request = current;
       const abort = () => current.abort(); controller.signal.addEventListener('abort',abort,{once:true});
       const content = dialog.querySelector('[data-carrier-dialog-content]');
-      dialog.querySelector('#carrier-dialog-title').textContent = carrierLink.dataset.name;
+      const dialogTitle=dialog.querySelector('#carrier-dialog-title');
+      dialogTitle.replaceChildren(node('span','',carrierLink.dataset.name));
+      const previewLogo=carrierLink.querySelector('[data-carrier-logo]');
+      if(previewLogo && !previewLogo.hidden){const identity=carrierIdentity(carrierLink.dataset.name,previewLogo.getAttribute('src'));dialogTitle.replaceChildren(...identity.childNodes);}
+
       dialog.querySelector('[data-dialog-kind]').textContent = carrierLink.dataset.kind === 'paquetes' ? 'PAQUETES Y PRECIOS' : 'MONTOS DE RECARGA';
       dialog.querySelector('[data-company-page]').href = carrierLink.href;
       content.replaceChildren(node('p','catalog-loading','Consultando las opciones de esta compañía…'));
@@ -86,6 +105,8 @@ export function mountCatalog(root, { loadCompany } = {}) {
         }
         if (!Array.isArray(payload.data) || !payload.carrier) throw new Error('No se recibió un catálogo válido.');
         if (current.signal.aborted) return;
+        const identity=carrierIdentity(payload.carrier.name,payload.carrier.logo);
+        dialogTitle.replaceChildren(...identity.childNodes);
         const grid = node('div','grid company-modal-grid');
         for (const product of payload.data) grid.append(productCard(product,payload.carrier));
         content.replaceChildren(grid);
@@ -96,6 +117,13 @@ export function mountCatalog(root, { loadCompany } = {}) {
         controller.signal.removeEventListener('abort',abort);
         if (request === current) content.removeAttribute('aria-busy');
       }
+      return;
+    }
+    const copy=event.target.closest?.('[data-copy]');
+    if(copy){
+      const status=copy.closest('.package-share-links')?.querySelector('[data-share-status]');
+      try {await navigator.clipboard.writeText(new URL(copy.dataset.copy,window.location.origin).href); if(status) status.textContent='Enlace copiado.';}
+      catch {if(status) status.textContent='Copia este enlace: '+new URL(copy.dataset.copy,window.location.origin).href;}
       return;
     }
     const share = event.target.closest?.('[data-share]');

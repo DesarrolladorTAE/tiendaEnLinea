@@ -10,7 +10,8 @@ $fetch = static function ($url) use ($fixture, &$urls) {
     return $fixture['products'][$query['carrier']] ?? null;
 };
 $products = tlr_catalog($fetch);
-check(count($products) === 1, 'public filtering');
+usort($products, static function ($a,$b) {return (int)$a['id'] <=> (int)$b['id'];});
+check(count($products) === 2, 'public filtering');
 check($products[0]['logo'] === $fixture['carriers'][0]['Logotipo'], 'carrier logo preserved');
 check(tlr_logo('javascript:alert(1)') === '', 'unsafe image URL rejected');
 check(tlr_catalog(static function () { return []; }) === [], 'empty catalog is a valid response');
@@ -39,4 +40,23 @@ check(strpos($markup, 'property="og:title"') !== false, 'metadata in initial HTM
 check(strpos($markup, '<script>alert') === false, 'escaped public content');
 check(strpos($markup, 'verify-test') !== false, 'verification preserved');
 check(strpos($markup, 'never-public') === false, 'HTML has no credentials');
+check(tlr_carrier_logo_bytes('https://127.0.0.1/private.png') === null, 'loopback logo rejected');
+check(tlr_carrier_logo_bytes('https://169.254.169.254/private.png') === null, 'private metadata logo rejected');
+check(tlr_carrier_logo_bytes('http://example.com/logo.png') === null, 'HTTPS required for logos');
+if (function_exists('imagecreatetruecolor') && function_exists('imagettftext')) {
+    foreach ([[320,80],[80,320],[120,120]] as $dimensions) {
+        $logo = imagecreatetruecolor($dimensions[0],$dimensions[1]);
+        $red = imagecolorallocate($logo,240,47,70);imagefill($logo,0,0,$red);
+        ob_start();imagepng($logo);$bytes = ob_get_clean();imagedestroy($logo);
+        $preview = imagecreatefromstring(tlr_png($products[0], $argv[1] . '/fonts/Lato-Regular.ttf', $bytes));
+        check((imagecolorat($preview,993,57) & 0xffffff) === 0xf02f46, 'carrier logo rendered in OG preview');
+        check((imagecolorat($preview,854,22) & 0xffffff) === 0xffffff, 'white margin around carrier logo');
+        $minX=1200;$maxX=0;$minY=630;$maxY=0;
+        for($y=18;$y<=96;$y++)for($x=850;$x<=1136;$x++)if((imagecolorat($preview,$x,$y) & 0xffffff) === 0xf02f46){$minX=min($minX,$x);$maxX=max($maxX,$x);$minY=min($minY,$y);$maxY=max($maxY,$y);}
+        $scale=min(254/$dimensions[0],54/$dimensions[1]);
+        check($maxX-$minX+1 === (int)round($dimensions[0]*$scale), 'logo width preserves aspect ratio');
+        check($maxY-$minY+1 === (int)round($dimensions[1]*$scale), 'logo height preserves aspect ratio');
+        imagedestroy($preview);
+    }
+}
 echo "PASS PHP: rutas, datos públicos, HTML seguro, origen fijo y caché de 120 segundos.\n";

@@ -1,3 +1,4 @@
+import AppLoading from '../components/loading/AppLoading';
 import React from 'react';
 import { useSelector } from 'react-redux';
 import { Navigate, useLocation } from 'react-router-dom';
@@ -7,7 +8,7 @@ const PublicOnlyRoute = ({ children }) => {
   const token = localStorage.getItem("token");
   const location = useLocation();
 
-  if (!sessionLoaded) return null;
+  if (!sessionLoaded) return <AppLoading label="Recuperando tu sesión" />;
 
   if ((isAuthenticated || token) && location.pathname === "/iniciar-sesion") {
     const storedUser = JSON.parse(localStorage.getItem("user"));

@@ -1,3 +1,4 @@
+import AppLoading from '../components/loading/AppLoading';
 import React from "react";
 
 import { Navigate, Outlet } from "react-router-dom";
@@ -7,7 +8,7 @@ const AdminRoutes = () => {
   const { user, sessionLoaded } = useSelector((state) => state.user);
 
   // Evita flicker/redirecciones hasta cargar sesión
-  if (!sessionLoaded) return null; // o un spinner
+  if (!sessionLoaded) return <AppLoading label="Recuperando tu sesión" />; // o un spinner
 
   if (!user) return <Navigate to="/iniciar-sesion" />;
   if (!["admin", "superadmin"].includes(user.role)) {

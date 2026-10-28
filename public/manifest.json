@@ -1,9 +1,32 @@
 {
+  "id": "/",
+  "name": "TeLoRecargo",
   "short_name": "TeLoRecargo",
-  "name": "React Minimalist eCommerce Template",
-  "start_url": ".",
+  "description": "Recargas, paquetes y herramientas para tu negocio.",
+  "lang": "es-MX",
+  "start_url": "/inicio",
+  "scope": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#073252",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/icons/tlr-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/tlr-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/tlr-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
 }
-

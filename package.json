@@ -71,7 +71,8 @@
     "test:marketing:dev": "node scripts/test-marketing-vite.mjs",
     "test:catalog": "node scripts/test-catalog.mjs",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "test:loading": "node scripts/test-loading-pwa.mjs"
   },
   "eslintConfig": {
     "extends": "react-app"

@@ -69,7 +69,7 @@ export function publicPackage(product, carrier) {
     name: cleanText(product.Nombre) && product.Nombre !== 'EMPTY' ? cleanText(product.Nombre) : `${kind === 'recargas' ? 'Recarga' : 'Paquete'} ${money(price)}`,
     price, validity: cleanText(product.Vigencia), description: cleanText(product.Descripcion),
   };
-  return { ...value, path: kind === 'paquetes' ? packagePath(value) : '' };
+  return { ...value, path: packagePath(value), image: `/og/paquete-${value.id}.png?v=carrier-logo-v3` };
 }
 export function publicCarrier(raw) {
   const category = cleanText(raw.Categoria).toLowerCase();
@@ -107,7 +107,7 @@ export async function fetchPublicPackages(api = `${DEFAULT_ORIGIN}/api`, fetcher
     if (!Array.isArray(list)) throw new Error('El catálogo público tiene un formato no válido.');
     return list;
   };
-  const carriers = (await get('/carriers')).filter(item => cleanText(item.Categoria).toLowerCase() === 'paquetes');
+  const carriers = (await get('/carriers')).filter(item => ['paquetes', 'tiempo aire'].includes(cleanText(item.Categoria).toLowerCase()));
   const packages = [];
   // Limitar las peticiones simultáneas al catálogo.
   for (let index = 0; index < carriers.length; index += 3) {

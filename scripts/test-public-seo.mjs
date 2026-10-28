@@ -49,9 +49,22 @@ try {
     assert(!html.includes('noindex'));
   }
   assert((await fs.readFile(path.join(directory, 'spa.html'), 'utf8')).includes('noindex, nofollow'));
-  const rules = await fs.readFile(path.join(directory, '.htaccess'), 'utf8');
+  await assert.rejects(fs.access(path.join(directory,'.htaccess')));
+  await assert.rejects(fs.access('public/.htaccess'));
+  const preserveDirectory = path.join(directory,'preserve-vps-config');
+  await fs.mkdir(preserveDirectory);
+  await fs.writeFile(path.join(preserveDirectory,'index.html'),'<html><head></head><body><div id="root"></div></body></html>');
+  const vpsRules = '# Configuracion del VPS: conservar\nRewriteEngine On\n';
+  await fs.writeFile(path.join(preserveDirectory,'.htaccess'),vpsRules);
+  await generatePublicSeo({outDir:preserveDirectory,env:{VITE_SITE_URL:'https://example.com'}});
+  assert.equal(await fs.readFile(path.join(preserveDirectory,'.htaccess'),'utf8'),vpsRules);
+  const rules = await fs.readFile(path.join(directory, 'htaccess.example'), 'utf8');
   assert(rules.indexOf('public-seo.php [L]') < rules.indexOf('RewriteCond %{REQUEST_FILENAME} -f'));
   assert(rules.includes('sitemap\\.xml'));
+  for(const route of Object.keys(MARKETING_PAGES).filter(route=>route !== '/')) {
+    assert(rules.includes(`RewriteRule ^${route.slice(1)}/?$ ${route.slice(1)}/index.html [END]`));
+    assert(!rules.includes(`RewriteRule ^${route.slice(1)}/$ ${route} [R=301,L]`));
+  }
   assert(rules.indexOf('RewriteRule ^google7e9bcb6a75203673\\.html$ - [L]') < rules.indexOf('RewriteRule ^ spa.html'));
   const googleText = 'google-site-verification: google7e9bcb6a75203673.html';
   assert.equal(await fs.readFile(path.join(directory,'google7e9bcb6a75203673.html'),'utf8'),googleText);
@@ -149,8 +162,18 @@ tlr_serve(null, $loader, getenv('TLR_TEST_CACHE'), $carrierLoader, $companyLoade
   assert(airtimeHtml.includes('$20.00'));
   assert(!airtimeHtml.includes('data-share='));
   const airtimeJson = await (await request('/catalogo-companias.json?tipo=recargas&compania=airtime')).json();
-  assert.equal(airtimeJson.data[0].path,'');
-  assert.equal(airtimeJson.data[0].image,'');
+  assert(airtimeJson.data[0].path.endsWith('-95/'));
+  const airtimeDetail = await request(airtimeJson.data[0].path);
+  assert.equal(airtimeDetail.status,200);
+  const airtimeDetailHtml=await airtimeDetail.text();
+  assert(airtimeDetailHtml.includes('class="offer-ticket"'));
+  assert(airtimeDetailHtml.includes('property="og:image"'));
+  assert(airtimeDetailHtml.includes('data-copy='));
+  assert(airtimeDetailHtml.includes('/iniciar-sesion?modo=registro'));
+  assert(airtimeDetailHtml.includes('Otras opciones para ti'));
+  const airtimePng=await request(airtimeJson.data[0].image);
+  assert.equal(airtimePng.headers.get('content-type'),'image/png');
+  assert(airtimeJson.data[0].image.includes('/og/paquete-95.png'));
   assert.equal((await request('/catalogo-companias.json?tipo=paquetes&compania=unknown')).status,404);
   for (const [route, page] of Object.entries(MARKETING_PAGES)) {
     const pageResponse = await request(route);
@@ -160,8 +183,9 @@ tlr_serve(null, $loader, getenv('TLR_TEST_CACHE'), $carrierLoader, $companyLoade
     assert(!html.includes('noindex'));
     if (route !== '/') {
       const redirect = await request(route + '/');
-      assert.equal(redirect.status,301);
-      assert.equal(redirect.headers.get('location'),route);
+      assert.equal(redirect.status,200);
+      assert.equal(redirect.headers.get('location'),null);
+      assert((await redirect.text()).includes(page.title));
     }
   }
   const siteMapResponse = await request('/sitemap.xml');
@@ -183,9 +207,9 @@ tlr_serve(null, $loader, getenv('TLR_TEST_CACHE'), $carrierLoader, $companyLoade
   assert(html.includes('no contamos con un directorio público'));
   assert(html.includes('data-share='));
   const json = await (await request('/catalogo-paquetes.json')).json();
-  assert.equal(json.data.length, 1);
+  assert.equal(json.data.length, 2);
   assert(!('suscrip' in json.data[0]));
-  const imageUrl = json.data[0].image;
+  const imageUrl = json.data.find(item=>item.id === '55').image;
   response = await request(imageUrl);
   assert.equal(response.headers.get('content-type'), 'image/png');
   const etag = response.headers.get('etag');
@@ -211,7 +235,7 @@ tlr_serve(null, $loader, getenv('TLR_TEST_CACHE'), $carrierLoader, $companyLoade
       for (const entry of await fs.readdir(directory,{withFileTypes:true})) {
         const file = path.join(directory,entry.name);
         if (entry.isDirectory()) await visit(file);
-        else if (entry.name === 'catalog-v3.json') {
+        else if (entry.name === 'catalog-v5.json') {
           const cached = JSON.parse(await fs.readFile(file,'utf8'));
           cached.fetched_at = Math.floor(Date.now()/1000)-121;
           await fs.writeFile(file,JSON.stringify(cached));
@@ -223,10 +247,10 @@ tlr_serve(null, $loader, getenv('TLR_TEST_CACHE'), $carrierLoader, $companyLoade
   fixture.products[carrier.Nombre][0].Monto = '171.00';
   fixture.products[carrier.Nombre].push({ ...raw, proID: 77, Nombre: 'Otro paquete' });
   await save();
-  assert.equal((await (await request('/catalogo-paquetes.json')).json()).data[0].price, 150); // Caché vigente.
+  assert.equal((await (await request('/catalogo-paquetes.json')).json()).data.find(item=>item.id === '55').price, 150); // Caché vigente.
   await expire();
   const updated = await (await request('/catalogo-paquetes.json')).json();
-  assert.equal(updated.data.length, 2);
+  assert.equal(updated.data.length, 3);
   assert.equal(updated.data.find(item => item.id === '55').price, 171);
   assert.notEqual(updated.data.find(item => item.id === '55').image, imageUrl);
   assert((await (await request(product.path)).text()).includes('$171.00'));

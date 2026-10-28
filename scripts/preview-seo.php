@@ -15,7 +15,6 @@ if (isset($redirects[rtrim($path, '/')])) { header('Location: ' . $redirects[rtr
 if ($path === '/landing') { header('Location: /', true, 301); return; }
 $publicPath = rtrim($path, '/');
 if ($publicPath !== '' && in_array($publicPath, $previewConfig['publicPages'] ?? [], true)) {
-    if ($path !== $publicPath) { header('Location: ' . $publicPath, true, 301); return; }
     header('Content-Type: text/html; charset=UTF-8');
     readfile($root . $publicPath . '/index.html');
     return;
