@@ -120,7 +120,7 @@ function PlanConfigRow({ locked, unlockPlan, children }) {
   return <Box sx={{ position: "relative", opacity: locked ? .62 : 1, "& > :first-of-type": { pointerEvents: locked ? "none" : "auto" } }}>{children}{locked && <Chip icon={<LockRoundedIcon />} label={`Se desbloquea en ${unlockPlan}`} size="small" sx={{ position: "absolute", right: 12, top: 12, zIndex: 2, bgcolor: "#fff7ed", color: "#9a3412", fontWeight: 800 }} />}</Box>;
 }
 
-export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues = {}, capabilities = {}, planName = "", template = "negocio", sampleName = "Mi tienda", saving = false }) {
+export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues = {}, capabilities = {}, planName = "", template = "negocio", sampleName = "Mi tienda", saving = false, customerSalesAvailable = false, customerSalesExpiresAt = "" }) {
   const supportsNativeSections = Boolean(capabilities.custom_sections);
   capabilities = { ...capabilities, custom_sections: true };
   const theme = useTheme();
@@ -261,6 +261,8 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
       appendValue(fd, "sections", normalizedSections);
     }
     if (capabilities.advanced_theme) appendValue(fd, "theme", structured.theme);
+    structured.settings.customer_sales_enabled = customerSalesAvailable && asBoolean(structured.settings.customer_sales_enabled);
+    structured.settings.customer_sales_expires_at = customerSalesExpiresAt || "";
     const settingsToSave = supportsNativeSections ? structured.settings : { ...structured.settings, section_order: normalizedSections.map((section) => section.id), section_visibility: Object.fromEntries(normalizedSections.map((section) => [section.id, section.visible])) };
     appendValue(fd, "settings", settingsToSave);
     Object.entries(files).forEach(([key, file]) => { if (file) fd.append(key, file); });
@@ -368,6 +370,13 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
           </Stack>}
 
           {tab === 4 && <Stack spacing={2.5}>
+            <Box sx={{ p: 2, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
+              <Typography fontWeight={850}>Consulta de compras y autofacturación</Typography>
+              <Typography variant="body2" color="text.secondary">Agrega la pestaña “Mis Compras” al sitio para consultar compras por mes, descargar tickets y emitir o descargar CFDI.</Typography>
+              <FormControlLabel control={<Switch disabled={!customerSalesAvailable} checked={customerSalesAvailable && asBoolean((parseJson(form.settings || "", {}) || {}).customer_sales_enabled)} onChange={(e) => updateSetting("customer_sales_enabled", e.target.checked)} />} label="Mostrar pestaña de compras y facturación" />
+              {!customerSalesAvailable && <Typography variant="caption" display="block" color="warning.main">Requiere plan Profesional o Avanzado y complemento 4 de autofacturación vigente.</Typography>}
+              <Typography variant="caption" display="block" color="text.secondary">Para emitir facturas configura tus credenciales TaeConta. La consulta incluye las compras asociadas al cliente en toda la tienda.</Typography>
+            </Box>
             <Box><Typography variant="h6" fontWeight={850}>Configuración avanzada</Typography><Typography variant="body2" color="text.secondary">Define cómo se organiza y funciona el catálogo para esta sucursal.</Typography></Box>
             <FormControlLabel control={<Switch checked={Boolean(form.is_active)} onChange={(e) => setForm((current) => ({ ...current, is_active: e.target.checked }))} />} label="Sitio publicado y visible" />
             {!capabilities.custom_sections && <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Stack direction="row" justifyContent="space-between" alignItems="center"><Box><Typography fontWeight={850}>Secciones del sitio</Typography><Typography variant="caption" color="text.secondary">Negocio incluye portada, productos y contacto.</Typography></Box><Chip icon={<LockRoundedIcon />} label="Más secciones en Profesional" size="small" sx={{ bgcolor: "#fff7ed", color: "#9a3412", fontWeight: 800 }} /></Stack><Stack spacing={1} sx={{ mt: 2 }}>{DEFAULT_SECTIONS.map((section, index) => { const included = ["hero", "catalog", "socials"].includes(section.id); return <Stack key={section.id} direction="row" alignItems="center" spacing={1} sx={{ p: 1, borderRadius: 2, border: "1px solid", borderColor: included ? "#bfdbfe" : "divider", bgcolor: included ? "#f8faff" : "#f8fafc", opacity: included ? 1 : .62 }}><Box sx={{ width: 28, height: 28, borderRadius: 1.5, bgcolor: included ? "primary.main" : "grey.300", color: "white", display: "grid", placeItems: "center", fontSize: 12, fontWeight: 900 }}>{index + 1}</Box><Typography variant="body2" fontWeight={800} sx={{ flex: 1 }}>{section.label}</Typography>{included ? <Chip label="Incluida" size="small" color="primary" variant="outlined" /> : <Chip icon={<LockRoundedIcon />} label="Profesional" size="small" />}</Stack>; })}</Stack></Box>}

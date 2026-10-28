@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import adminNavItems from "../../menuConfig";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 
 const Sidebar = ({ onNavigate }) => {
   const location = useLocation();
@@ -64,7 +65,7 @@ const Sidebar = ({ onNavigate }) => {
             onClick={() => { onNavigate?.(); navigate("/admin/sucursales"); }}
             className="btn btn-outline-warning btn-sm w-100 mb-3"
           >
-            ⬅ Regresar a sucursales
+            <ArrowBackRoundedIcon fontSize="small" aria-hidden="true" sx={{ mr: .75 }} /> Regresar a sucursales
           </button>
         </div>
 
@@ -83,6 +84,10 @@ const Sidebar = ({ onNavigate }) => {
                   style={{
                     transition: "all 0.2s ease",
                     borderRadius: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    minHeight: "44px",
                   }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = "rgba(255,193,7,0.1)")
@@ -91,7 +96,8 @@ const Sidebar = ({ onNavigate }) => {
                     (e.currentTarget.style.background = "transparent")
                   }
                 >
-                  {item.label}
+                  {item.icon && React.createElement(item.icon, { fontSize: "small", "aria-hidden": true, sx: { flexShrink: 0 } })}
+                  <span>{item.label}</span>
                 </Link>
               </li>
             ))}

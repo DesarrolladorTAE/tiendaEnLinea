@@ -5,9 +5,10 @@ const API_BASE = (
   "https://mitiendaenlineamx.com.mx/api"
 ).replace(/\/$/, "");
 
-export const getStorefrontBranches = (storeSlug) =>
+export const getStorefrontBranches = (storeSlug, config = {}) =>
   axios.get(
     `${API_BASE}/public/storefront/${encodeURIComponent(storeSlug)}/branches`,
+    config,
   );
 
 export const getStorefrontCapabilities = (storeSlug) =>
@@ -15,9 +16,10 @@ export const getStorefrontCapabilities = (storeSlug) =>
     `${API_BASE}/public/storefront/${encodeURIComponent(storeSlug)}/capabilities`,
   );
 
-export const getPublicStorefront = (branchSlug) =>
+export const getPublicStorefront = (branchSlug, config = {}) =>
   axios.get(
     `${API_BASE}/public/storefront/${encodeURIComponent(branchSlug)}`,
+    config,
   );
 
 export const getPublicStoreProducts = (storeSlug) =>

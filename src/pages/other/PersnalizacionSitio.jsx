@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Box, Button, Chip, Container, Dialog, FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography } from "@mui/material";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Alert, Box, Button, Chip, Container, FormControl, IconButton, InputLabel, MenuItem, Select, Stack, Typography } from "@mui/material";
 import FacebookRoundedIcon from "@mui/icons-material/FacebookRounded";
 import InstagramIcon from "@mui/icons-material/Instagram";
 import XIcon from "@mui/icons-material/X";
@@ -10,11 +10,18 @@ import StorefrontRoundedIcon from "@mui/icons-material/StorefrontRounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
-import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
-import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import PhotoLibraryOutlinedIcon from "@mui/icons-material/PhotoLibraryOutlined";
+import FormatQuoteOutlinedIcon from "@mui/icons-material/FormatQuoteOutlined";
+import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import TiendaNoDisponible from "./TiendaNoDisponible";
 import Catalogo from "../shop/Catalogo";
+import StoreGallery from "../../components/storefront/StoreGallery";
+import CustomerSales from "../../components/storefront/CustomerSales";
+import { hasCurrentInvoiceComplement } from "../../utils/customerSales";
 import PublicProductDetail from "../../components/storefront/PublicProductDetail";
 import { getPublicStoreProducts, getPublicStorefront, getStorefrontBranches } from "../../services/public/storefrontService";
 import "./storefront-themes.css";
@@ -64,64 +71,83 @@ function BrandMark({ branding, store, colors, large = false }) {
     : <StorefrontRoundedIcon sx={{ fontSize: large ? 100 : 40, color: colors.accent }} />;
 }
 
-function StoreGallery({ images, theme }) {
-  const [active, setActive] = useState(0);
-  const [viewerIndex, setViewerIndex] = useState(0);
-  const [visibleCount, setVisibleCount] = useState(4);
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const safeImages = Array.isArray(images) ? images.filter(Boolean) : [];
-  const maxStart = Math.max(0, safeImages.length - visibleCount);
-  const move = (direction) => setActive((current) => direction > 0 ? (current >= maxStart ? 0 : current + 1) : (current <= 0 ? maxStart : current - 1));
-  const moveViewer = (direction) => setViewerIndex((current) => (current + direction + safeImages.length) % safeImages.length);
-
-  useEffect(() => { const update = () => setVisibleCount(window.innerWidth < 600 ? 1 : window.innerWidth < 900 ? 2 : window.innerWidth < 1200 ? 3 : 4); update(); window.addEventListener("resize", update); return () => window.removeEventListener("resize", update); }, []);
-
-  useEffect(() => {
-    if (safeImages.length < 2 || viewerOpen || theme.animation === "none") return undefined;
-    const timer = window.setInterval(() => move(1), theme.animation === "dynamic" ? 3200 : 4800);
-    return () => window.clearInterval(timer);
-  }, [safeImages.length, viewerOpen, theme.animation, visibleCount]);
-
-  if (!safeImages.length) return null;
-  return <>
-    <Box className="sf-carousel" sx={{ borderRadius: `${theme.radiusValue}px`, boxShadow: theme.shadowValue }}>
-      <Box className="sf-carousel-viewport">
-        <Box className="sf-carousel-track" style={{ transform: `translateX(calc(-${active} * (var(--slide-width) + var(--slide-gap))))` }}>
-          {safeImages.map((image, index) => <button type="button" key={`${image}-${index}`} className="sf-carousel-card" onClick={() => { setViewerIndex(index); setViewerOpen(true); }} aria-label={`Ampliar imagen ${index + 1}`}><img src={image} alt={`Galería ${index + 1}`} /><span><GridViewRoundedIcon fontSize="small" /> Ver</span></button>)}
-        </Box>
-      </Box>
-      {safeImages.length > 1 && <><IconButton className="sf-carousel-arrow is-prev" onClick={() => move(-1)} aria-label="Imagen anterior"><ChevronLeftRoundedIcon /></IconButton><IconButton className="sf-carousel-arrow is-next" onClick={() => move(1)} aria-label="Imagen siguiente"><ChevronRightRoundedIcon /></IconButton></>}
-      <Box className="sf-carousel-counter">{String(Math.min(active + visibleCount, safeImages.length)).padStart(2, "0")} / {String(safeImages.length).padStart(2, "0")}</Box>
-      <Stack className="sf-carousel-dots" direction="row" spacing={.75}>{safeImages.slice(0, maxStart + 1).map((_, index) => <button type="button" key={index} className={index === active ? "is-active" : ""} onClick={() => setActive(index)} aria-label={`Mover carrusel a la posición ${index + 1}`} />)}</Stack>
-    </Box>
-    <Dialog open={viewerOpen} onClose={() => setViewerOpen(false)} fullScreen PaperProps={{ sx: { bgcolor: "rgba(3,6,15,.96)", color: "white" } }}>
-      <Box className="sf-lightbox"><IconButton className="sf-lightbox-close" onClick={() => setViewerOpen(false)} aria-label="Cerrar galería"><CloseRoundedIcon /></IconButton><Box component="img" src={safeImages[viewerIndex]} alt={`Galería ampliada ${viewerIndex + 1}`} />{safeImages.length > 1 && <><IconButton className="sf-lightbox-prev" onClick={() => moveViewer(-1)}><ChevronLeftRoundedIcon /></IconButton><IconButton className="sf-lightbox-next" onClick={() => moveViewer(1)}><ChevronRightRoundedIcon /></IconButton></>}<Typography>{viewerIndex + 1} de {safeImages.length}</Typography></Box>
-    </Dialog>
-  </>;
-}
-
 export default function PersonalizacionSitio({ customStoreSlug = null }) {
   const { storeSlug: routeStoreSlug, productId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [params, setParams] = useSearchParams();
   const storeSlug = customStoreSlug || routeStoreSlug;
+  const requestedBranch = params.get("branch") || "";
   const [branches, setBranches] = useState([]);
   const [branchSlug, setBranchSlug] = useState(params.get("branch") || "");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [loadingBrand, setLoadingBrand] = useState(null);
   const [activeSection, setActiveSection] = useState("catalog");
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [productLoading, setProductLoading] = useState(false);
+  useEffect(() => {
+    if (!location.hash) { setActiveSection("catalog"); return undefined; }
+    const section = location.hash.slice(1);
+    setActiveSection(section);
+    const frame = window.requestAnimationFrame(() => document.getElementById(section)?.scrollIntoView({ block: "start" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash, location.search]);
 
-  useEffect(() => { let alive = true; if (!storeSlug) { setLoading(false); return undefined; } setLoading(true); getStorefrontBranches(storeSlug).then(({ data: response }) => { if (!alive) return; const list = response?.branches || []; setBranches(list); const brand = getStorefrontBrand(response); if (brand.logo) setLoadingBrand({ slug: storeSlug, branch: params.get("branch") || "", brand }); const requested = params.get("branch"); setBranchSlug(list.find((b) => b.slug === requested)?.slug || list[0]?.slug || storeSlug); }).catch(() => { if (alive) setBranchSlug(storeSlug); }); return () => { alive = false; }; }, [storeSlug]);
-  useEffect(() => { let alive = true; if (!branchSlug) return undefined; setLoading(true); getPublicStorefront(branchSlug).then(({ data: response }) => { if (!alive) return; const payload = response?.sitio || response?.store ? response : response?.data || response; setData(payload); const brand = rememberStorefrontBrand(storeSlug, params.get("branch") || "", payload); setLoadingBrand({ slug: storeSlug, branch: params.get("branch") || "", brand }); }).catch(() => { if (alive) setData({ ok: false, expired: true }); }).finally(() => { if (alive) setLoading(false); }); return () => { alive = false; }; }, [branchSlug]);
+  useEffect(() => {
+    const controller = new AbortController();
+    const config = { signal: controller.signal, timeout: 15000 };
+    setLoading(true);
+    setLoadError("");
+    setData(null);
+
+    async function loadStorefront() {
+      try {
+        if (!storeSlug) return;
+        let list = [];
+        try {
+          const { data: response } = await getStorefrontBranches(storeSlug, config);
+          if (controller.signal.aborted) return;
+          const payload = response?.data || response;
+          list = Array.isArray(payload?.branches) ? payload.branches : [];
+          const brand = getStorefrontBrand(payload);
+          if (brand.logo) setLoadingBrand({ slug: storeSlug, branch: requestedBranch, brand });
+        } catch {
+          if (controller.signal.aborted) return;
+          // The store endpoint also resolves slugs when branch discovery fails.
+        }
+        const resolvedBranch = list.find((branch) => branch.slug === requestedBranch)?.slug || list[0]?.slug || requestedBranch || storeSlug;
+        setBranches(list);
+        setBranchSlug(resolvedBranch);
+        // Fetch in this same lifecycle, even if resolvedBranch did not change.
+        const { data: response } = await getPublicStorefront(resolvedBranch, config);
+        if (controller.signal.aborted) return;
+        const payload = response?.sitio || response?.store ? response : response?.data || response;
+        setData(payload);
+        const brand = rememberStorefrontBrand(storeSlug, requestedBranch, payload);
+        setLoadingBrand({ slug: storeSlug, branch: requestedBranch, brand });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        if ([403, 404].includes(error.response?.status)) setData({ ok: false });
+        else setLoadError(error.code === "ECONNABORTED" || error.code === "ETIMEDOUT"
+          ? "La tienda tardó demasiado en responder. Vuelve a intentarlo."
+          : "No pudimos conectar con la tienda. Revisa tu conexión y vuelve a intentarlo.");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+    void loadStorefront();
+    return () => controller.abort();
+  }, [storeSlug, requestedBranch, loadAttempt]);
   useEffect(() => { let alive = true; if (!productId || !storeSlug) { setSelectedProduct(null); setProductLoading(false); return undefined; } setProductLoading(true); getPublicStoreProducts(storeSlug).then(({ data: response }) => { if (!alive) return; const products = Array.isArray(response) ? response : response?.data || []; setSelectedProduct(products.find((product) => String(product.id) === String(productId)) || null); }).catch(() => { if (alive) setSelectedProduct(null); }).finally(() => { if (alive) setProductLoading(false); }); return () => { alive = false; }; }, [productId, storeSlug]);
 
   const site = data?.sitio || data?.site || {};
   const theme = useMemo(() => resolveTheme(site.theme), [site.theme]);
   const sections = useMemo(() => normalizeSections(site.sections), [site.sections]);
   if (loading) return <StorefrontLoading storeSlug={storeSlug} brand={loadingBrand?.slug === storeSlug && loadingBrand.branch === (params.get("branch") || "") ? loadingBrand.brand : undefined} />;
+  if (loadError) return <Container maxWidth="sm" sx={{ py: 8 }}><Stack spacing={2}><Typography variant="h5" fontWeight={800}>No pudimos cargar la tienda</Typography><Alert severity="error">{loadError}</Alert><Button variant="contained" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>Reintentar</Button></Stack></Container>;
   if (!data?.ok || data?.expired) return <TiendaNoDisponible />;
 
   const store = data.store || {};
@@ -147,7 +173,16 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
     .some((value) => String(value || "").trim());
   const hasSocials = [site.social?.facebook, site.social?.instagram, site.social?.twitter, site.social?.tiktok]
     .some((value) => String(value || "").trim());
-  const sectionsForPlan = sections.filter((section) => {
+  const publicComplements = data.complementos ?? store.complementos;
+  const publicInvoiceAccess = data.capabilities?.autofacturacion ?? data.plan?.capabilities?.autofacturacion;
+  const savedExpiry = rawSettings.customer_sales_expires_at;
+  const savedExpiryTime = savedExpiry ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(savedExpiry) ? savedExpiry + "T23:59:59.999" : savedExpiry).getTime() : Infinity;
+  const hasLiveInvoiceAccess = publicInvoiceAccess !== undefined || publicComplements !== undefined;
+  const customerSalesEnabled = (hasLiveInvoiceAccess || Date.now() <= savedExpiryTime) && planId >= 3 && asBoolean(rawSettings.customer_sales_enabled)
+    && (publicComplements === undefined || hasCurrentInvoiceComplement(publicComplements))
+    && (publicInvoiceAccess === undefined || asBoolean(publicInvoiceAccess));
+  const publicSections = [...sections.filter((section) => section.id !== "customer_sales"), ...(customerSalesEnabled ? [{ id: "customer_sales", visible: true }] : [])];
+  const sectionsForPlan = publicSections.filter((section) => {
     if (section.id === "socials" && !advancedAccess) return false;
     if (section.id === "hero" && !hasHero) return false;
     if (section.id === "identity" && !hasIdentity) return false;
@@ -195,17 +230,28 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
   const sectionSx = { py: theme.space.section, scrollMarginTop: 100 };
   const containerProps = { maxWidth: false, sx: { maxWidth: theme.widthValue, mx: "auto", px: { xs: 2, md: theme.content_width === "full" ? 4 : 3 } } };
   const buttonRadius = theme.button_style === "pill" ? 99 : theme.button_style === "square" ? 0 : theme.radiusValue;
+  const isSalesPage = !productId && customerSalesEnabled && (params.get("vista") === "compras" || location.hash === "#customer_sales");
+  const isGalleryPage = !productId && !isSalesPage && sectionsForPlan.some((section) => section.id === "carousel") && (params.get("vista") === "galeria" || location.hash === "#carousel");
+  const activePageSection = isSalesPage ? "customer_sales" : isGalleryPage ? "carousel" : null;
+  const pageHref = (section) => {
+    const nextParams = new URLSearchParams(location.search);
+    nextParams.delete("vista");
+    if (section === "customer_sales") nextParams.set("vista", "compras");
+    if (section === "carousel") nextParams.set("vista", "galeria");
+    const query = nextParams.toString();
+    return `${customStoreSlug ? "/" : `/tienda/${storeSlug}`}${query ? `?${query}` : ""}#${section}`;
+  };
 
   const FacebookHeader = () => {
     const image = branding.cover;
     if (template === "profesional") return <Box component="section" id="hero" className="sf-hero sf-hero--editorial" sx={sectionSx}><Container {...containerProps}><Box className="sf-hero-frame" sx={{ bgcolor: card, borderRadius: `${theme.radiusValue}px`, boxShadow: theme.shadowValue, animation }}><Box className="sf-hero-copy"><Typography className="sf-kicker">{branch.name || "Nueva colección"}</Typography><Typography component="h1">{hero.title || store.name}</Typography>{hero.subtitle && <Typography className="sf-lead">{hero.subtitle}</Typography>}{hero.button_text && <Button component="a" href={hero.button_url || "#catalog"} variant={theme.button_style === "outline" ? "outlined" : "contained"} endIcon={<ArrowForwardRoundedIcon />} sx={{ borderRadius: buttonRadius, bgcolor: theme.button_style === "outline" ? "transparent" : colors.accent, borderColor: colors.accent }}>{hero.button_text}</Button>}</Box>{image && <Box className="sf-hero-visual"><Box component="img" src={image} alt={hero.title || store.name} /></Box>}<Typography className="sf-hero-index">01 / STORY</Typography></Box></Container></Box>;
     if (template === "avanzado") return <Box component="section" id="hero" className="sf-hero sf-hero--immersive" sx={sectionSx}><Container {...containerProps}><Box className="sf-hero-frame" sx={{ borderRadius: `${theme.radiusValue}px`, boxShadow: theme.shadowValue, animation }}><Box className="sf-hero-orb" />{image && <Box className="sf-hero-visual"><Box component="img" src={image} alt={hero.title || store.name} /></Box>}<Box className="sf-hero-copy"><Chip icon={<AutoAwesomeRoundedIcon />} label="Experiencia digital" /><Typography component="h1">{hero.title || store.name}</Typography>{hero.subtitle && <Typography className="sf-lead">{hero.subtitle}</Typography>}{hero.button_text && <Button component="a" href={hero.button_url || "#catalog"} endIcon={<ArrowForwardRoundedIcon />} sx={{ borderRadius: buttonRadius, bgcolor: colors.accent, color: "white" }}>{hero.button_text}</Button>}</Box></Box></Container></Box>;
-    const linkLabels = { hero: "Conócenos", identity: "Información", catalog: "Productos", carousel: "Galería", phrases: "Mensajes", socials: "Redes" };
-    const heroLinks = sectionsForPlan.filter((section) => linkLabels[section.id]).map((section) => ({ id: section.id, label: linkLabels[section.id] }));
+    const linkLabels = { hero: "Conócenos", identity: "Información", catalog: "Productos", carousel: "Galería", phrases: "Mensajes", socials: "Redes", customer_sales: "Mis Compras" };
+    const linkIcons = { hero: StorefrontOutlinedIcon, identity: InfoOutlinedIcon, catalog: Inventory2OutlinedIcon, carousel: PhotoLibraryOutlinedIcon, phrases: FormatQuoteOutlinedIcon, socials: ShareOutlinedIcon, customer_sales: ReceiptLongOutlinedIcon };
+    const heroLinks = sectionsForPlan.filter((section) => linkLabels[section.id]).map((section) => { const Icon = linkIcons[section.id]; return { id: section.id, label: linkLabels[section.id], icon: <Icon fontSize="small" aria-hidden="true" /> }; });
     const identityTitle = identity.title || site.titulo_1 || hero.title || store.name;
     const identityDescription = identity.description || site.descripcion || hero.subtitle || "";
-    const storePath = customStoreSlug ? "/" : `/tienda/${storeSlug}`;
-    return <Box component="header" className="sf-hero sf-hero--facebook" sx={{ ...sectionSx, pt: { xs: 2, md: 3 } }}><Container {...containerProps}><Box className="sf-facebook-page" sx={{ bgcolor: card, borderRadius: `${theme.radiusValue}px`, boxShadow: theme.shadowValue, animation }}><Box className="sf-facebook-cover">{image ? <Box component="img" src={image} alt={identityTitle} /> : <Box className="sf-facebook-cover-empty" />}</Box><Box className="sf-facebook-profile"><BrandMark branding={branding} store={store} colors={colors} large /><Box className="sf-facebook-copy"><Typography component="h1">{identityTitle}</Typography>{identityDescription && <Typography>{identityDescription}</Typography>}</Box></Box>{heroLinks.length > 0 && <Box className="sf-facebook-tabs">{heroLinks.map((link) => <a key={link.id} href={productId ? `${storePath}#${link.id}` : `#${link.id}`} className={!productId && settings.navigation_mode === "tabs" && activeSection === link.id ? "is-active" : ""} onClick={(event) => { if (productId) { event.preventDefault(); navigate(`${storePath}#${link.id}`); return; } if (settings.navigation_mode === "tabs") { event.preventDefault(); setActiveSection(link.id); } }}>{link.label}</a>)}<span>{branch.name}</span></Box>}</Box></Container></Box>;
+    return <Box component="header" className="sf-hero sf-hero--facebook" sx={{ ...sectionSx, pt: { xs: 2, md: 3 } }}><Container {...containerProps}><Box className="sf-facebook-page" sx={{ bgcolor: card, borderRadius: `${theme.radiusValue}px`, boxShadow: theme.shadowValue, animation }}><Box className="sf-facebook-cover">{image ? <Box component="img" src={image} alt={identityTitle} /> : <Box className="sf-facebook-cover-empty" />}</Box><Box className="sf-facebook-profile"><BrandMark branding={branding} store={store} colors={colors} large /><Box className="sf-facebook-copy"><Typography component="h1">{identityTitle}</Typography>{identityDescription && <Typography>{identityDescription}</Typography>}</Box></Box>{heroLinks.length > 0 && <Box className="sf-facebook-tabs">{heroLinks.map((link) => <a key={link.id} href={pageHref(link.id)} aria-current={!productId && (activePageSection ? link.id === activePageSection : settings.navigation_mode === "tabs" && activeSection === link.id) ? "page" : undefined} className={!productId && (activePageSection ? link.id === activePageSection : settings.navigation_mode === "tabs" && activeSection === link.id) ? "is-active" : ""} onClick={(event) => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); setActiveSection(link.id); navigate(pageHref(link.id)); }}>{link.icon}{link.label}</a>)}<span>{branch.name}</span></Box>}</Box></Container></Box>;
   };
 
   const FeaturedIdentity = () => {
@@ -222,18 +268,19 @@ export default function PersonalizacionSitio({ customStoreSlug = null }) {
       : <Box component="section" id="identity" className="sf-identity sf-identity--facebook" sx={sectionSx}><Container {...containerProps}><Box className="sf-facebook-about" sx={{ bgcolor: card, borderRadius: `${theme.radiusValue}px`, boxShadow: theme.shadowValue }}><Box><Typography className="sf-kicker">INFORMACIÓN</Typography><Typography variant="h2">Acerca de {store.name}</Typography><Typography className="sf-lead">{hero.subtitle || `Compra fácil y directo en ${branch.name || "nuestra sucursal"}.`}</Typography></Box><Stack spacing={1.25}><Typography fontWeight={900}>Sucursal</Typography><Stack direction="row" spacing={1} alignItems="center"><LocationOnRoundedIcon sx={{ color: colors.accent }} /><Typography>{[branch.address?.line1, branch.address?.city, branch.address?.state].filter(Boolean).join(", ") || branch.name}</Typography></Stack></Stack></Box></Container></Box>;
 
   const renderers = {
+    customer_sales: () => <Box component="main" id="customer_sales" sx={sectionSx}><Container {...containerProps}><CustomerSales key={store.slug || storeSlug} storeSlug={store.slug || storeSlug} colors={colors} storefrontTheme={{ ...theme, mode: isDark ? "dark" : "light" }} fontFamily={site.font_family} onBack={() => navigate(pageHref("catalog"))} /></Container></Box>,
     hero: () => <FeaturedIdentity />,
     identity: () => <Identity />,
     catalog: () => <Box component="section" id="catalog" sx={sectionSx}><Container {...containerProps}><Stack direction="row" justifyContent="space-between" alignItems="end" sx={{ mb: 1 }}><Box><Typography className="sf-kicker">SELECCIÓN / CATÁLOGO</Typography><Typography variant="h2" fontWeight={950}>Encuentra lo tuyo</Typography></Box><GridViewRoundedIcon sx={{ color: colors.accent, fontSize: 34 }} /></Stack></Container><Catalogo storeId={store.id} storeSlug={store.slug || storeSlug} storefrontSettings={settings} storefrontTemplate={template} storefrontTheme={theme} storefrontColors={colors} storefrontBrand={getStorefrontBrand(data)} /></Box>,
-    carousel: () => site.carousel?.length ? <Box component="section" id="carousel" sx={sectionSx}><Container {...containerProps}><Stack direction="row" justifyContent="space-between" alignItems="end" sx={{ mb: 2.5 }}><Typography variant="h2" fontWeight={950}>Conoce más sobre {store.name}</Typography><Typography variant="body2" sx={{ opacity: .7 }}>Galería</Typography></Stack><StoreGallery images={site.carousel} theme={theme} /></Container></Box> : null,
+    carousel: () => <Box component="main" id="carousel" sx={sectionSx}><Container {...containerProps}><StoreGallery key={branchSlug} images={(site.carousel || []).map(resolveAssetUrl).filter(Boolean)} theme={theme} colors={colors} storeName={store.name} fontFamily={site.font_family} onBack={() => navigate(pageHref("catalog"))} /></Container></Box>,
     phrases: () => site.phrases?.filter(Boolean).length ? <Box component="section" id="phrases" className={`sf-phrases sf-phrases--${settings.phrase_style}`} data-align={settings.phrase_alignment} sx={sectionSx}><Container {...containerProps}><Stack spacing={2}>{site.phrases.filter(Boolean).map((phrase, index) => <Typography key={index} className="sf-phrase" sx={{ animation, animationDelay: `${index * 80}ms` }}>“{phrase}”</Typography>)}</Stack></Container></Box> : null,
     socials: () => <Box component="footer" id="socials" sx={{ ...sectionSx, bgcolor: colors.primary, color: "white" }}><Container {...containerProps}><Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" alignItems={{ md: "center" }} spacing={3}><Box><Typography variant="h4" fontWeight={950}>{store.name}</Typography><Stack direction="row" alignItems="center" spacing={.75} sx={{ mt: 1, opacity: .8 }}><LocationOnRoundedIcon fontSize="small" /><Typography variant="body2">{[branch.address?.line1, branch.address?.city, branch.address?.state].filter(Boolean).join(", ") || branch.name}</Typography></Stack></Box><SocialLinks social={site.social} accent="#fff" /></Stack></Container></Box>,
   };
 
-  return <Box className="storefront-shell" data-template={template} data-mode={isDark ? "dark" : "light"} data-navigation={settings.navigation_mode || "landing"} data-advanced-hero={asBoolean(settings.advanced_hero) ? "true" : "false"} data-header={theme.header_style} data-button={theme.button_style} data-width={theme.content_width} data-animation={theme.animation} data-spacing={theme.spacing} data-radius={theme.radius} data-shadow={theme.shadow} style={{ "--sf-primary": colors.primary, "--sf-secondary": colors.secondary, "--sf-accent": colors.accent, "--sf-background": background, "--sf-text": text, "--sf-radius": `${theme.radiusValue}px`, "--sf-shadow": theme.shadowValue }} sx={{ minHeight: "100vh", bgcolor: background, color: text, fontFamily: site.font_family || "Inter,Arial,sans-serif", scrollBehavior: asBoolean(theme.smooth_scroll, true) ? "smooth" : "auto", "@keyframes storefrontReveal": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "none" } } }}>
-    {branches.length > 1 && <Box className="sf-branch-picker"><FormControl size="small"><InputLabel>Sucursal</InputLabel><Select value={branchSlug} label="Sucursal" onChange={(e) => { setBranchSlug(e.target.value); setParams({ branch: e.target.value }); }}>{branches.map((item) => <MenuItem key={item.id} value={item.slug}>{item.name}</MenuItem>)}</Select></FormControl></Box>}
+  return <Box className="storefront-shell" data-page={isSalesPage ? "customer-sales" : isGalleryPage ? "gallery" : "store"} data-template={template} data-mode={isDark ? "dark" : "light"} data-navigation={settings.navigation_mode || "landing"} data-advanced-hero={asBoolean(settings.advanced_hero) ? "true" : "false"} data-header={theme.header_style} data-button={theme.button_style} data-width={theme.content_width} data-animation={theme.animation} data-spacing={theme.spacing} data-radius={theme.radius} data-shadow={theme.shadow} style={{ "--sf-primary": colors.primary, "--sf-secondary": colors.secondary, "--sf-accent": colors.accent, "--sf-background": background, "--sf-text": text, "--sf-radius": `${theme.radiusValue}px`, "--sf-shadow": theme.shadowValue }} sx={{ minHeight: "100vh", bgcolor: background, color: text, fontFamily: site.font_family || "Inter,Arial,sans-serif", scrollBehavior: asBoolean(theme.smooth_scroll, true) ? "smooth" : "auto", "@keyframes storefrontReveal": { from: { opacity: 0, transform: "translateY(20px)" }, to: { opacity: 1, transform: "none" } } }}>
+    {branches.length > 1 && <Box className="sf-branch-picker"><FormControl size="small"><InputLabel>Sucursal</InputLabel><Select value={branchSlug} label="Sucursal" onChange={(e) => { setBranchSlug(e.target.value); setParams((current) => { const next = new URLSearchParams(current); next.set("branch", e.target.value); return next; }); }}>{branches.map((item) => <MenuItem key={item.id} value={item.slug}>{item.name}</MenuItem>)}</Select></FormControl></Box>}
     <StorefrontMetadata payload={data} product={productId && !productLoading ? selectedProduct : null} />
     <FacebookHeader />
-    {productId ? (productLoading ? <StorefrontLoading storeSlug={storeSlug} brand={getStorefrontBrand(data)} compact /> : selectedProduct ? <PublicProductDetail product={selectedProduct} colors={colors} radius={theme.radiusValue} shadow={theme.shadowValue} legend={settings.product_legend || ""} showShare={advancedAccess && settings.show_share} showBack={advancedAccess} onBack={() => navigate(customStoreSlug ? "/#catalog" : `/tienda/${storeSlug}#catalog`)} /> : <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><Typography>Producto no disponible.</Typography></Box>) : sectionsForPlan.filter((section) => settings.navigation_mode !== "tabs" || section.id === activeSection).map((section) => <React.Fragment key={section.id}>{renderers[section.id]?.()}</React.Fragment>)}
+    {productId ? (productLoading ? <StorefrontLoading storeSlug={storeSlug} brand={getStorefrontBrand(data)} compact /> : selectedProduct ? <PublicProductDetail product={selectedProduct} colors={colors} radius={theme.radiusValue} shadow={theme.shadowValue} legend={settings.product_legend || ""} showShare={advancedAccess && settings.show_share} showBack={advancedAccess} onBack={() => navigate(customStoreSlug ? "/#catalog" : `/tienda/${storeSlug}#catalog`)} /> : <Box sx={{ minHeight: 420, display: "grid", placeItems: "center" }}><Typography>Producto no disponible.</Typography></Box>) : isSalesPage ? renderers.customer_sales() : isGalleryPage ? renderers.carousel() : sectionsForPlan.filter((section) => section.id !== "customer_sales" && section.id !== "carousel" && (settings.navigation_mode !== "tabs" || section.id === activeSection)).map((section) => <React.Fragment key={section.id}>{renderers[section.id]?.()}</React.Fragment>)}
   </Box>;
 }

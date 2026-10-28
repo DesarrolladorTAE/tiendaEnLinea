@@ -1,4 +1,6 @@
-import React, { lazy, Suspense, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
+import { telorecargoPOS } from "../modules/telorecargo/service";
+import { entity } from "../modules/telorecargo/model";
 import {
   Box,
   Typography,
@@ -11,6 +13,7 @@ import {
   Button,
   CircularProgress,
 } from "@mui/material";
+import PointOfSaleOutlinedIcon from "@mui/icons-material/PointOfSaleOutlined";
 import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import HistoryIcon from "@mui/icons-material/History";
@@ -20,6 +23,7 @@ import PeopleAltIcon from "@mui/icons-material/PeopleAlt";
 import NoteIcon from "@mui/icons-material/Note";
 import PendingActionsIcon from "@mui/icons-material/PendingActions";
 import SettingsInputComponentIcon from "@mui/icons-material/SettingsInputComponent";
+import PhoneAndroidIcon from "@mui/icons-material/PhoneAndroid";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
 
 import POS from "./POS";
@@ -31,6 +35,7 @@ import PendingSalesPOS from "./PendingSalePos";
 import PosLocationPrintSettings from "./POS/PosLocationPrintSettings";
 import CreditoFiadoPOS from "./CreditoFiadoPOS";
 
+const POSTelorecargo = lazy(() => import("../modules/telorecargo/POSTelorecargo.jsx"));
 const TourReportsPage = lazy(() => import("../pages/tours/TourReportsPage"));
 const ToursPage = lazy(() => import("../pages/tours/ToursPage"));
 
@@ -43,6 +48,18 @@ const POSDashboard = ({
 }) => {
   const [vista, setVista] = useState("menu");
   const [loadingLogout, setLoadingLogout] = useState(false);
+  const [telorecargoAccess, setTelorecargoAccess] = useState(null);
+  const telorecargoEnabled = telorecargoAccess?.posId === posLocationId && telorecargoAccess?.configured === true;
+  useEffect(() => {
+    if (!posLocationId || vista !== "menu") return undefined;
+    let alive = true;
+    telorecargoPOS.state().then((response) => {
+      if (alive) setTelorecargoAccess({ posId: posLocationId, configured: entity(response)?.configured === true });
+    }).catch(() => {
+      if (alive) setTelorecargoAccess({ posId: posLocationId, configured: false });
+    });
+    return () => { alive = false; };
+  }, [posLocationId, vista]);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -52,28 +69,29 @@ const POSDashboard = ({
       id: "ventas_servicios",
       titulo: "Ventas de servicios",
       descripcion: "Ventas, reservas, pasajeros y pagos de tours",
-      color: "#b97400",
+      color: "#9a5c00",
       icono: <RocketLaunchIcon sx={{ fontSize: 40 }} />,
     },
     {
       id: "venta",
       titulo: "Venta",
       descripcion: "Accede al módulo principal de ventas",
-      color: "#4CAF50",
+      color: "#15803d",
       icono: <ShoppingCartIcon sx={{ fontSize: 40 }} />,
     },
+    { id: "telorecargo", titulo: "Recargas Telorecargo", descripcion: "Recargas, saldo compartido y solicitudes de abono", color: "#1565c0", icono: <PhoneAndroidIcon sx={{ fontSize: 40 }} /> },
     {
       id: "historial",
       titulo: "Historial",
       descripcion: "Consulta todas las ventas realizadas",
-      color: "#2196F3",
+      color: "#1d4ed8",
       icono: <HistoryIcon sx={{ fontSize: 40 }} />,
     },
     {
       id: "ventas_pendientes",
       titulo: "Ventas Pendientes",
       descripcion: "Consulta ventas con saldo pendiente",
-      color: "#f59e0b",
+      color: "#a16207",
       icono: <PendingActionsIcon sx={{ fontSize: 40 }} />,
     },
     {
@@ -94,7 +112,7 @@ const POSDashboard = ({
       id: "facturas",
       titulo: "Facturas",
       descripcion: "Revisa las Ventas facturadas",
-      color: "#FF9800",
+      color: "#b45309",
       icono: <ReceiptLongIcon sx={{ fontSize: 40 }} />,
     },
     {
@@ -137,6 +155,9 @@ const POSDashboard = ({
 
   const renderVista = () => {
     switch (vista) {
+      case "telorecargo":
+        if (!telorecargoEnabled) return null;
+        return <Suspense fallback={<CircularProgress />}><POSTelorecargo key={posLocationId} posLocationId={posLocationId} onBack={() => setVista("menu")} /></Suspense>;
       case "reportes_servicios":
         return <Suspense fallback={<CircularProgress />}><TourReportsPage mode="pos" posBranchId={posBranchId} posLocationId={posLocationId} onBack={() => setVista("menu")} /></Suspense>;
       case "ventas_servicios":
@@ -212,12 +233,14 @@ const POSDashboard = ({
               alignItems: "stretch",
             }}
           >
-            {opciones.map((opcion) => (
+            {opciones.filter((opcion) => opcion.id !== "telorecargo" || telorecargoEnabled).map((opcion) => (
               <Card
                 key={opcion.id}
+                className="pos-menu-card"
                 sx={{
                   backgroundColor: opcion.color,
                   color: "white",
+                  "& .MuiTypography-root, & .MuiSvgIcon-root, & .MuiCardActionArea-root": { color: "#fff !important" },
                   borderRadius: { xs: 3, md: 4 },
                   minHeight: { xs: 150, sm: 180, md: 220 },
                   boxShadow: 8,
@@ -258,6 +281,8 @@ const POSDashboard = ({
                         justifyContent: "center",
                         "& svg": {
                           fontSize: { xs: 28, sm: 34, md: 40 },
+                          width: "1em",
+                          height: "1em",
                         },
                       }}
                     >
@@ -296,7 +321,7 @@ const POSDashboard = ({
   };
 
   return (
-    <Box p={4} display="flex" flexDirection="column" minHeight="100vh">
+    <Box sx={{ px: { xs: 1.5, sm: 2, md: 4 }, py: { xs: 2, md: 4 }, minWidth: 0 }} display="flex" flexDirection="column" minHeight="100vh">
       <Box
         display="flex"
         justifyContent="space-between"
@@ -305,8 +330,8 @@ const POSDashboard = ({
         mb={2}
       >
         <Box mb={isMobile ? 2 : 0}>
-          <Typography variant="h4" fontWeight="bold">
-            🏪 Punto de Venta: {posName} ✅
+          <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: 20, sm: 26, md: 32 }, display: "flex", alignItems: "center", gap: 1, overflowWrap: "anywhere" }}>
+            <PointOfSaleOutlinedIcon aria-hidden="true" /> Punto de Venta: {posName}
           </Typography>
         </Box>
 

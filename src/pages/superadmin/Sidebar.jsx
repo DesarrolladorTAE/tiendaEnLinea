@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import superadminNavItems from "../../menuConfigSuperadmin";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -52,7 +53,7 @@ const Sidebar = () => {
         onClick={handleLogout}
         className="btn btn-outline-light btn-sm w-100 mt-auto"
       >
-        🚪 Cerrar Sesión
+        <LogoutRoundedIcon fontSize="small" aria-hidden="true" sx={{ mr: .75 }} /> Cerrar Sesión
       </button>
     </div>
   );

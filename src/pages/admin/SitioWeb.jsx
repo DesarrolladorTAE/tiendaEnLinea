@@ -17,6 +17,8 @@ import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRou
 import { useAdminUi } from "../../context/AdminUiContext";
 import { getBranchSite, getMyStore, upsertBranchSite } from "../../services/admin/branchSiteService";
 import { alertFromAxiosError, showSuccess } from "../../utils/alerts";
+import axiosClient from "../../config/axiosClient";
+import { currentInvoiceComplement } from "../../utils/customerSales";
 import SiteEditorModal from "./modals/SiteEditorModal";
 import PublicStoreLinkCard from "../../components/admin/PublicStoreLinkCard";
 
@@ -39,6 +41,7 @@ const templateFor = (planId) => planId === 4 ? "avanzado" : planId === 3 ? "prof
 export default function SitioWeb({ onSelect }) {
   const navigate = useNavigate();
   const { selectedBranch } = useAdminUi();
+  const [invoiceComplement, setInvoiceComplement] = useState(null);
   const [store, setStore] = useState(null);
   const [site, setSite] = useState(null);
   const [apiPlan, setApiPlan] = useState(null);
@@ -56,6 +59,11 @@ export default function SitioWeb({ onSelect }) {
     setLoading(true);
     try {
       const { data: storeData } = await getMyStore();
+      setInvoiceComplement(null);
+      try {
+        const { data: complements } = await axiosClient.get("/mis-complementos");
+        setInvoiceComplement(currentInvoiceComplement(complements?.data ?? complements));
+      } catch { setInvoiceComplement(null); }
       setStore(storeData);
       if (!branchId || !storeData?.id) return;
       const { data } = await getBranchSite(storeData.id, branchId);
@@ -180,6 +188,8 @@ export default function SitioWeb({ onSelect }) {
         onSubmit={save}
         defaultValues={site || {}}
         capabilities={capabilities}
+        customerSalesAvailable={Boolean(planId >= 3 && invoiceComplement && !expired)}
+        customerSalesExpiresAt={invoiceComplement?.pivot?.fecha_fin || invoiceComplement?.fecha_fin || ""}
         planName={plan.name}
         sampleName={store?.name || selectedBranch?.name || "Mi tienda"}
         template={templateFor(planId)}
