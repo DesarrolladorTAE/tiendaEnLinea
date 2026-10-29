@@ -124,3 +124,63 @@
 @media(prefers-reduced-motion:reduce) { .trc-product { transition:none; } .trc-product:hover { transform:none; } }
 
 .trc-module .MuiCircularProgress-colorPrimary, .trc-module .MuiCheckbox-colorPrimary.Mui-checked, .trc-module .MuiRadio-colorPrimary.Mui-checked { color:var(--trc-accent); }
+
+.trc-cash-payment { padding: 24px; border-radius: 20px; background: linear-gradient(120deg, rgba(37,99,235,.09), rgba(16,185,129,.08)); border: 1px solid rgba(37,99,235,.16); }
+.trc-cash-payment .MuiOutlinedInput-root { background: var(--mui-palette-background-paper, #fff); border-radius: 14px; font-size: 1.3rem; font-weight: 750; }
+
+/* Shared receipt presentation in checkout and history portals. */
+.trc-detail-paper.MuiPaper-root { border-radius:24px; overflow:hidden; background:#f6f9fd; }
+.trc-detail-heading { padding:24px!important; background:linear-gradient(115deg,#fff,#eaf4ff); border-bottom:1px solid #e2e8f0; }
+.trc-detail-heading .MuiChip-root, .trc-operation-result .MuiChip-root { flex-shrink:0; align-self:center; width:auto; background:#f0fdf4; }
+.trc-detail-paper .MuiDialogContent-root { padding:24px; }
+.trc-operation-identity { padding:4px 0 8px; }
+.trc-operation-identity .MuiTypography-h4 { letter-spacing:.02em; font-size:28px; }
+.trc-operation-metadata { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:18px; background:#fff; border:1px solid #e2e8f0; border-radius:16px; }
+.trc-operation-metadata > div { min-width:0; overflow-wrap:anywhere; }
+.trc-operation-result.MuiPaper-root { box-shadow:none; }
+.trc-order-reference { color:#64748b; font-size:11px!important; padding:10px 12px; background:#f8fafc; border-radius:10px; }
+.trc-ticket-actions { padding:22px; background:#fff; border:1px solid #dce6f2; border-radius:20px; box-shadow:0 6px 22px #102b5005; }
+.trc-ticket-actions .MuiButton-root { text-transform:none; border-radius:12px; font-weight:750; min-height:46px; box-shadow:none; white-space:nowrap; }
+.trc-ticket-buttons { display:grid!important; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px!important; }
+.trc-ticket-buttons .MuiButton-root { width:100%; }
+.trc-whatsapp-card { padding:18px; border-radius:16px; background:#f1faf5; border:1px solid #d8eee0; }
+.trc-whatsapp-intro { display:flex; align-items:center; gap:12px; margin-bottom:16px; color:#21623c; }
+.trc-whatsapp-intro > svg { padding:9px; box-sizing:content-box; background:#dcf2e5; border-radius:12px; }
+.trc-whatsapp-card .MuiOutlinedInput-root { background:#fff; border-radius:12px; min-height:46px; }
+.trc-detail-footer { padding:16px 24px!important; border-top:1px solid #e2e8f0; background:#fff; }
+.trc-detail-footer .MuiButton-root { min-width:110px; text-transform:none; border-radius:12px; }
+.trc-checkout-paper .trc-checkout-actions { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.trc-checkout-actions > div { display:flex; justify-content:flex-end; margin-top:0; }
+.trc-checkout-actions .MuiButton-root { min-width:120px; border-radius:12px; }
+@media(max-width:599px) {
+ .trc-ticket-actions { padding:16px; }
+ .trc-ticket-buttons { grid-template-columns:minmax(0,1fr); }
+ .trc-whatsapp-card { padding:14px; }
+ .trc-detail-paper .MuiDialogContent-root, .trc-detail-heading { padding:18px!important; }
+ .trc-checkout-paper .trc-checkout-actions { flex-wrap:wrap; }
+ .trc-checkout-actions > div { width:100%; }
+ .trc-checkout-actions .MuiButton-root { flex:1; min-width:0; }
+}
+
+/* Intrinsic wrapping follows the modal width, including on desktop. */
+.trc-ticket-actions, .trc-whatsapp-card { min-width:0; box-sizing:border-box; }
+.trc-ticket-actions .MuiButton-root { min-width:0; white-space:normal; overflow-wrap:anywhere; line-height:1.4; padding:12px 16px; }
+.trc-ticket-buttons { grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr)); }
+.trc-whatsapp-form { display:flex; flex-wrap:wrap; align-items:stretch; gap:12px; min-width:0; }
+.trc-whatsapp-form > .MuiTextField-root { flex:1 1 220px; width:auto; min-width:0; max-width:100%; }
+.trc-whatsapp-form > .MuiButton-root { flex:1 1 160px; min-width:0; max-width:100%; }
+.trc-whatsapp-form .MuiInputBase-root, .trc-whatsapp-form input { min-width:0; }
+.trc-whatsapp-intro > svg { flex-shrink:0; }
+.trc-whatsapp-intro > div { min-width:0; overflow-wrap:anywhere; }
+.trc-history-table .MuiTableCell-root { vertical-align:middle; }
+.trc-history-table .MuiTableBody-root .MuiTableCell-root:first-child { white-space:nowrap; font-weight:750; }
+.trc-history-table .MuiTableBody-root .MuiTableCell-root:nth-child(2) { min-width:145px; font-size:13px; color:#64748b; }
+@media(max-width:599px) {
+ .trc-ticket-actions .MuiTypography-h6 { font-size:1.1rem; }
+ .trc-ticket-actions .MuiButton-root { width:100%; }
+ .trc-operation-result > .MuiStack-root > .MuiStack-root:first-child { flex-wrap:wrap; }
+ .trc-operation-metadata { grid-template-columns:minmax(0,1fr); }
+}
+
+.trc-history-concept { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; white-space:normal; line-height:1.45!important; }
+.trc-history-table .MuiTableBody-root .MuiTableCell-root:first-child { white-space:normal; min-width:160px; max-width:240px; }

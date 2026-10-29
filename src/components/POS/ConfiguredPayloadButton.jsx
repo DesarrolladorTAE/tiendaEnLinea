@@ -1,3 +1,4 @@
+import { sendToBridge } from "./printPayloadBridge";
 import React, { useEffect, useMemo, useState } from "react";
 import { Button, CircularProgress } from "@mui/material";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
@@ -127,29 +128,6 @@ export default function ConfiguredPayloadButton({
     return data.payload;
   };
 
-  const sendToBridge = (payload) => {
-    if (typeof window.sendPrintPayloadToWindows === "function") {
-      window.sendPrintPayloadToWindows(payload);
-      return true;
-    }
-
-    if (window.chrome?.webview?.postMessage) {
-      window.chrome.webview.postMessage(JSON.stringify(payload));
-      return true;
-    }
-
-    if (window.ReactNativeWebView?.postMessage) {
-      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
-      return true;
-    }
-
-    if (window.webkit?.messageHandlers?.printPayload?.postMessage) {
-      window.webkit.messageHandlers.printPayload.postMessage(payload);
-      return true;
-    }
-
-    return false;
-  };
 
   const handleSendWhatsapp = async () => {
     const phone = String(whatsappPhone || "").replace(/\D/g, "");
@@ -194,7 +172,7 @@ export default function ConfiguredPayloadButton({
         pos_location_id: posLocationId,
       };
 
-      const ok = sendToBridge(finalPayload);
+      const ok = await sendToBridge(finalPayload);
 
       if (!ok) {
         throw new Error(

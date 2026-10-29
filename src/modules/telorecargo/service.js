@@ -48,16 +48,31 @@ export const telorecargoPOS = {
   },
   // Construct the authenticated local route, never forward a token to a URL
   // supplied by the external provider.
-  ticket: async (id) => (await pos.get(`${posPath}/recargas/${id}/ticket.pdf`, { responseType: "blob" })).data,
+  ticket: async (id, url) => (await pos.get(ticketRoute(id, url, "ticket.pdf"), { responseType: "blob" })).data,
+  printPayload: (op) => unwrap(pos.get(ticketRoute(op.id, op.print_payload_url, "print-payload"))),
+  printConfig: (id) => unwrap(pos.get(`/pos/print-settings/${id}/payload-config`)),
+  sendWhatsapp: (id, phone) => unwrap(pos.post(`/sales/${id}/send-whatsapp`, { phone })),
   workers: (id) => unwrap(pos.get("/workers/simple-by-pos", { params: { pos_location_id: id } })),
   customers: (id) => unwrap(pos.get("/clientes/simple", { params: { pos_location_id: id } })),
 };
 
-export async function downloadRechargeTicket(id) {
-  const blob = await telorecargoPOS.ticket(id);
-  if (!(blob instanceof Blob) || !blob.size) throw new Error("El ticket no está disponible.");
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url; link.download = `recarga-${id}.pdf`; link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+function ticketRoute(id, supplied, suffix) {
+  if (!supplied) return `${posPath}/recargas/${encodeURIComponent(id)}/${suffix}`;
+  const base = new URL(baseURL + '/', window.location.origin);
+  const url = new URL(supplied, base);
+  if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) throw new Error('La URL del ticket no pertenece a la API del POS.');
+  return url.href;
+}
+export async function downloadRechargeTicket(id, suppliedUrl) {
+  const preview = window.open('', '_blank');
+  if (preview) preview.opener = null;
+  try {
+    const blob = await telorecargoPOS.ticket(id, suppliedUrl);
+    if (!(blob instanceof Blob) || !blob.size) throw new Error('El ticket no está disponible.');
+    if (!preview) throw new Error('Permite las ventanas emergentes y vuelve a abrir el PDF.');
+    const url = URL.createObjectURL(blob);
+    preview.location.replace(url);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) { preview?.close(); throw error; }
 }

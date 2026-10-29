@@ -82,7 +82,7 @@ export default function useDurableOrder(posId, funding = false, onConfirmed) {
   async function startNew() {
     if (!draft || !terminal(draft.operation, funding) || locked.current) return;
     setError(""); setBusy(true); locked.current = true;
-    try { await clearDraft(posId, kind, draft.key); setDraft(null); }
+    try { await clearDraft(posId, kind, draft.key); setDraft(null); return true; }
     catch (err) { setError(errorMessage(err)); }
     finally { setBusy(false); locked.current = false; }
   }

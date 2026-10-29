@@ -40,7 +40,8 @@ const api = {
   workers: async () => [], customers: async () => [{ id: 20, name: "Ana", telefono: "+52 5512345678" }, { id: 21, name: "Sin teléfono", telefono: null }],
   quote: async (code) => { quoteCalls++; assert.equal(code, "TEL100"); return quoted; },
 };
-const hook = () => ({ draft: null, ready: true, error: "", busy: false, submit: async (draft) => { submitted = draft; } });
+let savedDraft = null, clearedDrafts = 0;
+const hook = (_posId, funding) => ({ draft: funding ? null : savedDraft, startNew: async () => { savedDraft = null; clearedDrafts++; return true; }, ready: true, error: "", busy: false, submit: async (draft) => { submitted = draft; } });
 const presentation = {
   ModuleHeader: () => null, CarrierBadge: () => null,
   CompanySelector: ({ onChange }) => h("button", { onClick: () => onChange("8") }, "Telcel logo"),
@@ -85,11 +86,26 @@ function click(text) {
   await act(async () => { const confirm = document.querySelector('[aria-label="Confirmar número"]'); confirm.value = "5512345678"; confirm.dispatchEvent(new window.Event("input", { bubbles: true })); });
   await act(async () => document.querySelector("form").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })));
   assert.equal(submitted, undefined, "review does not send a recharge");
-  assert.equal(document.querySelectorAll('[role="dialog"]').length, 2);
+  assert.equal(document.querySelectorAll('[role="dialog"]').length, 1, "review stays inside the checkout modal");
   await act(async () => click("Confirmar y enviar"));
   assert.equal(submitted.body.client_id, 20);
   assert.equal(submitted.body.referencia, "5512345678");
   assert.equal(submitted.body.pagos[0].amount, "105.00");
   await act(async () => root.unmount());
+  savedDraft = { key: "saved", body: { referencia: "5512345678", pagos: [] }, summary: quoted, operation: { id: 7, status: "procesando" } };
+  const recoveredRoot = createRoot(document.getElementById("root"));
+  await act(async () => recoveredRoot.render(h(Page, { posLocationId: 10 })));
+  assert.ok(document.body.textContent.includes("Telcel logo"), "companies stay visible with a saved operation");
+  await act(async () => click("Telcel logo"));
+  assert.ok(document.querySelector('[role="dialog"]'), "pending operation opens for recovery");
+  assert.equal(clearedDrafts, 0, "pending purchases are never discarded");
+  await act(async () => recoveredRoot.unmount());
+  savedDraft.operation = { id: 7, status: "confirmada", sale_id: 99 };
+  const finishedRoot = createRoot(document.getElementById("root"));
+  await act(async () => finishedRoot.render(h(Page, { posLocationId: 10 })));
+  await act(async () => click("Telcel logo"));
+  assert.equal(clearedDrafts, 1, "a completed order is cleared before starting a new recharge");
+  assert.ok(document.querySelector('[aria-label="Monto o paquete"]'), "company opens a fresh recharge form");
+  await act(async () => finishedRoot.unmount());
   console.log("OK: logo opens modal, customer phone normalization, automatic quote, commission included once, explicit confirmation and safe client changes. Mocked requests only.");
 })().catch((error) => { console.error(error); process.exitCode = 1; });

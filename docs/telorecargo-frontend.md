@@ -40,3 +40,14 @@ Ejecutar `node scripts/test-telorecargo.cjs`. Prueba importes exactos, cotizaci�
 `node scripts/test-telorecargo-companies.cjs` verifica el endpoint de compañías, prioridad de marcas, relación por IDs, validación de URLs, carga de logos sin token, respaldo tras errores y texto blanco sobre fondos verdes.
 
 Se comprueba además la sintaxis y compilación con Vite. Antes del primer uso productivo corresponde verificar una cuenta configurada y la forma efectiva del catálogo del proveedor, tal como indica el contrato del backend. La normalización admite arrays y envolturas `data`, `productos`, `Productos` o `products`, conservando `Codigo`, `Nombre`, `Descripcion`, `Monto`, `CarrierID` y `Vigencia`. Si el esquema no se reconoce, se informa el error y no se ofrece una compra basada en datos inventados.
+
+
+### Tickets de recarga en el POS
+
+La captura, la confirmación, el procesamiento y el resultado permanecen en el modal de recarga. Las acciones de ticket aparecen solamente con status confirmada y sale_id con valor, también en el detalle del historial.
+
+El PDF se obtiene autenticado como blob y se abre con una URL temporal. La impresión consulta print_payload_url (o la ruta local con el ID de recarga) y entrega payload sin modificaciones al puente compartido con las ventas. El envío automático respeta enabled y auto_send_payload del POS; WhatsApp queda como acción manual al finalizar y usa el endpoint existente de la venta asociada.
+
+Los errores del ticket permiten reintentar la acción sin repetir la compra. HTTP 409 indica que todavía no hay una venta confirmada disponible. Las URLs autenticadas se restringen a la API del POS.
+
+Validación: node scripts/test-telorecargo-tickets.cjs y node scripts/test-telorecargo-checkout.cjs. La verificación física requiere el POS conectado a su aplicación de impresión.
