@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axiosClient from "../../config/axiosClient";
+import { subscribeInventoryChanges } from "../../utils/inventoryEvents";
 import {
   Box,
   Card,
@@ -33,7 +34,7 @@ export default function InventoryTable() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: "asc" });
 
   useEffect(() => {
-    axiosClient
+    const refreshInventory = () => axiosClient
       .get("/inventario")
       .then(({ data }) => {
         setProductos(data.map((p) => ({ ...p, price: Number(p.price) })));
@@ -41,6 +42,8 @@ export default function InventoryTable() {
       .catch((error) => {
         console.error("❌ Error al obtener inventario:", error);
       });
+    refreshInventory();
+    return subscribeInventoryChanges(refreshInventory);
   }, []);
 
   const productosFiltrados = useMemo(() => {

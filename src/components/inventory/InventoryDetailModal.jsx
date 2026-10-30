@@ -1,5 +1,7 @@
 // src/components/inventory/InventoryDetailModal.jsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { productStock, variantStock, hasProductVariants, usesWarehouses } from "../../utils/productInventory";
+import { subscribeInventoryChanges } from "../../utils/inventoryEvents";
 import {
   Box,
   Typography,
@@ -82,6 +84,7 @@ export default function InventoryDetailModal({ open, onClose, item, scope, wareh
 
   useEffect(() => {
     fetchDetail();
+    if (open) return subscribeInventoryChanges(fetchDetail);
   }, [fetchDetail]);
 
   const selectedWarehouseId =
@@ -89,8 +92,8 @@ export default function InventoryDetailModal({ open, onClose, item, scope, wareh
 
   const selectedVariantId = detail?.selected_variant_id || null;
 
-  const hasVariants = !!detail?.has_variants;
-  const isMultiWarehouse = !!detail?.use_warehouse_inventory;
+  const hasVariants = hasProductVariants(detail);
+  const isMultiWarehouse = usesWarehouses(detail);
 
   const visibleLabel = detail?.visible ? "Visible" : "Oculto";
   const inventoryLabel = isMultiWarehouse ? "Por almacén" : "General";
@@ -137,34 +140,10 @@ export default function InventoryDetailModal({ open, onClose, item, scope, wareh
   const coverImg = images?.[0] || item?.image_url || null;
 
   // Stock contextual (si hay almacén seleccionado)
-  const contextualStock = useMemo(() => {
-    if (!detail) return 0;
-
-    // inventario general
-    if (!isMultiWarehouse) {
-      if (selectedVariant) return Number(selectedVariant?.stock ?? 0);
-      return Number(detail?.stock ?? 0);
-    }
-
-    // inventario por almacén, pero sin warehouse seleccionado
-    if (!selectedWarehouseId) {
-      if (selectedVariant) return Number(selectedVariant?.stock ?? 0);
-      return Number(detail?.stock ?? 0);
-    }
-
-    // inventario por almacén + con variantes
-    if (hasVariants) {
-      if (!selectedVariant) return 0;
-      const ws = Array.isArray(selectedVariant?.warehouse_stocks) ? selectedVariant.warehouse_stocks : [];
-      const row = ws.find((x) => Number(x?.warehouse_id) === Number(selectedWarehouseId));
-      return row ? Number(row.stock ?? 0) : 0;
-    }
-
-    // inventario por almacén + producto simple
-    const wi = Array.isArray(detail?.warehouse_inventories) ? detail.warehouse_inventories : [];
-    const row = wi.find((x) => Number(x?.warehouse_id) === Number(selectedWarehouseId));
-    return row ? Number(row.qty ?? 0) : 0;
-  }, [detail, isMultiWarehouse, hasVariants, selectedWarehouseId, selectedVariant]);
+  const contextualStock = useMemo(() => productStock(detail, {
+    variantId: selectedVariantId || undefined,
+    warehouseId: selectedWarehouseId || undefined,
+  }), [detail, selectedWarehouseId, selectedVariantId]);
 
   const Section = ({ icon, title, children }) => (
     <Box>
@@ -352,7 +331,7 @@ export default function InventoryDetailModal({ open, onClose, item, scope, wareh
               <Stack direction="row" spacing={1} sx={{ mt: 1.1 }} flexWrap="wrap">
                 <Chip
                   size="small"
-                  label={`Stock: ${contextualStock}`}
+                  label={`Stock: ${contextualStock ?? "Detalle no disponible"}`}
                   sx={{
                     fontWeight: 950,
                     bgcolor: alpha(COLORS.accent, 0.22),
@@ -596,12 +575,7 @@ export default function InventoryDetailModal({ open, onClose, item, scope, wareh
                             {detail.variants.map((v) => {
                               const isSelected = selectedVariantId && Number(v?.id) === Number(selectedVariantId);
 
-                              let vStock = Number(v?.stock ?? 0);
-                              if (selectedWarehouseId) {
-                                const ws = Array.isArray(v?.warehouse_stocks) ? v.warehouse_stocks : [];
-                                const row = ws.find((x) => Number(x?.warehouse_id) === Number(selectedWarehouseId));
-                                vStock = row ? Number(row.stock ?? 0) : 0;
-                              }
+                              const vStock = variantStock(v, isMultiWarehouse, { warehouseId: selectedWarehouseId || undefined });
 
                               const vImg = v?.image_url || v?.image || null;
 
@@ -658,7 +632,7 @@ export default function InventoryDetailModal({ open, onClose, item, scope, wareh
                                   </TableCell>
 
                                   <TableCell align="right" sx={{ fontWeight: 950 }}>
-                                    {vStock}
+                                    {vStock ?? "Detalle no disponible"}
                                   </TableCell>
                                 </TableRow>
                               );

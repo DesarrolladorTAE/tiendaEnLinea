@@ -283,6 +283,7 @@ export default function POS({ posName, cambiarVista }) {
         inputRef.current?.focus({ preventScroll: true }),
       );
     }
+    return sale;
   };
 
   const loading = !Array.isArray(products);

@@ -10,7 +10,7 @@ import { useFieldArray, useWatch } from "react-hook-form";
  *  warehouse_inventories: [],
  *
  * Reglas:
- *  - SIN variantes: qty por almacén DEBE sumar stock global
+ *  - SIN variantes: qty por almacén es la fuente de existencias
  *  - CON variantes: aquí solo seleccionas almacenes (sin qty),
  *    el stock/precio por almacén va por variante (en VariantsEditor)
  */
@@ -28,7 +28,6 @@ export default function LocationsProductSection({
   const variants = useWatch({ control, name: "variants" }) || [];
   const hasVariants = variants.length > 0;
 
-  const productStock = Number(watch("stock") || 0);
 
   const { fields, append, remove } = useFieldArray({
     control,
@@ -47,7 +46,7 @@ export default function LocationsProductSection({
     if (!useWarehouses) {
       return {
         level: "info",
-        msg: "Inventario por almacén desactivado: se usa stock/precio global.",
+        msg: "Sin almacenes: las existencias se administran en cada variante o en el producto simple.",
         ok: true,
       };
     }
@@ -112,28 +111,9 @@ export default function LocationsProductSection({
       };
     }
 
-    if (!Number.isFinite(productStock) || productStock < 0) {
-      return {
-        level: "error",
-        msg: "El stock global del producto no es válido.",
-        ok: false,
-      };
-    }
-
-    if (sumQty !== productStock) {
-      const diff = +(productStock - sumQty).toFixed(3);
-      return {
-        level: "warning",
-        msg:
-          `La suma por almacén (${sumQty}) NO coincide con el stock global (${productStock}). ` +
-          (diff > 0 ? `Te faltan ${diff}.` : `Te sobran ${Math.abs(diff)}.`),
-        ok: false, // bloquea (tu submit también valida esto)
-      };
-    }
-
     return {
       level: "success",
-      msg: `Correcto: ${productStock} = ${sumQty} (stock repartido).`,
+      msg: `Existencias totales en almacenes: ${sumQty}.`,
       ok: true,
     };
   }, [
@@ -142,7 +122,6 @@ export default function LocationsProductSection({
     fields.length,
     rows,
     warehouses,
-    productStock,
     sumQty,
   ]);
 
@@ -150,12 +129,13 @@ export default function LocationsProductSection({
     const n = rows.length;
     if (!n) return;
 
-    const total = Number(productStock || 0);
+    const total = sumQty;
     if (!Number.isFinite(total) || total <= 0) return;
 
     // reparto en enteros
-    const base = Math.floor(total / n);
-    let remainder = total - base * n;
+    const units = Math.round(total * 1000);
+    const base = Math.floor(units / n);
+    let remainder = units - base * n;
 
     rows.forEach((_, i) => {
       let q = base;
@@ -163,7 +143,7 @@ export default function LocationsProductSection({
         q += 1;
         remainder -= 1;
       }
-      setValue(`warehouse_inventories.${i}.qty`, q, {
+      setValue(`warehouse_inventories.${i}.qty`, q / 1000, {
         shouldDirty: true,
         shouldTouch: true,
         shouldValidate: true,
@@ -198,7 +178,7 @@ export default function LocationsProductSection({
           </label>
         </div>
         <small className="text-muted">
-          Si no activas esto, se usa stock/precio global.
+          Administra las existencias directamente en cada almacén. Con variantes, utiliza el detalle de cada variante.
         </small>
       </div>
 
@@ -227,8 +207,8 @@ export default function LocationsProductSection({
                 type="button"
                 className="btn btn-outline-light"
                 onClick={distributeEvenly}
-                disabled={rows.length < 2 || !productStock}
-                title="Reparte el stock global entre las filas"
+                disabled={rows.length < 2 || !sumQty}
+                title="Redistribuye el total actual de los almacenes entre las filas"
               >
                 Repartir en partes iguales
               </button>
@@ -238,9 +218,7 @@ export default function LocationsProductSection({
               {!hasVariants ? (
                 <>
                   <small className="text-white">Total asignado:</small>{" "}
-                  <strong>{sumQty}</strong>{" "}
-                  <small className="text-white">/ Stock global:</small>{" "}
-                  <strong>{productStock}</strong>
+                  <strong>{sumQty}</strong>
                 </>
               ) : (
                 <>
@@ -304,7 +282,8 @@ export default function LocationsProductSection({
                           <input
                             className="form-control"
                             type="number"
-                            step="1"
+                            step="0.001"
+                            min="0"
                             placeholder="0"
                             {...register(`warehouse_inventories.${i}.qty`)}
                           />

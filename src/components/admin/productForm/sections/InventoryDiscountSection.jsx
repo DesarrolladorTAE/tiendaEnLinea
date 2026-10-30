@@ -1,6 +1,5 @@
 // src/components/admin/productForm/sections/InventoryDiscountSection.jsx
 import React from "react";
-import { Link } from "react-router-dom";
 import ProductField from "../../../admin/ProductField";
 import SatFields from "../SatFields";
 
@@ -14,10 +13,11 @@ export default function InventoryDiscountSection({
   isEdit = false,
 }) {
   const discount = watch("discount");
+  const detailInventory = hasVariants || watch("use_warehouse_inventory");
 
   return (
     <div className="row">
-      {!hasVariants && (
+      {!detailInventory && (
         <div className="col-md-4 mb-3">
           <label className="form-label">Stock</label>
 
@@ -27,12 +27,10 @@ export default function InventoryDiscountSection({
             min="0"
             inputMode="decimal"
             className="form-control bg-secondary border-secondary text-light"
-            readOnly={isEdit}
-            placeholder={isEdit ? "Se actualiza desde entradas" : "Stock"}
+            placeholder="Stock"
             {...register("stock", {
-              required: !isEdit
-                ? "El stock es obligatorio (si no usas variantes)"
-                : false,
+              shouldUnregister: true,
+              required: !detailInventory ? "El stock es obligatorio" : false,
               valueAsNumber: true,
               min: {
                 value: 0,
@@ -45,20 +43,9 @@ export default function InventoryDiscountSection({
             <small className="text-danger">{errors.stock.message}</small>
           )}
 
-          {isEdit && (
-            <small className="text-warning d-block mt-1">
-              ⚠️ El stock solo se puede cambiar al registrar entradas de
-              producto.
-              <br />
-              Dirígete al apartado{" "}
-              <Link to="/admin/compra" className="text-info fw-bold">
-                Entradas Producto
-              </Link>
-              .
-            </small>
-          )}
         </div>
       )}
+      {detailInventory && <div className="col-12 mb-3"><div className="alert alert-info mb-0">Las existencias se administran en {watch("use_warehouse_inventory") ? "el detalle por almacén" : "cada variante"}. El stock global no se utiliza.</div></div>}
 
       <SatFields
         register={register}

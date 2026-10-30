@@ -4,6 +4,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../config/axiosClient";
 import { showSuccess, showError } from "../utils/alerts";
 import { useAdminUi } from "../context/AdminUiContext";
+import { inventoryFlag, activeVariant } from "../utils/productInventory";
+import { notifyInventoryChanged } from "../utils/inventoryEvents";
 
 /**
  * ✅ Helper: agrega a FormData usando notación bracket
@@ -48,7 +50,7 @@ const toStrTrimOrEmpty = (v) => String(v ?? "").trim();
  * - warehouse_stocks: array [{warehouse_id, stock, min_stock, max_stock, reorder_point, location_bin}]
  * - image: File (si aplica) o image_existing
  */
-export function normalizeVariantsForBackend(rawVariants = []) {
+export function normalizeVariantsForBackend(rawVariants = [], useWarehouses = false) {
   return (rawVariants || [])
     .map((v) => {
       const attrsArray = Array.isArray(v.attributes) ? v.attributes : [];
@@ -88,14 +90,14 @@ export function normalizeVariantsForBackend(rawVariants = []) {
           v.purchase_cost === "" || v.purchase_cost == null
             ? null
             : Number(v.purchase_cost),
-        stock: Number.isFinite(stockNum) ? stockNum : 0,
+        ...(!useWarehouses ? { stock: Number.isFinite(stockNum) ? stockNum : 0 } : {}),
 
         image: v.image instanceof File ? v.image : null,
         image_existing: !(v.image instanceof File)
           ? v.image_existing || v.image || null
           : null,
 
-        is_active: String(v.is_active) === "false" ? 0 : 1,
+        is_active: activeVariant(v) ? 1 : 0,
 
         attributes: attributesArr,
         warehouse_stocks: cleanWarehouseStocks,
@@ -196,7 +198,7 @@ export function mapBackendVariantsToForm(backendVariants = []) {
  * - y hay variantes con warehouse_stocks
  */
 function deriveWarehouseInventoriesFromVariants(product) {
-  const useWh = Boolean(product?.use_warehouse_inventory);
+  const useWh = inventoryFlag(product?.use_warehouse_inventory);
   const variants = Array.isArray(product?.variants) ? product.variants : [];
   const base = Array.isArray(product?.warehouse_inventories)
     ? product.warehouse_inventories
@@ -424,7 +426,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
       variants: loadedVariants,
 
-      use_warehouse_inventory: Boolean(product.use_warehouse_inventory),
+      use_warehouse_inventory: inventoryFlag(product.use_warehouse_inventory),
       // OJO: si el backend manda qty/price/purchase_cost en warehouse_inventories,
       // aquí se respetan; si no manda, igual funciona con solo warehouse_id.
       warehouse_inventories: Array.isArray(warehouseInventories)
@@ -484,16 +486,23 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
   // ===== SUBMIT =====
   const onSubmit = async (data) => {
     try {
-      const useWh = Boolean(data.use_warehouse_inventory);
+      const useWh = inventoryFlag(data.use_warehouse_inventory);
 
       const variantsPayloadPreview = normalizeVariantsForBackend(
         data.variants || [],
+        useWh,
       );
       const hasVariantsPayload = variantsPayloadPreview.length > 0;
+      if (!useWh) {
+        const stocks = hasVariantsPayload ? data.variants.map(v => v.stock) : [data.stock];
+        if (stocks.some(stock => stock === "" || stock == null || !Number.isFinite(Number(stock)) || Number(stock) < 0)) {
+          showError("Captura existencias válidas, mayores o iguales a cero, en el producto o en cada variante.");
+          return;
+        }
+      }
 
       // ✅ SIN variantes: valida warehouse_product_stocks (qty)
       if (useWh && !hasVariantsPayload) {
-        const stock = Number(data.stock || 0);
         const rows = Array.isArray(data.warehouse_inventories)
           ? data.warehouse_inventories
           : [];
@@ -527,13 +536,6 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
           return;
         }
 
-        const sum = rows.reduce((acc, r) => acc + (Number(r?.qty) || 0), 0);
-        if (sum !== stock) {
-          showError(
-            `❌ La suma por almacén (${sum}) debe ser igual al stock global (${stock}).`,
-          );
-          return;
-        }
       }
 
       // ✅ CON variantes: valida warehouse_variant_stocks (stock) por variante
@@ -573,15 +575,6 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
             return;
           }
 
-          const sum = rows.reduce((acc, r) => acc + (Number(r?.stock) || 0), 0);
-          const vStock = Number(v.stock || 0);
-
-          if (sum !== vStock) {
-            showError(
-              `❌ Variante #${i + 1}: la suma por almacén (${sum}) debe ser igual al stock de la variante (${vStock}).`,
-            );
-            return;
-          }
         }
       }
 
@@ -695,9 +688,8 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       const variantsPayload = variantsPayloadPreview;
       const hasVariantsPayload2 = variantsPayload.length > 0;
 
-      if (!hasVariantsPayload2)
+      if (!hasVariantsPayload2 && !useWh)
         formData.append("stock", data.stock?.toString() || "0");
-      else formData.append("stock", "0");
 
       if (hasVariantsPayload2)
         appendFormData(formData, "variants", variantsPayload);
@@ -746,6 +738,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
           headers: { "Content-Type": "multipart/form-data" },
         });
         showSuccess("✅ Producto actualizado con éxito.");
+        notifyInventoryChanged();
         navigate("/admin/products");
       } else {
         await axiosClient.post("/cargar/productos", formData, {
@@ -753,6 +746,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
           params: branchId ? { branch_id: branchId } : undefined,
         });
         showSuccess("✅ Producto creado con éxito.");
+        notifyInventoryChanged();
         navigate("/admin/products");
         reset();
         setImageFiles([]);

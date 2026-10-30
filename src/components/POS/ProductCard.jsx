@@ -1,5 +1,6 @@
 // src/components/POS/ProductCard.jsx
 import React, { useMemo, useState, useEffect } from "react";
+import { productStock, hasProductVariants, usesWarehouses, variantStock, activeVariant } from "../../utils/productInventory";
 import {
   Paper,
   Box,
@@ -68,8 +69,8 @@ export default function ProductCard({
   const theme = useTheme();
 
   const baseId = product?.id;
-  const hasVariants = Boolean(product?.has_variants) || isVariantProduct(product);
-  const useWh = Boolean(product?.use_warehouse_inventory);
+  const hasVariants = hasProductVariants(product);
+  const useWh = usesWarehouses(product);
 
   const [openVariants, setOpenVariants] = useState(false);
 
@@ -91,7 +92,7 @@ export default function ProductCard({
       .map((r) => ({
         warehouse_id: r.warehouse_id,
         warehouse_name: r.warehouse_name || `Almacén ${r.warehouse_id}`,
-        qty: r.qty ?? r.stock ?? 0,
+        qty: r.qty ?? 0,
         location_bin: r.location_bin ?? null,
       }))
       .sort((a, b) => (Number(b.qty) || 0) - (Number(a.qty) || 0));
@@ -106,11 +107,12 @@ export default function ProductCard({
   // ✅ Hint almacén
   const stockHint = useMemo(() => {
     if (!useWh) return null;
+    if (hasVariants) return globalStock > 0 ? "Existencias por variante y almacén" : "Consulta el detalle de cada variante";
     const withStock = productWarehouseRows.filter((r) => (Number(r.qty) || 0) > 0);
     if (!withStock.length) return "Sin stock";
     const top = withStock.slice(0, 1).map((r) => `${r.warehouse_name}: ${Number(r.qty) || 0}`);
     return top.join(" • ");
-  }, [useWh, productWarehouseRows]);
+  }, [useWh, hasVariants, globalStock, productWarehouseRows]);
 
   // ====== producto simple ======
   const simpleCartKey = String(baseId);
@@ -239,7 +241,7 @@ export default function ProductCard({
   // ====== variantes ======
   const variants = useMemo(() => {
     const arr = Array.isArray(product?.variants) ? product.variants : [];
-    return arr.filter((v) => v?.is_active !== false);
+    return arr.filter(activeVariant);
   }, [product]);
 
   const [selectedVariantId, setSelectedVariantId] = useState("");
@@ -310,13 +312,14 @@ export default function ProductCard({
 
   const variantCartKey = useMemo(() => {
     if (!selectedVariantId) return null;
-    return `${baseId}-v${selectedVariantId}`;
-  }, [baseId, selectedVariantId]);
+    const warehouseId = selectedWarehouseId || (variantWarehouses.length === 1 ? variantWarehouses[0].warehouse_id : null);
+    return `${baseId}-v${selectedVariantId}${useWh && warehouseId ? `-w${warehouseId}` : ""}`;
+  }, [baseId, selectedVariantId, selectedWarehouseId, useWh, variantWarehouses]);
 
   const qtyInCartVariant = variantCartKey ? getQuantityInCart(variantCartKey) : 0;
 
   const variantTotalStock = useMemo(() => {
-    if (useWh && variantWarehouses.length) {
+    if (useWh) {
       return variantWarehouses.reduce((a, r) => a + (Number(r.stock) || 0), 0);
     }
     return Number(selectedVariant?.stock) || 0;
@@ -561,7 +564,7 @@ export default function ProductCard({
           <Chip
             size="small"
             icon={<Inventory2RoundedIcon />}
-            label={`Stock: ${hasVariants ? "ver" : globalStock}`}
+            label={productStock(product, { activeOnly: true }) === null ? "Consultar existencias" : `Stock: ${globalStock}`}
             sx={{
               fontWeight: 900,
               bgcolor: alpha("#10b981", 0.1),
@@ -775,10 +778,7 @@ export default function ProductCard({
                       const attrs = normalizeAttrs(v?.variant_attributes || v?.attributes);
                       const selected = String(v.id) === String(selectedVariantId);
 
-                      const stockTotal =
-                        useWh && Array.isArray(v?.warehouse_stocks) && v.warehouse_stocks.length
-                          ? v.warehouse_stocks.reduce((a, r) => a + (Number(r.stock) || 0), 0)
-                          : Number(v?.stock) || 0;
+                      const stockTotal = variantStock(v, useWh) ?? 0;
 
                       return (
                         <Paper
@@ -1030,7 +1030,7 @@ export default function ProductCard({
                         startIcon={<ShoppingCartRoundedIcon />}
                         disabled={
                           !canAddVariant ||
-                          (useWh ? stockForSelectedWarehouse <= 0 && variantWarehouses.length !== 1 : variantTotalStock <= 0)
+                          (useWh ? stockForSelectedWarehouse <= 0 : variantTotalStock <= 0)
                         }
                         onClick={addVariantOne}
                         sx={{ textTransform: "none", fontWeight: 950, borderRadius: 3 }}

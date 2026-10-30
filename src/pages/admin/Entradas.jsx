@@ -35,6 +35,7 @@ import LowStockProductsPanel from "../../components/restocks/LowStockProductsPan
 import RestockHistoryTable from "../../components/restocks/RestockHistoryTable";
 import SupplierRestockHistory from "../../components/restocks/SupplierRestockHistory";
 import InventoryDetailModal from "../../components/inventory/InventoryDetailModal";
+import { subscribeInventoryChanges } from "../../utils/inventoryEvents";
 
 const COLORS = {
   accent: "#f9b233",
@@ -264,6 +265,12 @@ export default function StockEntryForm() {
   useEffect(() => {
     if (activeBranch?.id) fetchLowStock();
   }, [activeBranch?.id, fetchLowStock]);
+
+  useEffect(() => subscribeInventoryChanges(() => {
+    fetchProducts();
+    fetchStockHistory();
+    fetchLowStock();
+  }), [fetchProducts, fetchStockHistory, fetchLowStock]);
 
   const downloadLowStockReport = useCallback((type) => {
     if (!activeBranch?.id) return;

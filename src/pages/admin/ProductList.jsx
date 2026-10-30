@@ -22,7 +22,10 @@ import LabelModal from "./modals/LabelModal";
 import { useTienda } from "../../context/TiendaContext";
 import CategoryModal from "../../components/products-list/CategoryModal";
 import ImportProductsModal from "../../components/products-list/ImportProductsModal";
-import { FiUploadCloud } from "react-icons/fi";
+import AdvancedProductsModal from "../../components/products-list/AdvancedProductsModal";
+import { Box, Typography, IconButton, Tooltip } from "@mui/material";
+import { FiPackage, FiTrash2, FiUploadCloud } from "react-icons/fi";
+import { notifyInventoryChanged, subscribeInventoryChanges } from "../../utils/inventoryEvents";
 
 // ✅ sucursal seleccionada + layout
 import { useAdminUi } from "../../context/AdminUiContext";
@@ -45,6 +48,7 @@ const ProductList = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [openImport, setOpenImport] = useState(false);
+  const [advancedMode, setAdvancedMode] = useState(null);
   const [error, setError] = useState(null);
 
   // categorías
@@ -165,6 +169,7 @@ const ProductList = () => {
     if (!activeBranch?.id) return;
     fetchProductos();
     fetchCategorias();
+    return subscribeInventoryChanges(() => { fetchProductos(); fetchCategorias(); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBranch?.id]);
 
@@ -281,13 +286,38 @@ const ProductList = () => {
             ) : null}
           </div>
 
-          <p className="text-white small mb-0 text-end">
-            {cargando
-              ? "Cargando límites..."
-              : errorLimite ? "No se pudo consultar el total de productos" : `Tienes ${totalProductos ?? "—"} / ${
-                  limitePermitido === Infinity ? "∞" : limitePermitido
-                } productos en esta sucursal`}
-          </p>
+          <Box sx={{ display: "flex", alignItems: "center", width: { xs: "100%", sm: "auto" }, p: 0.75, borderRadius: "18px", border: "1px solid rgba(255,255,255,0.1)", background: "linear-gradient(120deg, #292c30, #202226)", boxShadow: "0 6px 20px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.035)" }}>
+            <Box role="status" aria-live="polite" sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 1.25, py: 0.75, flex: 1 }}>
+              <Box sx={{ display: { xs: "none", sm: "flex" }, alignItems: "center", justifyContent: "center", width: 40, height: 40, flexShrink: 0, borderRadius: "12px", color: "#f6ce73", background: "linear-gradient(145deg, rgba(246,206,115,0.16), rgba(246,206,115,0.04))", border: "1px solid rgba(246,206,115,0.12)" }}>
+                <FiPackage size={21} aria-hidden="true" />
+              </Box>
+              <Box>
+                <Typography component="p" sx={{ m: 0, color: "#a8adb5", fontSize: 11, lineHeight: 1.4, fontWeight: 500 }}>En esta sucursal</Typography>
+                <Box sx={{ display: "flex", alignItems: "baseline", gap: 0.75 }}>
+                  <Typography component="span" sx={{ color: errorLimite ? "#f6ce73" : "#fff", fontSize: cargando || errorLimite ? 13 : 26, fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1.2, fontVariantNumeric: "tabular-nums" }}>
+                    {cargando ? "Consultando..." : errorLimite ? "Total no disponible" : totalProductos == null ? "—" : Number(totalProductos).toLocaleString("es-MX")}
+                  </Typography>
+                  {!cargando && !errorLimite && <Typography component="span" sx={{ color: "#d0d3d8", fontSize: 12 }}>productos</Typography>}
+                </Box>
+              </Box>
+              {!cargando && !errorLimite && (
+                <Box sx={{ ml: "auto", pl: { xs: 1, sm: 2 }, textAlign: "right", flexShrink: 0 }}>
+                  <Typography component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.6, px: 1, py: 0.45, borderRadius: "7px", color: limitePermitido === Infinity ? "#9ae2bc" : "#e8ca88", bgcolor: limitePermitido === Infinity ? "rgba(110,215,157,0.08)" : "rgba(246,206,115,0.08)", fontSize: 11, fontWeight: 600 }}>
+                    {limitePermitido === Infinity && <span aria-hidden="true" style={{ fontSize: 17, lineHeight: 1 }}>∞</span>}
+                    {limitePermitido === Infinity ? "Sin límite" : `Límite: ${Number(limitePermitido).toLocaleString("es-MX")}`}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+            <Box sx={{ borderLeft: "1px solid rgba(255,255,255,0.09)", ml: 1, pl: 0.75, display: "flex" }}>
+              <Tooltip title="Eliminar todos los productos" arrow>
+                <IconButton aria-label="Eliminar todos los productos" onClick={() => setAdvancedMode("delete")}
+                  sx={{ width: 40, height: 44, color: "#b7a2a4", borderRadius: "11px", transition: "background-color 160ms, color 160ms", "&:hover": { color: "#fda4af", bgcolor: "rgba(244,63,94,0.12)" }, "&.Mui-focusVisible": { outline: "2px solid #fca5a5", outlineOffset: 2 } }}>
+                  <FiTrash2 size={18} />
+                </IconButton>
+              </Tooltip>
+            </Box>
+          </Box>
         </div>
 
         <ProductSearchBar
@@ -339,12 +369,23 @@ const ProductList = () => {
           onOpenCategories={handleOpenCats}
         />
 
+        {advancedMode && <AdvancedProductsModal
+          mode={advancedMode} branch={activeBranch} onClose={() => setAdvancedMode(null)}
+          onChanged={async () => {
+            notifyInventoryChanged();
+            await Promise.all([fetchProductos(), fetchCategorias(), actualizarLimite()]);
+          }}
+        />}
+
         {openImport && (
           <ImportProductsModal
             open={openImport}
             onClose={() => setOpenImport(false)}
             branch={activeBranch}
-            onImported={() => Promise.all([fetchProductos(), actualizarLimite()])}
+            onImported={async () => {
+              notifyInventoryChanged();
+              await Promise.all([fetchProductos(), fetchCategorias(), actualizarLimite()]);
+            }}
           />
         )}
 

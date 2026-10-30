@@ -624,7 +624,8 @@ export default function CartSidebar({
 
     try {
       setSubmittingSale(true);
-      await onCheckout(data);
+      const sale = await onCheckout(data);
+      if (!sale) return;
       resetAfterSuccessfulSale();
     } catch (error) {
       const msg =
@@ -994,6 +995,11 @@ export default function CartSidebar({
                             onChange={(e) => {
                               const val = e.target.value;
                               if (/^\d*\.?\d*$/.test(val)) {
+                                const qty = val === "" || val === "." ? 0 : parseFloat(val);
+                                if (qty > Number(item.stock_available ?? 0)) {
+                                  showError("La cantidad supera las existencias de la variante y almacén seleccionados.");
+                                  return;
+                                }
                                 setCart((prev) =>
                                   prev.map((prod) =>
                                     getCartKey(prod) === cartKey
@@ -1029,6 +1035,7 @@ export default function CartSidebar({
 
                           <IconButton
                             size="small"
+                            disabled={Math.floor(Number(item.quantity)) + 1 > Number(item.stock_available ?? 0)}
                             onClick={() => {
                               setCart((prev) =>
                                 prev.map((prod) =>

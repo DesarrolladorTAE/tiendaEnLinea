@@ -23,6 +23,7 @@ import AssignmentReturnRoundedIcon from "@mui/icons-material/AssignmentReturnRou
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 
 import axiosClient from "../config/axiosClientPOS";
+import { notifyInventoryChanged } from "../utils/inventoryEvents";
 import { showError, showSuccess } from "../utils/alerts";
 
 export default function ModalDevolucionExtendido({
@@ -97,6 +98,7 @@ export default function ModalDevolucionExtendido({
       });
 
       showSuccess("Reembolso total registrado correctamente.");
+      notifyInventoryChanged();
       onSuccess?.();
       onClose?.();
     } catch (error) {

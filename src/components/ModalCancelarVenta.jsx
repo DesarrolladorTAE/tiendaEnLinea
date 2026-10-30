@@ -21,6 +21,7 @@ import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
 
 import axiosClient from "../config/axiosClientPOS";
 import { showError, showSuccess } from "../utils/alerts";
+import { notifyInventoryChanged } from "../utils/inventoryEvents";
 
 export default function ModalCancelarVenta({
   open,
@@ -59,6 +60,7 @@ export default function ModalCancelarVenta({
       });
 
       showSuccess("Venta cancelada correctamente.");
+      notifyInventoryChanged();
       onSuccess?.();
       onClose?.();
     } catch (error) {

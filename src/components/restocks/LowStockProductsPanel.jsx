@@ -24,6 +24,7 @@ import {
 
 import axiosClient from "../../config/axiosClient";
 import { alertFromAxiosError } from "../../utils/alerts";
+import { usesDetailInventory, usesWarehouses } from "../../utils/productInventory";
 
 const COLORS = {
   accent: "#f9b233",
@@ -49,7 +50,7 @@ export default function LowStockProductsPanel({
     const warehouseVariants = lowStock?.warehouse_variants || [];
 
     return [
-      ...productsRows.map((p) => ({
+      ...productsRows.filter(p => !usesDetailInventory(p)).map((p) => ({
         type: "Producto",
         item_type: "product",
         product_id: p.id,
@@ -61,7 +62,7 @@ export default function LowStockProductsPanel({
         warehouse_id: null,
         scope: "global",
       })),
-      ...variants.map((v) => ({
+      ...variants.filter(v => !usesWarehouses(v) && !usesWarehouses(v.product)).map((v) => ({
         type: "Variante",
         item_type: "variant",
         product_id: v.product_id,

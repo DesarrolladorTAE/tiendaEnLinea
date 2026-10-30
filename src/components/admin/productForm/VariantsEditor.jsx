@@ -1,6 +1,7 @@
 // src/components/admin/productForm/VariantsEditor.jsx
 import React, { useMemo, useState } from "react";
-import { useFieldArray, useWatch } from "react-hook-form";
+import { useFieldArray, useWatch, useFormState } from "react-hook-form";
+import { productStock, usesWarehouses } from "../../../utils/productInventory";
 
 function HelpOverlay({ open, onClose }) {
   if (!open) return null;
@@ -52,16 +53,14 @@ function HelpOverlay({ open, onClose }) {
           <div className="mb-3">
             <strong>1) Stock de la variante</strong>
             <p className="mb-0 text-white">
-              Cada variante tiene su propio stock total. Ese stock es el que se reparte (si aplica)
-              entre los almacenes.
+              Sin almacenes, edita las existencias de cada variante. Con almacenes, las existencias se editan en el detalle por almacén de cada variante.
             </p>
           </div>
 
           <div className="mb-3">
             <strong>2) Inventario por almacén</strong>
             <p className="mb-0 text-white">
-              Si activaste “inventario por almacén”, entonces para cada variante puedes repartir su stock
-              entre los almacenes seleccionados. Así sabes cuánta existencia hay en cada lugar.
+              Si activaste “inventario por almacén”, captura las existencias en cada almacén seleccionado. El total se calcula sumando ese detalle.
             </p>
           </div>
 
@@ -161,8 +160,6 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
       .filter(Boolean);
   }, [warehouseInventories]);
 
-  const variantStockRaw = useWatch({ control, name: `variants.${vIndex}.stock` });
-  const variantStock = Number(variantStockRaw || 0);
 
   const { fields, replace, remove } = useFieldArray({
     control,
@@ -206,11 +203,12 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
     const n = current.length;
     if (!n) return;
 
-    const total = Number(variantStock || 0);
+    const total = sumStock;
     if (!Number.isFinite(total) || total < 0) return;
 
-    const base = Math.floor(total / n);
-    let rem = total - base * n;
+    const units = Math.round(total * 1000);
+    const base = Math.floor(units / n);
+    let rem = units - base * n;
 
     current.forEach((_, i) => {
       let q = base;
@@ -218,7 +216,7 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
         q += 1;
         rem -= 1;
       }
-      setValue(`variants.${vIndex}.warehouse_stocks.${i}.stock`, q, {
+      setValue(`variants.${vIndex}.warehouse_stocks.${i}.stock`, q / 1000, {
         shouldDirty: true,
         shouldTouch: true,
         shouldValidate: true,
@@ -228,7 +226,7 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
 
   const validation = useMemo(() => {
     if (!useWarehouses) {
-      return { level: "info", msg: "Inventario por almacén desactivado: la variante usa stock global.", ok: true };
+      return { level: "info", msg: "Las existencias se administran en esta variante.", ok: true };
     }
 
     if (!selectedIds.length) {
@@ -269,23 +267,8 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
 
     if (invalidStock) return { level: "error", msg: "Hay stocks inválidos (deben ser números >= 0).", ok: false };
 
-    if (!Number.isFinite(variantStock) || variantStock < 0) {
-      return { level: "error", msg: "El stock global de la variante no es válido.", ok: false };
-    }
-
-    if (sumStock !== variantStock) {
-      const diff = variantStock - sumStock;
-      return {
-        level: "warning",
-        msg:
-          `La suma por almacén (${sumStock}) NO coincide con el stock de la variante (${variantStock}). ` +
-          (diff > 0 ? `Te faltan ${diff}.` : `Te sobran ${Math.abs(diff)}.`),
-        ok: false,
-      };
-    }
-
-    return { level: "success", msg: `Correcto: ${variantStock} = ${sumStock} (repartido por almacén).`, ok: true };
-  }, [useWarehouses, selectedIds.length, fields.length, rows, sumStock, variantStock, warehouses]);
+    return { level: "success", msg: `Existencias de esta variante en almacenes: ${sumStock}.`, ok: true };
+  }, [useWarehouses, selectedIds.length, fields.length, rows, sumStock, warehouses]);
 
   const alertClass =
     validation.level === "success"
@@ -328,8 +311,7 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
         </button>
 
         <div className="ms-auto text-light">
-          <small className="text-muted">Total asignado:</small> <strong>{sumStock}</strong>{" "}
-          <small className="text-muted">/ Stock variante:</small> <strong>{variantStock}</strong>
+          <small className="text-muted">Total en almacenes:</small> <strong>{sumStock}</strong>
         </div>
       </div>
 
@@ -378,7 +360,8 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
                   <input
                     className="form-control"
                     type="number"
-                    step="1"
+                    step="0.001"
+                    min="0"
                     placeholder="0"
                     {...register(`variants.${vIndex}.warehouse_stocks.${i}.stock`)}
                   />
@@ -440,9 +423,11 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
 
 export default function VariantsEditor({ control, register, watch, setValue, warehouses = [] }) {
   const [helpOpen, setHelpOpen] = useState(false);
+  const { errors } = useFormState({ control });
 
   const { fields, append, remove } = useFieldArray({ control, name: "variants" });
   const variants = useWatch({ control, name: "variants" }) || [];
+  const useWh = usesWarehouses({ use_warehouse_inventory: watch("use_warehouse_inventory") });
 
   const addVariant = () => {
     append({
@@ -458,10 +443,7 @@ export default function VariantsEditor({ control, register, watch, setValue, war
     });
   };
 
-  const sumStock = () => {
-    const total = (variants || []).reduce((acc, v) => acc + (Number(v?.stock) || 0), 0);
-    setValue("stock", String(total), { shouldDirty: true, shouldTouch: true });
-  };
+  const totalStock = productStock({ variants, use_warehouse_inventory: useWh }) ?? 0;
 
   return (
     <div className="row mt-4">
@@ -487,9 +469,7 @@ export default function VariantsEditor({ control, register, watch, setValue, war
             + Agregar variante
           </button>
 
-          <button type="button" className="btn btn-outline-light" onClick={sumStock}>
-            Sumar stock a producto
-          </button>
+          {fields.length > 0 && <span className="text-light align-self-center">Existencias totales: <strong>{totalStock}</strong></span>}
         </div>
 
         {fields.length === 0 && (
@@ -532,10 +512,11 @@ export default function VariantsEditor({ control, register, watch, setValue, war
                   <input className="form-control" placeholder="SKU de la variante" {...register(`variants.${index}.sku`)} />
                 </div>
 
-                <div className="col-md-4 mb-2">
+                {!useWh && <div className="col-md-4 mb-2">
                   <label className="form-label text-white mb-1">Stock (total variante)</label>
-                  <input className="form-control" type="number" placeholder="0" {...register(`variants.${index}.stock`)} />
-                </div>
+                  <input className="form-control" type="number" min="0" step="0.001" placeholder="0" {...register(`variants.${index}.stock`, { shouldUnregister: true, required: "Captura las existencias de la variante", min: { value: 0, message: "Las existencias no pueden ser negativas" }, valueAsNumber: true })} />
+                  {errors.variants?.[index]?.stock && <small className="text-danger">{errors.variants[index].stock.message}</small>}
+                </div>}
 
                 <div className="col-md-4 mb-2">
                   <label className="form-label text-white mb-1">Precio (opcional)</label>

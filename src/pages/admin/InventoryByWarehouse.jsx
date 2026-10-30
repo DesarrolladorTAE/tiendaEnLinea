@@ -46,6 +46,7 @@ import { alertFromAxiosError } from "../../utils/alerts";
 import { useAdminUi } from "../../context/AdminUiContext";
 
 import InventoryDetailModal from "../../components/inventory/InventoryDetailModal";
+import { subscribeInventoryChanges } from "../../utils/inventoryEvents";
 import InventoryReportsModal from "../../components/inventory/InventoryReportsModal";
 
 import placeholderImg from "/assets/img/defaultproduct.png";
@@ -294,6 +295,7 @@ export default function InventoryByWarehouse() {
 
   useEffect(() => {
     fetchInventory();
+    return subscribeInventoryChanges(fetchInventory);
   }, [fetchInventory]);
 
   useEffect(() => {

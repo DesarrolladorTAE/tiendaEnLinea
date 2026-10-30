@@ -5,6 +5,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
 import CategoryIcon from "@mui/icons-material/Category";
+import { productStock } from "../../utils/productInventory";
 
 const ProductTable = ({
   products,
@@ -104,9 +105,7 @@ const ProductTable = ({
                 </td>
 
                 <td>
-                  {product.has_variations
-                    ? "Con Variaciones"
-                    : `${product.stock ?? 0}`}
+                  {productStock(product) ?? "Consultar detalle"}
                 </td>
 
                 {/* ✅ Categorías compactas */}

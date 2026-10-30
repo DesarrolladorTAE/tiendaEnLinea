@@ -1,5 +1,5 @@
 import ImportFileDropZone from "../common/ImportFileDropZone";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Alert, Box, Button, ButtonBase, CircularProgress, Dialog,
   DialogActions, DialogContent, DialogTitle, LinearProgress, Stack, Typography,
@@ -9,13 +9,19 @@ import axiosClient from "../../config/axiosClient";
 import { summarizeProductCsv } from "./importPreview.mjs";
 import { normalizeImportResult } from "./importResult.mjs";
 import ImportResultSummary from "./ImportResultSummary";
+import AdvancedProductsModal from "./AdvancedProductsModal";
+import { useTienda } from "../../context/TiendaContext";
 
 const OPTIONS = [
   { id: "normal", title: "Importación normal", description: "Carga tus productos con nuestra plantilla CSV.", color: "#6d28d9", background: "#f5f3ff", icon: FiFileText },
   { id: "sicar", title: "Desde SICAR", description: "Sube el archivo de productos que exportaste de SICAR.", color: "#0f766e", background: "#f0fdfa", icon: FiDatabase },
+  { id: "excel", title: "Importar Excel", description: "Opción avanzada: importa archivos .xlsx o .xls con las columnas de la guía.", color: "#6d28d9", background: "#f5f3ff", icon: FiFileText },
 ];
 
 export default function ImportProductsModal({ open, onClose, branch, onImported }) {
+  const { tienda } = useTienda();
+  const canImportExcel = Number(tienda?.id) === 329;
+  const options = OPTIONS.filter(option => option.id !== "excel" || canImportExcel);
   const [mode, setMode] = useState("normal");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -27,6 +33,10 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
   const inputRef = useRef(null);
   const submitting = useRef(false);
   const selected = OPTIONS.find((option) => option.id === mode);
+
+  useEffect(() => {
+    if (!canImportExcel && mode === "excel") setMode("normal");
+  }, [canImportExcel, mode]);
 
   const clearFile = () => {
     setFile(null);
@@ -107,6 +117,11 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
     selectFile(files[0]);
   };
 
+  if (mode === "excel" && canImportExcel) {
+    return <AdvancedProductsModal mode="excel" branch={branch} onClose={onClose}
+      onBack={() => selectMode("normal")} onChanged={onImported} />;
+  }
+
   return (
     <Dialog open={open} onClose={() => !busy && onClose()} fullWidth maxWidth="sm"
       aria-labelledby="import-products-title" PaperProps={{ sx: { borderRadius: 4, bgcolor: "#fff", color: "#172033" } }}>
@@ -162,7 +177,7 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
           Sucursal de destino: <strong>{branch?.name || `#${branch?.id}`}</strong>
         </Typography>
         <Box role="group" aria-label="Tipo de importación" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 2 }}>
-          {OPTIONS.map(({ id, title, description, color, background, icon: Icon }) => (
+          {options.map(({ id, title, description, color, background, icon: Icon }) => (
             <ButtonBase key={id} disabled={busy} onClick={() => selectMode(id)} aria-pressed={mode === id}
               sx={{ p: 2, borderRadius: 3, textAlign: "left", alignItems: "stretch", border: "2px solid", borderColor: mode === id ? color : "#e2e8f0", bgcolor: mode === id ? background : "#fff", "&.Mui-focusVisible": { outline: `3px solid ${color}`, outlineOffset: 3 } }}>
               <Box sx={{ width: "100%" }}>

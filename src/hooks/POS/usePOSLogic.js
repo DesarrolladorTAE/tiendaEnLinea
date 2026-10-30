@@ -1,11 +1,20 @@
 // src/hooks/POS/usePOSLogic.js
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import axiosClient from "../../config/axiosClientPOS";
 import { showError, showSuccess } from "../../utils/alerts";
+import { productStock, hasProductVariants, usesWarehouses, validateInventoryItems } from "../../utils/productInventory";
+import { fetchPOSScope, fetchPOSProductPage, loadCartInventory } from "../../utils/posInventory";
+import { notifyInventoryChanged, subscribeInventoryChanges } from "../../utils/inventoryEvents";
 
 export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [search, setSearch] = useState("");
   const [products, setProducts] = useState([]);
+  const inventoryCache = useRef(new Map());
+  const checkoutBusy = useRef(false);
+  const requestSequence = useRef(0);
+  const latestCart = useRef(cart);
+  latestCart.current = cart;
+  const currentQuery = useRef({ nextPage: 1, perPage: 12, categoryId: null });
 
   const [meta, setMeta] = useState({
     page: 1,
@@ -36,7 +45,9 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
   // ✅ paginado + search + category
   const refetchProducts = useCallback(
-    async ({ nextPage = 1, perPage = 12, categoryId = null } = {}) => {
+    async ({ nextPage = 1, perPage = 12, categoryId = null, refreshCart = false } = {}) => {
+      const request = ++requestSequence.current;
+      currentQuery.current = { nextPage, perPage, categoryId };
       try {
         if (!posLocationId) {
           setProducts([]);
@@ -45,17 +56,27 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
           return;
         }
 
-        const { data } = await axiosClient.get("my-products-by-pos1", {
-          params: {
-            pos_location_id: Number(posLocationId),
+        const allowedIds = await fetchPOSScope(axiosClient);
+        const data = await fetchPOSProductPage(axiosClient, posLocationId, {
             page: Number(nextPage) || 1,
             per_page: Number(perPage) || 12,
             q: search || "",
             category_id: categoryId != null ? Number(categoryId) : undefined,
-          },
-        });
+        }, allowedIds);
+        if (request !== requestSequence.current) return;
 
-        setProducts(Array.isArray(data?.products) ? data.products : []);
+        const cartProducts = refreshCart && latestCart.current.length
+          ? await loadCartInventory(axiosClient, posLocationId, latestCart.current)
+          : [];
+        if (request !== requestSequence.current) return;
+        const inventoryProducts = [...new Map([...data.products, ...cartProducts].map(product => [String(product.id), product])).values()];
+        inventoryProducts.forEach(product => inventoryCache.current.set(String(product.id), product));
+        setCart(previous => previous.map(item => {
+          const product = inventoryProducts.find(p => String(p.id) === String(item.product_id));
+          return product || refreshCart ? { ...item, stock_available: productStock(product, { variantId: item.variant_id, warehouseId: item.warehouse_id, activeOnly: true }) ?? 0 } : item;
+        }));
+
+        setProducts(data.products.map(product => inventoryCache.current.get(String(product.id)) || product));
         setMeta(
           data?.meta || {
             page: nextPage,
@@ -66,21 +87,29 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         );
         setPage(nextPage);
       } catch (e) {
+        if (request !== requestSequence.current) return;
         console.error("Error cargando productos POS:", e);
         setProducts([]);
         setMeta({ page: 1, per_page: perPage, total: 0, last_page: 1 });
         setPage(1);
       }
     },
-    [posLocationId, search],
+    [posLocationId, search, setCart],
   );
 
   useEffect(() => {
+    inventoryCache.current.clear();
+    setCart([]);
     refetchProducts({ nextPage: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posLocationId]);
 
-  const isVariantProduct = (product) => !!product?.has_variants;
+  useEffect(() => subscribeInventoryChanges(() => {
+    inventoryCache.current.clear();
+    refetchProducts({ ...currentQuery.current, refreshCart: true });
+  }), [refetchProducts]);
+
+  const isVariantProduct = hasProductVariants;
 
   const getProductImage = (product) => {
     // soporta: image: [url] o images: [{url}] (si tu backend manda relación images)
@@ -94,30 +123,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     return null;
   };
 
-  const getAvailableStock = useCallback((product) => {
-    if (!product) return 0;
-
-    const useWh = !!product.use_warehouse_inventory;
-
-    // variantes: si tu backend ya filtra warehouse_stocks por POS, aquí sale “solo ese”
-    if (product.has_variants) {
-      const list = Array.isArray(product.variants) ? product.variants : [];
-      const v = list.find((x) => x?.is_active !== false) || list[0] || null;
-      if (!v) return 0;
-
-      if (!useWh) return Number(v.stock) || 0;
-
-      const rows = Array.isArray(v.warehouse_stocks) ? v.warehouse_stocks : [];
-      return rows.reduce((acc, r) => acc + (Number(r.stock) || 0), 0);
-    }
-
-    if (!useWh) return Number(product.stock) || 0;
-
-    const rows = Array.isArray(product.warehouse_inventories)
-      ? product.warehouse_inventories
-      : [];
-    return rows.reduce((acc, r) => acc + (Number(r.qty) || 0), 0);
-  }, []);
+  const getAvailableStock = useCallback(product => productStock(product, { activeOnly: true }) ?? 0, []);
 
   const getQuantityInCart = (cartKey) =>
     cart.find((item) => String(item.cart_key ?? item.id) === String(cartKey))
@@ -137,18 +143,20 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       const item = payload;
       const key = String(item.cart_key ?? item.id);
       if (!key) return;
+      const product = inventoryCache.current.get(String(item.product_id));
+      const selectionError = validateInventoryItems([{ ...item, quantity: 1 }], product ? [product] : []);
+      if (selectionError) { showError(selectionError); return; }
 
       setCart((prev) => {
         const idx = prev.findIndex((x) => String(x.cart_key ?? x.id) === key);
         const currentQty = idx >= 0 ? Number(prev[idx].quantity || 0) : 0;
 
-        const stockDisponible = Number(
-          item.stock_available ??
-            item.stockDisponible ??
-            item.available_stock ??
-            Infinity,
-        );
-        const nextQty = currentQty + 1;
+        const stockDisponible = productStock(product, { variantId: item.variant_id, warehouseId: item.warehouse_id, activeOnly: true }) ?? 0;
+        const nextQty = idx >= 0 ? currentQty + 1 : Number(item.quantity || 1);
+        const inventoryError = validateInventoryItems([
+          ...prev.filter((_, index) => index !== idx), { ...item, quantity: nextQty },
+        ].filter(line => String(line.product_id) === String(product.id)), [product]);
+        if (inventoryError) { showError(inventoryError); return prev; }
 
         if (Number.isFinite(stockDisponible) && nextQty > stockDisponible) {
           showError("⚠️ Stock insuficiente.");
@@ -160,9 +168,11 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
             ...prev,
             {
               ...item,
+              use_warehouse_inventory: usesWarehouses(product),
+              stock_available: stockDisponible,
               id: key,
               cart_key: key,
-              quantity: item.quantity ? Number(item.quantity) : 1,
+              quantity: nextQty,
               display_name: item.display_name || item.name,
               original_price:
                 item.original_price ??
@@ -178,6 +188,8 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         copy[idx] = {
           ...copy[idx],
           ...item,
+          stock_available: stockDisponible,
+          use_warehouse_inventory: usesWarehouses(product),
           id: key,
           cart_key: key,
           quantity: nextQty,
@@ -203,6 +215,11 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
     // ❗️si llega “product” directo (por escáner o click antiguo), mantenemos compatibilidad mínima
     // pero RECOMENDACIÓN: en multi-almacén siempre armar el item desde ProductCard.
     const product = payload;
+    if (hasProductVariants(product) || usesWarehouses(product)) {
+      showError("Selecciona la variante y el almacén desde el detalle del producto.");
+      return;
+    }
+    if (getAvailableStock(product) < 1) { showError("Stock insuficiente."); return; }
 
     setCart((prevCart) => {
       const key = String(product?.id);
@@ -280,7 +297,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
   const handleCheckout = useCallback(
     async (checkoutPayloadFromCart) => {
-      if (!cart || cart.length === 0) return;
+      if (!cart || cart.length === 0 || checkoutBusy.current) return;
 
       const sourceItems = Array.isArray(checkoutPayloadFromCart?.items)
         ? checkoutPayloadFromCart.items
@@ -351,10 +368,20 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
       };
 
       try {
+        checkoutBusy.current = true;
+        const freshProducts = await loadCartInventory(axiosClient, posLocationId, items);
+        freshProducts.forEach(product => inventoryCache.current.set(String(product.id), product));
+        setCart(previous => previous.map(item => {
+          const product = freshProducts.find(p => String(p.id) === String(item.product_id));
+          return { ...item, stock_available: productStock(product, { variantId: item.variant_id, warehouseId: item.warehouse_id, activeOnly: true }) ?? 0 };
+        }));
+        const inventoryError = validateInventoryItems(items, freshProducts);
+        if (inventoryError) { showError(inventoryError); return; }
         const saleResponse = await axiosClient.post("/v2/sales", payload);
         const { sale, message } = saleResponse.data;
 
         setCart([]);
+        notifyInventoryChanged();
         await refetchProducts({ nextPage: 1 });
 
         setTicketData(sale);
@@ -364,15 +391,18 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         return sale;
       } catch (err) {
         const resp = err?.response?.data;
+        await refetchProducts(currentQuery.current);
         if (resp?.errors) {
           const mensajes = Object.values(resp.errors).flat().join("\n");
           showError("⚠️ " + mensajes);
           return;
         }
         showError("❌ Error al cobrar. Revisa productos o stock.");
+      } finally {
+        checkoutBusy.current = false;
       }
     },
-    [cart, refetchProducts, setCart, setTicketData, setShowTicket],
+    [cart, posLocationId, refetchProducts, setCart, setTicketData, setShowTicket],
   );
 
   return {

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
+import { productStock } from "../../utils/productInventory";
 
 const ProductDetails = () => {
     const { id } = useParams();
@@ -44,7 +45,7 @@ const ProductDetails = () => {
                 <h1 className="card-title text-center text-primary">{product.name}</h1>
                 <p className="text-muted"><strong>SKU:</strong> {product.sku}</p>
                 <p><strong>Precio:</strong> ${product.price}</p>
-                <p><strong>Stock:</strong> {product.stock ?? "Con Variaciones"}</p>
+                <p><strong>Existencias:</strong> {productStock(product) ?? "Consultar detalle de inventario"}</p>
                 <p className="mb-4"><strong>Descripción:</strong> {product.shortDescription}</p>
 
                 <button className="btn btn-primary w-100">

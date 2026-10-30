@@ -38,6 +38,8 @@ import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
 import axiosClient from "../../config/axiosClient";
 import { toast } from "react-hot-toast";
 import { useDebounce } from "../../hooks/useDebounce";
+import { notifyInventoryChanged } from "../../utils/inventoryEvents";
+import { hasProductVariants, usesWarehouses } from "../../utils/productInventory";
 
 const COLORS = {
   accent: "#f9b233",
@@ -137,7 +139,7 @@ function Section({ title, subtitle, icon, children }) {
 }
 
 function getVariantOptions(product) {
-  if (!product?.has_variants || !Array.isArray(product?.variants)) return [];
+  if (!hasProductVariants(product) || !Array.isArray(product?.variants)) return [];
 
   return product.variants.map((v) => {
     const attrs = Array.isArray(v?.variant_attributes)
@@ -349,7 +351,7 @@ export default function RestockEntryModal({
 
     if (!product) return false;
 
-    if (Boolean(product?.use_warehouse_inventory)) return true;
+    if (usesWarehouses(product)) return true;
 
     if (
       Array.isArray(product?.warehouse_inventories) &&
@@ -425,6 +427,10 @@ export default function RestockEntryModal({
 
     for (const line of lines) {
       if (!line.product?.id || Number(line.quantity) <= 0) continue;
+      if (hasProductVariants(line.product) && !(line.product_variant_id || line.variant?.id)) {
+        toast.error(`Selecciona la variante de "${line.product.name}".`);
+        return;
+      }
 
       if (lineRequiresWarehouse(line) && !line.warehouse_id) {
         toast.error(
@@ -505,6 +511,7 @@ export default function RestockEntryModal({
         }
       );
 
+      notifyInventoryChanged();
       resetForm();
       onSaved?.();
     } finally {
