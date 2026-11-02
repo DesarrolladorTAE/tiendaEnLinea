@@ -4,6 +4,8 @@ import React, {
   useState,
   Suspense,
   useMemo,
+  useCallback,
+  useRef,
 } from "react";
 import {
   Link,
@@ -13,6 +15,7 @@ import {
 } from "react-router-dom";
 import axiosClient from "../../config/axiosClient";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
+import useProductSearchPreference from "../../hooks/useProductSearchPreference";
 import ProductSearchBar from "../../components/products-list/ProductSearchBar";
 import ProductTable from "../../components/products-list/ProductTable";
 import ProductPagination from "../../components/products-list/ProductPagination";
@@ -43,9 +46,13 @@ const ProductList = () => {
   const branchIdFromUrl = params.get("branch_id");
 
   const [products, setProducts] = useState([]);
-  const [filtered, setFiltered] = useState([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [oeAvailability, setOeAvailability] = useState({ branchId: null, available: false });
+  const requestId = useRef(0);
+  const publishingInventoryChange = useRef(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ key: "", page: 1 });
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [openImport, setOpenImport] = useState(false);
   const [advancedMode, setAdvancedMode] = useState(null);
@@ -68,6 +75,7 @@ const ProductList = () => {
   const { tieneComplemento } = useComplementosActivos();
 
   const { tienda, tiendaLoading } = useTienda();
+  const [selectedSearchField, setSearchField] = useProductSearchPreference(tienda?.id);
   const planId = Number(tienda?.plan_id || 0);
 
   // ✅ permitir por plan 1 o 4
@@ -123,35 +131,77 @@ const ProductList = () => {
     setCatProduct(null);
   };
 
-  // filtrar
+  const showOeNumber = oeAvailability.branchId === activeBranch?.id && oeAvailability.available;
+  const searchField = selectedSearchField === "oe_number" && !showOeNumber ? "all" : selectedSearchField;
+  const searchKey = JSON.stringify([activeBranch?.id, searchTerm, searchField]);
+  const currentPage = pagination.key === searchKey ? pagination.page : 1;
+  const setCurrentPage = (page) => setPagination({ key: searchKey, page });
+
   useEffect(() => {
-    const term = (searchTerm || "").toLowerCase();
-    const resultado = (products || []).filter((p) =>
-      p.name?.toLowerCase().includes(term),
-    );
-    setFiltered(resultado);
-    setCurrentPage(1);
-  }, [searchTerm, products]);
+    setPagination(previous => previous.key === searchKey ? previous : { key: searchKey, page: 1 });
+  }, [searchKey]);
 
-  const fetchProductos = async () => {
+  const fetchProductos = useCallback(async () => {
+    const id = ++requestId.current;
+    if (!activeBranch?.id) return;
+    setLoadingProducts(true);
+    setError(null);
     try {
-      setError(null);
-
-      if (!activeBranch?.id) return;
-
-      const res = await axiosClient.get(
-        `/admin/branches/${activeBranch.id}/products`,
-      );
-
-      setProducts(Array.isArray(res.data) ? res.data : []);
-    } catch (error) {
-      console.error("Error al obtener productos:", error);
-      setError("Error al obtener productos.");
+      const term = searchTerm.trim();
+      if (!term) {
+        // Keep the existing branch listing without sending an empty search.
+        const { data } = await axiosClient.get(`/admin/branches/${activeBranch.id}/products`);
+        if (id !== requestId.current) return;
+        if (!Array.isArray(data)) throw new Error("Respuesta de productos invalida");
+        setOeAvailability({ branchId: activeBranch.id, available: data.some(product => String(product.oe_number ?? "").trim() !== "") });
+        const lastPage = Math.ceil(data.length / productsPerPage);
+        if (currentPage > Math.max(1, lastPage)) {
+          setPagination({ key: searchKey, page: Math.max(1, lastPage) });
+          return;
+        }
+        setProducts(data.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage));
+        setTotalPages(lastPage);
+        return;
+      }
+      const { data } = await axiosClient.get("/products/search", {
+        params: { q: term, field: searchField, branch_id: activeBranch.id, per_page: productsPerPage, page: currentPage },
+      });
+      if (id !== requestId.current) return;
+      const collection = data?.products ?? data;
+      const rows = Array.isArray(collection) ? collection : Array.isArray(collection?.data) ? collection.data : collection?.data?.data;
+      if (!Array.isArray(rows)) throw new Error("Respuesta de productos invalida");
+      if (rows.some(product => String(product.oe_number ?? "").trim() !== "")) {
+        setOeAvailability({ branchId: activeBranch.id, available: true });
+      }
+      const meta = collection?.meta ?? data?.meta ?? collection?.data?.meta ?? collection;
+      const lastPage = Number(meta?.last_page ?? collection?.data?.last_page ?? Math.ceil(Number(meta?.total ?? rows.length) / productsPerPage));
+      if (currentPage > Math.max(1, lastPage)) {
+        setPagination({ key: searchKey, page: Math.max(1, lastPage) });
+        return;
+      }
+      setProducts(rows);
+      setTotalPages(lastPage);
+    } catch (err) {
+      if (id !== requestId.current) return;
+      setError(err.response?.data?.message || "Error al obtener productos.");
       setProducts([]);
+      setTotalPages(0);
+    } finally {
+      if (id === requestId.current) setLoadingProducts(false);
     }
-  };
+  }, [activeBranch?.id, searchTerm, searchField, currentPage, searchKey]);
 
-  const fetchCategorias = async () => {
+  useEffect(() => {
+    ++requestId.current;
+    setProducts([]);
+    setTotalPages(0);
+    setError(null);
+    setLoadingProducts(Boolean(activeBranch?.id));
+    const timer = setTimeout(fetchProductos, 300);
+    return () => { clearTimeout(timer); ++requestId.current; };
+  }, [fetchProductos, activeBranch?.id]);
+
+  const fetchCategorias = useCallback(async () => {
     try {
       setCategoriesLoading(true);
       const res = await axiosClient.get("/admin/categories");
@@ -162,16 +212,23 @@ const ProductList = () => {
     } finally {
       setCategoriesLoading(false);
     }
-  };
+  }, []);
 
-  // ✅ cargar productos/categorías cuando hay branch activo
+  // ✅ cargar categorías cuando hay branch activo
   useEffect(() => {
     if (!activeBranch?.id) return;
-    fetchProductos();
     fetchCategorias();
-    return subscribeInventoryChanges(() => { fetchProductos(); fetchCategorias(); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeBranch?.id]);
+  }, [activeBranch?.id, fetchCategorias]);
+
+  useEffect(() => subscribeInventoryChanges(() => {
+    if (!publishingInventoryChange.current) { fetchProductos(); fetchCategorias(); }
+  }, { refreshOnFocus: false }), [fetchProductos, fetchCategorias]);
+
+  const refreshAfterImport = async () => {
+    publishingInventoryChange.current = true;
+    try { notifyInventoryChanged(); } finally { publishingInventoryChange.current = false; }
+    await Promise.all([fetchProductos(), fetchCategorias(), actualizarLimite()]);
+  };
 
   // Construir árbol padre->hijas (sin backend extra)
   const categoriesTree = useMemo(() => {
@@ -201,7 +258,7 @@ const ProductList = () => {
     if (!window.confirm("¿Eliminar este producto?")) return;
     try {
       await axiosClient.delete(`/admin/products/${id}`);
-      setProducts((prev) => prev.filter((p) => p.id !== id));
+      await fetchProductos();
       await actualizarLimite();
     } catch (error) {
       console.error("Error al eliminar producto:", error);
@@ -240,12 +297,6 @@ const ProductList = () => {
       setSavingCats(false);
     }
   };
-
-  const totalPages = Math.ceil(filtered.length / productsPerPage);
-  const paginatedProducts = filtered.slice(
-    (currentPage - 1) * productsPerPage,
-    currentPage * productsPerPage,
-  );
 
   if (selectedProduct) {
     return (
@@ -323,6 +374,9 @@ const ProductList = () => {
         <ProductSearchBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
+          searchField={searchField}
+          setSearchField={setSearchField}
+          showOeNumber={showOeNumber}
         />
 
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -354,10 +408,13 @@ const ProductList = () => {
           )}
         </div>
 
-        {error && <p className="text-danger text-center">{error}</p>}
+        {error && <p role="alert" className="text-danger text-center">{error} <button className="btn btn-sm btn-outline-warning" onClick={fetchProductos}>Reintentar</button></p>}
 
         <ProductTable
-          products={paginatedProducts}
+          products={products}
+          loading={loadingProducts}
+          error={error}
+          showOeNumber={showOeNumber}
           currentPage={currentPage}
           productsPerPage={productsPerPage}
           onDelete={handleDelete}
@@ -371,10 +428,7 @@ const ProductList = () => {
 
         {advancedMode && <AdvancedProductsModal
           mode={advancedMode} branch={activeBranch} onClose={() => setAdvancedMode(null)}
-          onChanged={async () => {
-            notifyInventoryChanged();
-            await Promise.all([fetchProductos(), fetchCategorias(), actualizarLimite()]);
-          }}
+          onChanged={refreshAfterImport}
         />}
 
         {openImport && (
@@ -382,10 +436,7 @@ const ProductList = () => {
             open={openImport}
             onClose={() => setOpenImport(false)}
             branch={activeBranch}
-            onImported={async () => {
-              notifyInventoryChanged();
-              await Promise.all([fetchProductos(), fetchCategorias(), actualizarLimite()]);
-            }}
+            onImported={refreshAfterImport}
           />
         )}
 

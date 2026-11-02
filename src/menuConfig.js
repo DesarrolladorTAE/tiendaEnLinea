@@ -21,7 +21,7 @@ const adminNavItems = [
   { path: "/admin/integraciones/telorecargo", label: "Recargas Telorecargo", icon: SmartphoneOutlinedIcon },
   { path: "/admin/reportes", label: "Reportes", icon: BarChartOutlinedIcon },
   { path: "/admin/compra", label: "Entradas de producto", icon: MoveToInboxOutlinedIcon },
-  { path: "/admin/ticket", label: "Personaliza tu ticket", icon: ReceiptLongOutlinedIcon },
+  { path: "/admin/ticket", label: "Tickets y comprobantes", icon: ReceiptLongOutlinedIcon },
   { path: "/admin/mi-sitio", label: "Sitio Web", icon: LanguageOutlinedIcon },
   { path: "/admin/marca-blanca", label: "Marca blanca", icon: PaletteOutlinedIcon },
 ];

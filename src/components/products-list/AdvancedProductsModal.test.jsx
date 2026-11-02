@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import { Simulate } from "react-dom/test-utils";
 import AdvancedProductsModal from "./AdvancedProductsModal";
 import ImportProductsModal from "./ImportProductsModal";
+import { saveAs } from "file-saver";
+
+jest.mock("file-saver", () => ({ saveAs: jest.fn() }));
 
 jest.mock("./importPreview.mjs", () => ({ summarizeProductCsv: jest.fn() }));
 jest.mock("./importResult.mjs", () => ({ normalizeImportResult: jest.fn() }));
@@ -23,6 +26,27 @@ beforeEach(() => {
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); });
 const render = mode => act(() => root.render(<AdvancedProductsModal mode={mode} branch={{ id: 7, name: "Centro" }} onClose={jest.fn()} onChanged={jest.fn()} />));
+
+test("downloads the selected branch Excel through the authenticated client", async () => {
+  const data = new Blob(["excel"], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  axiosClient.get.mockResolvedValue({ data });
+  render("excel");
+  await act(async () => Simulate.click(button("Descargar productos en Excel")));
+  expect(axiosClient.get).toHaveBeenCalledWith("/products/excel/export", {
+    params: { branch_id: "7" }, responseType: "blob",
+  });
+  expect(saveAs).toHaveBeenCalledWith(data, "productos-sucursal-7.xlsx");
+  expect(axiosClient.post).not.toHaveBeenCalled();
+});
+
+test("shows export errors and allows retrying without downloading an error file", async () => {
+  axiosClient.get.mockRejectedValue({ response: { data: { message: "No tienes acceso a esta sucursal." } } });
+  render("excel");
+  await act(async () => Simulate.click(button("Descargar productos en Excel")));
+  expect(document.body.textContent).toContain("No tienes acceso a esta sucursal.");
+  expect(button("Descargar productos en Excel").disabled).toBe(false);
+  expect(saveAs).not.toHaveBeenCalled();
+});
 
 test("requires three acceptance steps and the exact confirmation without sending a delete request", () => {
   render("delete");

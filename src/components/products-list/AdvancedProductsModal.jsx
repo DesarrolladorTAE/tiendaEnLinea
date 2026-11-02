@@ -1,6 +1,7 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Checkbox, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, LinearProgress, MenuItem, Stack, Step, StepLabel, Stepper, TextField, Typography } from "@mui/material";
-import { FiUploadCloud, FiTrash2 } from "react-icons/fi";
+import { FiDownload, FiUploadCloud, FiTrash2 } from "react-icons/fi";
+import { saveAs } from "file-saver";
 import axiosClient from "../../config/axiosClient";
 import { useTienda } from "../../context/TiendaContext";
 import ImportFileDropZone from "../common/ImportFileDropZone";
@@ -10,7 +11,8 @@ const RULES = [
   "Proveedores, categorías, subcategorías y los tres almacenes se crean si no existen.",
   "La columna B se guarda como SKU y clave del proveedor; C se conserva como número OE.",
   "Costo 100 con utilidad 45 genera precio final 145; el IVA no se agrega nuevamente.",
-  "Un SKU existente en la sucursal se actualiza.",
+  "Los SKU existentes, incluidos los AM, actualizan productos; solo los SKU nuevos crean productos.",
+  "Repetir un SKU que ya existe cancela toda la importación.",
   "Las existencias se reemplazan, no se suman.",
   "Las categorías se reemplazan por las indicadas en O/P.",
   "No se admiten productos con variantes.",
@@ -30,6 +32,9 @@ export default function AdvancedProductsModal({ mode, branch, onClose, onChanged
   const [accepted, setAccepted] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const downloading = useRef(false);
   const [progress, setProgress] = useState(null);
   const [phase, setPhase] = useState("");
   const [error, setError] = useState(null);
@@ -63,8 +68,31 @@ export default function AdvancedProductsModal({ mode, branch, onClose, onChanged
     setFile(next);
   };
 
+  const exportProducts = async () => {
+    if (!branchId || downloading.current || submitting.current) return;
+    downloading.current = true;
+    setExporting(true);
+    setExportError("");
+    try {
+      const { data } = await axiosClient.get("/products/excel/export", {
+        params: { branch_id: branchId },
+        responseType: "blob",
+      });
+      saveAs(data, `productos-sucursal-${branchId}.xlsx`);
+    } catch (err) {
+      let message = err.response?.data?.message;
+      if (err.response?.data instanceof Blob) {
+        try { message = JSON.parse(await err.response.data.text()).message; } catch { /* Use fallback for non-JSON errors. */ }
+      }
+      setExportError(message || "No se pudieron descargar los productos. Intenta de nuevo.");
+    } finally {
+      downloading.current = false;
+      setExporting(false);
+    }
+  };
+
   const submit = async () => {
-    if (submitting.current || result) return;
+    if (submitting.current || downloading.current || result) return;
     if (importing ? !file || !branchId : step !== 2 || !accepted || confirmation !== "ELIMINAR" || (scope === "branch" && !branch?.id)) return;
     submitting.current = true;
     setBusy(true); setError(null); setProgress(null); setPhase(importing ? "Subiendo archivo..." : "Eliminando productos...");
@@ -94,7 +122,7 @@ export default function AdvancedProductsModal({ mode, branch, onClose, onChanged
   };
 
   return (
-    <Dialog open onClose={() => !busy && onClose()} fullWidth maxWidth="sm" aria-labelledby="advanced-products-title" PaperProps={{ sx: { borderRadius: 4, bgcolor: "#fff", color: "#172033" } }}>
+    <Dialog open onClose={() => !busy && !exporting && onClose()} fullWidth maxWidth="sm" aria-labelledby="advanced-products-title" PaperProps={{ sx: { borderRadius: 4, bgcolor: "#fff", color: "#172033" } }}>
       <DialogTitle id="advanced-products-title" sx={{ p: 3, background: "linear-gradient(120deg, #ede9fe, #ccfbf1)" }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Box sx={{ display: "flex", p: 1.5, borderRadius: 3, bgcolor: "white", color }}>{importing ? <FiUploadCloud size={28} /> : <FiTrash2 size={28} />}</Box>
@@ -114,8 +142,16 @@ export default function AdvancedProductsModal({ mode, branch, onClose, onChanged
           <Typography>{result.message || (importing ? "Importación completada." : "Productos eliminados.")}</Typography>
           <Typography>{importing ? `Creados: ${result.result?.created ?? 0} · Actualizados: ${result.result?.updated ?? 0} · Total: ${result.result?.total ?? 0}` : `Cantidad eliminada: ${result.deleted ?? 0}`}</Typography>
         </Alert> : importing ? <>
-          <TextField select required fullWidth label="Sucursal" value={branchId} onChange={e => setBranchId(e.target.value)} sx={{ mt: 2, mb: 2 }}>{branches.map(b => <MenuItem key={b.id} value={String(b.id)}>{b.name || `#${b.id}`}</MenuItem>)}</TextField>
+          <TextField select required fullWidth label="Sucursal" value={branchId} disabled={exporting} onChange={e => { setBranchId(e.target.value); setExportError(""); }} sx={{ mt: 2, mb: 2 }}>{branches.map(b => <MenuItem key={b.id} value={String(b.id)}>{b.name || `#${b.id}`}</MenuItem>)}</TextField>
           {branchError && <Alert severity="warning">{branchError}</Alert>}
+          <Box sx={{ mb: 2, p: 2, bgcolor: "#f5f3ff", borderRadius: 3 }}>
+            <Typography variant="body2" sx={{ mb: 1 }}>Descarga los productos de esta sucursal, edita el Excel y vuelve a importarlo. Conserva los SKU para actualizar productos; las cantidades reemplazan las existencias de los tres almacenes.</Typography>
+            <Button onClick={exportProducts} disabled={!branchId || exporting} startIcon={exporting ? <CircularProgress size={18} color="inherit" /> : <FiDownload />} sx={{ color, textTransform: "none" }}>
+              {exporting ? "Descargando productos..." : "Descargar productos en Excel"}
+            </Button>
+            {exporting && <Typography role="status" variant="body2">Preparando el archivo de la sucursal seleccionada...</Typography>}
+            {exportError && <Alert severity="error" sx={{ mt: 1 }}>{exportError}</Alert>}
+          </Box>
           <Alert severity="info">Se importa la primera hoja: fila 1 con encabezados y productos desde la fila 2. Máximo 10,000 productos y 20 MB.</Alert>
           <Box component="details" sx={{ my: 2, p: 2, bgcolor: "#f5f3ff", borderRadius: 3 }}>
             <Typography component="summary" sx={{ cursor: "pointer", fontWeight: 750 }}>Guía de columnas y reglas de importación</Typography>
@@ -147,10 +183,10 @@ export default function AdvancedProductsModal({ mode, branch, onClose, onChanged
         {!busy && refreshWarning && <Alert severity="warning" sx={{ mt: 2 }}>{refreshWarning}</Alert>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-        <Button disabled={busy} onClick={onClose} sx={{ color: "#526077", textTransform: "none" }}>{result ? "Cerrar" : "Cancelar"}</Button>
-        {importing && onBack && <Button disabled={busy} onClick={onBack} sx={{ color: "#526077", textTransform: "none" }}>Tipos de importación</Button>}
+        <Button disabled={busy || exporting} onClick={onClose} sx={{ color: "#526077", textTransform: "none" }}>{result ? "Cerrar" : "Cancelar"}</Button>
+        {importing && onBack && <Button disabled={busy || exporting} onClick={onBack} sx={{ color: "#526077", textTransform: "none" }}>Tipos de importación</Button>}
         {!importing && !result && step > 0 && <Button disabled={busy} onClick={() => { setStep(step - 1); setConfirmation(""); }}>Atrás</Button>}
-        {!result && <Button variant="contained" disabled={busy || (importing ? !file || !branchId : step === 0 ? scope === "branch" && !branch?.id : step === 1 ? !accepted : confirmation !== "ELIMINAR")}
+        {!result && <Button variant="contained" disabled={busy || exporting || (importing ? !file || !branchId : step === 0 ? scope === "branch" && !branch?.id : step === 1 ? !accepted : confirmation !== "ELIMINAR")}
           onClick={() => !importing && step < 2 ? setStep(step + 1) : submit()} sx={{ bgcolor: color, "&:hover": { bgcolor: color }, borderRadius: 2, textTransform: "none", px: 3 }}>
           {busy ? "Procesando..." : importing ? "Importar" : step < 2 ? `Aceptar y continuar (${step + 1}/3)` : "Eliminar definitivamente (3/3)"}
         </Button>}
