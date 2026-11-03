@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, MenuItem, Stack, TextField } from "@mui/material";
 import { createAssistedSale, getRouteStops } from "../../services/tours/tourService";
+import { tourDialogSx, tourMenuProps } from "./tourFormStyles.mjs";
 import { bookingError } from "./bookingUtils";
 import { PAYMENT_METHODS, paymentCents } from "./paymentUtils";
 
 export default function AssistedSaleDialog({ context, departure, onClose, onSaved, onSessionExpired }) {
-  const [form, setForm] = useState({ buyer_name: "", buyer_phone: "", buyer_email: "", boarding_stop_id: "", payment_option: "deposit", trip_type: "round_trip", transport_required: true, notes: "" });
+  const [form, setForm] = useState({ buyer_name: "", buyer_phone: "", buyer_email: "", boarding_stop_id: "", payment_option: "deposit", trip_type: "round_trip", transport_required: true, notes: "", notification_channel: "none" });
   const [passengers, setPassengers] = useState([{ first_name: "", last_name: "" }]);
   const [stops, setStops] = useState([]); const [loading, setLoading] = useState(true);
   const [collect, setCollect] = useState(false); const [verified, setVerified] = useState(false);
@@ -22,6 +23,7 @@ export default function AssistedSaleDialog({ context, departure, onClose, onSave
   const submit = async e => {
     e.preventDefault(); if (pending.current || uncertain) return;
     if (collect && (!verified || !(paymentCents(payment.amount) > 0))) { setError("Verifica el cobro e ingresa un importe positivo con máximo dos decimales."); return; }
+    if (form.notification_channel === "email" && !form.buyer_email.trim()) { setError("Ingresa el correo para enviar la confirmaci?n."); return; }
     pending.current = true; setBusy(true); setError("");
     try {
       await createAssistedSale(context, {
@@ -36,7 +38,7 @@ export default function AssistedSaleDialog({ context, departure, onClose, onSave
       if (err.response?.status === 401) onSessionExpired();
     } finally { pending.current = false; setBusy(false); }
   };
-  return <Dialog open fullWidth maxWidth="md" onClose={busy ? undefined : onClose}>
+  return <Dialog sx={tourDialogSx} open fullWidth maxWidth="md" onClose={busy ? undefined : onClose}>
     <DialogTitle>Nueva venta de servicio</DialogTitle>
     <form onSubmit={submit}><DialogContent><Stack spacing={2}>
       <Alert severity="info">El servidor calcula el precio y el anticipo. Puedes guardar sin cobro y registrar el pago desde el detalle de la reserva.</Alert>
@@ -46,23 +48,24 @@ export default function AssistedSaleDialog({ context, departure, onClose, onSave
         <TextField required label="Nombre del comprador" {...field("buyer_name")} inputProps={{ maxLength: 191, pattern: ".*\\S.*" }} />
         <TextField required label="Teléfono (10 dígitos)" {...field("buyer_phone")} inputProps={{ pattern: "[0-9]{10}", maxLength: 10 }} />
         <TextField type="email" label="Correo del comprador (opcional)" {...field("buyer_email")} />
-        <TextField select required label="Parada de abordaje" {...field("boarding_stop_id")} disabled={loading}>
+        <TextField select SelectProps={{ MenuProps: tourMenuProps }} required label="Parada de abordaje" {...field("boarding_stop_id")} disabled={loading}>
           {stops.filter(s => s.is_active !== false && s.is_active !== 0 && s.is_active !== "0").map(s => <MenuItem key={s.id} value={s.id}>{s.name || s.stop?.name || `Parada #${s.id}`}</MenuItem>)}
         </TextField>
         {!loading && !stops.length && <Alert severity="warning">Esta ruta no tiene paradas disponibles.</Alert>}
-        <TextField select label="Modalidad de pago" {...field("payment_option")}><MenuItem value="deposit">Anticipo</MenuItem><MenuItem value="full">Pago completo</MenuItem></TextField>
-        <TextField select label="Viaje" {...field("trip_type")}><MenuItem value="round_trip">Ida y regreso</MenuItem><MenuItem value="one_way">Solo ida</MenuItem><MenuItem value="return_only">Solo regreso</MenuItem></TextField>
+        <TextField select SelectProps={{ MenuProps: tourMenuProps }} label="Modalidad de pago" {...field("payment_option")}><MenuItem value="deposit">Anticipo</MenuItem><MenuItem value="full">Pago completo</MenuItem></TextField>
+        <TextField select SelectProps={{ MenuProps: tourMenuProps }} label="Viaje" {...field("trip_type")}><MenuItem value="round_trip">Ida y regreso</MenuItem><MenuItem value="one_way">Solo ida</MenuItem><MenuItem value="return_only">Solo regreso</MenuItem></TextField>
         <FormControlLabel control={<Checkbox checked={form.transport_required} onChange={e => setForm(prev => ({ ...prev, transport_required: e.target.checked }))} />} label="Requiere transporte" />
         {passengers.map((p, index) => <Stack key={index} direction={{ xs: "column", sm: "row" }} spacing={1}>
           {[['first_name', 'Nombre'], ['last_name', 'Apellidos']].map(([key, label]) => <TextField key={key} required={key === 'first_name'} label={`${label} del pasajero ${index + 1}`} value={p[key]} inputProps={{ maxLength: 191, ...(key === 'first_name' ? { pattern: ".*\\S.*" } : {}) }} onChange={e => setPassengers(prev => prev.map((row, i) => i === index ? { ...row, [key]: e.target.value } : row))} />)}
           <Button disabled={passengers.length === 1} onClick={() => setPassengers(prev => prev.filter((_, i) => i !== index))}>Quitar</Button>
         </Stack>)}
         <Button disabled={passengers.length >= Math.min(1000, Number(departure.available_capacity) || 1000)} onClick={() => setPassengers(prev => [...prev, { first_name: "", last_name: "" }])}>Agregar pasajero</Button>
+        <TextField select label="Enviar confirmaci?n" {...field("notification_channel")} SelectProps={{ MenuProps: tourMenuProps }}><MenuItem value="none">Sin aviso</MenuItem><MenuItem value="email">Correo electr?nico</MenuItem><MenuItem value="whatsapp">WhatsApp</MenuItem></TextField>
         <TextField multiline label="Observaciones" {...field("notes")} />
         <FormControlLabel control={<Checkbox checked={collect} onChange={e => setCollect(e.target.checked)} />} label="Registrar cobro inicial" />
         {collect && <>
           <TextField required label="Importe recibido" value={payment.amount} onChange={e => setPayment(p => ({ ...p, amount: e.target.value }))} inputProps={{ inputMode: "decimal" }} />
-          <TextField select label="Método de pago" value={payment.payment_method} onChange={e => setPayment(p => ({ ...p, payment_method: e.target.value }))}>{PAYMENT_METHODS.filter(([key]) => key !== 'online').map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}</TextField>
+          <TextField select SelectProps={{ MenuProps: tourMenuProps }} label="Método de pago" value={payment.payment_method} onChange={e => setPayment(p => ({ ...p, payment_method: e.target.value }))}>{PAYMENT_METHODS.filter(([key]) => key !== 'online').map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}</TextField>
           <TextField label="Referencia" value={payment.reference} onChange={e => setPayment(p => ({ ...p, reference: e.target.value }))} />
           <FormControlLabel control={<Checkbox checked={verified} onChange={e => setVerified(e.target.checked)} />} label="Verifiqué que el cobro fue recibido" />
         </>}

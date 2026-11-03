@@ -1,3 +1,6 @@
+import InventoryTransfers from "../../components/warehouses/InventoryTransfers";
+import BranchWarehousesDialog from "../../components/warehouses/BranchWarehousesDialog";
+import { warehouseStyles } from "../../components/warehouses/warehouseStyles";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
@@ -42,7 +45,7 @@ import WarehouseFormModal from "../../components/warehouses/WarehouseFormModal";
 import WarehouseAssignPosModal from "../../components/warehouses/WarehouseAssignPosModal";
 
 const COLORS = {
-  accent: "#f9b233",
+  accent: "#ffc107",
   black: "#000000",
   danger: "#e94e1b",
 };
@@ -98,6 +101,9 @@ export default function Warehouses() {
     if (!activeBranch?.id) navigate("/admin/sucursales");
   }, [activeBranch?.id, navigate]);
 
+  const [section, setSection] = useState("warehouses");
+  const [branchBrowser, setBranchBrowser] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState("");
@@ -142,12 +148,14 @@ export default function Warehouses() {
     if (!activeBranch?.id) return;
 
     setLoading(true);
+    setLoadError("");
     try {
       // ✅ Debe venir con pos_locations_count y pos_locations (id, name)
       const { data } = await axiosClient.get(`/branches/${activeBranch.id}/warehouses`);
       setRows(Array.isArray(data?.data) ? data.data : []);
     } catch (err) {
       alertFromAxiosError(err, "No se pudieron cargar los almacenes");
+      setLoadError(err?.response?.data?.message || "No se pudieron cargar los almacenes.");
       setRows([]);
     } finally {
       setLoading(false);
@@ -211,55 +219,20 @@ export default function Warehouses() {
   };
 
   return (
-    <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: 3 }}>
+    <Box sx={{ ...warehouseStyles, bgcolor: "#f5f5f5", minHeight: "100vh", py: { xs: 1, md: 3 } }}>
       <Container maxWidth="lg">
-        {/* =======================
-            1) ENCABEZADO
-           ======================= */}
-        <Stack spacing={1.5} sx={{ mb: 2.25 }}>
-          <Stack direction="row" spacing={1.2} alignItems="center">
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: 2,
-                bgcolor: alpha(COLORS.accent, 0.22),
-                border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-                display: "grid",
-                placeItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              <WarehouseRoundedIcon sx={{ color: COLORS.black }} />
-            </Box>
-
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h5" sx={{ fontWeight: 900, color: COLORS.black }}>
-                Almacenes
-              </Typography>
-
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.6 }}>
-                {activeBranch?.name
-                  ? `Sucursal activa: ${activeBranch.name}`
-                  : activeBranch?.id
-                  ? `Sucursal activa: #${activeBranch.id}`
-                  : "Seleccione una sucursal"}
-              </Typography>
-            </Box>
-
-            <Tooltip title="Cambiar sucursal">
-              <IconButton
-                onClick={goBranches}
-                sx={{
-                  borderRadius: 2,
-                  border: `1px solid ${alpha("#000", 0.08)}`,
-                }}
-              >
-                <ArrowBackRoundedIcon />
-              </IconButton>
-            </Tooltip>
+        <Box sx={{ bgcolor: "#17191c", borderRadius: 3, p: { xs: 2, md: 3 }, mb: 2.5 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} gap={2} alignItems={{ sm: "center" }} justifyContent="space-between">
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}><Box sx={{ bgcolor: "#ffc107", p: 1.25, borderRadius: 2, display: "flex" }}><WarehouseRoundedIcon /></Box><Box sx={{ minWidth: 0 }}><Typography component="h1" sx={{ color: "#fff !important", fontSize: { xs: 25, md: 32 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.035em" }}>Almacenes y traspasos</Typography><Typography sx={{ color: "#c7cbd1 !important", mt: 1, fontSize: 14 }}>{activeBranch?.name || `Sucursal #${activeBranch?.id}`} - Organiza tus existencias y conecta tus sucursales.</Typography></Box></Stack>
+            <Button variant="contained" onClick={() => setBranchBrowser(true)} sx={{ flexShrink: 0 }}>Consultar sucursales</Button>
           </Stack>
-
+        </Box>
+        <Stack direction="row" flexWrap="wrap" gap={1} mb={2.5} role="group" aria-label="Secciones de almacenes">
+          <Button variant={section === "warehouses" ? "contained" : "outlined"} aria-pressed={section === "warehouses"} onClick={() => setSection("warehouses")}>Mis almacenes</Button>
+          <Button variant={section === "transfers" ? "contained" : "outlined"} aria-pressed={section === "transfers"} onClick={() => setSection("transfers")}>Traspasos entre sucursales</Button>
+        </Stack>
+        {section === "transfers" ? activeBranch?.id && <InventoryTransfers key={activeBranch.id} branch={activeBranch} onChanged={fetchWarehouses} /> : <>
+        <Stack spacing={1.5} sx={{ mb: 2.25 }}>
           {/* =======================
               2) ACCIONES
              ======================= */}
@@ -313,8 +286,9 @@ export default function Warehouses() {
                   borderRadius: 2,
                   textTransform: "none",
                   fontWeight: 900,
-                  bgcolor: COLORS.black,
-                  "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
+                  bgcolor: COLORS.accent,
+                  color: "#17191c",
+                  "&:hover": { bgcolor: "#e0a800" },
                   minWidth: isMobile ? "100%" : 190,
                 }}
               >
@@ -366,6 +340,7 @@ export default function Warehouses() {
 
             <Divider sx={{ my: 1.5 }} />
 
+            {loadError && <Alert severity="error" action={<Button onClick={fetchWarehouses}>Reintentar</Button>}>{loadError}</Alert>}
             {!activeBranch?.id ? (
               <Alert
                 severity="info"
@@ -469,7 +444,7 @@ export default function Warehouses() {
                             <WarehouseRoundedIcon sx={{ color: COLORS.black }} />
                           </Box>
 
-                          <Box sx={{ flex: 1, minWidth: 240 }}>
+                          <Box sx={{ flex: 1, minWidth: { xs: 0, sm: 200 } }}>
                             {/* Título + chips */}
                             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                               <Typography sx={{ fontWeight: 900, color: COLORS.black }}>
@@ -564,7 +539,7 @@ export default function Warehouses() {
                           </Box>
 
                           {/* ✅ acciones */}
-                          <Stack direction="row" spacing={1} alignItems="center" sx={{ ml: "auto" }}>
+                          <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center" sx={{ ml: { xs: 0, sm: "auto" }, width: { xs: "100%", sm: "auto" } }}>
                             {/* Expandir POS */}
                             <Tooltip title={isOpen ? "Ocultar POS" : "Ver POS asignados"}>
                               <IconButton
@@ -647,6 +622,8 @@ export default function Warehouses() {
           </CardContent>
         </Card>
 
+        </>}
+        {branchBrowser && activeBranch?.id && <BranchWarehousesDialog currentBranch={activeBranch} onClose={() => setBranchBrowser(false)} onSelect={branch => { setSelectedBranch(branch); setBranchBrowser(false); navigate(`/admin/almacenes?branch_id=${branch.id}`, { replace: true, state: { branch } }); }} />}
         {/* Modales */}
         <WarehouseFormModal
           open={createOpen}

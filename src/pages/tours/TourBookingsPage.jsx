@@ -1,5 +1,6 @@
+import TourModuleLayout from "../../components/tours/TourModuleLayout";
 import React, { useEffect, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Grid, Pagination, Snackbar, Stack, Typography } from "@mui/material";
+import { Alert, Button, CircularProgress, Grid, Pagination, Snackbar, Stack, Typography } from "@mui/material";
 import { useBookingRequest, useBookingScope } from "../../hooks/tours/useBookingPage";
 import BookingCard from "../../components/tours/BookingCard";
 import AssistedSaleDialog from "../../components/tours/AssistedSaleDialog";
@@ -20,8 +21,8 @@ function BookingsList({ scope, onBack, autoCreate = false }) {
   const view = (booking) => context.mode === "pos" ? setSelectedBooking(booking.id) : navigate(base + "/" + context.departureId + "/bookings/" + booking.id);
   if (selectedBooking) return <TourBookingDetailPage mode="pos" posContext={context} posBookingId={selectedBooking} onBack={() => { setSelectedBooking(null); request.reload(); }} />;
   const canCreate = context.mode === "pos" && !request.loading && !request.error && request.departure?.status === 'scheduled' && Number(request.departure?.available_capacity) > 0;
-  return <Box sx={{ maxWidth: 1400, mx: "auto", p: { xs: 2, sm: 3 }, bgcolor: "#fff", borderRadius: 3 }}>
-    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} mb={3}><Box><Typography variant="h4" fontWeight={900}>Reservaciones</Typography><Typography>Sucursal #{context.branchId} · Salida #{context.departureId}</Typography></Box><Stack direction="row" gap={1} flexWrap="wrap"><Button onClick={onBack || (() => navigate(base))}>Volver a salidas</Button>{context.mode === "pos" && <Button variant="contained" disabled={!canCreate} onClick={() => setFormOpen(true)}>Nueva venta</Button>}</Stack></Stack>
+  return <TourModuleLayout title="Reservaciones y ventas" description={`Sucursal #${context.branchId} - Salida #${context.departureId}`} onBack={onBack || (() => navigate(base))} backLabel="Volver a salidas">
+    {context.mode === "pos" && <Button sx={{ mb: 2 }} variant="contained" disabled={!canCreate} onClick={() => setFormOpen(true)}>Nueva venta</Button>}
     {request.loading ? <CircularProgress aria-label="Cargando reservaciones" /> : request.error ? <Alert severity="error" sx={{ whiteSpace: "pre-line" }} action={<Button onClick={request.reload}>Reintentar</Button>}>{request.error}</Alert> : <Stack spacing={2}>
       <Typography>{departureDate(request.departure.departure_date)} · {request.departure.departure_time?.slice(0, 5)} · Disponibles: {request.departure.available_capacity ?? "—"}</Typography>
       {!request.rows.length ? <Alert severity="info">No hay reservaciones en esta salida.</Alert> : <Grid container spacing={2}>{request.rows.map((booking) => <Grid key={booking.id} size={{ xs: 12, md: 6 }}><BookingCard booking={booking} onView={view} /></Grid>)}</Grid>}
@@ -29,5 +30,5 @@ function BookingsList({ scope, onBack, autoCreate = false }) {
     </Stack>}
     {formOpen && canCreate && context.mode === "pos" && <AssistedSaleDialog context={context} departure={request.departure} onClose={() => setFormOpen(false)} onSessionExpired={sessionExpired} onSaved={() => { setFormOpen(false); setPage(1); request.reload(); setNotice(true); }} />}
     <Snackbar open={notice} autoHideDuration={4000} onClose={() => setNotice(false)}><Alert severity="success" onClose={() => setNotice(false)}>Reservación guardada.</Alert></Snackbar>
-  </Box>;
+  </TourModuleLayout>;
 }

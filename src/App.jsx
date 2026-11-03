@@ -11,6 +11,7 @@ import GtmPageViewTracker from "./components/tracking/GtmPageViewTracker.jsx";
 
 const HomeFashionSix = lazy(() => import("./pages/home/HomeFashionSix.jsx"));
 const HomeFurniture = lazy(() => import("./pages/home/HomeFurniture.jsx"));
+const ShipmentTracking = lazy(() => import("./pages/shop/ShipmentTracking.jsx"));
 const LandingPage = lazy(() => import("./pages/home/LandingPage.jsx"));
 const HomePage = lazy(() => import("./pages/home/HomePage.jsx"));
 const PlatformPage = lazy(() => import("./pages/home/PlatformPage.jsx"));
@@ -70,6 +71,8 @@ const App = () => {
           }
         >
           <Routes>
+            <Route path="/seguimiento" element={<ShipmentTracking />} />
+            <Route path="/tienda/:storeSlug/seguimiento" element={<ShipmentTracking />} />
             {/* ==========================================
                 DOMINIO PERSONALIZADO
             ========================================== */}

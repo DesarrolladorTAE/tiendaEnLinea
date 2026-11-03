@@ -15,6 +15,7 @@ const ServiceFormPage = lazy(() => import("../pages/admin/ServiceFormPage.jsx"))
 const ResourceListPage = lazy(() => import("../pages/admin/ResourceListPage.jsx"));
 const AdminTelorecargo = lazy(() => import("../modules/telorecargo/AdminTelorecargo.jsx"));
 const SitioWeb = lazy(() => import("../pages/admin/SitioWeb.jsx"));
+const ShippingSettings = lazy(() => import("../pages/admin/ShippingSettings.jsx"));
 
 const Categorias = lazy(() => import("../pages/admin/ProductCategory"));
 const Etiquetas = lazy(() => import("../pages/admin/ProductTags"));
@@ -66,6 +67,7 @@ export const adminRouteConfig = [
 
   { path: "categorias", element: <Categorias /> },
   { path: "mi-sitio", element: <SitioWeb /> },
+  { path: "envios", element: <ShippingSettings /> },
   { path: "integraciones/telorecargo", element: <AdminTelorecargo /> },
   { path: "etiquetas", element: <Etiquetas /> },
   { path: "inventario", element: <InventoryByWarehouse /> },

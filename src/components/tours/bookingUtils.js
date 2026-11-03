@@ -1,6 +1,6 @@
-export const BOOKING_STATUSES = [["pending", "Pendiente"], ["confirmed", "Confirmada"], ["cancelled", "Cancelada"]];
+export const BOOKING_STATUSES = [["pending", "Pendiente"], ["confirmed", "Confirmada"], ["cancelled", "Cancelada"], ["completed", "Completada"]];
 export const PAYMENT_STATUSES = [["pending", "Pendiente"], ["partial", "Parcial"], ["paid", "Pagado"], ["refunded", "Reembolsado"]];
-export const customerLabel = (booking) => booking.customer?.nombre_alias || booking.customer?.name || booking.customer?.nombre || (booking.customer_id ? "Cliente #" + booking.customer_id : "Sin cliente");
+export const customerLabel = (booking) => booking.buyer_name || booking.buyer?.name || booking.customer?.nombre_alias || booking.customer?.name || booking.customer?.nombre || (booking.customer_id ? "Cliente #" + booking.customer_id : "Sin cliente");
 export function bookingError(error) {
   const status = error?.response?.status, data = error?.response?.data;
   const message = status === 403 ? "No tienes permiso para modificar esta reservación."
@@ -15,7 +15,8 @@ export function bookingRecord(data) {
   return record;
 }
 export function bookingCollection(data) {
-  const collection = data?.bookings ?? (Array.isArray(data?.data?.data) ? data.data : data);
+  if (data?.success === false || data?.ok === false) throw new Error(data.message || "No se pudo consultar el historial.");
+  const collection = data?.bookings ?? data?.data?.bookings ?? data?.data ?? data;
   const rows = Array.isArray(collection) ? collection : collection?.data;
   if (!Array.isArray(rows)) throw new Error("No se pudo leer el listado de reservaciones.");
   return { rows, lastPage: Number(collection?.last_page || collection?.meta?.last_page || data?.meta?.last_page || 1) };

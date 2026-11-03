@@ -1,7 +1,10 @@
+import TourModuleLayout from "../../components/tours/TourModuleLayout";
+import TourCard from "../../components/tours/TourCard";
+import TourSalesHistory from "../../components/tours/TourSalesHistory";
+import { tourMenuProps } from "../../components/tours/tourFormStyles.mjs";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, CircularProgress, MenuItem, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import DirectionsBusRoundedIcon from "@mui/icons-material/DirectionsBusRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import { useAdminUi } from "../../context/AdminUiContext";
 import { getTourServices, getDepartures, getManifest, downloadManifest } from "../../services/tours/tourService";
@@ -57,22 +60,21 @@ function Reports({ context, posLocationId, onBack }) {
     }).catch(e => { if (!controller.signal.aborted) setError(bookingError(e)); }).finally(() => { if (!controller.signal.aborted) setLoading("manifest", false); });
     return () => controller.abort();
   }, [mode, branchId, departureId, scope, revision, setLoading]);
-  const download = async () => {
+  const download = async (format = "xlsx") => {
     if (downloadPending.current) return;
     downloadPending.current = true; setDownloading(true); setError("");
-    try { await downloadManifest({ mode, branchId, departureId }, scope); }
+    try { await downloadManifest({ mode, branchId, departureId }, scope, format); }
     catch (e) { setError(bookingError(e)); }
     finally { downloadPending.current = false; setDownloading(false); }
   };
-  return <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: "background.paper", color: "text.primary", borderRadius: 3 }}><Stack spacing={2}>
-    <Button startIcon={<ArrowBackRoundedIcon />} onClick={onBack} sx={{ alignSelf: "flex-start" }}>{mode === "store" ? "Regresar a Reportes" : "Volver al POS"}</Button>
-    <Stack direction="row" alignItems="center" spacing={1.5}><DirectionsBusRoundedIcon color="primary" sx={{ fontSize: 36 }} /><Typography variant="h4" fontWeight={700}>Reporte de Servicios</Typography></Stack>
-    <Typography color="text.secondary">Tours: consulta pasajeros, reservaciones, anticipos y saldos por salida.</Typography>
-    <Typography>Manifiesto de pasajeros por salida · Sucursal #{branchId}</Typography>
-    <TextField select label="Servicio" value={serviceId} disabled={downloading} onChange={e => { setServiceId(e.target.value); setDepartureId(""); setDepartures([]); setManifest(null); }}>{services.map(s => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}</TextField>
-    <TextField select label="Salida" value={departureId} disabled={!serviceId || downloading} onChange={e => { setDepartureId(e.target.value); setManifest(null); }}>{departures.map(d => <MenuItem key={d.id} value={d.id}>{departureDate(d.departure_date)} · {d.departure_time?.slice(0, 5)} · #{d.id}</MenuItem>)}</TextField>
-    <TextField select label="Reservas incluidas" value={scope} disabled={downloading} onChange={e => { setScope(e.target.value); setManifest(null); }}><MenuItem value="">Todas las reservas de la sucursal</MenuItem>{posLocationId && <MenuItem value={posLocationId}>Solo este punto de venta</MenuItem>}</TextField>
-    <Stack direction="row" spacing={1}><Button disabled={loading || downloading} onClick={() => setRevision(v => v + 1)}>Actualizar</Button><Button variant="contained" disabled={!manifest || loading || downloading} onClick={download}>{downloading ? "Descargando…" : "Descargar Excel"}</Button></Stack>
+  return <TourModuleLayout title="Historial y reportes de servicios" description={`Sucursal #${branchId} - Consulta ventas, pasajeros y saldos por servicio.`} onBack={onBack}><Stack spacing={2}>
+    {!serviceId ? <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", sm: "repeat(2,minmax(0,1fr))", lg: "repeat(3,minmax(0,1fr))" }, gap: 2 }}>{services.map(service => <TourCard key={service.id} tour={service} actionLabel="Consultar historial" onViewDepartures={item => setServiceId(item.id)} />)}</Box> : <Stack direction="row" alignItems="center" spacing={1} flexWrap="wrap"><Typography variant="h6" fontWeight={800}>{services.find(service => String(service.id) === String(serviceId))?.name}</Typography><Button variant="outlined" disabled={downloading} onClick={() => { setServiceId(""); setDepartureId(""); setManifest(null); }}>Cambiar servicio</Button></Stack>}
+    {serviceId && <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", sm: "repeat(2,minmax(0,280px))" }, gap: 2 }}>
+
+    <TextField size="small" select SelectProps={{ MenuProps: tourMenuProps }} label="Salida (opcional)" value={departureId} disabled={!serviceId || downloading} onChange={e => { setDepartureId(e.target.value); setManifest(null); }}><MenuItem value="">Todas las salidas</MenuItem>{departures.map(d => <MenuItem key={d.id} value={d.id}>{departureDate(d.departure_date)} · {d.departure_time?.slice(0, 5)} · #{d.id}</MenuItem>)}</TextField>
+    <TextField size="small" select SelectProps={{ MenuProps: tourMenuProps }} label="Reservas incluidas" value={scope} disabled={downloading} onChange={e => { setScope(e.target.value); setManifest(null); }}><MenuItem value="">Todas las reservas de la sucursal</MenuItem>{posLocationId && <MenuItem value={posLocationId}>Solo este punto de venta</MenuItem>}</TextField></Box>}
+    <Stack direction="row" flexWrap="wrap" gap={1}><Button disabled={loading || downloading} onClick={() => setRevision(v => v + 1)}>Actualizar</Button><Button variant="contained" disabled={!manifest || loading || downloading} onClick={() => download("xlsx")}>{downloading ? "Descargando…" : "Descargar Excel"}</Button><Button variant="contained" disabled={!manifest || loading || downloading} onClick={() => download("pdf")}>Descargar PDF</Button></Stack>
+    {serviceId && <TourSalesHistory key={`${serviceId}-${departureId}-${scope}`} mode={mode} branchId={branchId} serviceId={serviceId} departureId={departureId} posLocationId={scope || undefined} />}
     {error && <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{error}</Alert>}
     {loading && <CircularProgress aria-label="Cargando reporte" />}
     {!loading && !error && !services.length && <Alert severity="info">No hay servicios tipo tour en esta sucursal.</Alert>}
@@ -80,7 +82,7 @@ function Reports({ context, posLocationId, onBack }) {
     {manifest && !loading && <>
       <Stack direction="row" flexWrap="wrap" gap={3}>{[["bookings", "Reservas"], ["sold_seats", "Lugares vendidos"], ["available_seats", "Disponibles en la salida"], ["total", "Total"], ["paid", "Recibido"], ["balance", "Saldo"]].map(([key, label]) => <Box key={key}><Typography variant="caption">{label}</Typography><Typography variant="h6">{['total', 'paid', 'balance'].includes(key) ? departureMoney(manifest.summary[key]) : manifest.summary[key] ?? "—"}</Typography></Box>)}</Stack>
       <Alert severity="info">Las reservas pendientes también retienen lugares. Los importes se muestran una sola vez por reserva; el dinero recibido corresponde al resumen del servidor.</Alert>
-      {!manifest.rows.length ? <Alert severity="info">No hay pasajeros en este manifiesto.</Alert> : <TableContainer><Table size="small"><TableHead><TableRow>{columns.map(([key, label]) => <TableCell key={key}>{label}</TableCell>)}</TableRow></TableHead><TableBody>{manifest.rows.map((row, index) => <TableRow key={`${row.passenger_assignment_id}-${index}`}>{columns.map(([key]) => <TableCell key={key} sx={{ whiteSpace: "nowrap" }}>{row[key] == null ? "" : ['total', 'deposito', 'resto'].includes(key) ? departureMoney(row[key]) : key === 'transporte' ? (Number(row[key]) ? 'Sí' : 'No') : String(row[key])}</TableCell>)}</TableRow>)}</TableBody></Table></TableContainer>}
+      {!manifest.rows.length ? <Alert severity="info">No hay pasajeros en este manifiesto.</Alert> : <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", sm: "repeat(2,minmax(0,1fr))", lg: "repeat(3,minmax(0,1fr))" }, gap: 2 }}>{manifest.rows.map((row, index) => <Box key={`${row.passenger_assignment_id}-${index}`} sx={{ p: 2, bgcolor: "#fff", border: "1px solid #e3e4e7", borderRadius: 3 }}><Typography fontWeight={800} mb={1}>{row.nombre || "Pasajero"}</Typography><Stack spacing={.75}>{columns.filter(([key]) => key !== "nombre" && row[key] != null && row[key] !== "").map(([key, label]) => <Stack key={key} direction="row" justifyContent="space-between" gap={1}><Typography variant="caption" color="text.secondary">{label}</Typography><Typography variant="body2" sx={{ textAlign: "right", overflowWrap: "anywhere", minWidth: 0 }}>{['total', 'deposito', 'resto'].includes(key) ? departureMoney(row[key]) : key === 'transporte' ? (Number(row[key]) ? 'Si' : 'No') : String(row[key])}</Typography></Stack>)}</Stack></Box>)}</Box>}
     </>}
-  </Stack></Box>;
+  </Stack></TourModuleLayout>;
 }

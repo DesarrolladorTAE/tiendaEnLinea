@@ -1,0 +1,24 @@
+const fs = require("node:fs"), vm = require("node:vm"), assert = require("node:assert/strict"), path = require("node:path");
+const root = path.join(__dirname, "..");
+const read = file => fs.readFileSync(path.join(root, file), "utf8").replace(/^import .*;\r?\n/gm, "").replace(/export /g, "");
+const calls = [];
+let payload = { success: true, data: { data: [], last_page: 1 } };
+const client = { defaults: { baseURL: "https://example.test/api/" }, get: async (url, config) => { calls.push({ url, config }); return { data: payload }; }, post: async (url, body) => { calls.push({ url, body }); return { data: payload }; } };
+const sandbox = { axiosClient: client, axiosClientPOS: client };
+vm.createContext(sandbox);
+vm.runInContext(read("src/services/tours/tourService.js") + read("src/components/tours/bookingUtils.js") + "\nglobalThis.api = { getTourHistory, getManifest, createAssistedSale, bookingCollection };", sandbox);
+(async () => {
+  const context = { mode: "pos", branchId: 498, serviceId: 25, departureId: 8 };
+  await sandbox.api.getTourHistory(context, { search: "Ana", page: 2 });
+  assert.equal(calls.at(-1).url, "/branches/498/tours/services/25/history");
+  assert.equal(calls.at(-1).config.baseURL, undefined, "Conservar /api y los interceptores de autenticacion");
+  await sandbox.api.getManifest(context);
+  assert.equal(calls.at(-1).url, "/branches/498/tours/departures/8/manifest");
+  await sandbox.api.createAssistedSale(context, { buyer_name: "Ana" });
+  assert.equal(calls.at(-1).url, "/branches/498/tours/departures/8/sales");
+  for (const value of [[], { data: [] }, { data: { data: [], last_page: 1 } }, { bookings: { data: [], last_page: 1 } }, { data: { bookings: [] } }]) assert.equal(sandbox.api.bookingCollection(value).rows.length, 0);
+  payload = "<!DOCTYPE html><html></html>";
+  await assert.rejects(sandbox.api.getTourHistory(context), /pagina en lugar de datos/);
+  assert.throws(() => sandbox.api.bookingCollection({ success: false, message: "No autorizado" }), /No autorizado/);
+  console.log("OK: historial, venta y manifiesto conservan /api; listas, paginadores y errores HTML.");
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,3 +1,5 @@
+import { useMediaQuery, useTheme } from "@mui/material";
+import { warehouseDialogStyles } from "./warehouseStyles";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -31,6 +33,7 @@ export default function WarehouseAssignPosModal({
   warehouse, // {id, name}
   onSaved,
 }) {
+  const mobile = useMediaQuery(useTheme().breakpoints.down("sm"));
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -173,7 +176,7 @@ export default function WarehouseAssignPosModal({
   };
 
   return (
-    <Dialog open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
+    <Dialog sx={warehouseDialogStyles} fullScreen={mobile} open={open} onClose={saving ? undefined : onClose} fullWidth maxWidth="sm">
       <DialogTitle sx={{ fontWeight: 900 }}>
         Asignar punto(s) de venta
       </DialogTitle>

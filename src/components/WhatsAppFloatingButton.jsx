@@ -19,6 +19,7 @@ export default function WhatsAppFloatingButton({
   storePhone,
   storeId,
   storeSlug,
+  branchId = null,
   storefrontTheme = {},
   storefrontColors = {},
 }) {
@@ -188,9 +189,12 @@ export default function WhatsAppFloatingButton({
   return (
     <>
       <CheckoutPayModal
+        key={`${storeSlug || ""}:${branchId || ""}`}
         open={payOpen}
         onClose={() => setPayOpen(false)}
         storeSlug={storeSlug}
+        branchId={branchId}
+        storeId={resolvedStoreId}
         storePhone={storePhone}
         storeName={storeName}
         items={items}

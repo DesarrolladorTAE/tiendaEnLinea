@@ -1,3 +1,5 @@
+import { tourDialogSx, tourMenuProps } from "../../components/tours/tourFormStyles.mjs";
+import TourModuleLayout from "../../components/tours/TourModuleLayout";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, Grid, MenuItem, Pagination, Snackbar, Stack, TextField, Typography, useMediaQuery, useTheme } from "@mui/material";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -98,14 +100,11 @@ function DepartureList({ context, tourName, onBack }) {
     } finally { pending.current = false; if (mounted.current) setBusy(false); }
   };
   if (bookingView) return <TourBookingsPage mode="pos" posContext={{ ...context, departureId: bookingView.departureId }} autoCreate={bookingView.creating} onBack={() => { setBookingView(null); setRevision((value) => value + 1); }} />;
-  return <Box sx={{ maxWidth: 1400, mx: "auto", p: { xs: 2, sm: 3 }, bgcolor: "#fff", color: "#171b20", borderRadius: 3 }}>
-    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} mb={3}>
-      <Box><Typography variant="h4" fontWeight={900}>Salidas{tourName ? ` · ${tourName}` : ""}</Typography><Typography color="text.secondary">Sucursal #{branchId} · Tour #{serviceId}</Typography></Box>
-      <Stack direction="row" flexWrap="wrap" gap={1} alignItems="center"><Button variant="outlined" onClick={onBack}>Volver a Tours</Button>{isStore && <Button variant="contained" disabled={busy} onClick={() => setForm({ departure: null })}>Nueva salida</Button>}</Stack>
-    </Stack>
+  return <TourModuleLayout title={tourName ? `Salidas - ${tourName}` : "Salidas del servicio"} description={`Sucursal #${branchId} - Selecciona una salida para vender o consultar reservas.`} onBack={onBack} backLabel="Volver" >
+    {isStore && <Button variant="contained" onClick={() => setForm({ departure: null })} sx={{ mb: 2 }}>Nueva salida</Button>}
     <Stack direction={{ xs: "column", sm: "row" }} spacing={2} mb={3}>
-      <TextField label="Fecha" type="date" value={filters.date} InputLabelProps={{ shrink: true }} onChange={(event) => { const date = event.target.value; setFilters((prev) => ({ ...prev, date, page: 1 })); }} />
-      <TextField select label="Estado" value={filters.status} sx={{ minWidth: 190 }} onChange={(event) => { const status = event.target.value; setFilters((prev) => ({ ...prev, status, page: 1 })); }}><MenuItem value="">Todos</MenuItem>{DEPARTURE_STATUSES.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
+      <TextField size="small" label="Fecha" type="date" value={filters.date} InputLabelProps={{ shrink: true }} onChange={(event) => { const date = event.target.value; setFilters((prev) => ({ ...prev, date, page: 1 })); }} />
+      <TextField size="small" select SelectProps={{ MenuProps: tourMenuProps }} label="Estado" value={filters.status} sx={{ minWidth: 190 }} onChange={(event) => { const status = event.target.value; setFilters((prev) => ({ ...prev, status, page: 1 })); }}><MenuItem value="">Todos</MenuItem>{DEPARTURE_STATUSES.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField>
       <Button onClick={() => setFilters({ date: "", status: "", page: 1 })}>Limpiar filtros</Button>
     </Stack>
     {state.loading ? <Stack alignItems="center" py={5}><CircularProgress aria-label="Cargando salidas" /></Stack>
@@ -113,7 +112,7 @@ function DepartureList({ context, tourName, onBack }) {
       : !state.rows.length ? <Alert severity="info">No hay salidas para esta selección.</Alert>
       : <Grid container spacing={2}>{state.rows.map((row) => <Grid key={row.id} size={{ xs: 12, sm: 6, lg: 4 }}><DepartureCard departure={row} mode={mode} busy={busy} onView={(item) => openDeparture(item)} onEdit={(item) => openDeparture(item, true)} onCancel={cancel} onBookings={openBookings} onNewBooking={(item) => openBookings(item, true)} /></Grid>)}</Grid>}
     {!state.loading && !state.error && state.lastPage > 1 && <Pagination sx={{ mt: 3 }} page={filters.page} count={state.lastPage} onChange={(_, page) => setFilters((prev) => ({ ...prev, page }))} />}
-    {preview && <Dialog open fullScreen={mobile} fullWidth maxWidth="sm" onClose={busy ? undefined : closePreview}>
+    {preview && <Dialog sx={tourDialogSx} open fullScreen={mobile} fullWidth maxWidth="sm" onClose={busy ? undefined : closePreview}>
       <DialogTitle>Detalle de salida</DialogTitle><DialogContent>{preview.loading ? <Stack alignItems="center" py={5}><CircularProgress /></Stack> : <Stack spacing={2}>
         <DepartureCard departure={preview.record} mode={mode} onBookings={openBookings} onNewBooking={(item) => openBookings(item, true)} />
         <Typography>Regreso estimado: {preview.record.estimated_return_time?.slice(0, 5) || "Sin definir"}</Typography>
@@ -122,5 +121,5 @@ function DepartureList({ context, tourName, onBack }) {
     </Dialog>}
     {isStore && form && <DepartureFormDialog context={context} departure={form.departure} onClose={() => setForm(null)} onSessionExpired={sessionExpired} onSaved={() => { setForm(null); setRevision((value) => value + 1); setNotice({ severity: "success", message: "Salida guardada correctamente." }); }} />}
     <Snackbar open={!!notice} autoHideDuration={notice?.severity === "error" ? null : 4500} onClose={() => setNotice(null)}><Alert severity={notice?.severity || "info"} onClose={() => setNotice(null)} sx={{ whiteSpace: "pre-line" }}>{notice?.message}</Alert></Snackbar>
-  </Box>;
+  </TourModuleLayout>;
 }

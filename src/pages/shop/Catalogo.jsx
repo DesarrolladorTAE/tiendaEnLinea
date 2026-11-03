@@ -214,7 +214,7 @@ function getVariantStock(variant, useWarehouseInventory) {
  * Componente
  * ======================================================= */
 
-const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSettings = null, storefrontTemplate = "negocio", storefrontTheme = {}, storefrontColors = {}, storefrontBrand = null }) => {
+const Catalogo = ({ branchId = null, storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSettings = null, storefrontTemplate = "negocio", storefrontTheme = {}, storefrontColors = {}, storefrontBrand = null }) => {
   const params = useParams();
   const { pathname } = useLocation();
 
@@ -628,9 +628,11 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
       </div>
 
       {settingEnabled(siteSettings.show_whatsapp, true) && <WhatsAppFloatingButton
+        key={`${storeSlug}:${branchId || ""}`}
         storePhone={storePhone}
         storeId={storeId}
         storeSlug={storeSlug}
+        branchId={branchId}
         storefrontTheme={storefrontTheme}
         storefrontColors={storefrontColors}
       />}
@@ -639,6 +641,7 @@ const Catalogo = ({ storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSe
 };
 
 Catalogo.propTypes = {
+  branchId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   storeSlug: PropTypes.string,
   storefrontSettings: PropTypes.object,

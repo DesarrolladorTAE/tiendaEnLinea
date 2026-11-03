@@ -1,4 +1,6 @@
-import React, { useEffect } from "react";
+import { useMediaQuery, useTheme } from "@mui/material";
+import { warehouseDialogStyles } from "./warehouseStyles";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -25,6 +27,7 @@ export default function WarehouseFormModal({
   onClose,
   onSaved,
 }) {
+  const mobile = useMediaQuery(useTheme().breakpoints.down("sm"));
   const {
     register,
     handleSubmit,
@@ -50,6 +53,8 @@ export default function WarehouseFormModal({
     },
   });
 
+  const [saving, setSaving] = useState(false);
+  const pending = useRef(false);
   const useBranchAddress = watch("use_branch_address");
 
   // 🔁 cargar datos en modo edición
@@ -79,6 +84,8 @@ export default function WarehouseFormModal({
   }, [mode, warehouse, reset]);
 
   const onSubmit = async (form) => {
+    if (pending.current) return;
+    pending.current = true; setSaving(true);
     try {
       if (mode === "create") {
         await axiosClient.post(`/branches/${branchId}/warehouses`, form);
@@ -91,11 +98,14 @@ export default function WarehouseFormModal({
       onSaved?.();
     } catch (err) {
       alertFromAxiosError(err, "No se pudo guardar el almacén");
+    } finally {
+      pending.current = false;
+      setSaving(false);
     }
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog sx={warehouseDialogStyles} fullScreen={mobile} open={open} onClose={saving ? undefined : onClose} maxWidth="sm" fullWidth PaperProps={{ component: "form", onSubmit: handleSubmit(onSubmit) }}>
       <DialogTitle sx={{ fontWeight: 900 }}>
         {mode === "create" ? "Nuevo almacén" : "Editar almacén"}
       </DialogTitle>
@@ -131,12 +141,12 @@ export default function WarehouseFormModal({
 
           <Stack direction="row" spacing={2}>
             <FormControlLabel
-              control={<Switch {...register("is_active")} defaultChecked />}
+              control={<Switch {...register("is_active")} checked={!!watch("is_active")} />}
               label="Activo"
             />
 
             <FormControlLabel
-              control={<Switch {...register("is_default")} />}
+              control={<Switch {...register("is_default")} checked={!!watch("is_default")} />}
               label="Almacén default"
             />
           </Stack>
@@ -145,7 +155,7 @@ export default function WarehouseFormModal({
 
           {/* Dirección */}
           <FormControlLabel
-            control={<Switch {...register("use_branch_address")} defaultChecked />}
+            control={<Switch {...register("use_branch_address")} checked={!!useBranchAddress} />}
             label="Usar dirección de la sucursal"
           />
 
@@ -163,10 +173,11 @@ export default function WarehouseFormModal({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose}>Cancelar</Button>
+        <Button disabled={saving} onClick={onClose}>Cancelar</Button>
         <Button
           variant="contained"
-          onClick={handleSubmit(onSubmit)}
+          type="submit"
+          disabled={saving}
           sx={{ fontWeight: 900 }}
         >
           Guardar

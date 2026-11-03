@@ -1,3 +1,4 @@
+import TourModuleLayout from "../../components/tours/TourModuleLayout";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Card, CardContent, CircularProgress, Snackbar, Stack, Typography } from "@mui/material";
 import { useBookingScope, useBookingRequest } from "../../hooks/tours/useBookingPage";
@@ -37,8 +38,7 @@ function BookingDetail({ scope, bookingId, onBack }) {
     } finally { pending.current = false; if (mounted.current) setBusy(false); }
   };
   const canEdit = context.mode === "pos" && request.booking?.status !== "cancelled";
-  return <Box sx={{ maxWidth: 1100, mx: "auto", p: { xs: 2, sm: 3 }, bgcolor: "#fff", borderRadius: 3 }}>
-    <Stack direction="row" flexWrap="wrap" justifyContent="space-between" gap={2} mb={3}><Typography variant="h4" fontWeight={900}>Detalle de reservación</Typography><Button disabled={busy} onClick={back}>Volver a reservaciones</Button></Stack>
+  return <TourModuleLayout title="Detalle de reservacion" description={`Reserva #${bookingId} - Sucursal #${context.branchId}`} onBack={busy ? undefined : back} backLabel="Volver a reservas">
     {request.loading ? <CircularProgress /> : request.error ? <Alert severity="error" sx={{ whiteSpace: "pre-line" }} action={<Button onClick={request.reload}>Reintentar</Button>}>{request.error}</Alert> : <Stack spacing={3}>
       <Typography>Salida: {departureDate(request.departure.departure_date)} · {request.departure.departure_time?.slice(0, 5)}</Typography>
       <Card variant="outlined"><CardContent><BookingSummary booking={request.booking} /></CardContent></Card>
@@ -48,5 +48,5 @@ function BookingDetail({ scope, bookingId, onBack }) {
     </Stack>}
     {editing && canEdit && request.booking && <BookingFormDialog context={context} booking={request.booking} onClose={() => setEditing(false)} onSessionExpired={sessionExpired} onSaved={() => { setEditing(false); request.reload(); setNotice({ severity: "success", message: "Reservación actualizada." }); }} />}
     <Snackbar open={!!notice} autoHideDuration={notice?.severity === "error" ? null : 4000} onClose={() => setNotice(null)}><Alert severity={notice?.severity || "info"} sx={{ whiteSpace: "pre-line" }} onClose={() => setNotice(null)}>{notice?.message}</Alert></Snackbar>
-  </Box>;
+  </TourModuleLayout>;
 }

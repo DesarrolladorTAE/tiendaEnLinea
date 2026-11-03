@@ -2,6 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
+  <meta name="referrer" content="no-referrer" />
   <title>MiTiendaEnLineaMX</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="google-site-verification" content="S7aICfAiQhecOlomyxXyFPByHxWpiA_tn_2l5U5iynA" />
@@ -9,6 +10,7 @@
 
   <!-- Google Tag Manager -->
   <script>
+    if (!window.location.pathname.replace(/\/$/, "").endsWith("/seguimiento") && !new URLSearchParams(window.location.search).has("tracking_token")) {
     (function (w, d, s, l, i) {
       w[l] = w[l] || [];
       w[l].push({ "gtm.start": new Date().getTime(), event: "gtm.js" });
@@ -19,6 +21,7 @@
       j.src = "https://www.googletagmanager.com/gtm.js?id=" + i + dl;
       f.parentNode.insertBefore(j, f);
     })(window, document, "script", "dataLayer", "GTM-NSB5FC9T");
+    }
   </script>
   <!-- End Google Tag Manager -->
 </head>

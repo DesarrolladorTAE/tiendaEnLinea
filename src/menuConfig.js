@@ -10,6 +10,7 @@ import MoveToInboxOutlinedIcon from "@mui/icons-material/MoveToInboxOutlined";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
 import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
 
 const adminNavItems = [
   { path: "/admin/products", label: "Productos", icon: Inventory2OutlinedIcon },
@@ -23,6 +24,7 @@ const adminNavItems = [
   { path: "/admin/compra", label: "Entradas de producto", icon: MoveToInboxOutlinedIcon },
   { path: "/admin/ticket", label: "Tickets y comprobantes", icon: ReceiptLongOutlinedIcon },
   { path: "/admin/mi-sitio", label: "Sitio Web", icon: LanguageOutlinedIcon },
+  { path: "/admin/envios", label: "Envíos de productos", icon: LocalShippingOutlinedIcon },
   { path: "/admin/marca-blanca", label: "Marca blanca", icon: PaletteOutlinedIcon },
 ];
 

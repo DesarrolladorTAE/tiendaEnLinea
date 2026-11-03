@@ -1,3 +1,4 @@
+import { tourDialogSx } from "./tourFormStyles.mjs";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, TextField, Typography, useMediaQuery, useTheme } from "@mui/material";
 import SaleClientAssign from "../POS/SaleClientAssign";
@@ -56,7 +57,7 @@ export default function BookingFormDialog({ context, booking, onClose, onSaved, 
     } finally { pending.current = false; setSaving(false); }
   };
   if (mode !== "pos") return null;
-  return <Dialog open fullWidth maxWidth="sm" fullScreen={mobile} onClose={saving ? undefined : onClose} PaperProps={{ component: "form", onSubmit: submit }}>
+  return <Dialog sx={tourDialogSx} open fullWidth maxWidth="sm" fullScreen={mobile} onClose={saving ? undefined : onClose} PaperProps={{ component: "form", onSubmit: submit }}>
     <DialogTitle>{booking ? "Editar reservación" : "Nueva reservación"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
       {error && <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{error}</Alert>}
       {data.error && <Alert severity="error" sx={{ whiteSpace: "pre-line" }} action={<Button onClick={() => setRevision((value) => value + 1)}>Reintentar</Button>}>{data.error}</Alert>}

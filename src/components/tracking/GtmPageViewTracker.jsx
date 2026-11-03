@@ -5,6 +5,7 @@ export default function GtmPageViewTracker() {
   const location = useLocation();
 
   useEffect(() => {
+    if (location.pathname.endsWith("/seguimiento") || new URLSearchParams(location.search).has("tracking_token")) return;
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({
       event: "pageview",

@@ -137,6 +137,7 @@ export default function SitioWeb({ onSelect }) {
           
         </Stack>
 
+        <Button onClick={() => navigate("/admin/envios")} variant="outlined" sx={{ mb: 2 }}>Configurar envíos de productos</Button>
         <PublicStoreLinkCard />
 
         {expired && <Alert severity="warning" sx={{ mb: 3, borderRadius: 2 }}>Tu plan está inactivo o vencido. Renueva tu suscripción para volver a editar el sitio.</Alert>}

@@ -14,14 +14,22 @@ export async function getTourServices({ branchId, mode, signal }) {
   do {
     const { data } = await client.get(
       `/branches/${branchId}/services`,
-      { baseURL: client.defaults.baseURL.replace(/\/api\/?$/, "/"), params: { page }, signal }
+      { params: { page }, signal }
     );
-    const services = data?.services;
-    if (!Array.isArray(services?.data)) {
+    if (data?.success === false || data?.ok === false) {
+      throw new Error(data.message || "No se pudo consultar el cat?logo de servicios.");
+    }
+    const services = data?.services ?? data?.data?.services ?? data?.data ?? data;
+    const rows = Array.isArray(services) ? services : services?.data;
+    if (!Array.isArray(rows)) {
       throw new Error("No se pudo leer el listado de servicios de la sucursal.");
     }
-    tours.push(...services.data.filter((service) => service.service_type === "tour"));
-    lastPage = Number(services.last_page || 1);
+    tours.push(...rows.filter((service) => service.service_type === "tour"));
+    const pagination = services?.meta ?? services;
+    lastPage = Number(pagination?.last_page ?? data?.meta?.last_page ?? 1);
+    if (!Number.isSafeInteger(lastPage) || lastPage < page) {
+      throw new Error("La paginaci?n del cat?logo de servicios no es v?lida.");
+    }
     page += 1;
   } while (page <= lastPage);
   return tours;
@@ -35,7 +43,7 @@ function departureContext({ branchId, serviceId, mode }, write = false) {
   for (const id of [branchId, ...(serviceId === undefined ? [] : [serviceId])]) {
     if (!Number.isSafeInteger(Number(id)) || Number(id) <= 0) throw new Error("La sucursal o el tour no es válido.");
   }
-  // Existing Axios baseURL ends in /api/: never prefix /api a second time.
+  // Existing catalog, departures and booking APIs retain the client base URL.
   const prefix = /\/api\/?$/.test(client.defaults.baseURL || "") ? "" : "/api";
   const branchPath = `/branches/${branchId}`;
   return { client, branchPath, toursPath: prefix + branchPath };
@@ -267,6 +275,9 @@ function bookingPaymentPayload(values) {
   return Object.fromEntries(PAYMENT_FIELDS.filter((key) => values[key] !== undefined).map((key) => [key, values[key]]));
 }
 function checkPaymentResponse(response) {
+  if (typeof response.data === "string") {
+    throw new Error("El servidor devolvio una pagina en lugar de datos. Verifica la ruta de la API.");
+  }
   // Business errors may use HTTP 200 with success:false.
   if (response.data?.success === false || response.data?.ok === false) {
     const error = new Error(response.data.message || "No se pudo completar la operación de pago.");
@@ -306,12 +317,13 @@ export async function getManifest(context, posLocationId) {
     params: posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}, signal: context.signal,
   }));
 }
-export async function downloadManifest(context, posLocationId) {
+export async function downloadManifest(context, posLocationId, format = "xlsx") {
+  if (!["xlsx", "pdf"].includes(format)) throw new Error("Formato inv?lido.");
   const { client, url } = operationEndpoint(context);
   let response;
   try {
     response = await client.get(url + "/manifest", { responseType: "blob", params: {
-      format: "xlsx", ...(posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}),
+      format, ...(posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}),
     } });
   } catch (error) {
     if (error.response?.data instanceof Blob) {
@@ -325,7 +337,7 @@ export async function downloadManifest(context, posLocationId) {
   }
   const objectUrl = URL.createObjectURL(response.data);
   const link = document.createElement("a");
-  link.href = objectUrl; link.download = `tour-${context.departureId}-operacion.xlsx`;
+  link.href = objectUrl; link.download = `tour-${context.departureId}-operacion.${format}`;
   document.body.appendChild(link); link.click(); link.remove();
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
@@ -355,4 +367,13 @@ export async function exportToursExcel(branchId) {
     }
     throw error;
   }
+}
+
+export async function getTourHistory(context, filters = {}) {
+  const { client } = departureContext(context);
+  const params = onlyFields(filters, ["departure_id", "status", "payment_status", "pos_location_id", "search", "date_from", "date_to", "page", "per_page"]);
+  return checkPaymentResponse(await client.get(
+    `/branches/${passengerEntityId(context.branchId)}/tours/services/${passengerEntityId(context.serviceId)}/history`,
+    { params, signal: context.signal }
+  ));
 }

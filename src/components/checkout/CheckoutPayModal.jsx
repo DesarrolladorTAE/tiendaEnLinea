@@ -28,7 +28,10 @@ import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 
 // ✅ usa tus alerts (ajusta el path si tu modal está en otra carpeta)
-import { showSuccess, showError, alertFromAxiosError } from "../../utils/alerts";
+import { showSuccess, showError } from "../../utils/alerts";
+import ShipmentFields from "./ShipmentFields";
+import { buildShipment, safeShippingUrl } from "../../utils/shipping.mjs";
+import usePublicShippingConfig from "../../hooks/usePublicShippingConfig";
 
 const API_BASE = "https://mitiendaenlineamx.com.mx/api";
 
@@ -78,7 +81,14 @@ export default function CheckoutPayModal({
   items,
   total,
   onClearCart,
+  branchId = null,
+  storeId = null,
 }) {
+  const shipping = usePublicShippingConfig({ open, branchId, storeId });
+  const shippingConfig = shipping.config;
+  const [delivery, setDelivery] = useState({ notification_consent: false });
+  const [shippingTracking, setShippingTracking] = useState(null);
+  const submitLock = React.useRef(false);
   const fullScreen = useMediaQuery("(max-width:600px)");
   const [loading, setLoading] = useState(false);
   const [capabilities, setCapabilities] = useState({
@@ -104,6 +114,11 @@ export default function CheckoutPayModal({
   const [proofFile, setProofFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [uiError, setUiError] = useState("");
+  const closeCheckout = () => {
+    if (submitLock.current) return;
+    if (shippingTracking) onClearCart?.();
+    onClose?.();
+  };
 
   const hasItems = Array.isArray(items) && items.length > 0;
 
@@ -113,6 +128,8 @@ export default function CheckoutPayModal({
     if (!open) return;
 
     setUiError("");
+    setShippingTracking(null);
+    setDelivery({ notification_consent: false });
     setTab("choose");
     setLoading(true);
 
@@ -250,6 +267,7 @@ export default function CheckoutPayModal({
 
     const fd = new FormData();
     fd.append("store_slug", storeSlug);
+    if (branchId) fd.append("branch_id", String(branchId));
 
     // ✅ si tu backend todavía no lo recibe, NO rompe nada; solo lo mandamos
     if (storeName) fd.append("store_name", storeName);
@@ -270,6 +288,8 @@ export default function CheckoutPayModal({
     }
 
     fd.append("items", JSON.stringify(mappedItems));
+    const shipment = buildShipment(shippingConfig, delivery);
+    if (shipment) fd.append("shipment", JSON.stringify(shipment));
 
     // ✅ comprobante obligatorio
     if (proofFile) fd.append("proof_file", proofFile);
@@ -279,12 +299,21 @@ export default function CheckoutPayModal({
 
   // ✅ usa SweetAlert2 helpers
   const submitOffline = async () => {
+    if (submitLock.current) return;
+    if (branchId && (shipping.loading || shipping.error || !shippingConfig)) return;
+    if (delivery.shipping_method_id && !shippingConfig?.enabled) {
+      showError("La entrega seleccionada ya no está disponible. Revisa las opciones o elige continuar sin envío.");
+      return;
+    }
+    try { buildShipment(shippingConfig, delivery); }
+    catch (error) { showError(error.message); return; }
     const errs = validateOffline();
     if (errs.length) {
       showError(errs[0]);
       return;
     }
 
+    submitLock.current = true;
     setSubmitting(true);
     try {
       const fd = buildOfflinePayload();
@@ -298,13 +327,21 @@ export default function CheckoutPayModal({
         return;
       }
 
+      if (data.shipping_tracking) {
+        setShippingTracking(data.shipping_tracking);
+        return;
+      }
       onClearCart?.();
       onClose?.();
 
       showSuccess("✅ Listo. Tu pedido fue enviado y está en revisión de pago.");
     } catch (e) {
-      alertFromAxiosError(e, "No se pudo enviar el pedido. Revisa tus datos e intenta de nuevo.");
+      const data = e.response?.data;
+      const messages = Object.values(data?.errors || {}).flat().filter((value) => typeof value === "string");
+      setUiError([data?.message || "No se pudo enviar el pedido. Revisa tus datos e intenta de nuevo.", ...messages].join(" "));
+      if (e.response?.status === 422 && Object.keys(data?.errors || {}).some((key) => key === "shipment" || key.startsWith("shipment."))) await shipping.refresh();
     } finally {
+      submitLock.current = false;
       setSubmitting(false);
     }
   };
@@ -365,7 +402,7 @@ export default function CheckoutPayModal({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={closeCheckout}
       fullScreen={fullScreen}
       maxWidth="md"
       fullWidth
@@ -390,7 +427,7 @@ export default function CheckoutPayModal({
             </Typography>
           </Box>
 
-          <IconButton onClick={onClose} sx={{ color: "rgba(15,23,42,.75)" }}>
+          <IconButton onClick={closeCheckout} disabled={submitting} sx={{ color: "rgba(15,23,42,.75)" }}>
             <CloseIcon />
           </IconButton>
         </Stack>
@@ -399,7 +436,13 @@ export default function CheckoutPayModal({
       <Divider sx={{ borderColor: "rgba(0,0,0,.08)" }} />
 
       <DialogContent sx={{ p: { xs: 2, md: 2.5 }, color: "#0f172a" }}>
-        {loading ? (
+        {shippingTracking ? <Stack spacing={2}>
+          <Alert severity="success">Pedido enviado. El pago está pendiente de revisión.</Alert>
+          <Typography variant="h6">Folio: {shippingTracking.shipment_code}</Typography>
+          <Typography>{shippingTracking.status_label}</Typography>
+          {safeShippingUrl(shippingTracking.public_url) && <Button component="a" href={safeShippingUrl(shippingTracking.public_url)} target="_blank" rel="noopener noreferrer" variant="contained">Seguir mi envío</Button>}
+          <Button onClick={closeCheckout}>Cerrar</Button>
+        </Stack> : loading ? (
           <Stack alignItems="center" justifyContent="center" sx={{ py: 6 }}>
             <CircularProgress />
             <Typography sx={{ mt: 2, color: "rgba(15,23,42,.75)", fontSize: 13 }}>
@@ -548,6 +591,7 @@ export default function CheckoutPayModal({
                       border: "1px solid rgba(15,23,42,.10)",
                     }}
                   >
+                    {shippingConfig?.enabled && canShowOffline && <Alert severity="info" sx={{ mb: 2 }}>Para solicitar envío con seguimiento, elige Transferencia / Depósito / OXXO y completa las opciones de entrega.</Alert>}
                     <Stack
                       direction="row"
                       justifyContent="space-between"
@@ -593,6 +637,10 @@ export default function CheckoutPayModal({
                     }}
                   >
                     <Stack spacing={1.5}>
+                      {shipping.loading && <Typography role="status">Consultando opciones de entrega…</Typography>}
+                      {shipping.error && <Alert severity="warning" action={<Button disabled={shipping.waiting || shipping.loading} onClick={shipping.refresh}>Reintentar</Button>}>{shipping.error}</Alert>}
+                      {delivery.shipping_method_id && !shippingConfig?.enabled && !shipping.loading && <Alert severity="warning" action={<Button onClick={() => setDelivery({ notification_consent: false })}>Continuar sin envío</Button>}>La entrega seleccionada dejó de estar disponible. No se ha vuelto a enviar tu compra.</Alert>}
+                      <ShipmentFields config={shippingConfig} value={delivery} onChange={setDelivery} disabled={submitting} />
                       <Stack direction="row" alignItems="center" justifyContent="space-between">
                         <Typography sx={{ fontWeight: 900 }}>
                           Pago por transferencia / depósito / OXXO
@@ -908,7 +956,7 @@ export default function CheckoutPayModal({
                         <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems="center">
                           <Button
                             onClick={submitOffline}
-                            disabled={submitting || !hasItems}
+                            disabled={submitting || !hasItems || Boolean(branchId && (shipping.loading || shipping.error || !shippingConfig))}
                             variant="contained"
                             sx={{
                               textTransform: "none",

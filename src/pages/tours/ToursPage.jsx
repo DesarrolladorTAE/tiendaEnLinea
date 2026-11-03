@@ -1,5 +1,6 @@
+import TourModuleLayout from "../../components/tours/TourModuleLayout";
 import React, { useEffect, useState } from "react";
-import { Alert, Box, Button, CircularProgress, Grid, Pagination, Stack, Typography } from "@mui/material";
+import { Alert, Button, CircularProgress, Grid, Pagination, Stack } from "@mui/material";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAdminUi } from "../../context/AdminUiContext";
 import { getTourServices } from "../../services/tours/tourService";
@@ -59,14 +60,8 @@ export default function ToursPage({ mode = "store", posBranchId, posLocationId, 
 
   if (!isStore && selectedTour) return <TourDeparturesPage mode="pos" posLocationId={posLocationId} posBranchId={posBranchId} posServiceId={selectedTour.id} tourName={selectedTour.name} onBack={() => setSelectedTour(null)} />;
 
-  return <Box sx={{ maxWidth: 1400, mx: "auto", p: { xs: 2, sm: 3 }, bgcolor: "#fff", color: "#171b20", borderRadius: 3 }}>
-    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2} mb={3}>
-      <Box><Typography variant="h4" fontWeight={900}>{isStore ? "Salidas de tours" : "Ventas de servicios"}</Typography><Typography color="text.secondary">Sucursal #{branchId}</Typography></Box>
-      <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap">
-        {isStore && <Button variant="contained" onClick={() => navigate(`/admin/services/new?branch_id=${branchId}&service_type=tour`, { state: { branch: { id: branchId } } })}>Crear Tour</Button>}
-        <Button variant="outlined" onClick={back}>{isStore ? "Volver a servicios" : "Volver al POS"}</Button>
-      </Stack>
-    </Stack>
+  return <TourModuleLayout title={isStore ? "Salidas de tours" : "Ventas de servicios"} description={`Sucursal #${branchId} - Selecciona un servicio para consultar sus salidas.`} onBack={back} backLabel="Volver" >
+    {isStore && <Button variant="contained" sx={{ mb: 2 }} onClick={() => navigate(`/admin/services/new?branch_id=${branchId}&service_type=tour`, { state: { branch: { id: branchId } } })}>Crear Tour</Button>}
     {isStore && <TourExcelActions key={branchId} branchId={branchId} onImported={() => setRevision((value) => value + 1)} />}
     {state.loading ? <Stack alignItems="center" py={6}><CircularProgress aria-label="Cargando Tours" /></Stack>
       : state.error ? <Alert severity="error" action={<Button onClick={() => setRevision((value) => value + 1)}>Reintentar</Button>}>{state.error}</Alert>
@@ -74,5 +69,5 @@ export default function ToursPage({ mode = "store", posBranchId, posLocationId, 
       : <><Grid container spacing={2}>{state.rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE).map((tour) => <Grid key={tour.id} size={{ xs: 12, sm: 6, lg: 4 }}><TourCard tour={tour} onViewDepartures={viewDepartures} /></Grid>)}</Grid>
         {state.rows.length > PAGE_SIZE && <Pagination sx={{ mt: 3 }} page={page} count={Math.ceil(state.rows.length / PAGE_SIZE)} onChange={(_, value) => setPage(value)} />}</>}
 
-  </Box>;
+  </TourModuleLayout>;
 }

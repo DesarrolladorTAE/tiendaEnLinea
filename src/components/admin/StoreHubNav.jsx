@@ -4,9 +4,11 @@ import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
 import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
 import { useNavigate } from "react-router-dom";
 
 const items = [
+  { path: "/admin/envios", title: "Envíos de productos", description: "Métodos, puntos de entrega y seguimiento", icon: LocalShippingOutlinedIcon },
   { path: "/admin/micuenta", title: "Mi cuenta", description: "Datos personales, fiscales y seguridad", icon: AccountCircleRoundedIcon },
   { path: "/admin/membresia", title: "Suscripciones", description: "Consulta y administra tu plan", icon: WorkspacePremiumRoundedIcon },
   { path: "/admin/complementos", title: "Complementos", description: "Amplía las funciones de tu tienda", icon: AutoAwesomeRoundedIcon },
