@@ -9,7 +9,6 @@
 @import "./Plans.css";
 @import "./Contact.css";
 @import "./Footer.css";
-@import "./ScrollTopButton.css";
 
 .landing-page--contact {
   min-height: 100svh;

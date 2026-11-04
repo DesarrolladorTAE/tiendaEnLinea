@@ -1,42 +1,54 @@
-@import "../node_modules/bootstrap/scss/bootstrap";
+@use "../../../node_modules/bootstrap/dist/css/bootstrap.css";
 
-@import "../node_modules/react-modal-video/scss/modal-video.scss";
+@use "../../../node_modules/react-modal-video/scss/modal-video";
+
+@use "variables";
+@use "helper";
+@use "common";
+@use "preloader";
+@use "header";
+@use "slider";
+@use "support";
+@use "section-title";
+@use "product";
+@use "blog";
+@use "footer";
+@use "banner";
+@use "suscribe";
+@use "about";
+@use "image-slider";
+@use "testimonial";
+@use "brand-logo";
+@use "timers";
+@use "breadcrumb";
+@use "sidebar";
+@use "shop";
+@use "product-details";
+@use "cart";
+@use "compare";
+@use "checkout";
+@use "contact";
+@use "blog-details";
+@use "login-register";
+@use "my-account";
+@use "404" as not-found;
+@use "video-popup";
+@use "catalogo";
+@use "modalproduct";
 
 @import "../css/icons.min.css";
 
-@import "variables";
-@import "helper";
-@import "common";
-@import "preloader";
-@import "header";
-@import "slider";
-@import "support";
-@import "section-title";
-@import "product";
-@import "blog";
-@import "footer";
-@import "banner";
-@import "suscribe";
-@import "about";
-@import "image-slider";
-@import "testimonial";
-@import "brand-logo";
-@import "timers";
-@import "breadcrumb";
-@import "sidebar";
-@import "shop";
-@import "product-details";
-@import "cart";
-@import "compare";
-@import "checkout";
-@import "contact";
-@import "blog-details";
-@import "login-register";
-@import "my-account";
-@import "404";
-@import "video-popup";
-@import "catalogo";
-@import "modalproduct";
+// Preserve Bootstrap's selector aliases in the theme when using precompiled Bootstrap CSS.
+@for $level from 1 through 6 {
+  .h#{$level} { @extend h#{$level} !optional; }
+}
+.small { @extend small !optional; }
+.mark { @extend mark !optional; }
+.container-sm, .container-md, .container-lg, .container-xl, .container-xxl {
+  @extend .container-fluid !optional;
+}
+.btn-group-sm > .btn { @extend .btn-sm !optional; }
+.btn-group-lg > .btn { @extend .btn-lg !optional; }
 
 
 .hover-bg-light:hover {

@@ -1,3 +1,5 @@
+@use "variables" as *;
+
 /*------ 24. login register Page  --------*/
 
 .login-register-wrapper {
@@ -89,10 +91,10 @@
               color: #242424;
               float: right;
               font-size: 15px;
+              transition: all 0.3s ease 0s;
               @media #{$xs-layout} {
                 font-size: 14px;
               }
-              transition: all 0.3s ease 0s;
               &:hover {
                 color: $theme-color;
               }
