@@ -16,6 +16,7 @@ const ResourceListPage = lazy(() => import("../pages/admin/ResourceListPage.jsx"
 const AdminTelorecargo = lazy(() => import("../modules/telorecargo/AdminTelorecargo.jsx"));
 const SitioWeb = lazy(() => import("../pages/admin/SitioWeb.jsx"));
 const ShippingSettings = lazy(() => import("../pages/admin/ShippingSettings.jsx"));
+const OfflinePayments = lazy(() => import("../pages/admin/OfflinePayments.jsx"));
 
 const Categorias = lazy(() => import("../pages/admin/ProductCategory"));
 const Etiquetas = lazy(() => import("../pages/admin/ProductTags"));
@@ -46,6 +47,7 @@ export const adminRouteConfig = [
 
   // ✅ rutas reales (era "patch" por error)
   { path: "sucursales", element: <Sucursales /> },
+  { path: "pedidos-web", element: <OfflinePayments /> },
   { path: "almacenes", element: <Almacenes /> },
 
   { path: "products", element: <ProductList /> },

@@ -53,6 +53,19 @@ test("uses all by default and renders server results with codes, price and branc
   expect(headers).not.toContain("Sucursal");
 });
 
+test.each([0, null, undefined])("confirms unassigned stock %s using the editor detail for listing and search", async stock => {
+  const product = { id: 555, name: "Crema", stock, price: 200, iva: 0, warehouse_stocks: [] };
+  axiosClient.get.mockImplementation(url => Promise.resolve(
+    url === "/admin/productos/555" ? { data: { ...product, stock: 21 } } :
+    url === "/products/search" ? page([product], 1) :
+    { data: url === "/admin/branches/123/products" ? [product] : [] }
+  ));
+  mount(); await tick();
+  expect(document.querySelector('[data-label="Stock"]').textContent).toBe("Sin almacén21");
+  change("query", "Crema"); await tick();
+  expect(document.querySelector('[data-label="Stock"]').textContent).toBe("Sin almacén21");
+});
+
 test("keeps query and resets page when changing field or branch", async () => {
   mount(); await tick(); change("query", "SHNN0102"); await tick();
   act(() => Simulate.click(document.querySelector('[aria-label="Go to page 2"]'))); await tick();
@@ -89,7 +102,7 @@ test("does not search empty or whitespace text and restores the branch listing a
   axiosClient.get.mockResolvedValue({ data: [{ id: 3, name: "Listado normal", price: 10, iva: 0 }] });
   change("query", ""); await tick();
   expect(searchCalls()).toHaveLength(1);
-  expect(axiosClient.get).toHaveBeenLastCalledWith("/admin/branches/123/products");
+  expect(axiosClient.get).toHaveBeenCalledWith("/admin/branches/123/products");
   expect(document.body.textContent).toContain("Listado normal");
 });
 

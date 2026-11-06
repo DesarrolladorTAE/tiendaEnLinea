@@ -82,6 +82,7 @@ export default function CheckoutPayModal({
   total,
   onClearCart,
   branchId = null,
+  posLocationId = null,
   storeId = null,
 }) {
   const shipping = usePublicShippingConfig({ open, branchId, storeId });
@@ -268,6 +269,7 @@ export default function CheckoutPayModal({
     const fd = new FormData();
     fd.append("store_slug", storeSlug);
     if (branchId) fd.append("branch_id", String(branchId));
+    if (posLocationId) fd.append("pos_location_id", String(posLocationId));
 
     // ✅ si tu backend todavía no lo recibe, NO rompe nada; solo lo mandamos
     if (storeName) fd.append("store_name", storeName);

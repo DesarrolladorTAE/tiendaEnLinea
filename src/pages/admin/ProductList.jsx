@@ -29,6 +29,22 @@ import AdvancedProductsModal from "../../components/products-list/AdvancedProduc
 import { Box, Typography, IconButton, Tooltip } from "@mui/material";
 import { FiPackage, FiTrash2, FiUploadCloud } from "react-icons/fi";
 import { notifyInventoryChanged, subscribeInventoryChanges } from "../../utils/inventoryEvents";
+import { usesDetailInventory } from "../../utils/productInventory";
+
+// Some listing responses report zero for inventory held outside warehouses.
+// Confirm those rows against the same endpoint used by the product editor.
+async function confirmUnassignedStock(rows) {
+  return Promise.all(rows.map(async product => {
+    if (usesDetailInventory(product) || Number(product.stock ?? 0) !== 0 || product.warehouse_stocks?.some(row => Number(row.qty) !== 0)) return product;
+    try {
+      const { data } = await axiosClient.get(`/admin/productos/${product.id}`);
+      if (String(data?.id) !== String(product.id) || usesDetailInventory(data) || data.stock == null || !Number.isFinite(Number(data.stock))) return product;
+      return { ...product, stock: data.stock };
+    } catch {
+      return product;
+    }
+  }));
+}
 
 // ✅ sucursal seleccionada + layout
 import { useAdminUi } from "../../context/AdminUiContext";
@@ -159,7 +175,9 @@ const ProductList = () => {
           setPagination({ key: searchKey, page: Math.max(1, lastPage) });
           return;
         }
-        setProducts(data.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage));
+        const visibleRows = await confirmUnassignedStock(data.slice((currentPage - 1) * productsPerPage, currentPage * productsPerPage));
+        if (id !== requestId.current) return;
+        setProducts(visibleRows);
         setTotalPages(lastPage);
         return;
       }
@@ -179,7 +197,9 @@ const ProductList = () => {
         setPagination({ key: searchKey, page: Math.max(1, lastPage) });
         return;
       }
-      setProducts(rows);
+      const visibleRows = await confirmUnassignedStock(rows);
+      if (id !== requestId.current) return;
+      setProducts(visibleRows);
       setTotalPages(lastPage);
     } catch (err) {
       if (id !== requestId.current) return;

@@ -1,4 +1,4 @@
-// src/components/offline/OfflinePaymentsModal.jsx
+// Shared full-page inbox for administration and POS.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
@@ -14,6 +14,7 @@ import {
   Tabs,
   Tab,
   TextField,
+  MenuItem,
   InputAdornment,
   Chip,
   Paper,
@@ -40,8 +41,11 @@ import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded
 import CancelPresentationRoundedIcon from "@mui/icons-material/CancelPresentationRounded";
 import ImageSearchRoundedIcon from "@mui/icons-material/ImageSearchRounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import DocumentSettingsTheme from "../admin/DocumentSettingsTheme";
 
-import axiosClient from "../../config/axiosClient";
+import axiosClientStore from "../../config/axiosClient";
+import axiosClientPOS from "../../config/axiosClientPOS";
 import { showConfirm, showSuccess, alertFromAxiosError } from "../../utils/alerts";
 
 const STATUS_TABS = [
@@ -62,6 +66,9 @@ const pick = (s) =>
     .trim()
     .toLowerCase();
 
+const isTour = row => row?.source === "tour" || String(row?.id || "").startsWith("tour-");
+const paymentLabel = type => ({ deposit: "Anticipo", partial: "Abono", full: "Liquidación", final: "Liquidación" }[type] || "Pago");
+const canAct = (row, action) => row?.actions?.[`can_${action}`] ?? (!isTour(row) && (["delete", "send_ticket"].includes(action) || !["approved", "rejected"].includes(pick(row?.status ?? row?.form?.status))));
 function StatusChip({ formStatus, saleStatus }) {
   const fs = pick(formStatus);
   const ss = pick(saleStatus);
@@ -96,13 +103,41 @@ function isImageUrl(url = "") {
   );
 }
 
-export default function OfflinePaymentsModal({ open, onClose }) {
+export default function OfflinePaymentsPage({ onBack, branches = [], mode = "store", branchId, posLocationId }) {
+  const open = true;
+  const [branch, setBranch] = useState("");
+  const [pos, setPos] = useState("");
+  const [locations, setLocations] = useState([]);
+  const [scopeError, setScopeError] = useState("");
+  const effectiveBranch = branchId || branch;
+  const effectivePos = mode === "pos" ? "" : (posLocationId || pos);
+  useEffect(() => {
+    if (!open || mode !== "store" || !effectiveBranch) return;
+    const controller = new AbortController();
+    setLocations([]); setScopeError("");
+    axiosClientStore.get(`/branches/${effectiveBranch}/pos`, { signal: controller.signal }).then(({ data }) => {
+      if (!controller.signal.aborted) setLocations(data?.list ?? data?.data ?? []);
+    }).catch(() => { if (!controller.signal.aborted) setScopeError("No se pudieron cargar las cajas de la sucursal."); });
+    return () => controller.abort();
+  }, [open, mode, effectiveBranch]);
+  const controls = mode === "store" ? <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
+    {!branchId && <TextField select label="Sucursal" value={branch} onChange={e => { setBranch(e.target.value); setPos(""); setLocations([]); }} sx={{ minWidth: 200 }}><MenuItem value="">Todas (incluye pedidos antiguos sin venta)</MenuItem>{branches.map(item => <MenuItem key={item.id} value={item.id}>{item.name || `Sucursal #${item.id}`}</MenuItem>)}</TextField>}
+    {!posLocationId && <TextField select label="Caja" value={pos} disabled={!effectiveBranch} onChange={e => setPos(e.target.value)} sx={{ minWidth: 200 }}><MenuItem value="">Todas las cajas</MenuItem>{Array.isArray(locations) && locations.map(item => <MenuItem key={item.id} value={item.id}>{item.name || `Caja #${item.id}`}</MenuItem>)}</TextField>}
+    {scopeError && <Typography color="error">{scopeError}</Typography>}
+  </Stack> : <Typography>Productos de esta caja y comprobantes de tours de la sucursal.</Typography>;
+  return <DocumentSettingsTheme><OfflinePaymentsContent key={`${mode}-${effectiveBranch}-${effectivePos}`} open={open} onClose={onBack} mode={mode} branchId={effectiveBranch} posLocationId={effectivePos} scopeControls={controls} /></DocumentSettingsTheme>;
+}
+
+function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, scopeControls }) {
+  const axiosClient = mode === "pos" ? axiosClientPOS : axiosClientStore;
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const fullScreen = isMobile;
 
   const [tab, setTab] = useState("pending");
   const [q, setQ] = useState("");
+  const [source, setSource] = useState("all");
+  const [page, setPage] = useState(1);
+  const [lastPage, setLastPage] = useState(1);
   const [month, setMonth] = useState(MonthDefault());
 
   const [loading, setLoading] = useState(true);
@@ -150,31 +185,32 @@ export default function OfflinePaymentsModal({ open, onClose }) {
     if (!open) return;
     setStatsLoading(true);
     try {
-      const { data } = await axiosClient.get("/admin/offline-payments/stats", { params: { month } });
+      const { data } = await axiosClient.get("/admin/offline-payments/stats", { params: { source, month, branch_id: branchId || undefined, pos_location_id: posLocationId || undefined } });
       setStats(data?.data ?? null);
     } catch {
       setStats(null);
     } finally {
       setStatsLoading(false);
     }
-  }, [open, month]);
+  }, [open, source, month, axiosClient, branchId, posLocationId]);
 
   const fetchList = useCallback(async () => {
     if (!open) return;
     setLoading(true);
     try {
       const { data } = await axiosClient.get("/admin/offline-payments", {
-        params: { status: tab, per_page: 100, month },
+        params: { source, page, status: tab, per_page: 20, month, branch_id: branchId || undefined, pos_location_id: posLocationId || undefined },
       });
       const list = data?.data?.data ?? data?.data ?? [];
       setRows(Array.isArray(list) ? list : []);
+      setLastPage(data?.data?.last_page || 1);
     } catch (err) {
       alertFromAxiosError(err, "No se pudieron cargar las solicitudes");
       setRows([]);
     } finally {
       setLoading(false);
     }
-  }, [open, tab, month]);
+  }, [open, source, page, tab, month, axiosClient, branchId, posLocationId]);
 
   useEffect(() => {
     if (!open) return;
@@ -190,7 +226,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
       const phone = pick(r?.phone);
       const email = pick(r?.email);
       const saleId = String(r?.sale?.id ?? "");
-      return name.includes(s) || phone.includes(s) || email.includes(s) || saleId.includes(s);
+      return name.includes(s) || phone.includes(s) || email.includes(s) || saleId.includes(s) || pick(r?.booking?.booking_code).includes(s) || pick(r?.booking?.tour_name).includes(s);
     });
   }, [rows, q]);
 
@@ -223,13 +259,13 @@ export default function OfflinePaymentsModal({ open, onClose }) {
     } finally {
       setDetailLoading(false);
     }
-  }, []);
+  }, [axiosClient]);
 
   const handleApprove = useCallback(async () => {
-    if (!selectedId) return;
+    if (!canAct(detail, "approve") || !selectedId) return;
 
     const ok = await showConfirm(
-      "¿Confirmar este pago? Se marcará como pagado y se enviará el ticket por WhatsApp al cliente.",
+      isTour(detail) ? "Confirmar este movimiento actualiza el saldo de la reserva y genera sus avisos. Continuar?" : "Confirmar este pago y enviar el ticket al cliente?",
       "Sí, confirmar"
     );
     if (!ok) return;
@@ -243,12 +279,12 @@ export default function OfflinePaymentsModal({ open, onClose }) {
     } catch (err) {
       alertFromAxiosError(err, "No se pudo confirmar el pago");
     }
-  }, [selectedId, fetchList, fetchStats]);
+  }, [selectedId, detail, axiosClient, fetchList, fetchStats]);
 
   const handleReject = useCallback(async () => {
-    if (!selectedId) return;
+    if (!canAct(detail, "reject") || !selectedId) return;
 
-    const ok = await showConfirm("¿Rechazar esta solicitud? La venta quedará pendiente.", "Sí, rechazar");
+    const ok = await showConfirm(isTour(detail) ? "Rechazar este comprobante? El cliente podra enviar uno nuevo." : "Rechazar esta solicitud? La venta quedara pendiente.", "Rechazar");
     if (!ok) return;
 
     try {
@@ -260,7 +296,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
     } catch (err) {
       alertFromAxiosError(err, "No se pudo rechazar la solicitud");
     }
-  }, [selectedId, fetchList, fetchStats]);
+  }, [selectedId, detail, axiosClient, fetchList, fetchStats]);
 
   const handleDelete = useCallback(
     async (rowId) => {
@@ -282,11 +318,11 @@ export default function OfflinePaymentsModal({ open, onClose }) {
         alertFromAxiosError(err, "No se pudo eliminar");
       }
     },
-    [fetchList, fetchStats, selectedId]
+    [fetchList, fetchStats, selectedId, axiosClient]
   );
 
   const handleResendTicket = useCallback(async () => {
-    if (!selectedId) return;
+    if (!selectedId || isTour(detail) || !canAct(detail, "send_ticket")) return;
 
     const phone = detail?.form?.phone || "";
     const ok = await showConfirm(
@@ -301,14 +337,27 @@ export default function OfflinePaymentsModal({ open, onClose }) {
     } catch (err) {
       alertFromAxiosError(err, "No se pudo enviar el ticket");
     }
-  }, [selectedId, detail]);
+  }, [selectedId, detail, axiosClient]);
 
   const ticketUrl = detail?.sale?.ticket_url || null;
-  const proofUrl = detail?.form?.proof_url || null;
+  const proofUrl = detail?.proof_url || detail?.form?.proof_url || null;
+  const [proofType, setProofType] = useState("");
+  useEffect(() => () => { if (proofPreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(proofPreviewUrl); }, [proofPreviewUrl]);
+  const previewProof = async () => {
+    try {
+      setProofPreviewUrl(null);
+      if (isTour(detail)) {
+        const response = await axiosClient.get(`/admin/offline-payments/${selectedId}/proof`, { responseType: "blob" });
+        setProofType(response.data.type || response.headers?.["content-type"] || "");
+        setProofPreviewUrl(URL.createObjectURL(response.data));
+      } else { setProofType(""); setProofPreviewUrl(proofUrl); }
+      setProofPreviewOpen(true);
+    } catch (err) { alertFromAxiosError(err, "No se pudo cargar el comprobante"); }
+  };
 
   // ✅ regla: ticket SOLO en confirmadas/canceladas
   const canShowTicket = useMemo(() => {
-    if (!detail) return false;
+    if (!detail || isTour(detail) || !canAct(detail, "send_ticket")) return false;
     if (tab !== "approved" && tab !== "rejected") return false; // <- bloquea en "Nuevas"
     const fs = pick(detail?.form?.status);
     const ss = pick(detail?.sale?.status);
@@ -359,7 +408,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
 
   const renderRow = (r) => {
     const saleId = r?.sale?.id ?? null;
-    const grand = r?.sale?.grand_total ?? 0;
+    const grand = r?.amount ?? r?.sale?.grand_total ?? 0;
 
     return (
       <Paper
@@ -382,7 +431,9 @@ export default function OfflinePaymentsModal({ open, onClose }) {
         >
           <Box sx={{ minWidth: 0 }}>
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" sx={{ mb: 0.75 }}>
+              <Chip size="small" label={isTour(r) ? "Tours" : "Productos"} />
               <StatusChip formStatus={r.status} saleStatus={r?.sale?.status} />
+              {isTour(r) && <Chip size="small" label={r.booking?.booking_code || r.id} />}
               {saleId ? (
                 <Chip size="small" variant="outlined" label={`Venta #${saleId}`} sx={{ fontWeight: 900 }} />
               ) : null}
@@ -400,9 +451,10 @@ export default function OfflinePaymentsModal({ open, onClose }) {
             </Typography>
 
             <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-              {prettyDate(r?.created_at)} • Total: <b>{moneyMX(grand)}</b>
+              {prettyDate(r?.created_at)} · {isTour(r) ? paymentLabel(r.payment?.payment_type) : "Total"}: <b>{moneyMX(grand)}</b>
             </Typography>
 
+            {isTour(r) && <Typography>{r.booking?.tour_name} · Saldo: {moneyMX(r.booking?.remaining_amount)}</Typography>}
             {r?.payment_account?.bank_name ? (
               <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.35 }}>
                 Cuenta: <b>{r.payment_account.bank_name}</b> • {r.payment_account.type}
@@ -420,7 +472,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
               Ver
             </Button>
 
-            <Tooltip title="Eliminar registro (cancela la venta por seguridad)">
+            {canAct(r, "delete") && <Tooltip title="Eliminar registro (cancela la venta por seguridad)">
               <Button
                 onClick={() => handleDelete(r.id)}
                 variant="outlined"
@@ -430,7 +482,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
               >
                 Eliminar
               </Button>
-            </Tooltip>
+            </Tooltip>}
           </Stack>
         </Stack>
       </Paper>
@@ -480,19 +532,21 @@ export default function OfflinePaymentsModal({ open, onClose }) {
   }, [proofPreviewOpen, resetZoom]);
 
   return (
-    <>
+    <Box sx={{ width: "100%", minWidth: 0, maxWidth: 1500, mx: "auto", pb: 3, "& .MuiButton-root": { textTransform: "none", minHeight: 44 }, "& .MuiTypography-root": { overflowWrap: "anywhere" }, "& .MuiFormControl-root": { minWidth: 0 } }}>
+      <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, mb: 2.5, borderRadius: 3, bgcolor: "#1d2025", color: "#fff", border: "1px solid #30343b", borderTop: "3px solid #ffc107" }}>
+        <Stack direction={{ xs: "column", sm: "row" }} gap={2} alignItems={{ sm: "center" }} justifyContent="space-between">
+          <Box><Typography component="h1" sx={{ color: "#fff !important", fontSize: { xs: 25, md: 32 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.035em" }}>Pedidos web y comprobantes</Typography><Typography sx={{ mt: 1, color: "#c7cbd1 !important" }}>Revisa pagos de productos y comprobantes de tours.</Typography></Box>
+          {onClose && <Button variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={onClose} sx={{ color: "#ffe082", borderColor: "#62552d", alignSelf: "flex-start" }}>{mode === "pos" ? "Volver al POS" : "Volver a sucursales"}</Button>}
+        </Stack>
+        <Box sx={{ mt: 3, pt: 2, borderTop: "1px solid #3a3d42" }}>
+          <Typography sx={{ color: "#ffc107 !important", fontSize: 12, fontWeight: 700, letterSpacing: 1, mb: 1.5 }}>CÓMO FUNCIONA</Typography>
+          <Box component="ol" sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(3,minmax(0,1fr))" }, gap: 2, m: 0, p: 0, listStyle: "none" }}>{[["Filtra los pedidos", "Elige sucursal, caja, mes y estado."], ["Revisa el comprobante", "Abre la solicitud y verifica la evidencia."], ["Confirma el resultado", "Aprueba o rechaza el pago y consulta el resultado."]].map(([title, description], index) => <Box component="li" key={title} sx={{ display: "flex", gap: 1.25, minWidth: 0 }}><Box component="span" sx={{ width: 25, height: 25, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#ffc107", color: "#17191c", fontSize: 12, fontWeight: 800 }}>{index + 1}</Box><Box><Typography sx={{ color: "#fff !important", fontWeight: 700, fontSize: 14 }}>{title}</Typography><Typography sx={{ color: "#c7cbd1 !important", fontSize: 12, mt: .25 }}>{description}</Typography></Box></Box>)}</Box>
+        </Box>
+      </Paper>
       {/* ===================== LISTA PRINCIPAL ===================== */}
-      <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg" fullScreen={fullScreen}>
-        <DialogTitle sx={{ fontWeight: 1000 }}>
-          Confirmación de pagos (Transferencia / Depósito / OXXO)
-          <IconButton onClick={onClose} sx={{ position: "absolute", right: 10, top: 10 }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <Divider />
-
-        <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+      {!detailOpen && <Paper variant="outlined" sx={{ borderRadius: 3, minWidth: 0 }}>
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+          <Box sx={{ mb: 2 }}>{scopeControls}</Box>
           {/* DASHBOARD */}
           <Paper
             variant="outlined"
@@ -520,7 +574,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
               <TextField
                 type="month"
                 value={month}
-                onChange={(e) => setMonth(e.target.value || MonthDefault())}
+                onChange={(e) => { setPage(1); setMonth(e.target.value || MonthDefault()); }}
                 size="small"
                 sx={{
                   minWidth: { xs: "100%", sm: 220 },
@@ -551,7 +605,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1.2} flexWrap="wrap">
                 <StatCard
                   icon={<TrendingUpRoundedIcon fontSize="small" />}
-                  label="Total vendido (solicitudes)"
+                  label="Importe de solicitudes"
                   value={moneyMX(stats?.totals?.grand_total_all ?? 0)}
                   sub={`${stats?.counts?.all ?? 0} solicitud(es)`}
                 />
@@ -590,7 +644,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               size="small"
-              placeholder="Buscar por nombre, teléfono, correo o ID de venta…"
+              placeholder="Buscar por nombre, telefono, correo, venta, folio o tour"
               sx={{
                 minWidth: { xs: "100%", md: 420 },
                 "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "#fff" },
@@ -605,9 +659,10 @@ export default function OfflinePaymentsModal({ open, onClose }) {
             />
           </Stack>
 
+          <TextField select label="Origen" value={source} onChange={e => { setSource(e.target.value); setPage(1); }} sx={{ mt: 2, minWidth: 200 }}><MenuItem value="all">Productos y tours</MenuItem><MenuItem value="products">Productos</MenuItem><MenuItem value="tours">Tours</MenuItem></TextField>
           <Tabs
             value={tab}
-            onChange={(_, v) => setTab(v)}
+            onChange={(_, v) => { setTab(v); setPage(1); }}
             sx={{ mt: 2 }}
             variant={isMobile ? "scrollable" : "standard"}
             scrollButtons={isMobile ? "auto" : false}
@@ -683,27 +738,20 @@ export default function OfflinePaymentsModal({ open, onClose }) {
           ) : (
             <Stack spacing={1.2}>{filtered.map((r) => renderRow(r))}</Stack>
           )}
-        </DialogContent>
+        </Box>
+      </Paper>}
 
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={onClose} sx={{ textTransform: "none", fontWeight: 1000 }}>
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
+      {!detailOpen && <Stack direction="row" spacing={2} justifyContent="center" alignItems="center"><Button disabled={loading || page <= 1} onClick={() => setPage(p => p - 1)}>Anterior</Button><Typography>Página {page} de {lastPage}</Typography><Button disabled={loading || page >= lastPage} onClick={() => setPage(p => p + 1)}>Siguiente</Button></Stack>}
       {/* ===================== DETALLE MODAL ===================== */}
-      <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} fullWidth maxWidth="md" fullScreen={isMobile}>
-        <DialogTitle sx={{ fontWeight: 1000 }}>
-          Detalle de solicitud
-          <IconButton onClick={() => setDetailOpen(false)} sx={{ position: "absolute", right: 10, top: 10 }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
+      {detailOpen && <Paper variant="outlined" sx={{ borderRadius: 3, minWidth: 0 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1} sx={{ p: { xs: 2, md: 3 } }}>
+          <Typography component="h2" variant="h5" fontWeight={800}>Detalle de solicitud</Typography>
+          <Button startIcon={<ArrowBackRoundedIcon />} onClick={() => setDetailOpen(false)}>Volver a pedidos</Button>
+        </Stack>
 
         <Divider />
 
-        <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
           {detailLoading ? (
             <Stack spacing={1.2}>
               <Skeleton height={32} />
@@ -717,22 +765,23 @@ export default function OfflinePaymentsModal({ open, onClose }) {
           ) : (
             <Stack spacing={2}>
               {/* Cliente */}
+              <Typography variant="body2">Sucursal: {detail?.branch_id ?? detail?.booking?.branch_id ?? detail?.sale?.branch_id ?? "Sin asignar"} · Caja: {detail?.pos_location_id ?? detail?.booking?.pos_location_id ?? detail?.sale?.pos_location_id ?? "Sin asignar"}</Typography>
               <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
                   <Typography sx={{ fontWeight: 1000 }}>Cliente</Typography>
-                  <StatusChip formStatus={detail?.form?.status} saleStatus={detail?.sale?.status} />
+                  <StatusChip formStatus={detail?.status ?? detail?.form?.status} saleStatus={detail?.sale?.status} />
                 </Stack>
 
                 <Divider sx={{ my: 1.2 }} />
 
                 <Typography>
-                  <b>Nombre:</b> {detail?.form?.full_name || "—"}
+                  <b>Nombre:</b> {(detail?.full_name ?? detail?.form?.full_name) || "—"}
                 </Typography>
                 <Typography>
-                  <b>Teléfono:</b> {detail?.form?.phone || "—"}
+                  <b>Teléfono:</b> {(detail?.phone ?? detail?.form?.phone) || "—"}
                 </Typography>
                 <Typography>
-                  <b>Correo:</b> {detail?.form?.email || "—"}
+                  <b>Correo:</b> {(detail?.email ?? detail?.form?.email) || "—"}
                 </Typography>
 
                 <Typography sx={{ mt: 1 }}>
@@ -745,12 +794,18 @@ export default function OfflinePaymentsModal({ open, onClose }) {
                 ) : null}
 
                 <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-                  Enviado: {prettyDate(detail?.form?.created_at)}
+                  Enviado: {prettyDate(detail?.created_at ?? detail?.form?.created_at)}
                 </Typography>
               </Paper>
 
+              {isTour(detail) && <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                <Typography fontWeight={900}>Tour · {detail.booking?.booking_code}</Typography><Typography>{detail.booking?.tour_name}</Typography>
+                <Typography>Salida: {detail.booking?.departure_date} {detail.booking?.departure_time}</Typography><Typography>Pasajeros: {detail.booking?.passenger_count}</Typography>
+                <Typography>{paymentLabel(detail.payment?.payment_type)} a revisar: {moneyMX(detail.amount ?? detail.payment?.amount)}</Typography><Typography>Referencia: {detail.payment?.reference || "?"}</Typography>
+                <Typography>Total de reserva: {moneyMX(detail.booking?.total)}</Typography><Typography>Pagado: {moneyMX(detail.booking?.paid_amount)} · Saldo: {moneyMX(detail.booking?.remaining_amount)}</Typography>
+              </Paper>}
               {/* Venta */}
-              <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+              {!isTour(detail) && <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                 <Stack
                   direction={{ xs: "column", sm: "row" }}
                   spacing={1}
@@ -850,7 +905,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
                     </Paper>
                   ))}
                 </Stack>
-              </Paper>
+              </Paper>}
 
               {/* Cuenta + comprobante */}
               <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
@@ -876,10 +931,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
                     <Button
                       variant="outlined"
                       startIcon={<ImageSearchRoundedIcon />}
-                      onClick={() => {
-                        setProofPreviewUrl(proofUrl);
-                        setProofPreviewOpen(true);
-                      }}
+                      onClick={previewProof}
                       sx={{ textTransform: "none", fontWeight: 1000, borderRadius: 2 }}
                     >
                       Ver comprobante
@@ -897,7 +949,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
                       color="warning"
                       startIcon={<CancelRoundedIcon />}
                       sx={{ textTransform: "none", fontWeight: 1000, borderRadius: 2 }}
-                      disabled={pick(detail?.form?.status) === "approved"}
+                      disabled={!canAct(detail, "reject")}
                     >
                       Rechazar
                     </Button>
@@ -907,12 +959,12 @@ export default function OfflinePaymentsModal({ open, onClose }) {
                       variant="contained"
                       startIcon={<CheckCircleRoundedIcon />}
                       sx={{ textTransform: "none", fontWeight: 1000, borderRadius: 2 }}
-                      disabled={pick(detail?.form?.status) === "approved"}
+                      disabled={!canAct(detail, "approve")}
                     >
                       Confirmar
                     </Button>
 
-                    <Button
+                    {canAct(detail, "delete") && <Button
                       onClick={async () => {
                         if (!selectedId) return;
                         const ok = await showConfirm(
@@ -928,20 +980,14 @@ export default function OfflinePaymentsModal({ open, onClose }) {
                       sx={{ textTransform: "none", fontWeight: 1000, borderRadius: 2 }}
                     >
                       Eliminar
-                    </Button>
+                    </Button>}
                   </Stack>
                 </Stack>
               </Paper>
             </Stack>
           )}
-        </DialogContent>
-
-        <DialogActions sx={{ px: 3, py: 2 }}>
-          <Button onClick={() => setDetailOpen(false)} sx={{ textTransform: "none", fontWeight: 1000 }}>
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </Paper>}
 
       {/* ===================== TICKET PREVIEW MODAL (solo confirmadas/canceladas) ===================== */}
       <Dialog
@@ -1027,7 +1073,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
             <Box sx={{ p: 3 }}>
               <Typography>No se pudo cargar el comprobante.</Typography>
             </Box>
-          ) : isPdfUrl(proofPreviewUrl) ? (
+          ) : (proofType.includes("pdf") || isPdfUrl(proofPreviewUrl)) ? (
             <Box sx={{ width: "100%", height: isMobile ? "100vh" : "80vh" }}>
               <iframe
                 src={proofPreviewUrl}
@@ -1111,7 +1157,7 @@ export default function OfflinePaymentsModal({ open, onClose }) {
         <Divider />
 
         <DialogActions sx={{ px: 3, py: 2 }}>
-          {proofPreviewUrl && isImageUrl(proofPreviewUrl) ? (
+          {proofPreviewUrl && (proofType.startsWith("image/") || isImageUrl(proofPreviewUrl)) ? (
             <Button
               variant="outlined"
               startIcon={<RestartAltRoundedIcon />}
@@ -1136,6 +1182,6 @@ export default function OfflinePaymentsModal({ open, onClose }) {
           </Button>
         </DialogActions>
       </Dialog>
-    </>
+    </Box>
   );
 }

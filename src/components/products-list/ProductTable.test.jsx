@@ -4,6 +4,24 @@ import { MemoryRouter } from "react-router-dom";
 import { Simulate } from "react-dom/test-utils";
 import ProductTable from "./ProductTable";
 
+test("shows unassigned stock with and without warehouse quantities", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    const products = [
+      { id: 1, stock: "12.5", use_warehouse_inventory: true, warehouse_inventories: [], warehouse_stocks: [] },
+      { id: 2, stock: 3, warehouse_stocks: [{ warehouse_id: 4, warehouse_name: "Centro", qty: 8 }] },
+      { id: 3, stock: 0, warehouse_stocks: [] },
+    ];
+    act(() => root.render(<MemoryRouter><ProductTable products={products} /></MemoryRouter>));
+    const cells = host.querySelectorAll('[data-label="Stock"]');
+    expect(cells[0].textContent).toBe("Sin almacén12.5");
+    expect(cells[1].textContent).toBe("Sin almacén3Centro8");
+    expect(cells[2].textContent).toBe("0");
+  } finally { act(() => root.unmount()); }
+});
+
 test("replaces row numbers with SKU and OE, displays scoped warehouse quantities and preserves actions", () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const host = document.createElement("div"); document.body.appendChild(host);

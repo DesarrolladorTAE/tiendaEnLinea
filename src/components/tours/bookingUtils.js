@@ -1,4 +1,4 @@
-export const BOOKING_STATUSES = [["pending", "Pendiente"], ["confirmed", "Confirmada"], ["cancelled", "Cancelada"], ["completed", "Completada"]];
+export const BOOKING_STATUSES = [["pending", "Pendiente"], ["confirmed", "Aceptada / confirmada"], ["cancelled", "Cancelada"], ["completed", "Completada"]];
 export const PAYMENT_STATUSES = [["pending", "Pendiente"], ["partial", "Parcial"], ["paid", "Pagado"], ["refunded", "Reembolsado"]];
 export const customerLabel = (booking) => booking.buyer_name || booking.buyer?.name || booking.customer?.nombre_alias || booking.customer?.name || booking.customer?.nombre || (booking.customer_id ? "Cliente #" + booking.customer_id : "Sin cliente");
 export function bookingError(error) {

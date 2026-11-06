@@ -44,8 +44,6 @@ import { useAdminUi } from "../../context/AdminUiContext";
 import BranchFormModal from "../../components/branches/BranchFormModal";
 import BranchDetailsModal from "../../components/branches/BranchDetailsModal";
 
-// ✅ NUEVO: modal de confirmación de pagos offline
-import OfflinePaymentsModal from "../../components/offline/OfflinePaymentsModal";
 import StoreHubNav from "../../components/admin/StoreHubNav";
 
 const COLORS = {
@@ -94,8 +92,6 @@ export default function Sucursales() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selected, setSelected] = useState(null);
 
-  // ✅ NUEVO: modal pagos offline
-  const [offlineOpen, setOfflineOpen] = useState(false);
 
   // ✅ ocultar layout al entrar a sucursales
   useEffect(() => {
@@ -264,7 +260,7 @@ export default function Sucursales() {
             <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" alignItems={{ lg: "flex-end" }} spacing={2} mb={2}>
               <Box><Typography variant="h5" sx={{ fontWeight: 900, color: "#202020" }}>Tus sucursales</Typography><Typography variant="body2" sx={{ color: "#71717a" }}>Selecciona una para administrar sus productos, servicios y operación.</Typography></Box>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
-                <Button onClick={() => setOfflineOpen(true)} variant="outlined" startIcon={<ReceiptLongRoundedIcon />} sx={{ borderRadius: 2, textTransform: "none", fontWeight: 850, borderColor: alpha(COLORS.black, .2), color: COLORS.black }}>Pagos offline</Button>
+                <Button onClick={() => navigate("/admin/pedidos-web")} variant="outlined" startIcon={<ReceiptLongRoundedIcon />} sx={{ borderRadius: 2, textTransform: "none", fontWeight: 850, borderColor: alpha(COLORS.black, .2), color: COLORS.black }}>Pedidos web y comprobantes</Button>
                 <Button onClick={handleOpenCreate} disabled={!canCreate} variant="contained" startIcon={<AddRoundedIcon />} sx={{ borderRadius: 2, textTransform: "none", fontWeight: 850, bgcolor: COLORS.black, "&:hover": { bgcolor: alpha(COLORS.black, .84) } }}>Nueva sucursal</Button>
               </Stack>
             </Stack>
@@ -490,11 +486,6 @@ export default function Sucursales() {
           onChanged={() => fetchBranches()}
         />
 
-        {/* ✅ NUEVO: Modal de Pagos Offline */}
-        <OfflinePaymentsModal
-          open={offlineOpen}
-          onClose={() => setOfflineOpen(false)}
-        />
       </Container>
     </Box>
   );

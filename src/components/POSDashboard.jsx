@@ -38,6 +38,7 @@ import CreditoFiadoPOS from "./CreditoFiadoPOS";
 const POSTelorecargo = lazy(() => import("../modules/telorecargo/POSTelorecargo.jsx"));
 const TourReportsPage = lazy(() => import("../pages/tours/TourReportsPage"));
 const ToursPage = lazy(() => import("../pages/tours/ToursPage"));
+const OfflinePaymentsPage = lazy(() => import("./offline/OfflinePaymentsPage"));
 
 const POSDashboard = ({
   posName = "Mi Punto de Venta",
@@ -64,6 +65,7 @@ const POSDashboard = ({
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const opciones = [
+    { id: "pedidos_web", titulo: "Pedidos web", descripcion: "Revisar comprobantes de pedidos de productos de esta caja", color: "#1565c0", icono: <ReceiptLongIcon /> },
     { id: "reportes_servicios", titulo: "Reportes de servicios", descripcion: "Manifiesto de pasajeros y descarga Excel", color: "#0f766e", icono: <ReceiptLongIcon /> },
     {
       id: "ventas_servicios",
@@ -155,6 +157,8 @@ const POSDashboard = ({
 
   const renderVista = () => {
     switch (vista) {
+      case "pedidos_web":
+        return <Suspense fallback={<CircularProgress />}><OfflinePaymentsPage mode="pos" branchId={posBranchId} posLocationId={posLocationId} onBack={() => setVista("menu")} /></Suspense>;
       case "telorecargo":
         if (!telorecargoEnabled) return null;
         return <Suspense fallback={<CircularProgress />}><POSTelorecargo key={posLocationId} posLocationId={posLocationId} onBack={() => setVista("menu")} /></Suspense>;

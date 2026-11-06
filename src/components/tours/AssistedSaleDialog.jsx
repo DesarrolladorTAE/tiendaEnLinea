@@ -4,9 +4,10 @@ import { createAssistedSale, getRouteStops } from "../../services/tours/tourServ
 import { tourDialogSx, tourMenuProps } from "./tourFormStyles.mjs";
 import { bookingError } from "./bookingUtils";
 import { PAYMENT_METHODS, paymentCents } from "./paymentUtils";
+import { bookingNotificationPayload } from "./notificationUtils";
 
 export default function AssistedSaleDialog({ context, departure, onClose, onSaved, onSessionExpired }) {
-  const [form, setForm] = useState({ buyer_name: "", buyer_phone: "", buyer_email: "", boarding_stop_id: "", payment_option: "deposit", trip_type: "round_trip", transport_required: true, notes: "", notification_channel: "none" });
+  const [form, setForm] = useState({ buyer_name: "", buyer_phone: "", buyer_email: "", buyer_whatsapp_phone: "", boarding_stop_id: "", payment_option: "deposit", trip_type: "round_trip", transport_required: true, notes: "", notification_channels: [] });
   const [passengers, setPassengers] = useState([{ first_name: "", last_name: "" }]);
   const [stops, setStops] = useState([]); const [loading, setLoading] = useState(true);
   const [collect, setCollect] = useState(false); const [verified, setVerified] = useState(false);
@@ -23,11 +24,13 @@ export default function AssistedSaleDialog({ context, departure, onClose, onSave
   const submit = async e => {
     e.preventDefault(); if (pending.current || uncertain) return;
     if (collect && (!verified || !(paymentCents(payment.amount) > 0))) { setError("Verifica el cobro e ingresa un importe positivo con máximo dos decimales."); return; }
-    if (form.notification_channel === "email" && !form.buyer_email.trim()) { setError("Ingresa el correo para enviar la confirmaci?n."); return; }
+    let notifications;
+    try { notifications = bookingNotificationPayload(form); }
+    catch (err) { setError(err.message); return; }
     pending.current = true; setBusy(true); setError("");
     try {
       await createAssistedSale(context, {
-        ...form, buyer_name: form.buyer_name.trim(), boarding_stop_id: Number(form.boarding_stop_id),
+        ...form, ...notifications, buyer_name: form.buyer_name.trim(), boarding_stop_id: Number(form.boarding_stop_id),
         passengers: passengers.map(p => ({ first_name: p.first_name.trim(), last_name: p.last_name.trim() })),
         ...(collect ? { payment: { ...payment, payment_type: form.payment_option === "full" ? "full" : "deposit", payment_date: new Date().toISOString() } } : {}),
       });
@@ -47,7 +50,7 @@ export default function AssistedSaleDialog({ context, departure, onClose, onSave
       <fieldset disabled={busy || uncertain} style={{ border: 0, padding: 0 }}><Stack spacing={2}>
         <TextField required label="Nombre del comprador" {...field("buyer_name")} inputProps={{ maxLength: 191, pattern: ".*\\S.*" }} />
         <TextField required label="Teléfono (10 dígitos)" {...field("buyer_phone")} inputProps={{ pattern: "[0-9]{10}", maxLength: 10 }} />
-        <TextField type="email" label="Correo del comprador (opcional)" {...field("buyer_email")} />
+        <TextField type="email" required={form.notification_channels.includes("email")} label="Correo del comprador" {...field("buyer_email")} />
         <TextField select SelectProps={{ MenuProps: tourMenuProps }} required label="Parada de abordaje" {...field("boarding_stop_id")} disabled={loading}>
           {stops.filter(s => s.is_active !== false && s.is_active !== 0 && s.is_active !== "0").map(s => <MenuItem key={s.id} value={s.id}>{s.name || s.stop?.name || `Parada #${s.id}`}</MenuItem>)}
         </TextField>
@@ -60,7 +63,13 @@ export default function AssistedSaleDialog({ context, departure, onClose, onSave
           <Button disabled={passengers.length === 1} onClick={() => setPassengers(prev => prev.filter((_, i) => i !== index))}>Quitar</Button>
         </Stack>)}
         <Button disabled={passengers.length >= Math.min(1000, Number(departure.available_capacity) || 1000)} onClick={() => setPassengers(prev => [...prev, { first_name: "", last_name: "" }])}>Agregar pasajero</Button>
-        <TextField select label="Enviar confirmaci?n" {...field("notification_channel")} SelectProps={{ MenuProps: tourMenuProps }}><MenuItem value="none">Sin aviso</MenuItem><MenuItem value="email">Correo electr?nico</MenuItem><MenuItem value="whatsapp">WhatsApp</MenuItem></TextField>
+        <Stack role="group" aria-label="Canales de avisos al comprador">
+          {[['email', 'Avisos por correo electrónico'], ['whatsapp', 'Avisos por WhatsApp']].map(([channel, label]) => (
+            <FormControlLabel key={channel} label={label} control={<Checkbox checked={form.notification_channels.includes(channel)} onChange={e => setForm(prev => ({ ...prev, notification_channels: e.target.checked ? [...prev.notification_channels, channel] : prev.notification_channels.filter(value => value !== channel) }))} />} />
+          ))}
+        </Stack>
+        {form.notification_channels.includes("whatsapp") && <TextField label="WhatsApp internacional (opcional)" {...field("buyer_whatsapp_phone")} placeholder="+527221234567" helperText="Si lo dejas vacío se usará +52 y el teléfono de contacto. Para otro destino escribe + y de 8 a 15 dígitos, sin espacios ni guiones." inputProps={{ pattern: "\\+[1-9][0-9]{7,14}", maxLength: 16 }} />}
+        <Alert severity="info">Los avisos se envían al comprador por los canales seleccionados. Sin selección no se envían mensajes. Crear la solicitud no significa que el pago esté aprobado; la aceptación y el saldo los confirma el servidor.</Alert>
         <TextField multiline label="Observaciones" {...field("notes")} />
         <FormControlLabel control={<Checkbox checked={collect} onChange={e => setCollect(e.target.checked)} />} label="Registrar cobro inicial" />
         {collect && <>

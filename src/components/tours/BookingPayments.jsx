@@ -1,13 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Button, CircularProgress, Grid, Pagination, Snackbar, Stack, Typography } from "@mui/material";
-import { cancelBookingPayment, getBooking, getBookingPayments } from "../../services/tours/tourService";
+import { cancelBookingPayment, downloadBookingProof, reconcileBookingPayment, getBooking, getBookingPayments } from "../../services/tours/tourService";
 import { showConfirm } from "../../utils/alerts";
 import { paymentBooking, paymentCents, paymentCollection, paymentError } from "./paymentUtils";
 import PaymentSummary from "./PaymentSummary";
 import BookingPaymentCard from "./BookingPaymentCard";
 import PaymentDialog from "./PaymentDialog";
 
-export default function BookingPayments({ context, booking, onBookingUpdated, onSessionExpired }) {
+export default function BookingPayments({ context, booking, onBookingUpdated, onSessionExpired, showSummary = true }) {
   const [page, setPage] = useState(1); const [revision, setRevision] = useState(0);
   const [history, setHistory] = useState({ rows: [], lastPage: 1, loading: true, error: "" });
   const [dialog, setDialog] = useState(null); const [busy, setBusy] = useState(false); const pending = useRef(false);
@@ -18,11 +18,18 @@ export default function BookingPayments({ context, booking, onBookingUpdated, on
   useEffect(() => {
     let active = true; const controller = new AbortController();
     setHistory((prev) => ({ ...prev, loading: true, error: "" }));
-    getBookingPayments({ ...context, signal: controller.signal }, booking.id, page).then(({ data }) => {
+    getBookingPayments({ ...context, signal: controller.signal }, booking.id, page).then(async ({ data }) => {
       if (!active) return;
       const collection = paymentCollection(data);
       if (page > collection.lastPage) { setPage(Math.max(1, collection.lastPage)); return; }
-      setHistory({ ...collection, loading: false, error: "" });
+      const allRows = [...collection.rows];
+      for (let otherPage = 1; otherPage <= collection.lastPage; otherPage += 1) {
+        if (otherPage === page) continue;
+        const response = await getBookingPayments({ ...context, signal: controller.signal }, booking.id, otherPage);
+        allRows.push(...paymentCollection(response.data).rows);
+      }
+      if (!active) return;
+      setHistory({ ...collection, hasPending: allRows.some(row => row.status === "pending" && ["transfer", "online", "paypal"].includes(row.payment_method)), loading: false, error: "" });
     }).catch((error) => {
       if (!active) return;
       setHistory((prev) => ({ ...prev, loading: false, error: paymentError(error) }));
@@ -76,20 +83,36 @@ export default function BookingPayments({ context, booking, onBookingUpdated, on
   };
   const canManage = ["store", "pos"].includes(context.mode);
   const blocked = busy || syncing || !!syncError || history.loading || !!history.error;
+  const paymentAction = async (payment, action) => {
+    if (pending.current) return;
+    pending.current = true; setBusy(true);
+    try {
+      if (action === "proof") await downloadBookingProof(context, booking.id, payment.id);
+      else {
+        if (!await showConfirm("Consultar PayPal para verificar si el pago se completó. Esta acción no inicia ni captura cargos.", "Conciliar orden") || !mounted.current) return;
+        await applyPaymentResponse(await reconcileBookingPayment(context, booking.id, payment.id));
+      }
+    } catch (error) {
+      if (mounted.current) setNotice({ severity: "error", message: paymentError(error) });
+      if (error?.response?.status === 401) onSessionExpired();
+    } finally { pending.current = false; if (mounted.current) setBusy(false); }
+  };
   const rows = [...history.rows].sort((a, b) => String(b.payment_date || "").localeCompare(String(a.payment_date || "")));
   return <Stack spacing={2}>
     <Typography variant="h6" fontWeight={900}>Pagos</Typography>
-    <PaymentSummary booking={booking} />
+    {showSummary && <PaymentSummary booking={booking} />}
     {syncing && <Alert severity="info" icon={<CircularProgress size={20} />}>Actualizando el saldo confirmado por el servidor…</Alert>}
     {syncError && <Alert severity="warning" sx={{ whiteSpace: "pre-line" }} action={<Button onClick={refreshBalance}>Actualizar saldo</Button>}>{syncError}</Alert>}
-    {canManage && paymentCents(booking.remaining_amount) > 0 && <Button size="large" variant="contained" disabled={blocked} sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }} onClick={() => setDialog({})}>Registrar pago</Button>}
+    <Button disabled={busy || syncing || history.loading} onClick={() => { setRevision(value => value + 1); void refreshBalance(); }}>Actualizar movimientos y saldo</Button>
+    {history.hasPending && <Alert severity="warning">Revisa los movimientos pendientes antes de cobrar otro importe. Los comprobantes se confirman o rechazan editando el registro existente; las órdenes en línea se concilian con PayPal.</Alert>}
+    {canManage && booking.status !== "cancelled" && paymentCents(booking.remaining_amount) > 0 && <Button size="large" variant="contained" disabled={blocked || history.hasPending} sx={{ alignSelf: { xs: "stretch", sm: "flex-start" } }} onClick={() => setDialog({})}>Registrar pago</Button>}
     <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} flexWrap="wrap"><Typography variant="h6">Historial de pagos</Typography>{canManage && paymentCents(booking.paid_amount) > 0 && <Button color="inherit" variant="text" disabled={blocked} onClick={() => setDialog({ refund: true })}>Registrar devolución</Button>}</Stack>
     {history.error && <Alert severity="error" sx={{ whiteSpace: "pre-line" }} action={<Button onClick={() => setRevision((value) => value + 1)}>Reintentar</Button>}>{history.error}</Alert>}
     {history.loading && <CircularProgress size={28} aria-label="Cargando historial de pagos" />}
     {!history.loading && !history.error && !rows.length && <Typography color="text.secondary">Todavía no hay registros de pago.</Typography>}
-    <Grid container spacing={2}>{rows.map((payment) => <Grid key={payment.id} size={{ xs: 12, md: 6 }}><BookingPaymentCard payment={payment} canManage={canManage} busy={blocked} onEdit={(record) => setDialog({ payment: record })} onCancel={cancel} /></Grid>)}</Grid>
+    <Grid container spacing={2}>{rows.map((payment) => <Grid key={payment.id} size={{ xs: 12, md: 6 }}><BookingPaymentCard payment={payment} canManage={canManage} busy={blocked} onEdit={(record) => setDialog({ payment: record })} onCancel={cancel} onProof={record => paymentAction(record, "proof")} onReconcile={record => paymentAction(record, "reconcile")} /></Grid>)}</Grid>
     {history.lastPage > 1 && <Pagination page={page} count={history.lastPage} disabled={busy || syncing || history.loading} onChange={(_, value) => setPage(value)} />}
-    {dialog && canManage && <PaymentDialog context={context} booking={booking} {...dialog} onClose={() => setDialog(null)} onSaved={(response) => { void applyPaymentResponse(response); }} onSessionExpired={onSessionExpired} />}
+    {dialog && canManage && <PaymentDialog context={context} booking={booking} {...dialog} onClose={() => { setDialog(null); setRevision(value => value + 1); void refreshBalance(); }} onSaved={(response) => { void applyPaymentResponse(response); }} onSessionExpired={onSessionExpired} />}
     <Snackbar open={!!notice} autoHideDuration={notice?.severity === "error" ? null : 4500} onClose={() => setNotice(null)}><Alert severity={notice?.severity || "info"} onClose={() => setNotice(null)} sx={{ whiteSpace: "pre-line" }}>{notice?.message}</Alert></Snackbar>
   </Stack>;
 }

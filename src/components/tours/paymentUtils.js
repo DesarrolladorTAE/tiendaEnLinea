@@ -73,6 +73,10 @@ export function validatePayment(form, booking, editingPayment) {
   if (cents == null || cents <= 0) errors.amount = "Ingresa un monto positivo con máximo dos decimales.";
   else if (limit == null) errors.amount = "Actualiza el saldo de la reservación antes de continuar.";
   else if (cents > limit) errors.amount = form.payment_type === "refund" ? "La devolución supera el neto confirmado disponible." : "El monto supera el saldo disponible para este registro.";
+  else if (!editingPayment && form.payment_type === "final" && cents !== paymentCents(booking.remaining_amount)) errors.amount = "La liquidación debe coincidir exactamente con el saldo actual.";
+  if (booking.status === "cancelled" && form.status === "confirmed" && form.payment_type !== "refund" && editingPayment?.status !== "confirmed") errors.status = "La reserva cancelada no admite confirmar cobros nuevos.";
   if (!serializePaymentDate(form.payment_date)) errors.payment_date = "Ingresa una fecha y hora válidas.";
   return errors;
 }
+
+export const pendingOnlinePayment = payment => payment.status === "pending" && (payment.payment_method === "online" || String(payment.payment_method).toLowerCase() === "paypal");

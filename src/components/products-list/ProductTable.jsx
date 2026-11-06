@@ -25,7 +25,14 @@ const ProductTable = ({
   const codeStyle = { color: "#fff", fontFamily: "monospace", minWidth: 130, overflowWrap: "anywhere" };
   const renderStock = product => {
     const warehouses = Array.isArray(product.warehouse_stocks) ? product.warehouse_stocks.filter(row => Number.isFinite(Number(row.qty)) && Number(row.qty) !== 0) : [];
-    if (warehouses.length) return <div className="product-warehouse-stocks">{warehouses.map(row => <div key={row.warehouse_id} className="product-warehouse-stock"><span>{row.warehouse_name || `Almacén #${row.warehouse_id}`}</span><strong>{Number(row.qty).toLocaleString("es-MX", { maximumFractionDigits: 6 })}</strong></div>)}</div>;
+    const unassignedStock = Number(product.stock);
+    const hasUnassignedStock = product.stock != null && Number.isFinite(unassignedStock) && unassignedStock !== 0;
+    if (warehouses.length || hasUnassignedStock) return (
+      <div className="product-warehouse-stocks">
+        {hasUnassignedStock && <div className="product-warehouse-stock"><span>Sin almacén</span><strong>{unassignedStock.toLocaleString("es-MX", { maximumFractionDigits: 6 })}</strong></div>}
+        {warehouses.map(row => <div key={row.warehouse_id} className="product-warehouse-stock"><span>{row.warehouse_name || `Almacén #${row.warehouse_id}`}</span><strong>{Number(row.qty).toLocaleString("es-MX", { maximumFractionDigits: 6 })}</strong></div>)}
+      </div>
+    );
     return productStock(product) ?? product.stock ?? "Consultar detalle";
   };
 

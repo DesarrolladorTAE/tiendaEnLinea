@@ -270,7 +270,7 @@ function bookingPaymentEndpoint(context, bookingId, paymentId) {
   }
   return { client, url: `${toursPath}/bookings/${bookingId}/payments${paymentId === undefined ? "" : "/" + paymentId}` };
 }
-const PAYMENT_FIELDS = ["payment_type", "payment_method", "amount", "payment_date", "status", "registered_by", "reference", "notes"];
+const PAYMENT_FIELDS = ["payment_type", "payment_method", "amount", "payment_date", "status", "registered_by", "reference", "notes", "pos_location_id"];
 function bookingPaymentPayload(values) {
   return Object.fromEntries(PAYMENT_FIELDS.filter((key) => values[key] !== undefined).map((key) => [key, values[key]]));
 }
@@ -303,6 +303,51 @@ export async function cancelBookingPayment(context, bookingId, paymentId) {
   return checkPaymentResponse(await client.delete(url));
 }
 
+export async function reconcileBookingPayment(context, bookingId, paymentId) {
+  const { client, url } = bookingPaymentEndpoint(context, bookingId, paymentId);
+  return checkPaymentResponse(await client.post(url + "/reconcile", {}));
+}
+
+export async function downloadBookingProof(context, bookingId, paymentId) {
+  const { client, url } = bookingPaymentEndpoint(context, bookingId, paymentId);
+  const response = await client.get(url + "/proof", { responseType: "blob", signal: context.signal });
+  const type = response.headers?.["content-type"] || response.data?.type || "";
+  if (/json|text\/html/.test(type)) throw new Error("No se pudo descargar el comprobante privado.");
+  const objectUrl = URL.createObjectURL(response.data);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl; anchor.download = `comprobante-tour-${paymentId}${type.includes("pdf") ? ".pdf" : type.includes("png") ? ".png" : type.includes("jpeg") ? ".jpg" : ""}`;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+export async function getBookingTickets(context, bookingId) {
+  const { client, branchPath } = departureContext(context);
+  let response;
+  try {
+    response = await client.get(`${branchPath}/bookings/${passengerEntityId(bookingId)}/tickets.pdf`, {
+      responseType: "blob", signal: context.signal,
+    });
+  } catch (error) {
+    if (error.response?.data instanceof Blob) {
+      try { error.response.data = JSON.parse(await error.response.data.text()); } catch { /* Preserve HTTP error. */ }
+    }
+    throw error;
+  }
+  const type = response.headers?.["content-type"] || response.data?.type || "";
+  if (!(response.data instanceof Blob) || !/^application\/pdf\b/i.test(type)) {
+    let message = "No se pudieron generar los boletos PDF de esta reserva.";
+    try { message = JSON.parse(await response.data.text()).message || message; } catch { /* Use PDF error. */ }
+    throw new Error(message);
+  }
+  return response.data;
+}
+
+export async function getTourCollections(context, filters = {}) {
+  const { client, toursPath } = departureContext(context);
+  const params = Object.fromEntries(Object.entries(filters).filter(([key, value]) => ["pos_location_id", "departure_id", "date_from", "date_to", "per_page", "page"].includes(key) && value !== "" && value != null));
+  return checkPaymentResponse(await client.get(`${toursPath}/tours/payments`, { params, signal: context.signal }));
+}
+
 function operationEndpoint(context) {
   const { client, toursPath } = departureContext(context);
   return { client, url: `${toursPath}/tours/departures/${passengerEntityId(context.departureId)}` };
@@ -318,28 +363,9 @@ export async function getManifest(context, posLocationId) {
   }));
 }
 export async function downloadManifest(context, posLocationId, format = "xlsx") {
-  if (!["xlsx", "pdf"].includes(format)) throw new Error("Formato inv?lido.");
-  const { client, url } = operationEndpoint(context);
-  let response;
-  try {
-    response = await client.get(url + "/manifest", { responseType: "blob", params: {
-      format, ...(posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}),
-    } });
-  } catch (error) {
-    if (error.response?.data instanceof Blob) {
-      try { error.response.data = JSON.parse(await error.response.data.text()); } catch { /* Preserve HTTP error. */ }
-    }
-    throw error;
-  }
-  if (response.data.type.includes("json")) {
-    const payload = JSON.parse(await response.data.text());
-    throw new Error(payload.message || "El servidor no generó el archivo Excel.");
-  }
-  const objectUrl = URL.createObjectURL(response.data);
-  const link = document.createElement("a");
-  link.href = objectUrl; link.download = `tour-${context.departureId}-operacion.${format}`;
-  document.body.appendChild(link); link.click(); link.remove();
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  if (!["xlsx", "pdf"].includes(format)) throw new Error("Formato de reporte inv\u00e1lido.");
+  const { url } = operationEndpoint(context);
+  return tourReport(context, url + "/manifest", posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}, format, `tour-${context.departureId}-operacion`);
 }
 
 function excelPath(branchId) {
@@ -376,4 +402,51 @@ export async function getTourHistory(context, filters = {}) {
     `/branches/${passengerEntityId(context.branchId)}/tours/services/${passengerEntityId(context.serviceId)}/history`,
     { params, signal: context.signal }
   ));
+}
+
+// Reports use the same authenticated clients as booking operations. Export filters
+// deliberately exclude pagination: the server renders every matching passenger.
+async function tourReport(context, url, filters, format, filename) {
+  if (!["html", "pdf", "xlsx"].includes(format)) throw new Error("Formato de reporte inválido.");
+  const { client } = departureContext(context);
+  const params = Object.fromEntries(Object.entries(onlyFields(filters, ["departure_id", "status", "payment_status", "pos_location_id", "search", "date_from", "date_to"])).filter(([, value]) => value !== "" && value != null));
+  let response;
+  try {
+    response = await client.get(url, {
+      params: { ...params, format }, responseType: format === "html" ? "text" : "blob", signal: context.signal,
+    });
+  } catch (error) {
+    if (error.response?.data instanceof Blob) {
+      try { error.response.data = JSON.parse(await error.response.data.text()); } catch { /* Preserve HTTP error. */ }
+    }
+    throw error;
+  }
+  const type = response.headers?.["content-type"] || response.data?.type || "";
+  if (format === "html") {
+    const html = response.data;
+    if (typeof html !== "string" || !/<table[\s>]/i.test(html) || /<form[\s>]/i.test(html)) {
+      throw new Error("No se pudo cargar la tabla del reporte. Verifica tu sesión y vuelve a intentar.");
+    }
+    return html;
+  }
+  if (!(response.data instanceof Blob) || /json|text\/html|text\/plain/i.test(type)) {
+    let message = "El servidor no generó el archivo del reporte.";
+    try { message = JSON.parse(await response.data.text()).message || message; } catch { /* Use report error. */ }
+    throw new Error(message);
+  }
+  const objectUrl = URL.createObjectURL(response.data);
+  const link = document.createElement("a");
+  link.href = objectUrl; link.download = `${filename}.${format}`;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+export function getTourHistoryReport(context, filters = {}, format = "html") {
+  const branch = passengerEntityId(context.branchId), service = passengerEntityId(context.serviceId);
+  return tourReport(context, `/branches/${branch}/tours/services/${service}/history`, filters, format, `tour-${service}-historial`);
+}
+
+export function getManifestReport(context, posLocationId) {
+  const { url } = operationEndpoint(context);
+  return tourReport(context, url + "/manifest", posLocationId ? { pos_location_id: passengerEntityId(posLocationId) } : {}, "html");
 }
