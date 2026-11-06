@@ -3,7 +3,7 @@ import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogCont
 import { getBookingTickets } from "../../services/tours/tourService";
 import { bookingError } from "./bookingUtils";
 
-export default function BookingTickets({ context, booking, onSessionExpired }) {
+export default function BookingTickets({ context, booking, onSessionExpired, compact = false }) {
   const [preview, setPreview] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -37,9 +37,9 @@ export default function BookingTickets({ context, booking, onSessionExpired }) {
     }
   };
   return <Stack spacing={1.5}>
-    <Stack direction={{ xs: "column", sm: "row" }} gap={2} alignItems={{ sm: "center" }} justifyContent="space-between">
+    <Stack direction={compact ? "column" : { xs: "column", sm: "row" }} gap={2} alignItems={compact ? "stretch" : { sm: "center" }} justifyContent="space-between">
       <Box><Typography fontWeight={800}>Boletos de la reserva</Typography><Typography variant="body2" color="text.secondary">Un PDF con un boleto por pasajero, importes y saldo de la reserva.</Typography></Box>
-      <Stack direction="row" gap={1} flexWrap="wrap">
+      <Stack direction={compact ? "column" : "row"} gap={1} flexWrap="wrap">
         <Button variant="outlined" disabled={!available || busy} onClick={() => load(false)}>Ver boletos</Button>
         <Button variant="outlined" disabled={!available || busy} onClick={() => load(true)}>Descargar boletos PDF</Button>
         {busy && <CircularProgress size={24} aria-label="Cargando boletos" />}
