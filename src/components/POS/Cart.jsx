@@ -1,3 +1,5 @@
+import useSaleShipment from "../../hooks/POS/useSaleShipment";
+import ShipmentFields from "../checkout/ShipmentFields";
 import React, {
   useEffect,
   useMemo,
@@ -88,6 +90,7 @@ export default function CartSidebar({
   variant = "desktop",
 }) {
   const isMobile = variant === "mobile";
+  const shipment = useSaleShipment(posLocationId);
 
   const paperRef = useRef(null);
   const [kb, setKb] = useState(0);
@@ -624,14 +627,17 @@ export default function CartSidebar({
 
     try {
       setSubmittingSale(true);
+      const delivery = await shipment.build();
+      if (delivery) data.shipment = delivery;
       const sale = await onCheckout(data);
       if (!sale) return;
+      shipment.reset();
       resetAfterSuccessfulSale();
     } catch (error) {
       const msg =
         error?.response?.data?.message ||
         error?.response?.data?.error ||
-        "No se pudo registrar la venta.";
+        error?.message || "No se pudo registrar la venta.";
       showError(msg);
     } finally {
       setSubmittingSale(false);
@@ -1100,6 +1106,12 @@ export default function CartSidebar({
                     />
                   )}
 
+                  <Box sx={{ my: 2 }}>
+                    {shipment.loading && <Typography role="status">Consultando opciones de envío…</Typography>}
+                    {shipment.error && <Typography color="error">{shipment.error} <Button onClick={shipment.refresh}>Reintentar envíos</Button></Typography>}
+                    <ShipmentFields config={shipment.config} value={shipment.values} onChange={shipment.setValues} disabled={submittingSale} />
+                    {shipment.values.shipping_method_id && !shipment.config?.enabled && <Button disabled={submittingSale} onClick={shipment.reset}>Quitar entrega seleccionada</Button>}
+                  </Box>
                   <IsrRetentionPreview
                     clientId={selectedClient?.id ?? null}
                     totalAmount={total}

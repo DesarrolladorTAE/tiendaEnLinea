@@ -1,6 +1,10 @@
+import SaleShippingButton from "../shipping/SaleShippingButton";
+import useSaleDocumentUrl from "../../hooks/useSaleDocumentUrl";
+import { documentPhone } from "../../utils/saleDocument";
 // Shared full-page inbox for administration and POS.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -73,11 +77,11 @@ function StatusChip({ formStatus, saleStatus }) {
   const fs = pick(formStatus);
   const ss = pick(saleStatus);
 
-  if (ss === "paid" || fs === "approved") {
-    return <Chip size="small" color="success" label="Confirmada" sx={{ fontWeight: 900 }} />;
-  }
   if (ss === "cancelled" || fs === "rejected") {
     return <Chip size="small" color="default" label="Cancelada" sx={{ fontWeight: 900 }} />;
+  }
+  if (ss === "paid" || fs === "approved") {
+    return <Chip size="small" color="success" label="Confirmada" sx={{ fontWeight: 900 }} />;
   }
   return <Chip size="small" color="warning" label="Pendiente" sx={{ fontWeight: 900 }} />;
 }
@@ -322,7 +326,7 @@ function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, 
   );
 
   const handleResendTicket = useCallback(async () => {
-    if (!selectedId || isTour(detail) || !canAct(detail, "send_ticket")) return;
+    if (!selectedId || !detail?.sale?.id || isTour(detail) || !canAct(detail, "send_ticket")) return;
 
     const phone = detail?.form?.phone || "";
     const ok = await showConfirm(
@@ -332,14 +336,14 @@ function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, 
     if (!ok) return;
 
     try {
-      const { data } = await axiosClient.post(`/admin/offline-payments/${selectedId}/send-ticket`, {});
+      const { data } = await axiosClient.post(`/sales/${detail.sale.id}/documents/default/send-whatsapp`, { phone: documentPhone(phone) });
       await showSuccess(data?.message || "Ticket enviado");
     } catch (err) {
       alertFromAxiosError(err, "No se pudo enviar el ticket");
     }
   }, [selectedId, detail, axiosClient]);
 
-  const ticketUrl = detail?.sale?.ticket_url || null;
+
   const proofUrl = detail?.proof_url || detail?.form?.proof_url || null;
   const [proofType, setProofType] = useState("");
   useEffect(() => () => { if (proofPreviewUrl?.startsWith("blob:")) URL.revokeObjectURL(proofPreviewUrl); }, [proofPreviewUrl]);
@@ -363,6 +367,7 @@ function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, 
     const ss = pick(detail?.sale?.status);
     return fs === "approved" || fs === "rejected" || ss === "paid" || ss === "cancelled";
   }, [detail, tab]);
+  const { url: ticketUrl, error: saleDocumentError } = useSaleDocumentUrl(axiosClient, detailOpen && canShowTicket, detail?.sale?.id);
 
   const StatCard = ({ icon, label, value, sub }) => (
     <Paper
@@ -434,6 +439,7 @@ function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, 
               <Chip size="small" label={isTour(r) ? "Tours" : "Productos"} />
               <StatusChip formStatus={r.status} saleStatus={r?.sale?.status} />
               {isTour(r) && <Chip size="small" label={r.booking?.booking_code || r.id} />}
+              {!isTour(r) && saleId && <SaleShippingButton client={axiosClient} sale={{ ...r.sale, is_online: true }} orderId={r.id} orderStatus={r.status} />}
               {saleId ? (
                 <Chip size="small" variant="outlined" label={`Venta #${saleId}`} sx={{ fontWeight: 900 }} />
               ) : null}
@@ -804,6 +810,7 @@ function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, 
                 <Typography>{paymentLabel(detail.payment?.payment_type)} a revisar: {moneyMX(detail.amount ?? detail.payment?.amount)}</Typography><Typography>Referencia: {detail.payment?.reference || "?"}</Typography>
                 <Typography>Total de reserva: {moneyMX(detail.booking?.total)}</Typography><Typography>Pagado: {moneyMX(detail.booking?.paid_amount)} · Saldo: {moneyMX(detail.booking?.remaining_amount)}</Typography>
               </Paper>}
+              {detail?.sale?.id && !isTour(detail) && <SaleShippingButton client={axiosClient} sale={{ ...detail.sale, is_online: true }} orderId={selectedId} orderStatus={detail?.status ?? detail?.form?.status} />}
               {/* Venta */}
               {!isTour(detail) && <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                 <Stack
@@ -815,6 +822,7 @@ function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, 
                   <Typography sx={{ fontWeight: 1000 }}>Venta #{detail?.sale?.id ?? "—"}</Typography>
 
                   <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {saleDocumentError && <Alert severity="error">{saleDocumentError}</Alert>}
                     {/* ✅ TICKET SOLO EN CONFIRMADAS/CANCELADAS */}
                     {canShowTicket && ticketUrl ? (
                       <Button
@@ -826,7 +834,7 @@ function OfflinePaymentsContent({ open, onClose, mode, branchId, posLocationId, 
                         }}
                         sx={{ textTransform: "none", fontWeight: 1000, borderRadius: 2 }}
                       >
-                        Ver ticket
+                        Ver documento
                       </Button>
                     ) : null}
 

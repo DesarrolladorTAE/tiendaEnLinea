@@ -1,11 +1,12 @@
 // src/hooks/useProductFormLogic.js
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../config/axiosClient";
 import { showSuccess, showError } from "../utils/alerts";
 import { useAdminUi } from "../context/AdminUiContext";
 import { inventoryFlag, activeVariant } from "../utils/productInventory";
 import { notifyInventoryChanged } from "../utils/inventoryEvents";
+import { calculateProfitPrice, hasProfitFactor, saveProductProfitFactor } from "../utils/productProfitFactor";
 
 /**
  * ✅ Helper: agrega a FormData usando notación bracket
@@ -222,10 +223,11 @@ function deriveWarehouseInventoriesFromVariants(product) {
   return Array.from(ids).map((wid) => ({ warehouse_id: wid }));
 }
 
-export default function useProductFormLogic({ reset, watch, setValue }) {
+export default function useProductFormLogic({ reset, watch, setValue, dirtyFields = {} }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
+  const createdProductId = useRef(null);
 
   // ✅ branch desde contexto
   const { selectedBranch } = useAdminUi();
@@ -240,6 +242,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
   const [ivaOriginal, setIvaOriginal] = useState(null);
   const [initialPrice, setInitialPrice] = useState(null);
   const [initialBasePrice, setInitialBasePrice] = useState(null);
+  const [initialProfitFactor, setInitialProfitFactor] = useState(null);
 
   // imágenes principales
   const [imageFiles, setImageFiles] = useState([]);
@@ -365,7 +368,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
   const fetchProduct = async (productId) => {
     const response = await axiosClient.get(`/admin/productos/${productId}`);
-    const product = response.data;
+    const product = response.data?.data ?? response.data;
 
     let offerEnd = "";
     if (product.offerEnd) {
@@ -396,6 +399,9 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       sku: product.sku || "",
       name: product.name || "",
       price: priceFromApi,
+      price_mode: hasProfitFactor(product) ? "factor" : "manual",
+      profit_factor: product.profit_factor ?? "",
+      factor_preview_enabled: false,
       stock: product.stock?.toString() || "",
       discount: product.discount?.toString() || "",
       new: Boolean(product.new),
@@ -403,7 +409,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       rating: product.rating?.toString() || "",
       shortDescription: product.shortDescription || "",
       fullDescription: product.fullDescription || "",
-      iva: product.iva !== null ? product.iva.toString() : "null",
+      iva: product.iva != null ? product.iva.toString() : "null",
       offerEnd,
       category: mapSelectedCats(product.categories),
       tags: (product.tags || []).map((t) => ({ value: t.id, label: t.name })),
@@ -442,6 +448,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
     setIvaOriginal(product.iva !== null ? Number(product.iva) : null);
     setInitialPrice(product.price);
     setInitialBasePrice(product.base_price);
+    setInitialProfitFactor(product.profit_factor ?? null);
   };
 
   // ===== INIT =====
@@ -485,7 +492,34 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
 
   // ===== SUBMIT =====
   const onSubmit = async (data) => {
+    let generalSaved = false;
+    const productId = id || createdProductId.current;
+    const factorChanged = !hasProfitFactor({ profit_factor: initialProfitFactor }) || Number(data.profit_factor) !== Number(initialProfitFactor);
+    const byFactor = data.price_mode === "factor" && (!productId || factorChanged || data.factor_preview_enabled || ["price_mode", "profit_factor", "costo_compra", "iva"].some(key => Boolean(dirtyFields[key])));
+    const confirmFactor = async targetId => {
+      const product = await saveProductProfitFactor(axiosClient, targetId, data.profit_factor);
+      setValue("factor_preview_enabled", false);
+      setValue("profit_factor", product.profit_factor);
+      setValue("price", String(product.price));
+      setValue("base_price", String(product.base_price));
+      setInitialPrice(product.price);
+      setInitialBasePrice(product.base_price);
+      setInitialProfitFactor(product.profit_factor);
+    };
     try {
+      if (byFactor) {
+        const preview = calculateProfitPrice(data.costo_compra, data.profit_factor, data.iva);
+        data = { ...data, price: preview.price, base_price: preview.base_price };
+        const priceFields = new Set(["price_mode", "profit_factor", "price", "base_price", "factor_preview_enabled"]);
+        const otherChanges = imageFiles.length > 0 || Object.keys(dirtyFields).some(key => !priceFields.has(key));
+        if (productId && !otherChanges) {
+          await confirmFactor(productId);
+          showSuccess("Precio actualizado por factor de utilidad.");
+          notifyInventoryChanged();
+          navigate("/admin/products");
+          return;
+        }
+      }
       const useWh = inventoryFlag(data.use_warehouse_inventory);
 
       const variantsPayloadPreview = normalizeVariantsForBackend(
@@ -732,19 +766,37 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       }
 
       // request
-      if (id) {
+      if (productId) {
         formData.append("_method", "PUT");
-        await axiosClient.post(`/admin/productos/${id}`, formData, {
+        // The general edit saves cost/IVA first. The dedicated PATCH owns the factor price.
+        if (byFactor) {
+          formData.set("price", String(initialPrice ?? data.price));
+          formData.set("base_price", String(initialBasePrice ?? data.base_price));
+        }
+        await axiosClient.post(`/admin/productos/${productId}`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        generalSaved = true;
+        if (byFactor) await confirmFactor(productId);
         showSuccess("✅ Producto actualizado con éxito.");
         notifyInventoryChanged();
         navigate("/admin/products");
       } else {
-        await axiosClient.post("/cargar/productos", formData, {
+        const response = await axiosClient.post("/cargar/productos", formData, {
           headers: { "Content-Type": "multipart/form-data" },
           params: branchId ? { branch_id: branchId } : undefined,
         });
+        generalSaved = true;
+        if (byFactor) {
+          const result = response.data;
+          const newId = result?.data?.id ?? result?.product?.id ?? result?.producto?.id ?? result?.id;
+          if (!newId) {
+            navigate("/admin/products");
+            throw new Error("El producto se creó, pero el servidor no devolvió su ID. Abre su edición para aplicar el factor.");
+          }
+          createdProductId.current = newId;
+          await confirmFactor(newId);
+        }
         showSuccess("✅ Producto creado con éxito.");
         notifyInventoryChanged();
         navigate("/admin/products");
@@ -752,13 +804,15 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
         setImageFiles([]);
       }
     } catch (error) {
+      if (generalSaved && byFactor) notifyInventoryChanged();
       console.error("❌ Error en la API:", error.response?.data || error);
+      const prefix = generalSaved && byFactor ? "El producto se guardó, pero no se pudo confirmar el factor. " : "";
       if (error.response?.data?.errors) {
         showError(
-          `❌ Error en la API:\n${JSON.stringify(error.response.data.errors, null, 2)}`,
+          `${prefix}${Object.values(error.response.data.errors).flat().join("\n")}`,
         );
       } else {
-        showError("Error de conexión con el servidor.");
+        showError(prefix + (error.response?.data?.message || error.message || "No se pudo guardar el producto."));
       }
     }
   };
@@ -792,7 +846,7 @@ export default function useProductFormLogic({ reset, watch, setValue }) {
       handleRecalculateBase,
       onSubmit,
     }),
-    [handleRecalculateBase],
+    [handleRecalculateBase, onSubmit],
   );
 
   return { ui, actions };

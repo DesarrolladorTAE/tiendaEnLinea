@@ -6,10 +6,10 @@ import ProductList from "./ProductList";
 import axiosClient from "../../config/axiosClient";
 import { useAdminUi } from "../../context/AdminUiContext";
 
-jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), delete: jest.fn() } }));
+jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), delete: jest.fn(), patch: jest.fn() } }));
 jest.mock("../../context/AdminUiContext", () => ({ useAdminUi: jest.fn() }));
 jest.mock("../../context/TiendaContext", () => ({ useTienda: () => ({ tienda: null, tiendaLoading: false }) }));
-jest.mock("../../hooks/useLimiteProductos", () => () => ({ puedeCrear: true, actualizarLimite: jest.fn() }));
+jest.mock("../../hooks/useLimiteProductos", () => () => ({ puedeCrear: true, totalProductos: mockTotalProducts, cargando: false, actualizarLimite: jest.fn() }));
 jest.mock("../../hooks/useComplementosActivos", () => () => ({ tieneComplemento: () => false }));
 jest.mock("../../components/admin/promociones/Taebanner", () => () => null);
 jest.mock("./modals/LabelModal", () => () => null);
@@ -24,15 +24,72 @@ jest.mock("../../components/products-list/ProductSearchBar", () => props => <>
   </select>
 </>);
 
-let root, host, branch;
+let root, host, branch, mockTotalProducts;
 const searchCalls = () => axiosClient.get.mock.calls.filter(([url]) => url === "/products/search");
 const page = (rows, last = 3) => ({ data: { data: rows, current_page: 1, last_page: last } });
 const mount = () => act(() => root.render(<MemoryRouter><ProductList /></MemoryRouter>));
 const tick = async () => act(async () => { jest.advanceTimersByTime(300); });
 const change = (label, value) => act(() => Simulate.change(document.querySelector(`[aria-label="${label}"]`), { target: { value } }));
+
+test.each([0, 1, 100, 101, 598])("default zeros do not count toward the factor threshold in a 659-product catalog: %s", async count => {
+  mockTotalProducts = 659;
+  const rows = Array.from({ length: 659 }, (_, index) => ({ id: index + 1, name: `Producto ${index + 1}`, stock: 1, iva: 0.16, price: 145, profit_factor: index < count ? "45.0000" : "0.0000" }));
+  axiosClient.get.mockImplementation(url => Promise.resolve({ data: url === "/admin/branches/123/products" ? rows : [] }));
+  mount(); await tick();
+  const headers = [...host.querySelectorAll("th")].map(th => th.textContent);
+  expect(headers.includes("Factor de utilidad")).toBe(count > 100);
+  expect(host.querySelectorAll("tbody tr")).toHaveLength(10);
+  if (count > 100) {
+    expect(host.querySelector('[data-label="Factor de utilidad"]').textContent).toBe("45%");
+    expect(host.querySelector('[title="Cambiar factor de utilidad"]')).not.toBeNull();
+  } else expect(host.querySelector('[title="Cambiar factor de utilidad"]')).toBeNull();
+});
+
+test("search preserves the branch factor threshold and another branch without factors hides it", async () => {
+  const rows = Array.from({ length: 101 }, (_, index) => ({ id: index + 1, name: `Producto ${index + 1}`, stock: 1, iva: 0.16, price: 145, profit_factor: "45" }));
+  axiosClient.get.mockImplementation(url => Promise.resolve(url === "/products/search" ? page([{ id: 1, name: "Coincidencia", stock: 1, price: 145, iva: 0.16 }], 1) : { data: url === "/admin/productos/1" ? rows[0] : url === "/admin/branches/123/products" ? rows : [] }));
+  mount(); await tick();
+  change("query", "Coincidencia"); await tick();
+  expect(host.querySelector('[data-label="Factor de utilidad"]').textContent).toBe("45%");
+  branch = { id: 456, name: "Otra" }; mount(); await tick();
+  expect([...host.querySelectorAll("th")].some(th => th.textContent === "Factor de utilidad")).toBe(false);
+});
+
+test("changes a factor directly from the table and shows the authoritative price without a full product update", async () => {
+  const rows = Array.from({ length: 101 }, (_, index) => ({ id: index + 1, name: `Producto ${index + 1}`, stock: 1, iva: 0.16, price: 145, profit_factor: "45" }));
+  axiosClient.get.mockImplementation(url => Promise.resolve({ data: url === "/admin/productos/1" ? { ...rows[0], purchase_cost: 100 } : url === "/admin/branches/123/products" ? rows : [] }));
+  axiosClient.patch.mockResolvedValue({ data: { data: { ...rows[0], profit_factor: "60.0000", price: "160.04", base_price: "137.965517", stock: 999 } } });
+  mount(); await tick();
+  await act(async () => Simulate.click(host.querySelector('[aria-label="Cambiar factor de utilidad de Producto 1"]')));
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog).not.toBeNull();
+  expect(host.querySelector('[data-label="Factor de utilidad"] input')).toBeNull();
+  expect(dialog.textContent).toContain("Costo guardado");
+  await act(async () => Simulate.change(dialog.querySelector("input"), { target: { value: "60" } }));
+  await act(async () => Simulate.click([...dialog.querySelectorAll("button")].find(button => button.textContent === "Guardar factor")));
+  expect(axiosClient.patch).toHaveBeenCalledWith("/admin/products/1/profit-factor", { profit_factor: 60 });
+  const row = host.querySelector("tbody tr");
+  expect(row.querySelector('[data-label="Precio"]').textContent).toBe("$160.04");
+  expect(row.querySelector('[data-label="Factor de utilidad"]').textContent).toBe("60%");
+  expect(row.querySelector('[data-label="Stock"]').textContent).toBe("Sin almacén1");
+});
+
+test("changing one of 101 positive factors to zero hides the column immediately", async () => {
+  const rows = Array.from({ length: 101 }, (_, index) => ({ id: index + 1, name: `Producto ${index + 1}`, stock: 1, iva: 0, price: 145, profit_factor: "45.0000" }));
+  axiosClient.get.mockImplementation(url => Promise.resolve({ data: url === "/admin/productos/1" ? { ...rows[0], purchase_cost: 100 } : url === "/admin/branches/123/products" ? rows : [] }));
+  axiosClient.patch.mockResolvedValue({ data: { data: { ...rows[0], profit_factor: "0.0000", price: 100, base_price: 100 } } });
+  mount(); await tick();
+  await act(async () => Simulate.click(host.querySelector('[aria-label="Cambiar factor de utilidad de Producto 1"]')));
+  const dialog = document.querySelector('[role="dialog"]');
+  await act(async () => Simulate.change(dialog.querySelector("input"), { target: { value: "0" } }));
+  await act(async () => Simulate.click([...dialog.querySelectorAll("button")].find(button => button.textContent === "Guardar factor")));
+  expect([...host.querySelectorAll("th")].some(th => th.textContent === "Factor de utilidad")).toBe(false);
+  expect(host.querySelector('[data-label="Precio"]').textContent).toBe("$100");
+});
 beforeEach(() => {
   jest.useFakeTimers(); jest.clearAllMocks(); global.IS_REACT_ACT_ENVIRONMENT = true;
   branch = { id: 123, name: "Centro" };
+  mockTotalProducts = 101;
   const setSelectedBranch = jest.fn(), setHideLayout = jest.fn();
   useAdminUi.mockImplementation(() => ({ selectedBranch: branch, setSelectedBranch, setHideLayout }));
   axiosClient.get.mockImplementation(url => Promise.resolve(url === "/products/search" ? page([{ id: 1, name: "Filtro", sku: "SHNN0102", oe_number: "00123", price: "145.00", iva: 0.16 }]) : { data: [] }));

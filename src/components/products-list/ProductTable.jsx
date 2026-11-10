@@ -6,6 +6,7 @@ import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
 import CategoryIcon from "@mui/icons-material/Category";
 import { productStock } from "../../utils/productInventory";
+import ProductProfitFactorCell from "./ProductProfitFactorCell";
 import "./ProductTable.css";
 
 const ProductTable = ({
@@ -13,6 +14,8 @@ const ProductTable = ({
   loading = false,
   error = null,
   showOeNumber = false,
+  showProfitFactor = false,
+  onProfitFactorSaved,
   onDelete,
   onOpenImages,
   onOpenLabels,
@@ -20,7 +23,7 @@ const ProductTable = ({
   categoriesLoading = false,
   onOpenCategories,
 }) => {
-  const columnCount = 7;
+  const columnCount = 7 + (showProfitFactor ? 1 : 0);
   const hasOeNumber = showOeNumber && products.some(product => String(product.oe_number ?? "").trim() !== "");
   const codeStyle = { color: "#fff", fontFamily: "monospace", minWidth: 130, overflowWrap: "anywhere" };
   const renderStock = product => {
@@ -97,6 +100,7 @@ const ProductTable = ({
             <th>{hasOeNumber ? "SKU / OE" : "SKU"}</th>
             <th>Nombre</th>
             <th>Precio</th>
+            {showProfitFactor && <th title="Porcentaje de aumento sobre el costo de compra; el precio final ya incluye IVA.">Factor de utilidad</th>}
             <th>IVA</th>
             <th>Stock</th>
             <th style={{ width: 110, whiteSpace: "nowrap" }}>Categorias</th>
@@ -114,6 +118,7 @@ const ProductTable = ({
                 </td>
                 <td data-label="Producto" className="fw-semibold product-name">{product.name || "N/A"}</td>
                 <td data-label="Precio">${product.price || "0.00"}</td>
+                {showProfitFactor && <td data-label="Factor de utilidad"><ProductProfitFactorCell product={product} onSaved={onProfitFactorSaved} /></td>}
 
                 <td data-label="IVA">
                   {product.iva === null

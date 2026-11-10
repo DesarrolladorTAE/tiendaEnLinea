@@ -1,3 +1,6 @@
+import axiosClientStore from "../config/axiosClient";
+import useSaleDocumentUrl from "../hooks/useSaleDocumentUrl";
+import { documentPhone, normalizeDocumentSetting, documentActionMeta, deliverDocumentPdf } from "../utils/saleDocument";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -72,12 +75,10 @@ export default function ModalTicketVenta({
   open,
   onClose,
   ventaId,
-  ticketUrl,
   posLocationId,
 }) {
+  const documentClient = localStorage.getItem("POS_TOKEN") ? axiosClientPOS : axiosClientStore;
   const [numero, setNumero] = useState("");
-  const [loadingPayload, setLoadingPayload] = useState(false);
-  const [payloadPreview, setPayloadPreview] = useState(null);
 
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [printSetting, setPrintSetting] = useState(null);
@@ -90,18 +91,11 @@ export default function ModalTicketVenta({
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const origin = window.location.origin;
-  const baseUrl = origin.includes("localhost")
-    ? "https://mitiendaenlineamx.com.mx"
-    : origin;
-
-  const pdfUrl = useMemo(() => {
-    if (ticketUrl) return ticketUrl;
-    if (!ventaId) return "";
-    return `${baseUrl}/api/sales/${ventaId}/ticket.pdf`;
-  }, [ticketUrl, ventaId, baseUrl]);
+  const { url: pdfUrl, error: documentError } = useSaleDocumentUrl(documentClient, open, ventaId);
 
   const meta = useMemo(() => {
+    const documentMeta = documentActionMeta(printSetting);
+    if (documentMeta) return documentMeta;
     if (!printSetting?.enabled || !printSetting?.app_type) {
       return {
         label: "Configurar conexión",
@@ -129,14 +123,11 @@ export default function ModalTicketVenta({
     if (open) {
       setNumero("");
       setPrintSetting(null);
-      setPayloadPreview(null);
-      loadPayloadPreview();
+
       loadPayloadConfig();
     } else {
       setNumero("");
       setPrintSetting(null);
-      setPayloadPreview(null);
-      setLoadingPayload(false);
       setLoadingConfig(false);
       setSendingPayload(false);
     }
@@ -156,11 +147,11 @@ export default function ModalTicketVenta({
     setLoadingConfig(true);
 
     try {
-      const { data } = await axiosClientPOS.get(
+      const { data } = await documentClient.get(
         `/pos/print-settings/${posLocationId}/payload-config`,
       );
 
-      setPrintSetting(data || null);
+      setPrintSetting(normalizeDocumentSetting(data));
     } catch (error) {
       console.error("Error cargando configuración:", error);
       setPrintSetting(null);
@@ -170,8 +161,8 @@ export default function ModalTicketVenta({
   };
 
   const getPrintPayload = async () => {
-    const { data } = await axiosClientPOS.get(
-      `/sales/${ventaId}/print-payload`,
+    const { data } = await documentClient.get(
+      `/sales/${ventaId}/documents/default/payload`,
     );
 
     if (!data?.ok || !data?.payload) {
@@ -188,7 +179,7 @@ export default function ModalTicketVenta({
       throw new Error("No se encontró el punto de venta actual.");
     }
 
-    const { data: ticket } = await axiosClientPOS.get(
+    const { data: ticket } = await documentClient.get(
       `/pos/ticket-config/${posLocationId}`,
     );
 
@@ -202,22 +193,6 @@ export default function ModalTicketVenta({
     }
 
     return { printerIp, printerPort };
-  };
-
-  const loadPayloadPreview = async () => {
-    if (!ventaId) return;
-
-    setLoadingPayload(true);
-
-    try {
-      const payload = await getPrintPayload();
-      setPayloadPreview(payload);
-    } catch (error) {
-      console.error("Error cargando preview payload:", error);
-      setPayloadPreview(null);
-    } finally {
-      setLoadingPayload(false);
-    }
   };
 
   const sendToWindows = (payload) => {
@@ -270,8 +245,8 @@ export default function ModalTicketVenta({
       throw new Error("Ingresa un número válido de 10 dígitos.");
     }
 
-    await axiosClientPOS.post(`/sales/${ventaId}/send-whatsapp`, {
-      phone: numero,
+    await documentClient.post(`/sales/${ventaId}/documents/default/send-whatsapp`, {
+      phone: documentPhone(numero),
     });
 
     setNumero("");
@@ -291,11 +266,15 @@ export default function ModalTicketVenta({
     setSendingPayload(true);
 
     try {
+      if (["document_pdf", "document_print"].includes(printSetting.app_type)) {
+        await deliverDocumentPdf(documentClient, ventaId, printSetting.app_type === "document_print");
+        return;
+      }
       const appType = printSetting.app_type;
 
       if (appType === "whatsapp") {
         await handleEnviarWhatsapp();
-        showSuccess("Ticket enviado por WhatsApp correctamente.");
+        showSuccess("Documento enviado por WhatsApp correctamente.");
         return;
       }
 
@@ -388,11 +367,6 @@ export default function ModalTicketVenta({
     }
   };
 
-  const previewText = (value, fallback = "—") => {
-    if (!value || !String(value).trim()) return fallback;
-    return String(value).trim();
-  };
-
   const handleDescargarTicket = async () => {
     if (!ventaId) {
       showError("No se encontró la venta.");
@@ -402,8 +376,8 @@ export default function ModalTicketVenta({
     setDownloadingTicket(true);
 
     try {
-      const response = await axiosClientPOS.get(
-        `/sales/${ventaId}/ticket.pdf`,
+      const response = await documentClient.get(
+        `/sales/${ventaId}/documents/default/pdf`,
         {
           responseType: "blob",
         },
@@ -428,7 +402,7 @@ export default function ModalTicketVenta({
 
       window.URL.revokeObjectURL(objectUrl);
 
-      showSuccess("Ticket descargado correctamente.");
+      showSuccess("Documento descargado correctamente.");
     } catch (error) {
       console.error("Error descargando ticket:", error);
 
@@ -463,7 +437,7 @@ export default function ModalTicketVenta({
           pr: 1,
         }}
       >
-        <span>Ticket de Venta #{ventaId}</span>
+        <span>Documento de venta #{ventaId}</span>
 
         <IconButton onClick={onClose}>
           <CloseIcon />
@@ -486,81 +460,8 @@ export default function ModalTicketVenta({
               minHeight: 0,
             }}
           >
-            {!isMobile ? (
-              pdfUrl ? (
-                <iframe
-                  title="Ticket PDF"
-                  src={pdfUrl}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    minHeight: 620,
-                    border: "none",
-                    display: "block",
-                    background: "#fff",
-                  }}
-                />
-              ) : (
-                <Box
-                  sx={{
-                    minHeight: 620,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    p: 3,
-                  }}
-                >
-                  No se encontró la vista previa del ticket.
-                </Box>
-              )
-            ) : (
-              <Box>
-                <Typography
-                  variant="subtitle1"
-                  fontWeight={700}
-                  sx={{ mb: 1.5 }}
-                >
-                  Datos del ticket
-                </Typography>
-
-                {loadingPayload ? (
-                  <Box
-                    sx={{
-                      minHeight: 120,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <CircularProgress size={28} />
-                  </Box>
-                ) : payloadPreview ? (
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {previewText(payloadPreview.textBeforeQr)}
-                    {"\n\n"}
-                    QR:{" "}
-                    {previewText(
-                      payloadPreview.qrText ||
-                        payloadPreview.qrs?.[0]?.text ||
-                        "—",
-                    )}
-                    {"\n\n"}
-                    {previewText(payloadPreview.textAfterQr)}
-                  </Typography>
-                ) : (
-                  <Typography variant="body2" color="text.secondary">
-                    No se pudo cargar el payload del ticket.
-                  </Typography>
-                )}
-              </Box>
-            )}
+            {documentError && <Alert severity="error">{documentError}</Alert>}
+            {pdfUrl ? <iframe title="Documento PDF" src={pdfUrl} style={{ width: "100%", minHeight: isMobile ? 420 : 620, height: "100%", border: "none", background: "#fff" }} /> : !documentError && <CircularProgress />}
           </Box>
 
           <Box
@@ -639,7 +540,7 @@ export default function ModalTicketVenta({
                           setSendingPayload(true);
                           await handleEnviarWhatsapp();
                           showSuccess(
-                            "Ticket enviado por WhatsApp correctamente.",
+                            "Documento enviado por WhatsApp correctamente.",
                           );
                         } catch (error) {
                           showError(
@@ -734,7 +635,7 @@ export default function ModalTicketVenta({
                 textTransform: "none",
               }}
             >
-              {downloadingTicket ? "Descargando..." : "Descargar ticket"}
+              {downloadingTicket ? "Descargando..." : "Descargar documento"}
             </Button>
 
             <Button

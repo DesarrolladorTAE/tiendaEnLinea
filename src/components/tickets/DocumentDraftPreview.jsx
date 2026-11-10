@@ -2,11 +2,13 @@ import React from "react";
 import { Box, Chip, Divider, Stack, Typography } from "@mui/material";
 import { useTienda } from "../../context/TiendaContext";
 import ThermalTicketPreview from "./ThermalTicketPreview";
+import { QRCodeSVG } from "qrcode.react";
 
-export default function DocumentDraftPreview({ type, channel, config, logo }) {
+export default function DocumentDraftPreview({ type, channel, config, logo, branch }) {
   const { tienda } = useTienda();
   const thermal = type === "ticket";
   const color = !thermal && /^#[\da-f]{6}$/i.test(config.accent_color) ? config.accent_color : "#333333";
+  const qr = [config.qr_factura && { key: "factura", label: "Escanea para facturar" }, config.qr_sitio && { key: "tienda", label: `Conoce más sobre ${branch?.name || "tu sucursal"}` }].filter(Boolean);
   return <Box sx={{ minWidth: 0 }}>
     <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} mb={1.5} flexWrap="wrap">
       <Box><Typography fontWeight={800}>Tu diseño</Typography><Typography variant="caption" color="text.secondary">{channel === "pdf" ? "Diseño de PDF y WhatsApp" : "Diseño de impresión"}</Typography></Box><Chip size="small" label={channel === "payload" ? thermal ? `${config.paper_size} mm` : "Impresión" : "Vista orientativa"} variant="outlined" />
@@ -31,6 +33,12 @@ export default function DocumentDraftPreview({ type, channel, config, logo }) {
         {type === "comprobante" && <Typography sx={{ fontSize: 10, mt: 1 }}>Pago de ejemplo: efectivo</Typography>}
         {type === "nota_venta" && <Stack direction="row" spacing={2} mt={4}>{["Entregó", "Recibió"].map(label => <Typography key={label} sx={{ width: "50%", borderTop: "1px solid #aaa", textAlign: "center", fontSize: 10, pt: .5 }}>{label}</Typography>)}</Stack>}
         {config.mensaje_2 && <Typography sx={{ fontSize: 11, textAlign: "center", mt: 2, whiteSpace: "pre-line" }}>{config.mensaje_2}</Typography>}
+        {!!qr.length && <Box aria-label="Códigos QR de ejemplo" sx={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 3, mt: 3 }}>
+          {qr.map(item => <Box key={item.key} sx={{ textAlign: "center", maxWidth: 150 }}>
+            <QRCodeSVG value={`https://example.invalid/vista-previa/${item.key}`} size={88} marginSize={2} title={`QR de ejemplo: ${item.label}`} />
+            <Typography sx={{ fontSize: 10, mt: .5 }}>{item.label}</Typography>
+          </Box>)}
+        </Box>}
       </Box>}
     </Box>
     <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1.5 }}>{channel === "payload" ? "Representación del diseño con datos y QR de ejemplo. El resultado en papel depende de la impresora del POS." : "Datos y QR de ejemplo. El PDF generado con una venta muestra el resultado final."}</Typography>

@@ -1,3 +1,5 @@
+import { showError } from "../../utils/alerts";
+import { deliverDocumentPdf } from "../../utils/saleDocument";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Box,
@@ -431,7 +433,7 @@ export default function Ventas() {
                         Punto de Venta {renderSortIcon("pos_location.name")}
                       </Stack>
                     </TableCell>
-                    <TableCell sx={{ width: 120 }}>Estado</TableCell>
+                    <TableCell sx={{ width: 120 }}>Estado del pago</TableCell>
                     <TableCell sx={{ width: 100 }} align="center">
                       Acciones
                     </TableCell>
@@ -449,15 +451,11 @@ export default function Ventas() {
                       <TableCell>{venta.status === "paid" ? "Pagado" : venta.status}</TableCell>
                       <TableCell align="center">
                         <Stack direction="row" spacing={0.5} justifyContent="center">
-                          <Tooltip title="Ver ticket" arrow>
+                          <Tooltip title="Ver documento" arrow>
                             <IconButton
                               color="secondary"
                               onClick={() => {
-                                const baseUrl = window.location.origin.includes("localhost")
-                                  ? "https://mitiendaenlineamx.com.mx"
-                                  : window.location.origin;
-
-                                window.open(`${baseUrl}/api/sales/${venta.id}/ticket.pdf`, "_blank");
+                                deliverDocumentPdf(axiosClient, venta.id, "preview").catch(() => showError("No se pudo abrir el documento."));
                               }}
                             >
                               <EditNoteIcon fontSize="small" />

@@ -8,16 +8,17 @@ import { useAdminUi } from "../../context/AdminUiContext";
 jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn(), post: jest.fn(), delete: jest.fn() } }));
 jest.mock("../../context/AdminUiContext", () => ({ useAdminUi: jest.fn() }));
 jest.mock("../../context/TiendaContext", () => ({ useTienda: () => ({ tienda: null }) }));
-jest.mock("../../hooks/useReglaTaeconta", () => () => ({ allowed: false, loading: false }));
+jest.mock("../../hooks/useReglaTaeconta", () => () => ({ allowed: mockInvoiceAllowed, loading: false }));
 jest.mock("./PosDocumentDelivery", () => () => <div>Preferencias POS</div>);
 jest.mock("../../services/admin/salesDocumentSettings", () => ({ ...jest.requireActual("../../services/admin/salesDocumentSettings"), validateLogo: jest.fn(async () => {}) }));
 
-let root, host;
+let root, host, mockInvoiceAllowed;
 const button = text => [...document.querySelectorAll("button")].find(item => item.textContent.includes(text));
 const click = async text => act(async () => Simulate.click(button(text)));
 const change = (name, value) => act(() => Simulate.change(document.querySelector(`[name="${name}"]`), { target: { value } }));
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true; jest.clearAllMocks();
+  mockInvoiceAllowed = false;
   useAdminUi.mockReturnValue({ selectedBranch: { id: 123, name: "Centro" } });
   client.get.mockImplementation(path => Promise.resolve({ data: path.startsWith("/sales/") ? new Blob(["%PDF-demo"], { type: "application/pdf" }) : { config: { direccion: "Dirección heredada", paper_size: path.includes("/ticket/") ? "80" : "letter" } } }));
   client.put.mockResolvedValue({ data: {} });
@@ -26,6 +27,29 @@ beforeEach(() => {
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); });
 const render = async () => act(async () => root.render(<SalesDocumentDesigner />));
+
+test.each([["Nota de venta", "nota_venta"], ["Comprobante", "comprobante"]])("%s previews and saves invoice and branch QR without thermal settings", async (label, type) => {
+  mockInvoiceAllowed = true;
+  await render(); await click(label);
+  for (const name of ["qr_factura", "qr_sitio"]) {
+    const input = document.querySelector(`input[name="${name}"]`);
+    expect(input.disabled).toBe(false);
+    await act(async () => Simulate.change(input, { target: { checked: true } }));
+  }
+  expect(document.querySelectorAll('[aria-label="Códigos QR de ejemplo"] svg')).toHaveLength(2);
+  expect(document.body.textContent).toContain("Escanea para facturar");
+  expect(document.body.textContent).toContain("Conoce más sobre Centro");
+  expect(document.querySelector('[name="qr_factura_size"]')).toBeNull();
+  expect(document.querySelector('[name="printer_ip"]')).toBeNull();
+  await act(async () => Simulate.submit(document.querySelector("form")));
+  expect(client.put).toHaveBeenCalledWith(`/document-settings/${type}/pdf`, { config: { qr_factura: true, qr_sitio: true } }, { params: { branch_id: "123" } });
+});
+
+test("invoice QR gating also applies to letter documents while the branch QR remains available", async () => {
+  await render(); await click("Nota de venta");
+  expect(document.querySelector('input[name="qr_factura"]').disabled).toBe(true);
+  expect(document.querySelector('input[name="qr_sitio"]').disabled).toBe(false);
+});
 
 test("loads branch config and saves a partial change without overwriting inherited settings", async () => {
   await render();

@@ -10,6 +10,23 @@ jest.mock("../../config/axiosClient", () => ({ get: jest.fn(), post: jest.fn() }
 jest.mock("../../config/axiosClientPOS", () => ({ get: jest.fn(), post: jest.fn() }));
 jest.mock("../../utils/alerts", () => ({ showConfirm: jest.fn(), showSuccess: jest.fn(), alertFromAxiosError: jest.fn() }));
 
+test.each([
+  ["pending", "pending", true],
+  ["approved", "cancelled", false],
+  ["rejected", "paid", false],
+])("web order %s with sale %s exposes shipping only while active", async (status, saleStatus, visible) => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  window.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });
+  const row = { id: 12, full_name: "Ana", status, has_proof: true, sale: { id: 20, status: saleStatus, grand_total: 100 } };
+  axiosClientPOS.get.mockImplementation(async url => ({ data: { data: url.endsWith("/stats") ? {} : [row] } }));
+  const host = document.createElement("div"); document.body.appendChild(host); const root = createRoot(host);
+  try {
+    await act(async () => root.render(<OfflinePaymentsPage mode="pos" branchId={2} posLocationId={8} />));
+    expect([...host.querySelectorAll("button")].some(button => button.textContent === "Entrega / envío")).toBe(visible);
+    if (!visible) expect(host.textContent).toContain("Cancelada");
+  } finally { act(() => root.unmount()); host.remove(); }
+});
+
 test.each(["store", "pos"])("offline list and statistics use %s authentication with the same branch and box", async mode => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   window.matchMedia = () => ({ matches: false, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {} });

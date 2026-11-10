@@ -1,3 +1,4 @@
+import { documentPhone, normalizeDocumentSetting, documentActionMeta, deliverDocumentPdf } from "../utils/saleDocument";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Dialog,
@@ -104,6 +105,8 @@ export default function TicketPreviewSendModal({
   const finalPhone = sendMode === "client" ? clientPhone : customPhone;
 
   const meta = useMemo(() => {
+    const documentMeta = documentActionMeta(printSetting);
+    if (documentMeta) return documentMeta;
     if (!printSetting?.enabled || !printSetting?.app_type) {
       return {
         label: "Configurar conexión",
@@ -153,7 +156,7 @@ export default function TicketPreviewSendModal({
     try {
       setLoadingPdf(true);
 
-      const resp = await axiosClient.get(`/v2/sales/${sale.id}/ticket.pdf`, {
+      const resp = await axiosClient.get(`/sales/${sale.id}/documents/default/pdf`, {
         responseType: "arraybuffer",
       });
 
@@ -182,7 +185,7 @@ export default function TicketPreviewSendModal({
         `/pos/print-settings/${posLocationId}/payload-config`,
       );
 
-      setPrintSetting(data || null);
+      setPrintSetting(normalizeDocumentSetting(data));
     } catch (error) {
       console.error("Error cargando configuración de payload:", error);
       setPrintSetting(null);
@@ -207,13 +210,13 @@ export default function TicketPreviewSendModal({
     try {
       setSending(true);
 
-      await axiosClient.post(`/v2/sales/${sale.id}/send-whatsapp`, {
-        phone,
-        telefono: phone,
+      await axiosClient.post(`/sales/${sale.id}/documents/default/send-whatsapp`, {
+        phone: documentPhone(phone),
+        telefono: documentPhone(phone),
         es_cliente: sendMode === "client",
       });
 
-      showSuccess("Ticket enviado por WhatsApp correctamente.");
+      showSuccess("Documento enviado por WhatsApp correctamente.");
       setCustomPhone("");
     } catch (error) {
       console.error(error);
@@ -230,7 +233,7 @@ export default function TicketPreviewSendModal({
   };
 
   const getPrintPayload = async () => {
-    const { data } = await axiosClient.get(`/sales/${sale.id}/print-payload`);
+    const { data } = await axiosClient.get(`/sales/${sale.id}/documents/default/payload`);
 
     if (!data?.ok || !data?.payload) {
       throw new Error(
@@ -317,6 +320,10 @@ export default function TicketPreviewSendModal({
     try {
       setSendingPayload(true);
 
+      if (["document_pdf", "document_print"].includes(printSetting.app_type)) {
+        await deliverDocumentPdf(axiosClient, sale.id, printSetting.app_type === "document_print");
+        return;
+      }
       const appType = printSetting.app_type;
 
       if (appType === "whatsapp") {
@@ -395,7 +402,7 @@ export default function TicketPreviewSendModal({
 
   const handlePrintPdf = () => {
     if (!ticketUrl) return;
-    window.open(ticketUrl, "_blank");
+    deliverDocumentPdf(axiosClient, sale.id, true).catch(error => showError(error.message));
   };
 
   const handleClose = () => {
@@ -429,7 +436,7 @@ export default function TicketPreviewSendModal({
       // lo solicitamos nuevamente al backend.
       if (!downloadUrl) {
         const response = await axiosClient.get(
-          `/v2/sales/${sale.id}/ticket.pdf`,
+          `/sales/${sale.id}/documents/default/pdf`,
           {
             responseType: "blob",
           },
@@ -459,7 +466,7 @@ export default function TicketPreviewSendModal({
         }, 1000);
       }
 
-      showSuccess("Ticket descargado correctamente.");
+      showSuccess("Documento descargado correctamente.");
     } catch (error) {
       console.error("Error descargando ticket:", error);
 
@@ -625,7 +632,7 @@ export default function TicketPreviewSendModal({
         disabled={downloadingTicket || loadingPdf || !sale?.id}
         sx={buttonBaseSx}
       >
-        {downloadingTicket ? "Descargando..." : "Descargar ticket"}
+        {downloadingTicket ? "Descargando..." : "Descargar documento"}
       </Button>
     </Stack>
   );
@@ -650,7 +657,7 @@ export default function TicketPreviewSendModal({
       ) : ticketUrl ? (
         <iframe
           src={ticketUrl}
-          title="Ticket PDF"
+          title="Documento PDF"
           style={{
             width: "100%",
             height: isMobile ? "620px" : "720px",
@@ -706,7 +713,7 @@ export default function TicketPreviewSendModal({
               fontSize: "1rem",
             }}
           >
-            Ticket venta #{sale?.id}
+            Documento de venta #{sale?.id}
           </Typography>
 
           <IconButton onClick={handleClose}>
@@ -733,7 +740,7 @@ export default function TicketPreviewSendModal({
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="lg">
       <DialogTitle sx={{ fontWeight: 950 }}>
-        Ticket venta #{sale?.id}
+        Documento de venta #{sale?.id}
         <IconButton
           onClick={handleClose}
           sx={{ position: "absolute", right: 12, top: 10 }}

@@ -2,9 +2,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import ProductField from "../../../admin/ProductField";
+import ProfitFactorControl from "../ProfitFactorControl";
 
 export default function ProductInfoSection({
   register,
+  watch,
+  setValue,
   errors,
   basePriceStr,
   onRecalculateBase,
@@ -30,11 +33,13 @@ export default function ProductInfoSection({
       />
 
       <ProductField
-        label="Precio Final (incluye IVA)"
+        label={watch("price_mode") === "factor" ? "Precio final calculado (incluye IVA)" : "Precio Final (incluye IVA)"}
         name="price"
+        readOnly={watch("price_mode") === "factor"}
+        helperText={watch("price_mode") === "factor" ? "Calculado por factor. Desmarca la casilla para editarlo." : undefined}
         type="text"
         register={register}
-        validation={{ required: "El precio es obligatorio" }}
+        validation={{ required: watch("price_mode") === "factor" ? false : "El precio es obligatorio" }}
         errors={errors}
       />
 
@@ -50,6 +55,7 @@ export default function ProductInfoSection({
           }`}
           {...register("iva", {
             required: "La tasa de IVA es obligatoria",
+            onChange: () => { if (watch("price_mode") === "factor") setValue("factor_preview_enabled", true); },
           })}
         >
           <option value="">Selecciona una tasa</option>
@@ -93,7 +99,7 @@ export default function ProductInfoSection({
               ? "Se actualiza desde entradas"
               : "Costo de compra"
           }
-          {...register("costo_compra")}
+          {...register("costo_compra", { onChange: () => { if (watch("price_mode") === "factor") setValue("factor_preview_enabled", true); } })}
         />
 
         {isEdit &&
@@ -115,6 +121,7 @@ export default function ProductInfoSection({
             </small>
           ))}
       </div>
+      <ProfitFactorControl watch={watch} setValue={setValue} />
     </div>
   );
 }

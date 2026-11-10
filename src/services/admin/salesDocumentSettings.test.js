@@ -4,6 +4,12 @@ import { configChanges, defaultConfig, documentSettingsService, readConfig, vali
 jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn(), post: jest.fn(), delete: jest.fn() } }));
 beforeEach(() => jest.clearAllMocks());
 
+test.each([["nota_venta", "pdf"], ["nota_venta", "payload"], ["comprobante", "pdf"], ["comprobante", "payload"]])("saves QR flags for %s/%s without thermal sizes or printer fields", (type, channel) => {
+  documentSettingsService.save({ type, channel, branchId: "123" }, { qr_factura: "1", qr_sitio: "0", qr_factura_size: 7, qr_sitio_size: 7, printer_ip: "1.2.3.4" });
+  expect(client.put).toHaveBeenCalledWith(`/document-settings/${type}/${channel}`, { config: { qr_factura: true, qr_sitio: false } }, { params: { branch_id: "123" } });
+  expect(readConfig({ config: { qr_factura: "1", qr_sitio: "0" } }, type)).toMatchObject({ qr_factura: true, qr_sitio: false });
+});
+
 test("reads effective config without turning string false values on", () => {
   expect(readConfig({ config: { show_logo: "0", mostrar_iva: false, paper_size: 58 } }, "ticket")).toMatchObject({ show_logo: false, mostrar_iva: false, paper_size: "58" });
   expect(() => readConfig({ message: "unavailable" }, "ticket")).toThrow();

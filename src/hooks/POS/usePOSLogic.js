@@ -369,6 +369,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
 
       try {
         checkoutBusy.current = true;
+        if (checkoutPayloadFromCart?.shipment) payload.shipment = checkoutPayloadFromCart.shipment;
         const freshProducts = await loadCartInventory(axiosClient, posLocationId, items);
         freshProducts.forEach(product => inventoryCache.current.set(String(product.id), product));
         setCart(previous => previous.map(item => {
@@ -384,7 +385,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         notifyInventoryChanged();
         await refetchProducts({ nextPage: 1 });
 
-        setTicketData(sale);
+        setTicketData({ ...sale, document_settings: saleResponse.data.document_settings ?? sale.document_settings, document_action: saleResponse.data.document_action ?? sale.document_action, whatsapp: saleResponse.data.whatsapp ?? sale.whatsapp });
         showSuccess(`✅ ${message}`);
         setShowTicket(true);
 

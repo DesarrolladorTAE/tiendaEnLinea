@@ -30,16 +30,23 @@ import { Box, Typography, IconButton, Tooltip } from "@mui/material";
 import { FiPackage, FiTrash2, FiUploadCloud } from "react-icons/fi";
 import { notifyInventoryChanged, subscribeInventoryChanges } from "../../utils/inventoryEvents";
 import { usesDetailInventory } from "../../utils/productInventory";
+import { hasConfiguredProfitFactor } from "../../utils/productProfitFactor";
 
-// Some listing responses report zero for inventory held outside warehouses.
-// Confirm those rows against the same endpoint used by the product editor.
+// Confirm missing factor fields and ambiguous stock against the product editor endpoint.
 async function confirmUnassignedStock(rows) {
   return Promise.all(rows.map(async product => {
-    if (usesDetailInventory(product) || Number(product.stock ?? 0) !== 0 || product.warehouse_stocks?.some(row => Number(row.qty) !== 0)) return product;
+    const missingFactor = product.profit_factor === undefined;
+    const confirmStock = !usesDetailInventory(product) && Number(product.stock ?? 0) === 0 && !product.warehouse_stocks?.some(row => Number(row.qty) !== 0);
+    if (!missingFactor && !confirmStock) return product;
     try {
       const { data } = await axiosClient.get(`/admin/productos/${product.id}`);
-      if (String(data?.id) !== String(product.id) || usesDetailInventory(data) || data.stock == null || !Number.isFinite(Number(data.stock))) return product;
-      return { ...product, stock: data.stock };
+      const detail = data?.data ?? data;
+      if (String(detail?.id) !== String(product.id)) return product;
+      return {
+        ...product,
+        ...(missingFactor && detail.profit_factor !== undefined ? { profit_factor: detail.profit_factor } : {}),
+        ...(confirmStock && !usesDetailInventory(detail) && detail.stock != null && Number.isFinite(Number(detail.stock)) ? { stock: detail.stock } : {}),
+      };
     } catch {
       return product;
     }
@@ -65,6 +72,8 @@ const ProductList = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [oeAvailability, setOeAvailability] = useState({ branchId: null, available: false });
+  const [factorAvailability, setFactorAvailability] = useState({ branchId: null, count: 0 });
+  const factorSummaryBranch = useRef(null);
   const requestId = useRef(0);
   const publishingInventoryChange = useRef(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -148,6 +157,7 @@ const ProductList = () => {
   };
 
   const showOeNumber = oeAvailability.branchId === activeBranch?.id && oeAvailability.available;
+  const showProfitFactor = factorAvailability.branchId === activeBranch?.id && factorAvailability.count > 100;
   const searchField = selectedSearchField === "oe_number" && !showOeNumber ? "all" : selectedSearchField;
   const searchKey = JSON.stringify([activeBranch?.id, searchTerm, searchField]);
   const currentPage = pagination.key === searchKey ? pagination.page : 1;
@@ -163,12 +173,17 @@ const ProductList = () => {
     setLoadingProducts(true);
     setError(null);
     try {
+      const rememberFactorCount = rows => {
+        factorSummaryBranch.current = activeBranch.id;
+        setFactorAvailability({ branchId: activeBranch.id, count: rows.filter(hasConfiguredProfitFactor).length });
+      };
       const term = searchTerm.trim();
       if (!term) {
         // Keep the existing branch listing without sending an empty search.
         const { data } = await axiosClient.get(`/admin/branches/${activeBranch.id}/products`);
         if (id !== requestId.current) return;
         if (!Array.isArray(data)) throw new Error("Respuesta de productos invalida");
+        rememberFactorCount(data);
         setOeAvailability({ branchId: activeBranch.id, available: data.some(product => String(product.oe_number ?? "").trim() !== "") });
         const lastPage = Math.ceil(data.length / productsPerPage);
         if (currentPage > Math.max(1, lastPage)) {
@@ -181,10 +196,15 @@ const ProductList = () => {
         setTotalPages(lastPage);
         return;
       }
-      const { data } = await axiosClient.get("/products/search", {
+      const [searchResult, summaryResult] = await Promise.allSettled([axiosClient.get("/products/search", {
         params: { q: term, field: searchField, branch_id: activeBranch.id, per_page: productsPerPage, page: currentPage },
-      });
+      }), factorSummaryBranch.current !== activeBranch.id ? axiosClient.get(`/admin/branches/${activeBranch.id}/products`) : Promise.resolve(null)]);
       if (id !== requestId.current) return;
+      if (summaryResult.status === "fulfilled" && Array.isArray(summaryResult.value?.data)) rememberFactorCount(summaryResult.value.data);
+      else if (summaryResult.status === "rejected") setFactorAvailability({ branchId: activeBranch.id, count: 0 });
+      if (searchResult.status === "rejected") throw searchResult.reason;
+      if (id !== requestId.current) return;
+      const { data } = searchResult.value;
       const collection = data?.products ?? data;
       const rows = Array.isArray(collection) ? collection : Array.isArray(collection?.data) ? collection.data : collection?.data?.data;
       if (!Array.isArray(rows)) throw new Error("Respuesta de productos invalida");
@@ -241,10 +261,14 @@ const ProductList = () => {
   }, [activeBranch?.id, fetchCategorias]);
 
   useEffect(() => subscribeInventoryChanges(() => {
-    if (!publishingInventoryChange.current) { fetchProductos(); fetchCategorias(); }
+    if (!publishingInventoryChange.current) {
+      factorSummaryBranch.current = null;
+      fetchProductos(); fetchCategorias();
+    }
   }, { refreshOnFocus: false }), [fetchProductos, fetchCategorias]);
 
   const refreshAfterImport = async () => {
+    factorSummaryBranch.current = null;
     publishingInventoryChange.current = true;
     try { notifyInventoryChanged(); } finally { publishingInventoryChange.current = false; }
     await Promise.all([fetchProductos(), fetchCategorias(), actualizarLimite()]);
@@ -278,12 +302,23 @@ const ProductList = () => {
     if (!window.confirm("¿Eliminar este producto?")) return;
     try {
       await axiosClient.delete(`/admin/products/${id}`);
+      factorSummaryBranch.current = null;
       await fetchProductos();
       await actualizarLimite();
     } catch (error) {
       console.error("Error al eliminar producto:", error);
       alert("Error al eliminar.");
     }
+  };
+
+  const handleFactorSaved = (productId, updated) => {
+    const previouslyConfigured = products.some(product => String(product.id) === String(productId) && hasConfiguredProfitFactor(product));
+    const delta = Number(hasConfiguredProfitFactor(updated)) - Number(previouslyConfigured);
+    if (delta) setFactorAvailability(previous => previous.branchId === activeBranch?.id ? { ...previous, count: previous.count + delta } : previous);
+    const priceFields = { profit_factor: updated.profit_factor, price: updated.price, base_price: updated.base_price };
+    setProducts(previous => previous.map(product => String(product.id) === String(productId) ? { ...product, ...priceFields } : product));
+    publishingInventoryChange.current = true;
+    try { notifyInventoryChanged(); } finally { publishingInventoryChange.current = false; }
   };
 
   // ✅ Guardar múltiples categorías (sync pivot)
@@ -435,6 +470,8 @@ const ProductList = () => {
           loading={loadingProducts}
           error={error}
           showOeNumber={showOeNumber}
+          showProfitFactor={showProfitFactor}
+          onProfitFactorSaved={handleFactorSaved}
           currentPage={currentPage}
           productsPerPage={productsPerPage}
           onDelete={handleDelete}

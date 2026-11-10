@@ -6,6 +6,7 @@ import ShippingSettings from "./ShippingSettings";
 import { getShippingConfig, getShippingBranches, saveShippingSettings, saveShippingResource } from "../../services/admin/shippingService";
 
 jest.mock("../../context/AdminUiContext", () => ({ useAdminUi: () => ({ selectedBranch: { id: 2, name: "Centro" } }) }));
+jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("../../context/TiendaContext", () => ({ useTienda: () => ({ tienda: { id: 16, plan_id: 4 } }) }));
 jest.mock("../../services/admin/shippingService", () => ({ getShippingConfig: jest.fn(), getShippingBranches: jest.fn(), saveShippingSettings: jest.fn(), saveShippingResource: jest.fn(), uploadShippingLogo: jest.fn() }));
 let root, host;

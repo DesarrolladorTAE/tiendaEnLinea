@@ -4,6 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import { Simulate } from "react-dom/test-utils";
 import ProductTable from "./ProductTable";
 
+jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), patch: jest.fn() } }));
+
 test("shows unassigned stock with and without warehouse quantities", () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const host = document.createElement("div");

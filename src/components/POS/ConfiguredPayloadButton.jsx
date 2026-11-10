@@ -1,5 +1,6 @@
+import { documentPhone, normalizeDocumentSetting, documentActionMeta, deliverDocumentPdf } from "../../utils/saleDocument";
 import { sendToBridge } from "./printPayloadBridge";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Button, CircularProgress } from "@mui/material";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
@@ -60,6 +61,7 @@ export default function ConfiguredPayloadButton({
   fullWidth = true,
   onSuccess,
 }) {
+  const automaticallySent = useRef(null);
   const [loadingConfig, setLoadingConfig] = useState(false);
   const [sending, setSending] = useState(false);
   const [setting, setSetting] = useState(null);
@@ -67,6 +69,8 @@ export default function ConfiguredPayloadButton({
   const isLoading = loadingConfig || sending;
 
   const meta = useMemo(() => {
+    const documentMeta = documentActionMeta(setting);
+    if (documentMeta) return documentMeta;
     if (!setting?.enabled || !setting?.app_type) {
       return {
         text: "Configurar conexión",
@@ -94,8 +98,11 @@ export default function ConfiguredPayloadButton({
       ventaId &&
       setting?.enabled &&
       setting?.auto_send_payload &&
-      !sending
+      !sending &&
+      setting?.app_type !== "whatsapp" &&
+      automaticallySent.current !== ventaId
     ) {
+      automaticallySent.current = ventaId;
       handleSend();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,7 +116,7 @@ export default function ConfiguredPayloadButton({
         `/pos/print-settings/${posLocationId}/payload-config`
       );
 
-      setSetting(data || null);
+      setSetting(normalizeDocumentSetting(data));
     } catch (error) {
       console.error("Error cargando configuración de payload:", error);
       setSetting(null);
@@ -119,7 +126,7 @@ export default function ConfiguredPayloadButton({
   };
 
   const getPrintPayload = async () => {
-    const { data } = await axiosClientPOS.get(`/sales/${ventaId}/print-payload`);
+    const { data } = await axiosClientPOS.get(`/sales/${ventaId}/documents/default/payload`);
 
     if (!data?.ok || !data?.payload) {
       throw new Error(data?.message || "No se pudo obtener el payload.");
@@ -136,11 +143,11 @@ export default function ConfiguredPayloadButton({
       throw new Error("Ingresa un número válido de 10 dígitos.");
     }
 
-    await axiosClientPOS.post(`/sales/${ventaId}/send-whatsapp`, {
-      phone,
+    await axiosClientPOS.post(`/sales/${ventaId}/documents/default/send-whatsapp`, {
+      phone: documentPhone(phone),
     });
 
-    showSuccess("Ticket enviado por WhatsApp correctamente.");
+    showSuccess("Documento enviado por WhatsApp correctamente.");
   };
 
   const handleSend = async () => {
@@ -163,6 +170,10 @@ export default function ConfiguredPayloadButton({
         return;
       }
 
+      if (["document_pdf", "document_print"].includes(setting.app_type)) {
+        await deliverDocumentPdf(axiosClientPOS, ventaId, setting.app_type === "document_print");
+        return;
+      }
       const payload = await getPrintPayload();
 
       const finalPayload = {

@@ -30,7 +30,7 @@ export default function ProductForm() {
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, dirtyFields, isSubmitting },
     watch,
     setValue,
   } = useForm({
@@ -38,6 +38,9 @@ export default function ProductForm() {
       sku: "",
       name: "",
       price: "",
+      price_mode: "manual",
+      profit_factor: "",
+      factor_preview_enabled: false,
       stock: "",
       discount: "",
       new: false,
@@ -81,6 +84,7 @@ export default function ProductForm() {
     reset,
     watch,
     setValue,
+    dirtyFields,
   });
 
   if (!ui.id && cargando)
@@ -112,6 +116,7 @@ export default function ProductForm() {
 
         <div className="accordion mt-4" id="productFormAccordion">
           <form onSubmit={handleSubmit(actions.onSubmit)}>
+            <fieldset disabled={isSubmitting} style={{ minWidth: 0 }}>
             {/* 1) Información del producto */}
             <AccordionSection title="🛒 Información del Producto" defaultOpen>
               <ProductInfoSection
@@ -194,8 +199,9 @@ export default function ProductForm() {
             </AccordionSection>
 
             <button type="submit" className="btn btn-success w-100 mt-3">
-              {ui.id ? "✏️ Actualizar Producto" : "✅ Guardar Producto"}
+              {isSubmitting ? "Guardando…" : ui.id ? "✏️ Actualizar Producto" : "✅ Guardar Producto"}
             </button>
+            </fieldset>
           </form>
         </div>
       </div>

@@ -29,6 +29,17 @@ afterEach(() => { act(() => root.unmount()); host.remove(); localStorage.clear()
 
 const line = warehouse_id => ({ product_id: 1, variant_id: 11, warehouse_id, cart_key: `1-v11-w${warehouse_id}`, quantity: 2, price: 100 });
 
+test("includes requested shipment in the sale transaction and omits it when no delivery is selected", async () => {
+  const shipment = { shipping_method_id: 3, recipient_name: "Ana", recipient_phone: "7221234567", destination_address: "Calle 10", notification_consent: false };
+  await act(async () => latest.setCart([line(2)]));
+  await act(async () => latest.handleCheckout({ items: latest.cart, shipment }));
+  expect(client.post.mock.calls.find(([url]) => url === "/v2/sales")[1].shipment).toEqual(shipment);
+  client.post.mockClear();
+  await act(async () => latest.setCart([line(2)]));
+  await act(async () => latest.handleCheckout({ items: latest.cart }));
+  expect(client.post.mock.calls.find(([url]) => url === "/v2/sales")[1]).not.toHaveProperty("shipment");
+});
+
 test("sells detail inventory with zero parent stock through V2 and preserves both warehouse lines", async () => {
   await act(async () => latest.setCart([line(2), line(3)]));
   let sale;

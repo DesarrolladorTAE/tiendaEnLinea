@@ -1,3 +1,4 @@
+import { documentPhone, normalizeDocumentSetting, documentActionMeta, deliverDocumentPdf } from "../../utils/saleDocument";
 import React, { useEffect, useMemo, useState } from "react";
 import { Button, Alert, Chip, CircularProgress, Stack } from "@mui/material";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
@@ -60,7 +61,7 @@ export default function CreditTicketModal({
   onSendWhatsapp,
   sending = false,
 }) {
-  const pdfUrl = sale?.id ? `/v2/sales/${sale.id}/ticket.pdf` : "";
+  const pdfUrl = sale?.id ? `/sales/${sale.id}/documents/default/pdf` : "";
   const posLocationId = sale?.pos_location_id || sale?.posLocation?.id || null;
 
   const resolvedPhone = useMemo(() => {
@@ -91,7 +92,7 @@ export default function CreditTicketModal({
           `/pos/print-settings/${posLocationId}/payload-config`,
         );
 
-        setPrintSetting(data || null);
+        setPrintSetting(normalizeDocumentSetting(data));
       } catch (e) {
         console.error(e);
         setPrintSetting(null);
@@ -104,6 +105,8 @@ export default function CreditTicketModal({
   }, [open, sale?.id, posLocationId]);
 
   const meta = useMemo(() => {
+    const documentMeta = documentActionMeta(printSetting);
+    if (documentMeta) return documentMeta;
     if (!printSetting?.enabled || !printSetting?.app_type) {
       return {
         label: "Configurar conexión",
@@ -149,15 +152,15 @@ export default function CreditTicketModal({
       setSendingWhatsappLocal(true);
 
       const { data } = await axiosClient.post(
-        `/sales/${sale.id}/send-whatsapp`,
+        `/sales/${sale.id}/documents/default/send-whatsapp`,
         {
-          phone: cleanPhone,
+          phone: documentPhone(cleanPhone),
           es_cliente,
         },
       );
 
       showSuccess(
-        data?.message || "Ticket enviado correctamente por WhatsApp.",
+        data?.message || "Documento enviado correctamente por WhatsApp.",
       );
     } catch (e) {
       console.error(e);
@@ -173,7 +176,7 @@ export default function CreditTicketModal({
   };
 
   const getPrintPayload = async () => {
-    const { data } = await axiosClient.get(`/sales/${sale.id}/print-payload`);
+    const { data } = await axiosClient.get(`/sales/${sale.id}/documents/default/payload`);
 
     if (!data?.ok || !data?.payload) {
       throw new Error(
@@ -253,6 +256,14 @@ export default function CreditTicketModal({
     try {
       setSendingPayload(true);
 
+      if (["document_pdf", "document_print"].includes(printSetting.app_type)) {
+        await deliverDocumentPdf(axiosClient, sale.id, printSetting.app_type === "document_print");
+        return;
+      }
+      if (printSetting.app_type === "whatsapp") {
+        await handleSendWhatsapp();
+        return;
+      }
       const appType = printSetting.app_type;
       const payload = await getPrintPayload();
 
@@ -353,7 +364,7 @@ export default function CreditTicketModal({
       setDownloadingTicket(true);
 
       const response = await axiosClient.get(
-        `/v2/sales/${sale.id}/ticket.pdf`,
+        `/sales/${sale.id}/documents/default/pdf`,
         {
           responseType: "blob",
         },
@@ -381,7 +392,7 @@ export default function CreditTicketModal({
         URL.revokeObjectURL(objectUrl);
       }, 1000);
 
-      showSuccess("Ticket descargado correctamente.");
+      showSuccess("Documento descargado correctamente.");
     } catch (error) {
       console.error("Error descargando ticket:", error);
 
@@ -471,7 +482,7 @@ export default function CreditTicketModal({
           borderRadius: 3,
         }}
       >
-        {downloadingTicket ? "Descargando..." : "Descargar ticket"}
+        {downloadingTicket ? "Descargando..." : "Descargar documento"}
       </Button>
     </Stack>
   );
@@ -480,7 +491,7 @@ export default function CreditTicketModal({
     <CreditPdfViewerModal
       open={open}
       onClose={onClose}
-      title={`Ticket de venta #${sale?.id || ""}`}
+      title={`Documento de venta #${sale?.id || ""}`}
       pdfUrl={pdfUrl}
       phone={resolvedPhone}
       setPhone={setPhone}

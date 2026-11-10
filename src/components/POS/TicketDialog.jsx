@@ -1,3 +1,4 @@
+import { normalizeDocumentSetting, documentActionMeta, deliverDocumentPdf } from "../../utils/saleDocument";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Alert,
@@ -91,6 +92,8 @@ export default function TicketDialog({
   const isValidPhone = /^\d{10}$/.test(phone);
 
   const meta = useMemo(() => {
+    const documentMeta = documentActionMeta(printSetting);
+    if (documentMeta) return documentMeta;
     if (!printSetting?.enabled || !printSetting?.app_type) {
       return {
         label: "Configurar conexión",
@@ -144,7 +147,7 @@ export default function TicketDialog({
       handleConfiguredPayload();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, sale?.id, printSetting?.enabled, printSetting?.app_type]);
+  }, [open, sale?.id, printSetting?.enabled, printSetting?.app_type, printSetting?.auto_send_payload]);
 
   const handleClose = () => {
     setPhone("");
@@ -166,7 +169,7 @@ export default function TicketDialog({
         `/pos/print-settings/${posLocationId}/payload-config`,
       );
 
-      setPrintSetting(data || null);
+      setPrintSetting(normalizeDocumentSetting(data));
     } catch (error) {
       console.error("Error cargando configuración de payload:", error);
       setPrintSetting(null);
@@ -190,7 +193,7 @@ export default function TicketDialog({
 
     try {
       await onSend?.(digitsOnly(phone));
-      showSuccess("📨 Ticket enviado por WhatsApp");
+      showSuccess("📨 Documento enviado por WhatsApp");
       setPhone("");
     } catch (err) {
       console.error(err);
@@ -202,7 +205,7 @@ export default function TicketDialog({
 
   const getPrintPayload = async () => {
     const { data } = await axiosClientPOS.get(
-      `/sales/${sale.id}/print-payload`,
+      `/sales/${sale.id}/documents/default/payload`,
     );
 
     if (!data?.ok || !data?.payload) {
@@ -294,6 +297,14 @@ export default function TicketDialog({
     setSendingPayload(true);
 
     try {
+      if (["document_pdf", "document_print"].includes(printSetting.app_type)) {
+        await deliverDocumentPdf(axiosClientPOS, sale.id, printSetting.app_type === "document_print");
+        return;
+      }
+      if (printSetting.app_type === "whatsapp") {
+        await handleSend();
+        return;
+      }
       const appType = printSetting.app_type;
       const payload = await getPrintPayload();
 
@@ -411,13 +422,13 @@ export default function TicketDialog({
     },
   };
 
-  const ticketPreview = isDesktop ? (
+  const ticketPreview = (
     <Box
       sx={{
         width: "100%",
         flex: "1 1 auto",
-        minHeight: 0,
-        height: "100%",
+        minHeight: 320,
+        height: isDesktop ? "100%" : 360,
         borderRadius: 2.5,
         overflow: "hidden",
         border: "1px solid",
@@ -448,7 +459,7 @@ export default function TicketDialog({
           src={ticketUrl}
           width="100%"
           height="100%"
-          title="Ticket preview"
+          title="Vista previa del documento"
           style={{
             border: "none",
             display: "block",
@@ -457,7 +468,7 @@ export default function TicketDialog({
         />
       )}
     </Box>
-  ) : null;
+  );
 
   const content = (
     <Box
@@ -477,11 +488,14 @@ export default function TicketDialog({
           display: "grid",
           gridTemplateRows: isDesktop ? "minmax(360px, 1fr) auto" : "auto",
           gap: { xs: 0.75, sm: 1.5 },
-          overflow: "hidden",
+          overflow: isDesktop ? "hidden" : "auto",
         }}
       >
-        {isDesktop && ticketPreview}
+        {ticketPreview}
 
+        {sale?.whatsapp?.attempted && <Alert severity={sale.whatsapp.sent ? "success" : "warning"}>
+          {sale.whatsapp.sent ? "Documento enviado automáticamente por WhatsApp." : "La venta se guardó, pero el envío automático por WhatsApp no se completó. Puedes reintentarlo con el botón WhatsApp."}
+        </Alert>}
         <TextField
           label="Número WhatsApp"
           fullWidth
@@ -585,6 +599,7 @@ export default function TicketDialog({
             {loadingSend ? "..." : "WhatsApp"}
           </Button>
 
+          <Button onClick={() => deliverDocumentPdf(axiosClientPOS, sale.id).catch(error => showError(error.message))} disabled={!sale?.id || isBusy} variant="outlined" fullWidth>Descargar documento</Button>
           <Button
             onClick={handleClose}
             disabled={isBusy}
@@ -648,7 +663,7 @@ export default function TicketDialog({
                 fontSize: "1.1rem",
               }}
             >
-              Ticket #{sale?.id || ""}
+              Documento #{sale?.id || ""}
             </Typography>
 
             <IconButton onClick={handleClose}>
@@ -702,7 +717,7 @@ export default function TicketDialog({
             fontSize: { xs: "0.98rem", sm: "1.08rem" },
           }}
         >
-          Ticket #{sale?.id || ""}
+          Documento #{sale?.id || ""}
         </Typography>
 
         <IconButton onClick={handleClose} size="small">

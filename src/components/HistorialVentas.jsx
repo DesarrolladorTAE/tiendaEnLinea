@@ -210,6 +210,7 @@ export default function HistorialPOSPage({ cambiarVista }) {
         </Stack>
       </Paper>
 
+
       <HistorialPOSFilters
         modoConsulta={modoConsulta}
         setModoConsulta={setModoConsulta}

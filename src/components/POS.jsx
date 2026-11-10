@@ -1,3 +1,4 @@
+import { documentPhone } from "../utils/saleDocument";
 // src/components/POS.jsx
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import axiosClient from "../config/axiosClientPOS";
@@ -130,7 +131,7 @@ export default function POS({ posName, cambiarVista }) {
         });
 
         const resp = await axiosClient.get(
-          `/v2/sales/${ticketData.id}/ticket.pdf`,
+          `/sales/${ticketData.id}/documents/default/pdf`,
           { responseType: "arraybuffer" },
         );
 
@@ -236,15 +237,7 @@ export default function POS({ posName, cambiarVista }) {
   };
 
   const handleSendTicket = async (phone) => {
-    try {
-      await axiosClient.post(`/sales/${ticketData.id}/send-whatsapp`, {
-        phone,
-      });
-      showSuccess("✅ Ticket enviado por WhatsApp");
-    } catch (e) {
-      console.error("Error enviando WhatsApp:", e);
-      showError("❌ No se pudo enviar el ticket por WhatsApp.");
-    }
+    await axiosClient.post(`/sales/${ticketData.id}/documents/default/send-whatsapp`, { phone: documentPhone(phone) });
   };
 
   const handleCloseTicket = () => {

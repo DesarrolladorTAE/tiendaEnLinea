@@ -211,10 +211,12 @@ function BranchDocumentDesigner({ branch, onSuccess, onClose }) {
               {file && <Typography variant="caption" sx={{ display: "block", mt: 1 }}>{file.name} · pendiente de guardar</Typography>}
               {removeLogo && <Alert severity="info" sx={{ mt: 1 }}>Al guardar se quitará el logo de esta combinación, incluido el heredado. Los otros documentos conservarán el suyo.</Alert>}
               {errors.logo && <Alert severity="error" sx={{ mt: 1 }}>{errors.logo}</Alert>}
-              {thermal && <>
-                <Divider sx={{ my: 3 }} /><Typography component="h2" variant="h6" fontWeight={800} mb={2}>QR y ajustes de impresión</Typography>
+              <Divider sx={{ my: 3 }} /><Typography component="h2" variant="h6" fontWeight={800} mb={2}>Códigos QR</Typography>
                 <Box sx={grid}>{toggle("qr_factura", "QR de autofacturación", !allowed || gateLoading)}{toggle("qr_sitio", "QR de la tienda")}</Box>
                 {!allowed && <Typography variant="caption" color="text.secondary">El QR de autofacturación requiere el plan y complemento Taeconta.</Typography>}
+                {!thermal && <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>El QR de tienda enlaza a esta sucursal. El QR de factura aparece cuando la venta cumple las condiciones de autofacturación.</Typography>}
+              {thermal && <>
+                <Typography component="h2" variant="h6" fontWeight={800} sx={{ mt: 3 }}>Ajustes de impresión</Typography>
                 <Box sx={{ ...grid, mt: 2 }}>{field("qr_factura_size", "Tamaño QR de factura", { type: "number", inputProps: { min: 1, max: 16 } })}{field("qr_sitio_size", "Tamaño QR de tienda", { type: "number", inputProps: { min: 1, max: 16 } })}{field("logo_max_width", "Ancho máximo del logo", { type: "number", inputProps: { min: 64, max: 1024 } })}
                   {selection.channel === "payload" && <>{field("chars_per_line", "Caracteres por línea", { type: "number", inputProps: { min: 16, max: 64 } })}{field("printer_ip", "IP de impresora (opcional)")}{field("printer_port", "Puerto (opcional)", { type: "number", inputProps: { min: 1, max: 65535 } })}</>}
                 </Box>
@@ -229,7 +231,7 @@ function BranchDocumentDesigner({ branch, onSuccess, onClose }) {
           </>}
         </Paper>
         <Paper elevation={0} sx={{ ...panel, position: { lg: "sticky" }, top: { lg: 20 } }}>
-          {!waiting && !loadError && <DocumentDraftPreview type={selection.type} channel={selection.channel} config={form} logo={logo} />}
+          {!waiting && !loadError && <DocumentDraftPreview type={selection.type} channel={selection.channel} config={form} logo={logo} branch={branch} />}
           {selection.channel === "pdf" && <>
           <Divider sx={{ my: 2.5 }} />
           <Typography component="h2" variant="subtitle1" fontWeight={800}>Revisar con una venta</Typography>

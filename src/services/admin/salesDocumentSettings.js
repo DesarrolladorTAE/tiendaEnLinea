@@ -9,8 +9,8 @@ export const DOCUMENT_CHANNELS = [
   { value: "pdf", label: "PDF y WhatsApp" },
   { value: "payload", label: "Impresión" },
 ];
-const common = ["direccion", "mensaje_1", "mensaje_2", "mostrar_iva", "show_logo", "paper_size"];
-const thermal = ["qr_factura", "qr_sitio", "qr_factura_size", "qr_sitio_size", "logo_max_width"];
+const common = ["direccion", "mensaje_1", "mensaje_2", "mostrar_iva", "show_logo", "paper_size", "qr_factura", "qr_sitio"];
+const thermal = ["qr_factura_size", "qr_sitio_size", "logo_max_width"];
 const connection = ["chars_per_line", "printer_ip", "printer_port"];
 const letter = ["title", "show_customer", "show_sku", "show_oe", "accent_color"];
 const booleans = new Set(["mostrar_iva", "show_logo", "qr_factura", "qr_sitio", "show_customer", "show_sku", "show_oe"]);
@@ -19,8 +19,9 @@ export const enabled = value => value === true || value === 1 || value === "1" |
 export const fieldsFor = (type, channel) => [...common, ...(type === "ticket" ? [...thermal, ...(channel === "payload" ? connection : [])] : letter)];
 export const defaultConfig = type => ({
   direccion: "", mensaje_1: "", mensaje_2: "", mostrar_iva: true, show_logo: true,
+  qr_factura: false, qr_sitio: false,
   paper_size: type === "ticket" ? "80" : "letter",
-  ...(type === "ticket" ? { qr_factura: false, qr_sitio: false, qr_factura_size: 7, qr_sitio_size: 7, logo_max_width: 384, chars_per_line: 48, printer_ip: "", printer_port: "" }
+  ...(type === "ticket" ? { qr_factura_size: 7, qr_sitio_size: 7, logo_max_width: 384, chars_per_line: 48, printer_ip: "", printer_port: "" }
     : { title: type === "nota_venta" ? "NOTA DE VENTA" : "COMPROBANTE", show_customer: true, show_sku: true, show_oe: true, accent_color: "#333333" }),
 });
 
