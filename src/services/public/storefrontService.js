@@ -24,3 +24,6 @@ export const getPublicStorefront = (branchSlug, config = {}) =>
 
 export const getPublicStoreProducts = (storeSlug) =>
   axios.get(`${API_BASE}/tienda/${encodeURIComponent(storeSlug)}/products`);
+
+export const getPublicVehicleResource = (branchSlug, resource, config = {}) =>
+  axios.get(`${API_BASE}/public/storefront/${encodeURIComponent(branchSlug)}/${resource}`, config);

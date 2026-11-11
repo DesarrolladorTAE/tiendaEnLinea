@@ -17,7 +17,7 @@ let root, host, latest;
 const draft = { name: "Producto", sku: "SKU", stock: 7, price: 100, iva: "0.16", variants: [], use_warehouse_inventory: false, warehouse_inventories: [] };
 function Harness() {
   const form = useForm({ defaultValues: draft });
-  const logic = useProductFormLogic(form);
+  const logic = useProductFormLogic({ ...form, dirtyFields: form.formState.dirtyFields });
   latest = { ...logic, form };
   return <InventoryDiscountSection {...form} hasVariants={logic.ui.hasVariants} errors={form.formState.errors} isEdit />;
 }
@@ -71,4 +71,24 @@ test("switching to warehouse inventory removes the hidden global-stock validatio
   await act(async () => latest.form.handleSubmit(valid, invalid)());
   expect(invalid).not.toHaveBeenCalled();
   expect(valid).toHaveBeenCalled();
+});
+
+
+test("omits untouched compatibilities from a normal save", async () => {
+  await act(async () => latest.actions.onSubmit({ ...draft, vehicle_compatibilities: [{ vehicle_brand: "Nissan", vehicle_model: "Versa" }] }));
+  expect(client.post.mock.calls[0][1].has("vehicle_compatibilities")).toBe(false);
+});
+test("sends changed compatibilities as JSON with open years and no foreign IDs", async () => {
+  const rows = [{ id: 10, vehicle_brand: "Nissan", vehicle_model: "Versa", year_from: "2020", year_to: "" }];
+  act(() => latest.form.register("vehicle_compatibilities"));
+  await act(async () => latest.form.setValue("vehicle_compatibilities", rows, { shouldDirty: true }));
+  await act(async () => latest.actions.onSubmit({ ...draft, vehicle_compatibilities: rows }));
+  expect(JSON.parse(client.post.mock.calls[0][1].get("vehicle_compatibilities"))).toEqual([{ vehicle_brand: "Nissan", vehicle_model: "Versa", year_from: 2020, year_to: null }]);
+});
+test("sends explicit [] when removing loaded compatibilities", async () => {
+  await act(async () => latest.form.reset({ ...draft, vehicle_compatibilities: [{ vehicle_brand: "Nissan", vehicle_model: "Versa" }] }));
+  act(() => latest.form.register("vehicle_compatibilities"));
+  await act(async () => latest.form.setValue("vehicle_compatibilities", [], { shouldDirty: true }));
+  await act(async () => latest.actions.onSubmit({ ...draft, vehicle_compatibilities: [] }));
+  expect(client.post.mock.calls[0][1].get("vehicle_compatibilities")).toBe("[]");
 });

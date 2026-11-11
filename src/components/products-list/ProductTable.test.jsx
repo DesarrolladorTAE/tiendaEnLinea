@@ -49,3 +49,18 @@ test("replaces row numbers with SKU and OE, displays scoped warehouse quantities
     expect(host.querySelector(".product-oe")).toBeNull();
   } finally { act(() => root.unmount()); host.remove(); }
 });
+
+test("vehicle icon uses list counts and opens details only on click", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const host = document.createElement("div"), root = createRoot(host), onOpenVehicles = jest.fn();
+  const product = { id: 42, name: "Faro", has_vehicle_compatibilities: true, vehicle_compatibilities_count: 2 };
+  try {
+    act(() => root.render(<MemoryRouter><ProductTable products={[product, { id: 43, name: "Sin relaciones" }]} showVehicleCompatibilities onOpenVehicles={onOpenVehicles} /></MemoryRouter>));
+    expect(onOpenVehicles).not.toHaveBeenCalled();
+    const icons = host.querySelectorAll('[title="Ver compatibilidades vehiculares"]');
+    expect(icons).toHaveLength(1); expect(icons[0].textContent).toBe("2");
+    act(() => Simulate.click(icons[0])); expect(onOpenVehicles).toHaveBeenCalledWith(product);
+    act(() => root.render(<MemoryRouter><ProductTable products={[product]} /></MemoryRouter>));
+    expect(host.querySelector('[title="Ver compatibilidades vehiculares"]')).toBeNull();
+  } finally { act(() => root.unmount()); }
+});

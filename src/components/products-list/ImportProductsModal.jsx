@@ -10,9 +10,11 @@ import { summarizeProductCsv } from "./importPreview.mjs";
 import { normalizeImportResult } from "./importResult.mjs";
 import ImportResultSummary from "./ImportResultSummary";
 import AdvancedProductsModal from "./AdvancedProductsModal";
+import VehicleImportPanel from "./VehicleImportPanel";
 import { useTienda } from "../../context/TiendaContext";
 
 const OPTIONS = [
+  { id: "autoparts", title: "Productos y vehículos", description: "Carga productos, precios y vehículos juntos en un solo archivo Excel o CSV.", color: "#6d28d9", background: "#f5f3ff", icon: FiFileText },
   { id: "normal", title: "Importación normal", description: "Carga tus productos con nuestra plantilla CSV.", color: "#6d28d9", background: "#f5f3ff", icon: FiFileText },
   { id: "sicar", title: "Desde SICAR", description: "Sube el archivo de productos que exportaste de SICAR.", color: "#0f766e", background: "#f0fdfa", icon: FiDatabase },
   { id: "excel", title: "Importar Excel", description: "Opción avanzada: importa archivos .xlsx o .xls con las columnas de la guía.", color: "#6d28d9", background: "#f5f3ff", icon: FiFileText },
@@ -21,7 +23,8 @@ const OPTIONS = [
 export default function ImportProductsModal({ open, onClose, branch, onImported }) {
   const { tienda } = useTienda();
   const canImportExcel = Number(tienda?.id) === 329;
-  const options = OPTIONS.filter(option => option.id !== "excel" || canImportExcel);
+  const canImportVehicles = Number(tienda?.id) === 566;
+  const options = OPTIONS.filter(option => (option.id !== "excel" || canImportExcel) && (option.id !== "autoparts" || canImportVehicles));
   const [mode, setMode] = useState("normal");
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -36,7 +39,8 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
 
   useEffect(() => {
     if (!canImportExcel && mode === "excel") setMode("normal");
-  }, [canImportExcel, mode]);
+    if (!canImportVehicles && (mode === "autoparts")) setMode("normal");
+  }, [canImportExcel, canImportVehicles, mode]);
 
   const clearFile = () => {
     setFile(null);
@@ -135,6 +139,7 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
         </Stack>
       </DialogTitle>
       <DialogContent sx={{ p: 3 }}>
+        {canImportVehicles && (mode === "autoparts") ? <VehicleImportPanel key={`${tienda.id}-${branch?.id}-${mode}`} mode={mode} branch={branch} onImported={onImported} onBusy={setBusy} /> : <>
         {busy ? (
           <Box sx={{ py: 3, textAlign: "center" }} aria-busy="true">
             <Typography sx={{ fontSize: 22, fontWeight: 800 }}>
@@ -207,14 +212,16 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
         {notice && <Alert severity={notice.severity} sx={{ mt: 2 }}>{notice.message}</Alert>}
         </>
         )}
+        </>}
+        {canImportVehicles && (mode === "autoparts") && !busy && <Button onClick={() => selectMode("normal")} sx={{ mt: 2, textTransform: "none" }}>Volver a opciones de importación</Button>}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
         <Button onClick={onClose} disabled={busy} sx={{ color: "#526077", textTransform: "none" }}>Cerrar</Button>
-        <Button variant="contained" onClick={importProducts} disabled={!file || busy || !branch?.id}
+        {!(mode === "autoparts") && <Button variant="contained" onClick={importProducts} disabled={!file || busy || !branch?.id}
           startIcon={busy ? <CircularProgress size={18} color="inherit" /> : <FiUploadCloud />}
           sx={{ bgcolor: selected.color, "&:hover": { bgcolor: selected.color }, borderRadius: 2, textTransform: "none", px: 3 }}>
           {busy ? "Importando..." : mode === "sicar" ? "Importar desde SICAR" : "Importar productos"}
-        </Button>
+        </Button>}
       </DialogActions>
     </Dialog>
   );

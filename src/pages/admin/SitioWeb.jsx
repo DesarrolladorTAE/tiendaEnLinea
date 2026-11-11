@@ -184,6 +184,7 @@ export default function SitioWeb({ onSelect }) {
       </Container>
 
       <SiteEditorModal
+        branchId={branchId}
         open={editorOpen}
         onClose={() => !saving && setEditorOpen(false)}
         onSubmit={save}

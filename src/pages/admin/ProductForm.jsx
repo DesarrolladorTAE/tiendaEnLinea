@@ -3,6 +3,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+import VehicleCompatibilitySection from "../../components/vehicles/VehicleCompatibilitySection";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
 import useProductFormLogic from "../../hooks/useProductFormLogic";
 
@@ -67,6 +68,7 @@ export default function ProductForm() {
 
       // Variantes libres
       variants: [],
+      vehicle_compatibilities: [],
 
       // ✅ Multi-almacén (WAREHOUSES)
       use_warehouse_inventory: false,
@@ -165,6 +167,8 @@ export default function ProductForm() {
                 warehouses={ui.warehouses} // ✅ ahora warehouses
               />
             </AccordionSection>
+
+            <VehicleCompatibilitySection branchId={ui.branchId} watch={watch} setValue={setValue} isEdit={!!ui.id} />
 
             {/* 5) Sitio web */}
             <AccordionSection title="🌐 Sitio Web">

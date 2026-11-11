@@ -1,3 +1,4 @@
+import BranchVehicleSettings from "../../../components/vehicles/BranchVehicleSettings";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Avatar, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
@@ -120,7 +121,7 @@ function PlanConfigRow({ locked, unlockPlan, children }) {
   return <Box sx={{ position: "relative", opacity: locked ? .62 : 1, "& > :first-of-type": { pointerEvents: locked ? "none" : "auto" } }}>{children}{locked && <Chip icon={<LockRoundedIcon />} label={`Se desbloquea en ${unlockPlan}`} size="small" sx={{ position: "absolute", right: 12, top: 12, zIndex: 2, bgcolor: "#fff7ed", color: "#9a3412", fontWeight: 800 }} />}</Box>;
 }
 
-export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues = {}, capabilities = {}, planName = "", template = "negocio", sampleName = "Mi tienda", saving = false, customerSalesAvailable = false, customerSalesExpiresAt = "" }) {
+export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues = {}, capabilities = {}, planName = "", template = "negocio", sampleName = "Mi tienda", saving = false, customerSalesAvailable = false, customerSalesExpiresAt = "", branchId = null }) {
   const supportsNativeSections = Boolean(capabilities.custom_sections);
   capabilities = { ...capabilities, custom_sections: true };
   const theme = useTheme();
@@ -415,6 +416,7 @@ export default function SiteEditorModal({ open, onClose, onSubmit, defaultValues
               <FormControlLabel control={<Switch checked={(parseJson(form.settings || "", {}) || {}).only_available_variants !== false} onChange={(e) => updateSetting("only_available_variants", e.target.checked)} />} label="Mostrar solamente variantes con existencia" />
               <FormControlLabel control={<Switch checked={(parseJson(form.settings || "", {}) || {}).group_variants !== false} onChange={(e) => updateSetting("group_variants", e.target.checked)} />} label="Agrupar variantes dentro del producto" />
             </Stack></Box>
+            <BranchVehicleSettings key={branchId} branchId={branchId} />
             <Box sx={{ p: 2, borderRadius: 3, bgcolor: "white", border: "1px solid", borderColor: "divider" }}><Typography fontWeight={850}>Elementos del catálogo</Typography><Stack sx={{ mt: 1 }}>{[["show_search","Mostrar buscador",true],["show_categories","Mostrar categorías",true],["show_whatsapp","Mostrar botón de WhatsApp",true]].map(([key,label,fallback]) => <FormControlLabel key={key} control={<Switch checked={asBoolean((parseJson(form.settings || "", {}) || {})[key], fallback)} onChange={(e) => updateSetting(key, e.target.checked)} />} label={label} />)}<PlanConfigRow locked={planLevel < 4} unlockPlan="Avanzado"><Box><FormControlLabel control={<Switch checked={asBoolean((parseJson(form.settings || "", {}) || {}).show_sort_selector)} onChange={(e) => updateSetting("show_sort_selector", e.target.checked)} />} label="Mostrar selector de ordenamiento en la tienda" /></Box></PlanConfigRow></Stack></Box>
           </Stack>}
         </DialogContent>

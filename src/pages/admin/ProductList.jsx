@@ -17,6 +17,7 @@ import axiosClient from "../../config/axiosClient";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
 import useProductSearchPreference from "../../hooks/useProductSearchPreference";
 import ProductSearchBar from "../../components/products-list/ProductSearchBar";
+import VehicleDetailsDialog from "../../components/vehicles/VehicleDetailsDialog";
 import ProductTable from "../../components/products-list/ProductTable";
 import ProductPagination from "../../components/products-list/ProductPagination";
 import useComplementosActivos from "../../hooks/useComplementosActivos";
@@ -76,6 +77,7 @@ const ProductList = () => {
   const factorSummaryBranch = useRef(null);
   const requestId = useRef(0);
   const publishingInventoryChange = useRef(false);
+  const [vehicleProduct, setVehicleProduct] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [pagination, setPagination] = useState({ key: "", page: 1 });
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -426,6 +428,7 @@ const ProductList = () => {
           </Box>
         </div>
 
+        {vehicleProduct && Number(tienda?.id) === 566 && <VehicleDetailsDialog key={`${activeBranch?.id}-${vehicleProduct.id}`} product={vehicleProduct} branchId={activeBranch?.id} onClose={() => setVehicleProduct(null)} />}
         <ProductSearchBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -466,6 +469,8 @@ const ProductList = () => {
         {error && <p role="alert" className="text-danger text-center">{error} <button className="btn btn-sm btn-outline-warning" onClick={fetchProductos}>Reintentar</button></p>}
 
         <ProductTable
+          showVehicleCompatibilities={Number(tienda?.id) === 566}
+          onOpenVehicles={setVehicleProduct}
           products={products}
           loading={loadingProducts}
           error={error}

@@ -1,4 +1,5 @@
 // src/hooks/useProductFormLogic.js
+import { vehicleRowsForPayload } from "../utils/vehicleCompatibility";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../config/axiosClient";
@@ -431,6 +432,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       base_price: basePriceFromApi,
 
       variants: loadedVariants,
+      vehicle_compatibilities: Array.isArray(product.vehicle_compatibilities) ? product.vehicle_compatibilities : undefined,
 
       use_warehouse_inventory: inventoryFlag(product.use_warehouse_inventory),
       // OJO: si el backend manda qty/price/purchase_cost en warehouse_inventories,
@@ -616,6 +618,9 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       // FormData
       // ================================
       const formData = new FormData();
+      if (dirtyFields.vehicle_compatibilities) {
+        formData.append("vehicle_compatibilities", JSON.stringify(vehicleRowsForPayload(data.vehicle_compatibilities)));
+      }
 
       if (branchId) formData.append("branch_id", String(branchId));
 

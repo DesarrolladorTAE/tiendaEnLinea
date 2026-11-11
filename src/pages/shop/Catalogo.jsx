@@ -4,6 +4,8 @@ import Paginator from "react-hooks-paginator";
 import { useLocation, useParams } from "react-router-dom";
 import axios from "axios";
 
+import VehicleCatalogSearch from "../../components/vehicles/VehicleCatalogSearch";
+import { getPublicStorefront } from "../../services/public/storefrontService";
 import SEO from "../../components/seo";
 import StorefrontLoading from "../../components/storefront/StorefrontLoading";
 import { rememberStorefrontBrand } from "../../utils/storefrontBranding";
@@ -214,11 +216,25 @@ function getVariantStock(variant, useWarehouseInventory) {
  * Componente
  * ======================================================= */
 
-const Catalogo = ({ branchId = null, storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSettings = null, storefrontTemplate = "negocio", storefrontTheme = {}, storefrontColors = {}, storefrontBrand = null }) => {
+const Catalogo = ({ catalogBranch = null, branchId = null, storeId: storeIdProp, storeSlug: storeSlugProp, storefrontSettings = null, storefrontTemplate = "negocio", storefrontTheme = {}, storefrontColors = {}, storefrontBrand = null }) => {
   const params = useParams();
   const { pathname } = useLocation();
 
   const storeSlug = storeSlugProp ?? params.storeSlug;
+  const [resolvedBranch, setResolvedBranch] = useState(null);
+  const [searchPresentation, setSearchPresentation] = useState({ scope: null, value: "normal" });
+  useEffect(() => {
+    if (catalogBranch || !storeSlug) return;
+    const controller = new AbortController();
+    getPublicStorefront(storeSlug, { signal: controller.signal }).then(({ data }) => {
+      if (!controller.signal.aborted) setResolvedBranch({ scope: storeSlug, branch: (data?.data || data)?.branch });
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [catalogBranch, storeSlug]);
+  const effectiveBranch = catalogBranch || (resolvedBranch?.scope === storeSlug ? resolvedBranch.branch : null);
+  const vehicleMode = settingEnabled(effectiveBranch?.vehicle_feature_available) ? effectiveBranch?.catalog_search_mode : "normal";
+  const vehicleScope = effectiveBranch?.slug || "";
+  const showVehicleSearch = Boolean(vehicleScope && (vehicleMode === "vehicle" || (vehicleMode === "both" && searchPresentation.scope === vehicleScope && searchPresentation.value === "vehicle")));
 
   const { isStoreValid, products, storePhone, storeName, loadingProducts, productsError } =
     useStoreData(storeSlug);
@@ -544,11 +560,11 @@ const Catalogo = ({ branchId = null, storeId: storeIdProp, storeSlug: storeSlugP
   /*
    * Todos los hooks deben estar antes de este retorno.
    */
-  if (isStoreValid === null || loadingProducts) {
+  if (!showVehicleSearch && (isStoreValid === null || loadingProducts)) {
     return <StorefrontLoading storeSlug={storeSlug} brand={storefrontBrand || (catalogBrand?.slug === storeSlug ? catalogBrand.brand : null)} label="Cargando productos…" compact />;
   }
 
-  if (productsError) return <div role="alert" className="alert alert-warning my-4">{productsError}</div>;
+  if (!showVehicleSearch && productsError) return <div role="alert" className="alert alert-warning my-4">{productsError}</div>;
 
   return (
     <Fragment>
@@ -577,6 +593,8 @@ const Catalogo = ({ branchId = null, storeId: storeIdProp, storeSlug: storeSlugP
         <div className={embeddedStorefront ? "sf-catalog-container" : "container"} style={embeddedStorefront ? { maxWidth: storefrontTheme.widthValue || "1280px", margin: "0 auto", padding: "0 clamp(16px, 3vw, 36px)" } : undefined}>
           <div className="row">
             <div className="col-lg-12">
+              {vehicleMode === "both" && vehicleScope && <div className="d-flex gap-2 mb-3" role="group" aria-label="Modo de búsqueda del catálogo"><button type="button" className={showVehicleSearch ? "btn btn-outline-primary" : "btn btn-primary"} aria-pressed={!showVehicleSearch} onClick={() => setSearchPresentation({ scope: vehicleScope, value: "normal" })}>Búsqueda normal</button><button type="button" className={showVehicleSearch ? "btn btn-primary" : "btn btn-outline-primary"} aria-pressed={showVehicleSearch} onClick={() => setSearchPresentation({ scope: vehicleScope, value: "vehicle" })}>Por vehículo</button></div>}
+              {showVehicleSearch ? <VehicleCatalogSearch key={vehicleScope} branchSlug={vehicleScope} shopProps={{ layout, storeId, columns: Number(siteSettings.catalog_columns) || 3, template: storefrontTemplate, groupVariants: settingEnabled(siteSettings.group_variants, true), storefrontSettings: siteSettings, storefrontTheme, storefrontColors, storeSlug }} /> : <>
               <ShopTopbar
                 getLayout={getLayout}
                 getFilterSortParams={getFilterSortParams}
@@ -622,6 +640,7 @@ const Catalogo = ({ branchId = null, storeId: storeIdProp, storeSlug: storeSlugP
                   />
                 </div>
               )}
+              </>}
             </div>
           </div>
         </div>
@@ -641,6 +660,7 @@ const Catalogo = ({ branchId = null, storeId: storeIdProp, storeSlug: storeSlugP
 };
 
 Catalogo.propTypes = {
+  catalogBranch: PropTypes.object,
   branchId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   storeId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   storeSlug: PropTypes.string,

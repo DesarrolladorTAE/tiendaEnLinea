@@ -6,6 +6,7 @@ import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
 import CategoryIcon from "@mui/icons-material/Category";
 import { productStock } from "../../utils/productInventory";
+import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import ProductProfitFactorCell from "./ProductProfitFactorCell";
 import "./ProductTable.css";
 
@@ -17,6 +18,8 @@ const ProductTable = ({
   showProfitFactor = false,
   onProfitFactorSaved,
   onDelete,
+  showVehicleCompatibilities = false,
+  onOpenVehicles,
   onOpenImages,
   onOpenLabels,
 
@@ -151,6 +154,7 @@ const ProductTable = ({
 
                 <td data-label="Acciones" className="text-center product-actions">
                   <div className="product-action-grid">
+                    {showVehicleCompatibilities && (product.has_vehicle_compatibilities === true || product.has_vehicle_compatibilities === 1 || product.has_vehicle_compatibilities === "1" || Number(product.vehicle_compatibilities_count) > 0) && <button type="button" className="btn btn-sm btn-outline-info d-flex align-items-center justify-content-center gap-1" title="Ver compatibilidades vehiculares" aria-label={`Ver compatibilidades de ${product.name}`} onClick={() => onOpenVehicles?.(product)} style={{ minWidth: 40, minHeight: 40 }}><DirectionsCarIcon fontSize="small" /><span>{product.vehicle_compatibilities_count ?? ""}</span></button>}
                     <Link
                       to={`edit/${product.id}`}
                       className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
