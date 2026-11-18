@@ -1,3 +1,4 @@
+/* global BigInt */
 import axiosClient from "../../config/axiosClient";
 
 const base = "/inventory-transfers";
@@ -24,6 +25,33 @@ export const transferError = error => [error?.response?.data?.message || error?.
 export const inventoryKey = row => [row.product_id, row.variant_id || "", row.source_warehouse_id || ""].join(":");
 export const transferItemName = item => item.product_name || item.name || item.product_name_snapshot || item.source_product_name || item.product_snapshot?.name || item.snapshot?.product_name || item.snapshot?.name || item.source_product?.name || item.product?.name || (item.source_product_id || item.product_id ? `Producto #${item.source_product_id || item.product_id}` : item.sku || item.product_sku || "Producto sin nombre en el comprobante");
 export const canReceiveTransfer = (record, branchId) => record?.status === "pending" && Number(branchId) > 0 && Number(record.destination_branch_id ?? record.destination_branch?.id) === Number(branchId);
+export function isInternalTransfer(record) {
+  const source = Number(record.source_branch_id ?? record.source_branch?.id);
+  return source > 0 && source === Number(record.destination_branch_id ?? record.destination_branch?.id);
+}
+
+export function internalTransferBody({ branchId, source, destination, warehouses, items, notes }) {
+  const hasWarehouse = id => Number(id) > 0 && warehouses.some(row =>
+    Number(row.id) === Number(id) && ![false, 0, "0"].includes(row.is_active),
+  );
+  if (!hasWarehouse(source) || !hasWarehouse(destination) || Number(source) === Number(destination)) {
+    throw new Error("Selecciona dos almacenes activos y distintos de la sucursal.");
+  }
+  if (items.some(row => Number(row.source_warehouse_id) !== Number(source))) {
+    throw new Error("Todas las partidas deben pertenecer al almacén de origen.");
+  }
+  return {
+    source_branch_id: Number(branchId),
+    destination_branch_id: Number(branchId),
+    destination_warehouse_id: Number(destination),
+    notes: notes.trim(),
+    items: validateTransferItems(items.map(row => ({
+      ...row,
+      destination_product_id: row.product_id,
+      destination_variant_id: row.variant_id,
+    }))),
+  };
+}
 export function transferQuantityInput(row, value, { destinationGeneral = false } = {}) {
   const precision = !row.variant_id && (!row.source_warehouse_id || destinationGeneral) ? 2 : 3;
   let quantity = String(value).replace(",", ".");

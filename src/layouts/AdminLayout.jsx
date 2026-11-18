@@ -29,7 +29,8 @@ const AdminContent = () => {
     "/admin/complementos",
   ];
   const isGlobalSection = globalSections.some((path) => location.pathname.startsWith(path));
-  const layoutHidden = hideLayout || isGlobalSection;
+  const isPosWorkspace = /^\/admin\/prueba\/pos\/?$/.test(location.pathname);
+  const layoutHidden = !isPosWorkspace && (hideLayout || isGlobalSection);
 
   const handleDrawerToggle = () => setMobileOpen((p) => !p);
 

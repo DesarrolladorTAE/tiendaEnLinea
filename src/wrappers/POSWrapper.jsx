@@ -25,8 +25,8 @@ const POSWrapper = () => {
 
   const location = useLocation();
 
-  const posDesdeAdmin =
-    location.state?.pos || null;
+  const fromAdmin = location.pathname.startsWith("/admin/");
+  const { id: adminPosId, branch_id: adminBranchId, name: adminPosName } = location.state?.pos ?? {};
 
   const setPosContext = (posMeOrPosObj) => {
     setPosBranchId(Number(posMeOrPosObj?.branch_id) || null);
@@ -67,10 +67,10 @@ const POSWrapper = () => {
   };
 
   useEffect(() => {
-    if (posDesdeAdmin) {
+    if (fromAdmin && adminPosId) {
       axiosClient
         .post("/admin/pos-token", {
-          pos_id: posDesdeAdmin.id,
+          pos_id: adminPosId,
         })
         .then((res) => {
           localStorage.setItem(
@@ -79,15 +79,14 @@ const POSWrapper = () => {
           );
 
           setPosContext({
-            id: posDesdeAdmin.id,
-            branch_id:
-              posDesdeAdmin.branch_id,
+            id: adminPosId,
+            branch_id: adminBranchId,
           });
 
           setIsAuthenticated(true);
 
           setPosName(
-            posDesdeAdmin.name || "Sucursal"
+            adminPosName || "Sucursal"
           );
         })
         .catch((err) => {
@@ -133,36 +132,47 @@ const POSWrapper = () => {
         setIsAuthenticated(false);
         setShowModal(true);
       });
-  }, [posDesdeAdmin]);
+  }, [fromAdmin, adminPosId, adminBranchId, adminPosName]);
 
-  const handleLoginSuccess = () => {
+  const handleLoginSuccess = (pos) => {
+    if (pos?.id) {
+      setPosContext(pos);
+      setPosName(pos.name || "");
+    }
     setShowModal(false);
     setIsAuthenticated(true);
 
     axiosClientPOS
       .post("/pos/me")
       .then((res) => {
-        setPosName(res.data.name || "");
-        setPosContext(res.data);
+        setPosName(res.data.name || pos?.name || "");
+        setPosContext({ ...pos, ...res.data, id: pos?.id ?? res.data.id ?? res.data.pos_id });
+      })
+      .catch(() => {
+        if (!pos?.id) {
+          setIsAuthenticated(false);
+          setShowModal(true);
+        }
       });
   };
 
   return (
     <>
-      {!posDesdeAdmin && (
+      {showModal && (
         <POSLoginModal
-          open={showModal}
           onLoginSuccess={
             handleLoginSuccess
           }
+            fromAdmin={fromAdmin}
         />
       )}
 
-      {isAuthenticated === true && (
+      {isAuthenticated === true && posLocationId && (
         <>
           <POSDashboard
+            key={posLocationId}
             posName={posName}
-            posDesdeAdmin={!!posDesdeAdmin}
+            posDesdeAdmin={fromAdmin}
             posLocationId={posLocationId}
             posBranchId={posBranchId}
           />
@@ -171,7 +181,7 @@ const POSWrapper = () => {
         </>
       )}
 
-      {isAuthenticated === null && (
+      {(isAuthenticated === null || (isAuthenticated && !posLocationId)) && (
         <p
           style={{
             textAlign: "center",

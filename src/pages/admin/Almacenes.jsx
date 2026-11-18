@@ -230,8 +230,9 @@ export default function Warehouses() {
         <Stack direction="row" flexWrap="wrap" gap={1} mb={2.5} role="group" aria-label="Secciones de almacenes">
           <Button variant={section === "warehouses" ? "contained" : "outlined"} aria-pressed={section === "warehouses"} onClick={() => setSection("warehouses")}>Mis almacenes</Button>
           <Button variant={section === "transfers" ? "contained" : "outlined"} aria-pressed={section === "transfers"} onClick={() => setSection("transfers")}>Traspasos entre sucursales</Button>
+          <Button variant={section === "warehouse-transfers" ? "contained" : "outlined"} aria-pressed={section === "warehouse-transfers"} onClick={() => setSection("warehouse-transfers")}>Traspasos entre almacenes</Button>
         </Stack>
-        {section === "transfers" ? activeBranch?.id && <InventoryTransfers key={activeBranch.id} branch={activeBranch} onChanged={fetchWarehouses} /> : <>
+        {section !== "warehouses" ? activeBranch?.id && <InventoryTransfers key={`${activeBranch.id}-${section}`} branch={activeBranch} internal={section === "warehouse-transfers"} onChanged={fetchWarehouses} /> : <>
         <Stack spacing={1.5} sx={{ mb: 2.25 }}>
           {/* =======================
               2) ACCIONES

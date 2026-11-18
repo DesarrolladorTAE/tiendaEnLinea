@@ -479,7 +479,7 @@ export default function ProductCard({
                 width: "100%",
                 height: "100%",
                 display: "block",
-                objectFit: "cover",
+                objectFit: "contain",
                 objectPosition: "center",
               }}
             />
@@ -816,7 +816,7 @@ export default function ProductCard({
                                   component="img"
                                   src={vImg}
                                   alt={pickVariantLabel(v)}
-                                  sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                  sx={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
                                 />
                               ) : (
                                 <Box sx={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>
@@ -910,7 +910,7 @@ export default function ProductCard({
                         component="img"
                         src={variantImage}
                         alt={variantLabel || product?.name}
-                        sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                        sx={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
                       />
                     ) : (
                       <Box sx={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>

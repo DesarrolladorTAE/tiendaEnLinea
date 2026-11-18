@@ -57,6 +57,25 @@ async function main() {
   assert.equal(transferCollection({ data: { items: [base] } }, "availability").rows.length, 1);
   assert.throws(() => transferCollection("<html>", "transfers"));
   const body = { source_branch_id: 1, destination_branch_id: 2, destination_warehouse_id: 5, items: validate([base]) };
+  const internal = {
+    branchId: 1,
+    source: 3,
+    destination: 5,
+    warehouses: [{ id: 3 }, { id: 5 }, { id: 6, is_active: false }],
+    items: [{ ...base, variant_id: 2, source_warehouse_id: 3, quantity: "1.125" }],
+    notes: " Reposición ",
+  };
+  const internalBody = helpers.internalTransferBody(internal);
+  assert.deepEqual(internalBody, {
+    source_branch_id: 1, destination_branch_id: 1, destination_warehouse_id: 5, notes: "Reposición",
+    items: [{ product_id: 1, variant_id: 2, source_warehouse_id: 3, destination_product_id: 1, destination_variant_id: 2, quantity: "1.125" }],
+  });
+  assert.ok(helpers.isInternalTransfer(internalBody));
+  assert.ok(!helpers.isInternalTransfer(body));
+  for (const destination of [3, 6, 99]) assert.throws(() => helpers.internalTransferBody({ ...internal, destination }));
+  assert.throws(() => helpers.internalTransferBody({ ...internal, items: [{ ...base, source_warehouse_id: 5 }] }));
+  await api.create(internalBody, "internal-key");
+  assert.equal(calls.at(-1).config.headers["Idempotency-Key"], "internal-key");
   await api.create(body, "same-key"); await api.create(body, "same-key");
   assert.ok(calls.slice(-2).every(call => call.url === "/inventory-transfers" && call.config.headers["Idempotency-Key"] === "same-key" && call.body === body));
   for (const sourceWarehouse of [undefined, 3]) for (const destinationWarehouse of [null, 5]) {
@@ -127,7 +146,11 @@ async function main() {
     "./warehouseStyles": { warehouseDialogStyles: {}, warehouseGrid: {}, warehousePanel: {} },
     "../../services/admin/inventoryTransfers": { ...helpers, transfersApi: {
       branches: async () => [{ id: 1, name: "Origen" }, { id: 2, name: "Destino" }],
-      list: async () => ({ data: [{ id: 3, status: transferStatus, source_branch_id: 1, destination_branch_id: 2 }] }),
+      warehouses: async () => [{ id: 3, name: "Almacén A" }, { id: 5, name: "Almacén B" }],
+      list: async () => ({ data: [
+        { id: 3, status: transferStatus, source_branch_id: 1, destination_branch_id: 2 },
+        { id: 4, status: "pending", ...internalBody },
+      ] }),
       detail: async () => ({ id: 3, status: transferStatus, source_branch_id: 1, destination_branch_id: 2, items: [{ source_product_id: 1, name: "Nombre historico del producto", quantity: "2.50" }], events: [] }),
       decide: async (id, action, notes) => { decisions.push({ id, action, notes }); transferStatus = "accepted"; },
       pdf: async () => { pdfReads++; return new Promise((resolve, reject) => { rejectPdf = reject; }); },
@@ -167,6 +190,11 @@ async function main() {
     assert.ok(document.body.textContent.includes("Reintentar PDF"));
     assert.ok([...document.querySelectorAll("button")].find(item => item.textContent === buttonText && !item.disabled));
   }
+  await React.act(async () => history.render(React.createElement(Transfers, { key: "internal", branch: { id: 1 }, internal: true })));
+  assert.ok(document.body.textContent.includes("Almacén A → Almacén B"));
+  assert.ok(document.body.textContent.includes("Traspaso #4"));
+  assert.ok(!document.body.textContent.includes("Traspaso #3"));
+  assert.ok(![...document.querySelectorAll("button")].find(item => item.textContent === "Nuevo traspaso").disabled);
   await React.act(async () => history.unmount()); dom.window.close();
   console.log("OK: four inventory modes, precision, stock limits, 200 items, catalogs, endpoints, persisted retries and explicit receiving decisions.");
 }

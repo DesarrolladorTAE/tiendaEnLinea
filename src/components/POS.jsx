@@ -4,8 +4,8 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import axiosClient from "../config/axiosClientPOS";
 import {
   Box,
+  Alert,
   Typography,
-  TextField,
   Button,
   Stack,
   CircularProgress,
@@ -23,18 +23,18 @@ import Cart from "./POS/Cart";
 import { usePOSLogic } from "../hooks/POS/usePOSLogic";
 import TicketDialog from "./POS/TicketDialog";
 import CategoriesRail from "./POS/CategoriesRail";
+import ProductSearchBar from "./products-list/ProductSearchBar";
+import { FiPackage } from "react-icons/fi";
 
-import HistoryIcon from "@mui/icons-material/History";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { showError, showSuccess } from "../utils/alerts";
+import { cashAlreadyCutMessage, cashBlockMessage } from "../utils/cashControl";
 
-export default function POS({ posName, cambiarVista }) {
+export default function POS({ cash, openCash, cart, setCart, posName, branchId, branchName }) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
-  const isMobile = !isMdUp;
 
   const [ticketData, setTicketData] = useState(null);
   const [showTicket, setShowTicket] = useState(false);
@@ -42,9 +42,7 @@ export default function POS({ posName, cambiarVista }) {
 
   const inputRef = useRef(null);
   const [barcode, setBarcode] = useState("");
-  const [cart, setCart] = useState([]);
   const [modalDescuentoActivo, setModalDescuentoActivo] = useState(false);
-  const [searchEditable, setSearchEditable] = useState(false);
 
   // ✅ Drawer carrito
   const [cartOpen, setCartOpen] = useState(false);
@@ -52,6 +50,7 @@ export default function POS({ posName, cambiarVista }) {
   // ✅ Categorías
   const [categories, setCategories] = useState([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState(null);
+  const [refreshingStock, setRefreshingStock] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
 
   // ✅ Detectar touch device
@@ -85,6 +84,8 @@ export default function POS({ posName, cambiarVista }) {
   const {
     search,
     setSearch,
+    searchField,
+    setSearchField,
     products,
     meta,
     page,
@@ -110,6 +111,8 @@ export default function POS({ posName, cambiarVista }) {
     setShowTicket,
     cart,
     setCart,
+    verifyCheckout: cash.verifyCheckout,
+    refreshCash: cash.refresh,
   });
 
   const cartCount = useMemo(
@@ -192,9 +195,10 @@ export default function POS({ posName, cambiarVista }) {
   useEffect(() => {
     const next = 1;
     setPage(next);
-    refetchProducts({ nextPage: next, categoryId: selectedCategoryId });
+    const timer = setTimeout(() => refetchProducts({ nextPage: next, categoryId: selectedCategoryId }), search ? 250 : 0);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, selectedCategoryId]);
+  }, [search, searchField, selectedCategoryId]);
 
   // ✅ Traer categorías por POS
   useEffect(() => {
@@ -308,142 +312,88 @@ export default function POS({ posName, cambiarVista }) {
   };
 
   const toggleCart = () => setCartOpen((v) => !v);
+  const refreshStock = async () => {
+    setRefreshingStock(true);
+    try {
+      const updated = await refetchProducts({ nextPage: page, categoryId: selectedCategoryId, refreshCart: true });
+      if (updated === true) showSuccess("Stock actualizado");
+      if (updated === false) showError("No se pudo actualizar el stock. Intenta de nuevo.");
+    } finally {
+      setRefreshingStock(false);
+    }
+  };
 
   return (
     <Box
       sx={{
-        minHeight: "100vh",
-        background: "#fff",
-        px: { xs: 1.25, md: 5 },
-        py: 2,
         pb: { xs: 12, md: 4 },
       }}
     >
-      {/* Header */}
-      <Paper
-        sx={{
-          mb: 2,
-          p: { xs: 1.25, md: 2 },
-          borderRadius: 3,
-          background: "#fff",
-          border: "1px solid",
-          borderColor: "divider",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-        }}
-      >
-        <Stack
-          direction="column"
-          spacing={{ xs: 1, md: 0 }}
-          alignItems="center"
-          justifyContent="center"
+      {!cash.canSell && !cash.canOpenWithoutPrompt && (
+        <Alert
+          severity={cash.error ? "error" : cash.status ? "warning" : "info"}
+          sx={{ mb: 2, flexWrap: "wrap" }}
+          action={<Button color="inherit" onClick={openCash}>Ver caja</Button>}
         >
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={1}
-            sx={{
-              width: { xs: "100%", md: "auto" },
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Button
-              fullWidth={!isMdUp}
-              variant="contained"
-              startIcon={<HistoryIcon />}
-              onClick={() => cambiarVista("historial")}
+          {cash.error || (cash.cutToday ? cashAlreadyCutMessage : cash.status ? cashBlockMessage(cash.status) : "Consultando el estado de caja…")}
+        </Alert>
+      )}
+      <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, "& .mb-3": { mb: "0 !important" } }}>
+        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} gap={1} mb={1.5}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography id="pos-product-list-title" component="h2" sx={{ color: "#fff !important", fontSize: { xs: 25, sm: 32 }, fontWeight: 500, lineHeight: 1.2, mb: 0.75 }}>
+              <span aria-hidden="true">🛒 </span>Lista de Productos
+            </Typography>
+            {(branchName || branchId || posName) && (
+              <span className="badge bg-warning text-dark">
+                <span aria-hidden="true">📍 </span>
+                {branchName ? `Sucursal: ${branchName}` : branchId ? `Sucursal #${branchId}` : posName}
+              </span>
+            )}
+          </Box>
+          <Stack direction="row" spacing={1.5} alignItems="center" sx={{
+            px: 1.75, py: 1.15, minWidth: { sm: 205 }, borderRadius: "18px",
+            border: "1px solid rgba(255,255,255,.1)", background: "linear-gradient(120deg, #292c30, #202226)",
+          }}>
+            <Box sx={{ width: 40, height: 40, borderRadius: "12px", display: "grid", placeItems: "center", flexShrink: 0, color: "#f6ce73", bgcolor: "rgba(246,206,115,.1)", border: "1px solid rgba(246,206,115,.12)" }}>
+              <FiPackage size={21} aria-hidden="true" />
+            </Box>
+            <Box role="status" sx={{ flex: 1 }}>
+              <Typography sx={{ color: "#a8adb5 !important", fontSize: 11 }}>{search.trim() || selectedCategoryId != null ? "Resultados" : "En este punto de venta"}</Typography>
+              <Stack direction="row" spacing={0.75} alignItems="baseline">
+                <Typography sx={{ color: "#fff !important", fontSize: 26, fontWeight: 700, lineHeight: 1.2 }}>{Number(meta?.total ?? products.length).toLocaleString("es-MX")}</Typography>
+                <Typography sx={{ color: "#d0d3d8 !important", fontSize: 12 }}>productos</Typography>
+              </Stack>
+            </Box>
+            <IconButton
+              type="button"
+              onClick={refreshStock}
+              disabled={refreshingStock}
+              aria-label={refreshingStock ? "Actualizando stock" : "Actualizar stock"}
+              title="Actualizar stock"
               sx={{
-                px: 2,
-                borderRadius: 3,
-                background: "#f59e0b",
-                "&:hover": { background: "#fbbf24" },
-                textTransform: "none",
-                fontWeight: 800,
-                minWidth: { md: 160 },
+                width: 44, height: 44, flexShrink: 0, borderRadius: 2,
+                bgcolor: "#1d4ed8", color: "#fff",
+                "&:hover": { bgcolor: "#2563eb" },
+                "&.Mui-disabled": { bgcolor: "#1e3a8a", color: "#bfdbfe" },
               }}
             >
-              Historial
-            </Button>
-
-            <Button
-              fullWidth={!isMdUp}
-              variant="contained"
-              startIcon={<ReceiptLongIcon />}
-              onClick={() => cambiarVista("facturas")}
-              sx={{
-                px: 2,
-                borderRadius: 3,
-                background: "#ef4444",
-                "&:hover": { background: "#ff3f36" },
-                textTransform: "none",
-                fontWeight: 800,
-                minWidth: { md: 160 },
-              }}
-            >
-              Facturas
-            </Button>
-
-            <Button
-              fullWidth={!isMdUp}
-              variant="outlined"
-              startIcon={<DashboardIcon />}
-              onClick={() => cambiarVista("menu")}
-              sx={{
-                px: 2,
-                borderRadius: 3,
-                textTransform: "none",
-                fontWeight: 800,
-                minWidth: { md: 160 },
-              }}
-            >
-              Panel
-            </Button>
+              {refreshingStock ? <CircularProgress size={19} color="inherit" /> : <RefreshRoundedIcon />}
+            </IconButton>
           </Stack>
         </Stack>
-      </Paper>
-
-      {/* Buscador */}
-      <Paper
-        sx={{
-          p: 1.25,
-          mb: 2,
-          borderRadius: 3,
-          background: "#fff",
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <TextField
-          label="Buscar producto (nombre o SKU)"
-          fullWidth
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+        <ProductSearchBar
+          searchTerm={search}
+          setSearchTerm={setSearch}
+          searchField={searchField}
+          setSearchField={setSearchField}
+          showOeNumber
           onFocus={() => setScannerEnabled(false)}
           onBlur={() => {
             if (!isTouchDevice) setScannerEnabled(true);
-            if (!isMdUp) setSearchEditable(false);
-          }}
-          InputProps={{ readOnly: !isMdUp && !searchEditable }}
-          inputProps={{ inputMode: "search" }}
-          onClick={(e) => {
-            if (isMdUp) return;
-            if (!searchEditable) {
-              setSearchEditable(true);
-              requestAnimationFrame(() =>
-                e.currentTarget.querySelector("input")?.focus(),
-              );
-            }
           }}
         />
-      </Paper>
-
-      {!isMdUp && (
-        <CategoriesRail
-          categories={categories}
-          selectedCategoryId={selectedCategoryId}
-          onSelect={(id) => setSelectedCategoryId(id)}
-          onClear={() => setSelectedCategoryId(null)}
-        />
-      )}
+      </Box>
 
       <input
         ref={inputRef}
@@ -463,68 +413,52 @@ export default function POS({ posName, cambiarVista }) {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "260px 1fr" },
+          gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(175px, 220px) minmax(0, 1fr)" },
           gap: 2,
-          alignItems: "start",
+          alignItems: "stretch",
         }}
       >
-        {isMdUp ? (
-          <Box>
-            <CategoriesRail
-              categories={categories}
-              selectedCategoryId={selectedCategoryId}
-              onSelect={(id) =>
-                setSelectedCategoryId(id == null ? null : Number(id))
-              }
-              onClear={() => setSelectedCategoryId(null)}
-            />
-          </Box>
-        ) : null}
+        <CategoriesRail
+          categories={categories}
+          selectedCategoryId={selectedCategoryId}
+          onSelect={setSelectedCategoryId}
+          loading={loadingCategories}
+        />
 
-        <Box>
-          <Stack
-            direction="row"
-            alignItems="center"
-            justifyContent="space-between"
-            mb={1.25}
-          >
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Productos
+        <Box aria-busy={refreshingStock} sx={{
+          position: "relative", minWidth: 0,
+          minHeight: { xs: refreshingStock || !products.length ? 250 : 0, lg: 360 },
+        }}>
+          {!refreshingStock && !products.length && (
+            <Stack
+              component={Paper}
+              variant="outlined"
+              alignItems="center"
+              justifyContent="center"
+              spacing={1.25}
+              sx={{ height: "100%", minHeight: "inherit", p: { xs: 2.5, sm: 4 }, borderRadius: 3, textAlign: "center", bgcolor: "#fff" }}
+            >
+              <Box sx={{ width: 76, height: 76, display: "grid", placeItems: "center", borderRadius: "50%", bgcolor: "#fff8e0", border: "1px solid #ffe6a1" }}>
+                <Box component="img" src="/assets/logo1.png" alt="" sx={{ width: "76%", height: "76%", objectFit: "contain" }} />
+              </Box>
+              <Typography component="h3" variant="h6" fontWeight={800}>
+                {search.trim() || selectedCategoryId != null ? "No encontramos productos" : "Todavía no hay productos disponibles"}
               </Typography>
-              <Typography variant="body2" sx={{ color: "#6b7280" }}>
-                {loadingCategories
-                  ? "Cargando categorías..."
-                  : `${meta?.total ?? products.length} encontrados`}
+              <Typography variant="body2" color="text.secondary">
+                {search.trim() || selectedCategoryId != null
+                  ? "Prueba con otra búsqueda o selecciona una categoría diferente."
+                  : "Los productos disponibles para este punto de venta aparecerán aquí."}
               </Typography>
-            </Box>
-
-            {isMdUp && (
-              <Paper
-                sx={{
-                  px: 1.25,
-                  py: 0.75,
-                  borderRadius: 3,
-                  border: "1px solid",
-                  borderColor: "divider",
-                  background: alpha("#111827", 0.02),
-                }}
-              >
-                <Typography sx={{ fontSize: 12, fontWeight: 900 }}>
-                  {selectedCategoryId
-                    ? `Categoría: ${
-                        categories.find(
-                          (c) => String(c.id) === String(selectedCategoryId),
-                        )?.name || "Seleccionada"
-                      }`
-                    : "Todas las categorías"}
-                </Typography>
-              </Paper>
-            )}
-          </Stack>
-
+              {(search.trim() || selectedCategoryId != null) && (
+                <Button variant="outlined" onClick={() => { setSearch(""); setSelectedCategoryId(null); }} sx={{ textTransform: "none" }}>
+                  Ver todos los productos
+                </Button>
+              )}
+            </Stack>
+          )}
           <Box
             sx={{
+              visibility: refreshingStock ? "hidden" : "visible",
               display: "grid",
               gap: { xs: 1.25, md: 2 },
               gridTemplateColumns: {
@@ -555,60 +489,79 @@ export default function POS({ posName, cambiarVista }) {
               />
             ))}
           </Box>
-
-          {/* Paginación real (backend) */}
-          <Paper
-            sx={{
-              mt: 2,
-              p: 1.25,
-              borderRadius: 3,
-              background: "#fff",
-              border: "1px solid",
-              borderColor: "divider",
-            }}
-          >
-            <Box
-              display="flex"
-              justifyContent="center"
-              gap={2}
-              alignItems="center"
-            >
-              <Button
-                variant="outlined"
-                disabled={page === 1}
-                onClick={() => {
-                  const np = Math.max(1, page - 1);
-                  setPage(np);
-                  refetchProducts({
-                    nextPage: np,
-                    categoryId: selectedCategoryId,
-                  });
-                }}
-              >
-                Anterior
-              </Button>
-
-              <Typography fontWeight={900}>
-                Página {page} de {totalPages}
-              </Typography>
-
-              <Button
-                variant="outlined"
-                disabled={page >= totalPages}
-                onClick={() => {
-                  const np = Math.min(totalPages, page + 1);
-                  setPage(np);
-                  refetchProducts({
-                    nextPage: np,
-                    categoryId: selectedCategoryId,
-                  });
-                }}
-              >
-                Siguiente
-              </Button>
-            </Box>
-          </Paper>
+          {refreshingStock && (
+            <Stack role="status" alignItems="center" spacing={2} sx={{
+              position: "absolute", inset: 0, pt: { xs: 3, sm: 4 }, px: 2,
+              border: "1px solid", borderColor: "divider", borderRadius: 3, bgcolor: "#fff",
+            }}>
+              <Box sx={{ width: 124, height: 124, position: "relative" }}>
+                <CircularProgress variant="determinate" value={100} size={124} thickness={2.5} aria-hidden="true" sx={{ position: "absolute", inset: 0, color: "#dbeafe" }} />
+                <CircularProgress size={124} thickness={2.5} aria-hidden="true" sx={{
+                  position: "absolute", inset: 0, color: "#2563eb",
+                  "& .MuiCircularProgress-circle": { strokeLinecap: "round" },
+                  "@media (prefers-reduced-motion: reduce)": { animation: "none", "& circle": { animation: "none" } },
+                }} />
+                <Box sx={{ position: "absolute", inset: 12, borderRadius: "50%", display: "grid", placeItems: "center", boxShadow: "0 8px 30px #17203312" }}>
+                  <Box component="img" src="/assets/logo1.png" alt="" sx={{ width: "80%", height: "80%", objectFit: "contain" }} />
+                </Box>
+              </Box>
+              <Typography sx={{ color: "#1d4ed8", fontWeight: 800, textAlign: "center" }}>Actualizando existencias…</Typography>
+            </Stack>
+          )}
         </Box>
+
+        {/* Paginación real (backend) */}
+        {totalPages > 1 && <Paper
+          sx={{
+            gridColumn: { lg: 2 },
+            p: 1.25,
+            borderRadius: 3,
+            background: "#fff",
+            border: "1px solid",
+            borderColor: "divider",
+          }}
+        >
+          <Box
+            display="flex"
+            justifyContent="center"
+            gap={2}
+            alignItems="center"
+          >
+            <Button
+              variant="outlined"
+              disabled={page === 1}
+              onClick={() => {
+                const np = Math.max(1, page - 1);
+                setPage(np);
+                refetchProducts({
+                  nextPage: np,
+                  categoryId: selectedCategoryId,
+                });
+              }}
+            >
+              Anterior
+            </Button>
+
+            <Typography fontWeight={900}>
+              Página {page} de {totalPages}
+            </Typography>
+
+            <Button
+              variant="outlined"
+              disabled={page >= totalPages}
+              onClick={() => {
+                const np = Math.min(totalPages, page + 1);
+                setPage(np);
+                refetchProducts({
+                  nextPage: np,
+                  categoryId: selectedCategoryId,
+                });
+              }}
+            >
+              Siguiente
+            </Button>
+          </Box>
+        </Paper>}
 
         <TicketDialog
           open={showTicket}
@@ -734,6 +687,7 @@ export default function POS({ posName, cambiarVista }) {
             setCart={setCart}
             onRemove={handleRemove}
             onCheckout={onCheckout}
+            checkoutBlocked={!cash.canSell && !cash.canOpenWithoutPrompt}
             setScannerEnabled={setScannerEnabled}
             setModalDescuentoActivo={setModalDescuentoActivo}
             variant={isMdUp ? "desktop" : "mobile"}

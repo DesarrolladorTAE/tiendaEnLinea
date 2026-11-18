@@ -50,6 +50,8 @@ import {
 } from "../../utils/alerts";
 
 import AssignWarehousesDialog from "./modals/AssignWarehousesDialog";
+import AdminCashDialog from "../../components/cash/AdminCashDialog";
+import PointOfSaleOutlinedIcon from "@mui/icons-material/PointOfSaleOutlined";
 
 const COLORS = {
   accent: "#f9b233",
@@ -161,6 +163,7 @@ export default function POS() {
 
   // ✅ modal asignaciones
   const [assignOpen, setAssignOpen] = useState(false);
+  const [cashPos, setCashPos] = useState(null);
   const [assignPos, setAssignPos] = useState(null);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignWarehouseIds, setAssignWarehouseIds] = useState([]);
@@ -258,7 +261,7 @@ export default function POS() {
   }, [activeBranch?.id, fetchPOS, fetchWarehouses]);
 
   const iniciarSesionPOS = (pos) => {
-    navigate("/admin/prueba/pos", { state: { pos } });
+    navigate("/admin/prueba/pos", { state: { pos, branchName: activeBranch?.name } });
   };
 
   const toggleVisibilidad = (id) => {
@@ -868,6 +871,15 @@ export default function POS() {
                                 Copiar accesos
                               </Button>
 
+                              {!isNew && (
+                                <Button
+                                  variant="outlined"
+                                  startIcon={<PointOfSaleOutlinedIcon />}
+                                  onClick={() => setCashPos(pos)}
+                                >
+                                  Caja
+                                </Button>
+                              )}
                               <Button
                                 onClick={() => iniciarSesionPOS(pos)}
                                 variant="contained"
@@ -982,6 +994,7 @@ export default function POS() {
         </Card>
 
         {/* ✅ Modal de asignación */}
+        {cashPos && <AdminCashDialog key={cashPos.id} pos={cashPos} onClose={() => setCashPos(null)} />}
         <AssignWarehousesDialog
           open={assignOpen}
           onClose={closeAssignDialog}

@@ -39,3 +39,28 @@ test("hides the OE search option when it does not apply", () => {
     ]);
   } finally { act(() => root.unmount()); host.remove(); }
 });
+
+test("supports a single search box with focus controls when no field picker is provided", () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  const onFocus = jest.fn();
+  const onBlur = jest.fn();
+  const setSearchTerm = jest.fn();
+  try {
+    act(() => root.render(<ProductSearchBar searchTerm="" {...{ onFocus, onBlur, setSearchTerm }} />));
+    expect(host.querySelector('[role="combobox"]')).toBeNull();
+    const input = host.querySelector("input");
+    expect(input.inputMode).toBe("search");
+    act(() => input.focus());
+    act(() => Simulate.change(input, { target: { value: "SKU-12" } }));
+    act(() => input.blur());
+    expect(onFocus).toHaveBeenCalledTimes(1);
+    expect(setSearchTerm).toHaveBeenCalledWith("SKU-12");
+    expect(onBlur).toHaveBeenCalledTimes(1);
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+  }
+});

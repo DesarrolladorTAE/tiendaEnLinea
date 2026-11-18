@@ -15,6 +15,28 @@ export async function fetchPOSProductPage(client, posLocationId, params = {}, al
   return { products: (Array.isArray(data?.products) ? data.products : []).map(product => scopePOSProduct(product, ids)), meta: data?.meta };
 }
 
+export async function searchPOSProductField(client, posLocationId, { page, per_page, q, category_id, field }, allowedIds, isCurrent) {
+  const term = q.trim().toLocaleLowerCase("es-MX");
+  const matches = [];
+  for (let batch = 1; isCurrent(); batch++) {
+    const result = await fetchPOSProductPage(client, posLocationId, {
+      page: batch, per_page: 100, q: "", category_id,
+    }, allowedIds);
+    matches.push(...result.products.filter((product) =>
+      String(product[field] ?? "").toLocaleLowerCase("es-MX").includes(term),
+    ));
+    const lastPage = Number(result.meta?.last_page);
+    if (!result.products.length || (lastPage > 0 ? batch >= lastPage : result.products.length < 100)) break;
+  }
+  const last_page = Math.max(1, Math.ceil(matches.length / per_page));
+  const currentPage = Math.min(page, last_page);
+  const start = (currentPage - 1) * per_page;
+  return {
+    products: matches.slice(start, start + per_page),
+    meta: { page: currentPage, per_page, total: matches.length, last_page },
+  };
+}
+
 export async function loadCartInventory(client, posLocationId, items) {
   if (!posLocationId) throw new Error("Selecciona un punto de venta.");
   const allowedIds = await fetchPOSScope(client);

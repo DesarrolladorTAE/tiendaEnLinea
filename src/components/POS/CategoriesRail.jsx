@@ -1,156 +1,98 @@
-// src/components/POS/CategoriesRail.jsx
 import React from "react";
-import {
-  Box,
-  Chip,
-  Paper,
-  Stack,
-  Typography,
-  Divider,
-  alpha,
-  useMediaQuery,
-} from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { Box, Button, Paper, Stack, Typography } from "@mui/material";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import FolderOutlinedIcon from "@mui/icons-material/FolderOutlined";
+import GridViewRoundedIcon from "@mui/icons-material/GridViewRounded";
+import SubdirectoryArrowRightRoundedIcon from "@mui/icons-material/SubdirectoryArrowRightRounded";
 
-export default function CategoriesRail({
-  categories = [],
-  selectedCategoryId = null,
-  onSelect,
-  onClear,
-}) {
-  const theme = useTheme();
-  const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
-
-  const selected = selectedCategoryId ?? "all";
-
-  // ✅ Móvil: chips horizontales (scroll)
-  if (!isMdUp) {
-    return (
-      <Paper
-        sx={{
-          p: 1,
-          mb: 2,
-          borderRadius: 3,
-          background: "#fff",
-          border: "1px solid",
-          borderColor: "divider",
-          overflow: "hidden",
-        }}
-      >
-        <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 0.5 }}>
-          <Chip
-            label="Todas"
-            clickable
-            onClick={onClear}
-            color={selected === "all" ? "primary" : "default"}
-            sx={{ fontWeight: 900 }}
-          />
-          {categories.map((c) => (
-            <Chip
-              key={c.id}
-              label={c.name}
-              clickable
-              onClick={() => onSelect?.(c.id)}
-              color={String(selected) === String(c.id) ? "primary" : "default"}
-              sx={{ fontWeight: 800 }}
-            />
-          ))}
-        </Stack>
-      </Paper>
-    );
+function orderCategories(categories) {
+  const byId = new Map(categories.map((category) => [String(category.id), category]));
+  const byParent = new Map();
+  for (const category of byId.values()) {
+    const parentId = String(category.parent_id);
+    const key = byId.has(parentId) ? parentId : null;
+    if (!byParent.has(key)) byParent.set(key, []);
+    byParent.get(key).push(category);
   }
 
-  // ✅ Desktop: rail izquierda con scroll (sticky)
+  const ordered = [];
+  const seen = new Set();
+  const visit = (category, depth = 0, parentName) => {
+    const id = String(category.id);
+    if (seen.has(id)) return;
+    seen.add(id);
+    ordered.push({ ...category, depth, parentName });
+    byParent.get(id)?.forEach((child) => visit(child, depth + 1, category.name));
+  };
+  byParent.get(null)?.forEach((category) => visit(category));
+  byId.forEach((category) => visit(category));
+  return ordered;
+}
+
+export default function CategoriesRail({ categories, selectedCategoryId, onSelect, loading }) {
+  const filters = [{ id: null, name: "Todas", depth: 0 }, ...orderCategories(categories)];
   return (
-    <Paper
-      sx={{
-        position: "sticky",
-        top: 16,
-        height: "calc(100vh - 32px)",
-        borderRadius: 4,
-        background: "#fff",
-        border: "1px solid",
-        borderColor: "divider",
-        overflow: "hidden",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-      }}
-    >
-      <Box sx={{ p: 1.5 }}>
-        <Typography sx={{ fontWeight: 950, fontSize: 14, color: "#111827" }}>
-          Categorías
-        </Typography>
-        <Typography sx={{ fontSize: 12, color: "#6b7280" }}>
-          Filtra por sucursal
-        </Typography>
-      </Box>
-
-      <Divider />
-
-      <Box
-        sx={{
-          p: 1.5,
-          overflow: "auto",
-          height: "100%",
-          pb: 10,
-        }}
-      >
-        <Stack spacing={1}>
-          <Chip
-            label="Todas"
-            clickable
-            onClick={onClear}
-            sx={{
-              justifyContent: "flex-start",
-              fontWeight: 900,
-              borderRadius: 3,
-              py: 2,
-              ...(selected === "all"
-                ? {
-                    background: "linear-gradient(135deg, #111827, #374151)",
-                    color: "#fff",
-                    boxShadow: "0 16px 30px rgba(0,0,0,0.12)",
-                  }
-                : {
-                    background: alpha("#111827", 0.04),
-                    border: `1px solid ${alpha("#111827", 0.08)}`,
-                  }),
-            }}
-          />
-
-          {categories.map((c) => {
-            const active = selected === c.id;
+    <Paper component="section" aria-label="Categorías" variant="outlined" sx={{
+      display: "flex", flexDirection: "column", borderRadius: 3, minWidth: 0, overflow: "hidden",
+      bgcolor: "#fff", contain: { lg: "size" },
+    }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0, px: 1.5, py: 1.25, bgcolor: "#1d2025", borderTop: "3px solid #ffc107" }}>
+        <CategoryOutlinedIcon fontSize="small" sx={{ color: "#ffc107" }} />
+        <Typography component="h2" sx={{ color: "#fff !important", fontSize: 14, fontWeight: 800 }}>Categorías</Typography>
+      </Stack>
+      {loading ? (
+        <Typography role="status" variant="body2" sx={{ px: 1.5, py: 2 }}>Cargando categorías…</Typography>
+      ) : (
+        <Box sx={{ display: "flex", flex: 1, minHeight: 0, flexDirection: { xs: "row", lg: "column" }, gap: 0.75, p: 1.25, overflow: "auto" }}>
+          {filters.map(({ id, name, depth, parentName }) => {
+            const active = String(id) === String(selectedCategoryId);
             return (
-              <Chip
-                key={c.id}
-                label={c.name}
-                clickable
-                onClick={() => onSelect?.(c.id)}
+              <Button
+                key={id ?? "all"}
+                type="button"
+                aria-pressed={active}
+                aria-label={parentName ? `${name}, subcategoría de ${parentName}` : undefined}
+                onClick={() => onSelect(id)}
+                startIcon={id === null ? <GridViewRoundedIcon /> : depth ? <SubdirectoryArrowRightRoundedIcon /> : <FolderOutlinedIcon />}
                 sx={{
+                  flexShrink: 0,
                   justifyContent: "flex-start",
-                  fontWeight: 850,
-                  borderRadius: 3,
-                  py: 2,
-                  ...(active
-                    ? {
-                        background:
-                          "linear-gradient(135deg, #f59e0b, #fbbf24)",
-                        color: "#111827",
-                        boxShadow: "0 16px 30px rgba(245,158,11,0.22)",
-                        border: `1px solid ${alpha("#f59e0b", 0.35)}`,
-                      }
-                    : {
-                        background: alpha("#111827", 0.03),
-                        border: `1px solid ${alpha("#111827", 0.08)}`,
-                        "&:hover": {
-                          background: alpha("#111827", 0.06),
-                        },
-                      }),
+                  minHeight: 44,
+                  ml: { lg: Math.min(depth, 4) * 2 },
+                  px: 1.25,
+                  border: "1px solid",
+                  borderColor: active ? "#e5ab00" : "#e5e7eb",
+                  borderRadius: 2,
+                  bgcolor: active ? "#ffc107" : depth ? "#fff9e8" : "#f7f7f8",
+                  position: "relative",
+                  ...(depth > 0 && {
+                    "&::before": {
+                      content: '""', display: { xs: "none", lg: "block" }, position: "absolute",
+                      left: -13, top: -9, width: 11, height: "calc(50% + 9px)",
+                      borderLeft: "2px solid #d4a72c", borderBottom: "2px solid #d4a72c",
+                      borderBottomLeftRadius: 4,
+                    },
+                  }),
+                  color: "#1d2025",
+                  textTransform: "none",
+                  textAlign: "left",
+                  lineHeight: 1.2,
+                  fontWeight: active ? 800 : 600,
+                  whiteSpace: { xs: "nowrap", lg: "normal" },
+                  maxWidth: { xs: "min(68vw, 250px)", lg: "100%" },
+                  "&:hover": { bgcolor: active ? "#ffe082" : "#fff5d7", borderColor: "#e5ab00" },
+                  "&.Mui-focusVisible": { outline: "2px solid #8f7000", outlineOffset: -3 },
                 }}
-              />
+              >
+                <Box component="span" sx={{ display: "block", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", overflowWrap: "anywhere" }} title={name}>
+                  {parentName && <Box component="span" aria-hidden="true" sx={{ display: "block", mb: 0.25, fontSize: 10, color: "#66521f", overflow: "hidden", textOverflow: "ellipsis" }}>{parentName}</Box>}
+                  {name}
+                </Box>
+              </Button>
             );
           })}
-        </Stack>
-      </Box>
+        </Box>
+      )}
     </Paper>
   );
 }

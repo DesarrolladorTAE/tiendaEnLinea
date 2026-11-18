@@ -3,11 +3,12 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import axiosClient from "../../config/axiosClientPOS";
 import { showError, showSuccess } from "../../utils/alerts";
 import { productStock, hasProductVariants, usesWarehouses, validateInventoryItems } from "../../utils/productInventory";
-import { fetchPOSScope, fetchPOSProductPage, loadCartInventory } from "../../utils/posInventory";
+import { fetchPOSScope, fetchPOSProductPage, loadCartInventory, searchPOSProductField } from "../../utils/posInventory";
 import { notifyInventoryChanged, subscribeInventoryChanges } from "../../utils/inventoryEvents";
 
-export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
+export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verifyCheckout, refreshCash }) {
   const [search, setSearch] = useState("");
+  const [searchField, setSearchField] = useState("all");
   const [products, setProducts] = useState([]);
   const inventoryCache = useRef(new Map());
   const checkoutBusy = useRef(false);
@@ -30,6 +31,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
   const [posLocationId, setPosLocationId] = useState(
     Number(localStorage.getItem("POS_LOCATION_ID")) || null,
   );
+  const previousPosId = useRef(posLocationId);
 
   useEffect(() => {
     const sync = () => {
@@ -57,12 +59,15 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         }
 
         const allowedIds = await fetchPOSScope(axiosClient);
-        const data = await fetchPOSProductPage(axiosClient, posLocationId, {
-            page: Number(nextPage) || 1,
-            per_page: Number(perPage) || 12,
-            q: search || "",
-            category_id: categoryId != null ? Number(categoryId) : undefined,
-        }, allowedIds);
+        const query = {
+          page: Number(nextPage) || 1,
+          per_page: Number(perPage) || 12,
+          q: search,
+          category_id: categoryId != null ? Number(categoryId) : undefined,
+        };
+        const data = searchField !== "all" && search.trim()
+          ? await searchPOSProductField(axiosClient, posLocationId, { ...query, field: searchField }, allowedIds, () => request === requestSequence.current)
+          : await fetchPOSProductPage(axiosClient, posLocationId, query, allowedIds);
         if (request !== requestSequence.current) return;
 
         const cartProducts = refreshCart && latestCart.current.length
@@ -85,21 +90,24 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
             last_page: 1,
           },
         );
-        setPage(nextPage);
+        setPage(data.meta?.page ?? nextPage);
+        return true;
       } catch (e) {
         if (request !== requestSequence.current) return;
         console.error("Error cargando productos POS:", e);
+        if (refreshCart) return false;
         setProducts([]);
         setMeta({ page: 1, per_page: perPage, total: 0, last_page: 1 });
         setPage(1);
       }
     },
-    [posLocationId, search, setCart],
+    [posLocationId, search, searchField, setCart],
   );
 
   useEffect(() => {
     inventoryCache.current.clear();
-    setCart([]);
+    if (previousPosId.current !== posLocationId) setCart([]);
+    previousPosId.current = posLocationId;
     refetchProducts({ nextPage: 1 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [posLocationId]);
@@ -378,6 +386,11 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         }));
         const inventoryError = validateInventoryItems(items, freshProducts);
         if (inventoryError) { showError(inventoryError); return; }
+        const cashMessage = await verifyCheckout?.();
+        if (cashMessage) {
+          showError(cashMessage);
+          return;
+        }
         const saleResponse = await axiosClient.post("/v2/sales", payload);
         const { sale, message } = saleResponse.data;
 
@@ -392,6 +405,11 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         return sale;
       } catch (err) {
         const resp = err?.response?.data;
+        if (err?.response?.status === 422 && resp?.errors?.cash_session) {
+          await refreshCash?.();
+          showError([resp.errors.cash_session].flat().join("\n"));
+          return;
+        }
         await refetchProducts(currentQuery.current);
         if (resp?.errors) {
           const mensajes = Object.values(resp.errors).flat().join("\n");
@@ -403,12 +421,14 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart }) {
         checkoutBusy.current = false;
       }
     },
-    [cart, posLocationId, refetchProducts, setCart, setTicketData, setShowTicket],
+    [cart, posLocationId, refetchProducts, refreshCash, setCart, setTicketData, setShowTicket, verifyCheckout],
   );
 
   return {
     search,
     setSearch,
+    searchField,
+    setSearchField,
     products,
     meta,
     page,

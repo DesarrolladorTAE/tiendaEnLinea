@@ -83,6 +83,7 @@ export default function CartSidebar({
   cart,
   onRemove,
   onCheckout,
+  checkoutBlocked = false,
   setScannerEnabled,
   setModalDescuentoActivo,
   setCart,
@@ -467,7 +468,7 @@ export default function CartSidebar({
   };
 
   const processCheckout = async () => {
-    if (cart.length === 0 || submittingSale) return;
+    if (cart.length === 0 || submittingSale || checkoutBlocked) return;
 
     if (creditSale) {
       if (!selectedClient?.id) {
@@ -752,6 +753,7 @@ export default function CartSidebar({
       amountToPay;
 
   const disableConfirm =
+    checkoutBlocked ||
     cart.length === 0 ||
     submittingSale ||
     (creditSale && !canUseCredit) ||

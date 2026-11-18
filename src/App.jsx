@@ -4,7 +4,6 @@ import ScrollToTop from "./helpers/scroll-top";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import AdminRoutes from "./routes/AdminRoutes";
 import SuperAdminRoutes from "./routes/SuperAdminRoutes";
-import { Container } from "@mui/material";
 import WhatsappButton from "./components/WhatsappButton";
 import { Toaster } from "react-hot-toast";
 import GtmPageViewTracker from "./components/tracking/GtmPageViewTracker.jsx";
@@ -151,11 +150,7 @@ const App = () => {
 
             <Route
               path="/prueba/pos"
-              element={
-                <Container maxWidth="xl">
-                  <POSWrapper />
-                </Container>
-              }
+              element={<POSWrapper />}
             />
 
             <Route

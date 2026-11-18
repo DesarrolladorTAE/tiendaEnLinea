@@ -7,15 +7,18 @@ import { showError } from "../../utils/alerts";
 jest.mock("../../config/axiosClientPOS", () => ({ __esModule: true, default: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("../../utils/alerts", () => ({ showError: jest.fn(), showSuccess: jest.fn() }));
 const ticket = jest.fn(), showTicket = jest.fn();
+const verifyCheckout = jest.fn();
+const refreshCash = jest.fn();
 let root, host, latest, products;
 function Harness() {
   const [cart, setCart] = useState([]);
-  latest = { ...usePOSLogic({ cart, setCart, setTicketData: ticket, setShowTicket: showTicket }), setCart };
+  latest = { ...usePOSLogic({ cart, setCart, setTicketData: ticket, setShowTicket: showTicket, verifyCheckout, refreshCash }), setCart };
   return null;
 }
 beforeEach(async () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
+  verifyCheckout.mockResolvedValue(null);
   localStorage.setItem("POS_LOCATION_ID", "10");
   products = [{ id: 1, name: "Producto", stock: 0, has_variants: true, use_warehouse_inventory: true, variants: [
     { id: 11, stock: 0, warehouse_stocks: [{ warehouse_id: 2, stock: 4 }, { warehouse_id: 3, stock: 6 }] },
@@ -28,6 +31,47 @@ beforeEach(async () => {
 afterEach(() => { act(() => root.unmount()); host.remove(); localStorage.clear(); });
 
 const line = warehouse_id => ({ product_id: 1, variant_id: 11, warehouse_id, cart_key: `1-v11-w${warehouse_id}`, quantity: 2, price: 100 });
+
+test("searches the selected POS product field across pages while retaining the category", async () => {
+  const first = { id: 1, name: "Pieza A", sku: "OEM-10" };
+  const second = { id: 2, name: "OEM-10", sku: "PZ-10", oe_number: "OEM-10" };
+  client.get.mockImplementation(async (_, { params }) => ({
+    data: { products: [params.page === 1 ? first : second], meta: { last_page: 2 } },
+  }));
+  act(() => {
+    latest.setSearch("oem-10");
+    latest.setSearchField("sku");
+  });
+  await act(async () => latest.refetchProducts({ categoryId: 3 }));
+  expect(latest.products.map(({ id }) => id)).toEqual([1]);
+  expect(latest.meta.total).toBe(1);
+  expect(client.get).toHaveBeenCalledWith("my-products-by-pos1", {
+    params: expect.objectContaining({ page: 2, category_id: 3, pos_location_id: 10 }),
+  });
+  act(() => latest.setSearchField("oe_number"));
+  await act(async () => latest.refetchProducts({ categoryId: 3 }));
+  expect(latest.products.map(({ id }) => id)).toEqual([2]);
+});
+
+test("keeps the cart and skips the sale when the latest cash status blocks checkout", async () => {
+  verifyCheckout.mockResolvedValue("Abre la caja para cobrar.");
+  await act(async () => latest.setCart([line(2)]));
+  await act(async () => latest.handleCheckout({ items: latest.cart }));
+  expect(client.post).not.toHaveBeenCalledWith("/v2/sales", expect.anything());
+  expect(showError).toHaveBeenCalledWith("Abre la caja para cobrar.");
+  expect(latest.cart).toHaveLength(1);
+});
+
+test("refreshes cash status and keeps the cart after a cash session rejection", async () => {
+  client.post.mockRejectedValueOnce({
+    response: { status: 422, data: { errors: { cash_session: ["El horario de caja terminó."] } } },
+  });
+  await act(async () => latest.setCart([line(2)]));
+  await act(async () => latest.handleCheckout({ items: latest.cart }));
+  expect(refreshCash).toHaveBeenCalledTimes(1);
+  expect(showError).toHaveBeenCalledWith("El horario de caja terminó.");
+  expect(latest.cart).toHaveLength(1);
+});
 
 test("includes requested shipment in the sale transaction and omits it when no delivery is selected", async () => {
   const shipment = { shipping_method_id: 3, recipient_name: "Ana", recipient_phone: "7221234567", destination_address: "Calle 10", notification_consent: false };

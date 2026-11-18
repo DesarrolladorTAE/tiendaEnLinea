@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, Stack, TextField, Typography, useMediaQuery, useTheme } from "@mui/material";
 import { useTienda } from "../../context/TiendaContext";
-import { canReceiveTransfer, transferItemName, destinationLabel, transferCollection, transferError, transfersApi } from "../../services/admin/inventoryTransfers";
+import { canReceiveTransfer, isInternalTransfer, transferItemName, destinationLabel, transferCollection, transferError, transfersApi } from "../../services/admin/inventoryTransfers";
 import { notifyInventoryChanged } from "../../utils/inventoryEvents";
 import NewInventoryTransferDialog from "./NewInventoryTransferDialog";
 import { warehouseDialogStyles, warehouseGrid, warehousePanel } from "./warehouseStyles";
@@ -11,19 +11,32 @@ const branchName = (row, side, branches = []) => row[`${side}_branch`]?.name || 
 const folio = row => row.document_name || row.document_title || row.folio || row.transfer_number || row.reference || `Traspaso #${row.id}`;
 const array = value => Array.isArray(value) ? value : [];
 const date = value => value ? new Date(value).toLocaleString("es-MX") : "—";
+const warehouseName = (row, side, warehouses) => {
+  const id = row[`${side}_warehouse_id`] ?? row[`${side}_warehouse`]?.id ??
+    (side === "source" ? row.items?.[0]?.source_warehouse_id : null);
+  return row[`${side}_warehouse`]?.name || row[`${side}_warehouse_name`] ||
+    warehouses.find(warehouse => String(warehouse.id) === String(id))?.name ||
+    (id ? `Almacén #${id}` : "Almacén de origen");
+};
 
-export default function InventoryTransfers({ branch, onChanged }) {
+export default function InventoryTransfers({ branch, onChanged, internal = false }) {
   const { tienda } = useTienda();
   const [branches, setBranches] = useState([]); const [branchError, setBranchError] = useState("");
+  const [warehouses, setWarehouses] = useState([]);
   const [revision, setRevision] = useState(0); const [direction, setDirection] = useState("outgoing"); const [status, setStatus] = useState(""); const [page, setPage] = useState(1);
   const [state, setState] = useState({ loading: true, rows: [], lastPage: 1, error: "" });
   const [creating, setCreating] = useState(false); const [selected, setSelected] = useState(null); const [notice, setNotice] = useState("");
   const [folioQuery, setFolioQuery] = useState("");
   useEffect(() => {
     const controller = new AbortController(); setBranchError("");
-    transfersApi.branches(tienda?.id, controller.signal).then(rows => { if (!controller.signal.aborted) setBranches(rows); }).catch(e => { if (!controller.signal.aborted) setBranchError(transferError(e)); });
+    const request = internal ? transfersApi.warehouses(branch.id, controller.signal) : transfersApi.branches(tienda?.id, controller.signal);
+    request.then(rows => {
+      if (controller.signal.aborted) return;
+      if (internal) setWarehouses(rows);
+      else setBranches(rows);
+    }).catch(e => { if (!controller.signal.aborted) setBranchError(transferError(e)); });
     return () => controller.abort();
-  }, [tienda?.id, revision]);
+  }, [branch.id, internal, tienda?.id, revision]);
   useEffect(() => {
     const controller = new AbortController(); setState({ loading: true, rows: [], lastPage: 1, error: "" });
     transfersApi.list({ branch_id: branch.id, direction, ...(status ? { status } : {}), page, per_page: 12 }, controller.signal).then(body => {
@@ -35,27 +48,30 @@ export default function InventoryTransfers({ branch, onChanged }) {
     return () => controller.abort();
   }, [branch.id, direction, status, page, revision]);
   const refresh = () => { setRevision(v => v + 1); notifyInventoryChanged(); onChanged?.(); };
-  const visibleRows = state.rows.filter(row => folio(row).toLocaleLowerCase("es").includes(folioQuery.trim().toLocaleLowerCase("es")));
+  const visibleRows = state.rows.filter(row => isInternalTransfer(row) === internal && folio(row).toLocaleLowerCase("es").includes(folioQuery.trim().toLocaleLowerCase("es")));
+  const canCreate = internal
+    ? warehouses.filter(row => ![false, 0, "0"].includes(row.is_active)).length >= 2
+    : branches.some(row => Number(row.id) !== Number(branch.id) && ![false, 0, "0"].includes(row.is_active));
   return <Stack spacing={2}>
-    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2}><Box><Typography variant="h5" fontWeight={800}>Traspasos entre sucursales</Typography><Typography variant="body2" color="text.secondary">Envía mercancía, revisa recepciones y consulta sus comprobantes.</Typography></Box><Button variant="contained" disabled={!branches.some(row => Number(row.id) !== Number(branch.id) && ![false, 0, "0"].includes(row.is_active))} onClick={() => setCreating(true)}>Nuevo traspaso</Button></Stack>
+    <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={2}><Box><Typography variant="h5" fontWeight={800}>{internal ? "Traspasos entre almacenes" : "Traspasos entre sucursales"}</Typography><Typography variant="body2" color="text.secondary">{internal ? "Envía y recibe mercancía entre almacenes de esta sucursal." : "Envía mercancía, revisa recepciones y consulta sus comprobantes."}</Typography></Box><Button variant="contained" disabled={!canCreate} onClick={() => setCreating(true)}>Nuevo traspaso</Button></Stack>
     {branchError && <Alert severity="error" action={<Button onClick={() => setRevision(v => v + 1)}>Reintentar</Button>}>{branchError}</Alert>}
-    {!branchError && branches.length === 1 && <Alert severity="info">Necesitas otra sucursal activa de la misma tienda para crear un traspaso.</Alert>}
+    {!branchError && !canCreate && (internal || branches.length === 1) && <Alert severity="info">{internal ? "Necesitas dos almacenes activos de esta sucursal para crear un traspaso." : "Necesitas otra sucursal activa de la misma tienda para crear un traspaso."}</Alert>}
     {notice && <Alert severity="success" onClose={() => setNotice("")}>{notice}</Alert>}
     <Stack direction="row" flexWrap="wrap" gap={1} role="group" aria-label="Consulta de traspasos">{[["outgoing", "Enviados"], ["incoming", "Recibidos"], ["all", "Historial"]].map(([value, label]) => <Button key={value} variant={direction === value ? "contained" : "outlined"} aria-pressed={direction === value} onClick={() => { setDirection(value); setPage(1); }}>{label}</Button>)}</Stack>
     <Stack direction={{ xs: "column", sm: "row" }} gap={1}><TextField select size="small" label="Estado" value={status} sx={{ width: { xs: "100%", sm: 250 } }} onChange={e => { setStatus(e.target.value); setPage(1); }}><MenuItem value="">Todos los estados</MenuItem>{Object.entries(statuses).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField><TextField size="small" label="Filtrar folio en esta página" value={folioQuery} onChange={e => setFolioQuery(e.target.value)} /><Button variant="outlined" onClick={() => setRevision(v => v + 1)}>Actualizar</Button></Stack>
     {state.loading ? <CircularProgress aria-label="Cargando traspasos" /> : state.error ? <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{state.error}</Alert> : !visibleRows.length ? <Alert severity="info">No hay traspasos con estos filtros en esta página.</Alert> : <Box sx={warehouseGrid}>{visibleRows.map(row => <Card key={row.id} variant="outlined" sx={{ borderRadius: 3 }}><CardContent><Stack spacing={1.5}>
       <Stack direction="row" gap={1} justifyContent="space-between" flexWrap="wrap"><Typography fontWeight={800}>{folio(row)}</Typography><Chip size="small" label={statuses[row.status] || row.status} color={row.status === "accepted" ? "success" : row.status === "rejected" ? "error" : "warning"} /></Stack>
-      <Typography sx={{ overflowWrap: "anywhere" }}>{branchName(row, "source", branches)} → {branchName(row, "destination", branches)}</Typography><Typography variant="body2">Destino: {destinationLabel(row)}</Typography>
+      <Typography sx={{ overflowWrap: "anywhere" }}>{internal ? warehouseName(row, "source", warehouses) : branchName(row, "source", branches)} → {internal ? warehouseName(row, "destination", warehouses) : branchName(row, "destination", branches)}</Typography>{!internal && <Typography variant="body2">Destino: {destinationLabel(row)}</Typography>}
       <Typography variant="caption" color="text.secondary">{date(row.created_at)}</Typography>
       <Button variant="outlined" onClick={() => setSelected(row.id)}>Ver detalle y comprobante</Button>
     </Stack></CardContent></Card>)}</Box>}
     {state.lastPage > 1 && <Pagination page={page} count={state.lastPage} size="small" onChange={(_, next) => setPage(next)} />}
-    {creating && <NewInventoryTransferDialog key={branch.id} branch={branch} branches={branches} onClose={() => { setCreating(false); setRevision(v => v + 1); }} onSaved={() => { setCreating(false); setPage(1); refresh(); setNotice("Traspaso enviado. Las existencias están en tránsito."); }} />}
-    {selected && <TransferDetail id={selected} branchId={branch.id} branches={branches} onClose={() => setSelected(null)} onChanged={refresh} />}
+    {creating && <NewInventoryTransferDialog key={branch.id} branch={branch} branches={branches} internal={internal} onClose={() => { setCreating(false); setRevision(v => v + 1); }} onSaved={() => { setCreating(false); setPage(1); refresh(); setNotice("Traspaso enviado. Las existencias están en tránsito."); }} />}
+    {selected && <TransferDetail id={selected} branchId={branch.id} branches={branches} warehouses={warehouses} internal={internal} onClose={() => setSelected(null)} onChanged={refresh} />}
   </Stack>;
 }
 
-function TransferDetail({ id, branchId, branches, onClose, onChanged }) {
+function TransferDetail({ id, branchId, branches, warehouses, internal, onClose, onChanged }) {
   const mobile = useMediaQuery(useTheme().breakpoints.down("sm"));
   const [record, setRecord] = useState(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [revision, setRevision] = useState(0);
   const [action, setAction] = useState(""); const [notes, setNotes] = useState(""); const [busy, setBusy] = useState(false); const [pdf, setPdf] = useState(""); const pending = useRef(false);
@@ -90,8 +106,8 @@ function TransferDetail({ id, branchId, branches, onClose, onChanged }) {
       {pdfError && <Alert severity="error" sx={{ whiteSpace: "pre-line" }} action={<Button disabled={busy} onClick={() => document(pdfError.download)}>Reintentar PDF</Button>}>{pdfError.message}</Alert>}
       {loading ? <CircularProgress /> : record && <>
         <Chip sx={{ alignSelf: "flex-start" }} label={statuses[record.status] || record.status} color={record.status === "pending" ? "warning" : record.status === "accepted" ? "success" : "error"} />
-        <Typography fontWeight={800}>{branchName(record, "source", branches)} → {branchName(record, "destination", branches)}</Typography>
-        <Typography>Destino: {destinationLabel(record)}</Typography>
+        <Typography fontWeight={800}>{internal ? warehouseName(record, "source", warehouses) : branchName(record, "source", branches)} → {internal ? warehouseName(record, "destination", warehouses) : branchName(record, "destination", branches)}</Typography>
+        {!internal && <Typography>Destino: {destinationLabel(record)}</Typography>}
         <Typography variant="body2">Enviado: {date(record.created_at)}</Typography>
         <Typography sx={{ whiteSpace: "pre-wrap" }}>Observaciones: {record.notes || "Sin observaciones"}</Typography>
         <Typography variant="h6" fontWeight={800}>Mercancía</Typography>
