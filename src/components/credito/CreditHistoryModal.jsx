@@ -3,6 +3,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  Box,
   IconButton,
   Typography,
   Stack,
@@ -13,6 +14,8 @@ import {
 import { useTheme } from "@mui/material/styles";
 
 import CloseIcon from "@mui/icons-material/Close";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import { posSectionIcon } from "../POS/posSectionStyles";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 import SettingsIcon from "@mui/icons-material/Settings";
 import ComputerIcon from "@mui/icons-material/Computer";
@@ -303,14 +306,19 @@ export default function CreditHistoryModal({ open, account, onClose }) {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 950, pr: 6 }}>
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1.25, fontWeight: 800, pr: 7, color: "#fff !important", bgcolor: "#1d2025", borderTop: "3px solid #ffc107" }}>
+          <Box component="span" sx={posSectionIcon}><HistoryOutlinedIcon /></Box>
           Historial de crédito
           <IconButton
+            aria-label="Cerrar historial de crédito"
             onClick={onClose}
             sx={{
               position: "absolute",
               right: 12,
               top: 10,
+              color: "#fff",
+              minWidth: 44,
+              minHeight: 44,
             }}
           >
             <CloseIcon />

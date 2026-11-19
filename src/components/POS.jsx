@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import axiosClient from "../config/axiosClientPOS";
 import {
   Box,
-  Alert,
   Typography,
   Button,
   Stack,
@@ -30,9 +29,8 @@ import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { showError, showSuccess } from "../utils/alerts";
-import { cashAlreadyCutMessage, cashBlockMessage } from "../utils/cashControl";
 
-export default function POS({ cash, openCash, cart, setCart, posName, branchId, branchName }) {
+export default function POS({ cash, cart, setCart, posName, branchId, branchName }) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -329,15 +327,6 @@ export default function POS({ cash, openCash, cart, setCart, posName, branchId, 
         pb: { xs: 12, md: 4 },
       }}
     >
-      {!cash.canSell && !cash.canOpenWithoutPrompt && (
-        <Alert
-          severity={cash.error ? "error" : cash.status ? "warning" : "info"}
-          sx={{ mb: 2, flexWrap: "wrap" }}
-          action={<Button color="inherit" onClick={openCash}>Ver caja</Button>}
-        >
-          {cash.error || (cash.cutToday ? cashAlreadyCutMessage : cash.status ? cashBlockMessage(cash.status) : "Consultando el estado de caja…")}
-        </Alert>
-      )}
       <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, "& .mb-3": { mb: "0 !important" } }}>
         <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} gap={1} mb={1.5}>
           <Box sx={{ minWidth: 0 }}>
@@ -687,7 +676,7 @@ export default function POS({ cash, openCash, cart, setCart, posName, branchId, 
             setCart={setCart}
             onRemove={handleRemove}
             onCheckout={onCheckout}
-            checkoutBlocked={!cash.canSell && !cash.canOpenWithoutPrompt}
+            checkoutBlocked={!cash.canSell}
             setScannerEnabled={setScannerEnabled}
             setModalDescuentoActivo={setModalDescuentoActivo}
             variant={isMdUp ? "desktop" : "mobile"}

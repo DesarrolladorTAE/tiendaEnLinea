@@ -18,6 +18,7 @@ import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import PaymentsIcon from "@mui/icons-material/Payments";
 
 import CreditMovementTypeChip from "./CreditMovementTypeChip";
+import { posTableHeader } from "../POS/posSectionStyles";
 import {
     money,
     formatDate,
@@ -70,10 +71,10 @@ export default function CreditHistoryTable({
     onOpenTicketPayment,
 }) {
     return (
-        <TableContainer component={Paper} variant="outlined">
+        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
             <Table size="small">
                 <TableHead>
-                    <TableRow sx={{ "& th": { fontWeight: 900, bgcolor: "#f8fafc" } }}>
+                    <TableRow sx={posTableHeader}>
                         <TableCell>Fecha</TableCell>
                         <TableCell>Concepto</TableCell>
                         <TableCell>Venta / Productos</TableCell>

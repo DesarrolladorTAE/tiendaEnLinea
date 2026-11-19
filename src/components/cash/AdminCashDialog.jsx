@@ -106,7 +106,7 @@ export default function AdminCashDialog({ pos, onClose }) {
                       ? "El POS puede cobrar sin abrir caja."
                       : settings.cash_opening_amount_required
                         ? "El operador declara el fondo y abre la caja antes de cobrar."
-                        : "La caja se abre automáticamente con fondo de $0 al cobrar por primera vez."}
+                        : "El operador puede iniciar la caja con fondo de $0 antes de cobrar."}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">Horario de Ciudad de México. Deja ambas horas vacías para usar horario libre.</Typography>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>

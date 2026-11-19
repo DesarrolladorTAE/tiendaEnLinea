@@ -20,7 +20,7 @@ export default function TourReportsPage({ mode = "store", posBranchId, posLocati
   const { selectedBranch, setHideLayout } = useAdminUi();
   const branchId = Number(mode === "pos" ? posBranchId : selectedBranch?.id);
   useEffect(() => { if (mode === "store") setHideLayout(false); }, [mode, setHideLayout]);
-  if (!Number.isSafeInteger(branchId) || branchId <= 0) return <Stack spacing={2}><Button startIcon={<ArrowBackRoundedIcon />} onClick={back} sx={{ alignSelf: "flex-start" }}>{mode === "store" ? "Regresar a Reportes" : "Volver al POS"}</Button><Alert severity="warning">Selecciona una sucursal para generar reportes.</Alert></Stack>;
+  if (!Number.isSafeInteger(branchId) || branchId <= 0) return <Stack spacing={2}>{back && <Button startIcon={<ArrowBackRoundedIcon />} onClick={back} sx={{ alignSelf: "flex-start" }}>{mode === "store" ? "Regresar a Reportes" : "Volver al POS"}</Button>}<Alert severity="warning">Selecciona una sucursal para generar reportes.</Alert></Stack>;
   return <Reports key={`${mode}-${branchId}`} context={{ mode, branchId }} posLocationId={posLocationId} onBack={back} />;
 }
 

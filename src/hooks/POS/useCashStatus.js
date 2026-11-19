@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import client from "../../config/axiosClientPOS";
-import { canOpenCashWithoutPrompt, canSellWithCash, cashAlreadyCutMessage, cashBlockMessage, cashBusinessDate, cashError, cashPath, downloadCashReport } from "../../utils/cashControl";
+import { canSellWithCash, cashAlreadyCutMessage, cashBlockMessage, cashBusinessDate, cashError, cashPath, downloadCashReport, hasCashSchedule } from "../../utils/cashControl";
 
 export default function useCashStatus(posId) {
   const [result, setResult] = useState(null);
@@ -36,7 +36,7 @@ export default function useCashStatus(posId) {
   const current = result?.posId === posId ? result : null;
   const lastCutDate = lastCut?.posId === posId ? lastCut.date : null;
   const cutToday = current?.status?.cash_control_enabled === true &&
-    current.status.session === null && lastCutDate === cashBusinessDate();
+    hasCashSchedule(current.status) && current.status.session === null && lastCutDate === cashBusinessDate();
   const downloadOpening = useCallback(async (sessionId, formats = ["pdf", "xlsx"]) => {
     setDownloads({ posId, sessionId, pending: true });
     const results = await Promise.allSettled(formats.map((format) =>
@@ -58,27 +58,14 @@ export default function useCashStatus(posId) {
     const status = await refresh();
     if (!status) return "No se pudo verificar el estado de caja. Intenta de nuevo.";
     if (canSellWithCash(status)) return null;
-    if (status.session === null && lastCutDate === cashBusinessDate()) return cashAlreadyCutMessage;
-    if (!canOpenCashWithoutPrompt(status)) return cashBlockMessage(status);
-
-    let openingError;
-    try {
-      await openSession({});
-    } catch (error) {
-      openingError = error;
-    }
-
-    const updated = await refresh();
-    if (canSellWithCash(updated)) return null;
-    if (openingError) return cashError(openingError, "No se pudo abrir la caja para cobrar.");
-    return updated ? cashBlockMessage(updated) : "No se pudo verificar la apertura de caja. Intenta de nuevo.";
-  }, [lastCutDate, openSession, refresh]);
+    if (hasCashSchedule(status) && status.session === null && lastCutDate === cashBusinessDate()) return cashAlreadyCutMessage;
+    return cashBlockMessage(status);
+  }, [lastCutDate, refresh]);
 
   return {
     status: current?.status,
     error: current?.error,
     canSell: canSellWithCash(current?.status),
-    canOpenWithoutPrompt: !cutToday && canOpenCashWithoutPrompt(current?.status),
     cutToday,
     recordCut: (session) => setLastCut({ posId, date: session?.business_date?.slice(0, 10) }),
     refresh,

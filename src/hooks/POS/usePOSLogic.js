@@ -12,6 +12,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
   const [products, setProducts] = useState([]);
   const inventoryCache = useRef(new Map());
   const checkoutBusy = useRef(false);
+  const mounted = useRef(false);
   const requestSequence = useRef(0);
   const latestCart = useRef(cart);
   latestCart.current = cart;
@@ -34,12 +35,15 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
   const previousPosId = useRef(posLocationId);
 
   useEffect(() => {
+    mounted.current = true;
     const sync = () => {
       setPosLocationId(Number(localStorage.getItem("POS_LOCATION_ID")) || null);
     };
     window.addEventListener("storage", sync);
     window.addEventListener("pos:changed", sync);
     return () => {
+      mounted.current = false;
+      requestSequence.current++;
       window.removeEventListener("storage", sync);
       window.removeEventListener("pos:changed", sync);
     };
@@ -48,6 +52,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
   // ✅ paginado + search + category
   const refetchProducts = useCallback(
     async ({ nextPage = 1, perPage = 12, categoryId = null, refreshCart = false } = {}) => {
+      if (!mounted.current) return;
       const request = ++requestSequence.current;
       currentQuery.current = { nextPage, perPage, categoryId };
       try {
@@ -59,6 +64,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
         }
 
         const allowedIds = await fetchPOSScope(axiosClient);
+        if (request !== requestSequence.current) return;
         const query = {
           page: Number(nextPage) || 1,
           per_page: Number(perPage) || 12,

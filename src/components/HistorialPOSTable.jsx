@@ -304,7 +304,7 @@ export default function HistorialPOSTable({
             color="text.secondary"
           >
             {getSaleId(row)
-              ? `Ticket #${getSaleId(row)}`
+              ? `Folio #${getSaleId(row)}`
               : "Movimiento de cuenta"}
           </Typography>
         </Box>
@@ -431,6 +431,8 @@ export default function HistorialPOSTable({
 
                 border: "1px solid",
                 borderColor: "divider",
+                borderTop: "3px solid #ffc107",
+                overflowWrap: "anywhere",
 
                 background:
                   "linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.92))",
@@ -454,6 +456,8 @@ export default function HistorialPOSTable({
                     justifyContent="space-between"
                     alignItems="center"
                     spacing={1}
+                    useFlexGap
+                    flexWrap="wrap"
                   >
                     <Chip
                       size="small"
@@ -462,6 +466,9 @@ export default function HistorialPOSTable({
                       sx={{
                         fontWeight: 900,
                         borderRadius: 2,
+                        height: "auto",
+                        minHeight: 24,
+                        "& .MuiChip-label": { whiteSpace: "normal" },
                       }}
                     />
 
@@ -562,8 +569,7 @@ export default function HistorialPOSTable({
                   borderBottom:
                     "1px solid",
 
-                  borderColor:
-                    "divider",
+                  borderColor: "divider",
                 },
               }}
             >

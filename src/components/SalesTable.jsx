@@ -50,6 +50,7 @@ import LockClockRoundedIcon from "@mui/icons-material/LockClockRounded";
 import { SaleAmountDisplay } from "./POSSaleAmounts";
 import { SaleTypeChip } from "./POSSaleInformation";
 import { posDate, posDateValue, saleInfo, saleDayKey, sumSaleAmounts, posMoney } from "../utils/posSaleInfo";
+import { posMobileCard, posTableHeader } from "./POS/posSectionStyles";
 
 // --- Helpers ---
 const capitalizeFirst = (s) =>
@@ -299,9 +300,8 @@ export default function SalesTable({
         key={row.id ?? idx}
         elevation={0}
         sx={{
+          ...posMobileCard,
           p: 1.35,
-          borderRadius: 3,
-          border: `1px solid ${alpha(theme.palette.primary.main, 0.08)}`,
           background:
             theme.palette.mode === "dark"
               ? alpha(theme.palette.background.paper, 0.9)
@@ -319,9 +319,9 @@ export default function SalesTable({
             <Box minWidth={0}>
               <Typography
                 variant="caption"
-                sx={{ color: "text.secondary", fontWeight: 700 }}
+                sx={{ color: "text.secondary", fontWeight: 700, display: "flex", alignItems: "center", gap: 0.5 }}
               >
-                Folio
+                <TagRoundedIcon sx={{ fontSize: 16, color: "#785900" }} /> Folio
               </Typography>
               <Typography
                 sx={{
@@ -668,19 +668,7 @@ export default function SalesTable({
           >
             <Table size={dense ? "small" : "medium"} sx={{ tableLayout: "fixed", width: "100%", "& th, & td": { px: 1, overflowWrap: "anywhere" }, "& .MuiChip-root": { maxWidth: "100%", height: "auto", minHeight: 24 }, "& .MuiChip-label": { whiteSpace: "normal", py: 0.5 } }}>
               <TableHead>
-                <TableRow
-                  sx={{
-                    "& th": {
-                      bgcolor:
-                        theme.palette.mode === "dark"
-                          ? theme.palette.background.paper
-                          : "#f8faff",
-                      color: "text.primary",
-                      fontWeight: 800,
-                      borderBottom: `1px solid ${theme.palette.divider}`,
-                    },
-                  }}
-                >
+                <TableRow sx={posTableHeader}>
                   <TableCell sx={{ width: "9%" }}>Folio</TableCell>
                   <TableCell>Venta y fechas</TableCell>
                   <TableCell>Cliente</TableCell>

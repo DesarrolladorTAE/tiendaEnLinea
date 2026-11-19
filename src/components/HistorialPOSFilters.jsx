@@ -1,15 +1,12 @@
 import React from "react";
 import {
   Box,
-  Paper,
   Stack,
   Typography,
   TextField,
   MenuItem,
   Button,
-  Chip,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
 
 import ReplayRoundedIcon from "@mui/icons-material/ReplayRounded";
 import FilterAltRoundedIcon from "@mui/icons-material/FilterAltRounded";
@@ -28,30 +25,28 @@ export default function HistorialPOSFilters({
   onClear,
   loading,
 }) {
-  const theme = useTheme();
-
   const fieldSx = {
-    minWidth: { xs: "100%", md: 170 },
+    minWidth: 0,
+    colorScheme: "dark",
     "& .MuiOutlinedInput-root": {
-      borderRadius: 3,
-      bgcolor: "background.paper",
+      borderRadius: 2,
+      bgcolor: "#272c34",
+      color: "#fff",
       fontWeight: 700,
+      minHeight: 44,
+      "& fieldset": { borderColor: "#65707d" },
+      "&:hover fieldset": { borderColor: "#d0d6df" },
+      "&.Mui-focused fieldset": { borderColor: "#ffc107" },
+      "&.Mui-disabled fieldset": { borderColor: "#555e69" },
     },
+    "& .MuiInputLabel-root, & .MuiSelect-icon": { color: "#e0e5ed" },
+    "& .MuiInputLabel-root.Mui-focused": { color: "#ffc107" },
+    "& .MuiInputLabel-root.Mui-disabled": { color: "#adb6c2" },
+    "& .MuiInputBase-input.Mui-disabled": { WebkitTextFillColor: "#adb6c2" },
   };
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: { xs: 2, md: 2.4 },
-        borderRadius: 5,
-        border: "1px solid",
-        borderColor: "divider",
-        background:
-          "linear-gradient(135deg, rgba(15,23,42,.025), rgba(255,255,255,.98))",
-        boxShadow: "0 18px 45px rgba(15,23,42,.06)",
-      }}
-    >
+    <Box component="section" aria-labelledby="pos-history-filter-title" sx={{ pt: 2, borderTop: "1px solid #434953" }}>
       <Stack spacing={2}>
         <Stack
           direction={{ xs: "column", md: "row" }}
@@ -67,40 +62,23 @@ export default function HistorialPOSFilters({
                 borderRadius: 3,
                 display: "grid",
                 placeItems: "center",
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                color: "primary.main",
+                bgcolor: "#3d3520",
+                color: "#ffd454",
               }}
             >
               <FilterAltRoundedIcon />
             </Box>
 
             <Box>
-              <Typography fontWeight={950} fontSize={18}>
+              <Typography id="pos-history-filter-title" component="h3" sx={{ color: "#fff !important", fontWeight: 800, fontSize: 16 }}>
                 Filtros de consulta
-              </Typography>
-
-              <Typography variant="body2" color="text.secondary">
-                Filtra movimientos por fecha y método de pago.
               </Typography>
             </Box>
           </Stack>
 
-          <Chip
-            size="small"
-            label={loading ? "Consultando..." : "Listo para consultar"}
-            color={loading ? "warning" : "success"}
-            variant="outlined"
-            sx={{ fontWeight: 900 }}
-          />
         </Stack>
 
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1.2}
-          alignItems="stretch"
-          flexWrap="wrap"
-          useFlexGap
-        >
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1.5 }}>
           <TextField
             select
             size="small"
@@ -146,10 +124,7 @@ export default function HistorialPOSFilters({
             label="Método de pago"
             value={tipoPago}
             onChange={(e) => setTipoPago(e.target.value)}
-            sx={{
-              ...fieldSx,
-              minWidth: { xs: "100%", md: 210 },
-            }}
+            sx={fieldSx}
           >
             <MenuItem value="">Todos los métodos</MenuItem>
             <MenuItem value="efectivo">Efectivo</MenuItem>
@@ -162,8 +137,8 @@ export default function HistorialPOSFilters({
             direction={{ xs: "column", sm: "row" }}
             spacing={1}
             sx={{
-              ml: { md: "auto" },
-              width: { xs: "100%", md: "auto" },
+              gridColumn: "1 / -1",
+              justifySelf: { sm: "end" },
             }}
           >
             <Button
@@ -178,6 +153,10 @@ export default function HistorialPOSFilters({
                 fontWeight: 900,
                 minHeight: 42,
                 px: 2.5,
+                "&.Mui-disabled": { bgcolor: "#555044", color: "#eee5cd" },
+                bgcolor: "#ffc107",
+                color: "#17191c",
+                "&:hover": { bgcolor: "#ffe082" },
               }}
             >
               {loading ? "Cargando..." : "Aplicar"}
@@ -196,13 +175,17 @@ export default function HistorialPOSFilters({
                 fontWeight: 900,
                 minHeight: 42,
                 px: 2.5,
+                color: "#fff",
+                borderColor: "#65707d",
+                "&:hover": { borderColor: "#ffc107" },
+                "&.Mui-disabled": { color: "#adb6c2", borderColor: "#555e69" },
               }}
             >
               Limpiar
             </Button>
           </Stack>
-        </Stack>
+        </Box>
       </Stack>
-    </Paper>
+    </Box>
   );
 }

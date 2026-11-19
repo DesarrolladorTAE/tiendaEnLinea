@@ -12,9 +12,12 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import PointOfSaleRoundedIcon from "@mui/icons-material/PointOfSaleRounded";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import CreditScoreOutlinedIcon from "@mui/icons-material/CreditScoreOutlined";
+import { posHeaderButton, posHeaderChip, posMobileCard, posSectionHeader, posSectionIcon, posSectionTitle } from "./POS/posSectionStyles";
 
 import axiosClient from "../config/axiosClientPOS";
 import FiltersBar from "./FiltersBar";
@@ -55,7 +58,6 @@ const folioFromSale = (v) =>
   v?.folio_venta || String(v?.id ?? "").padStart(6, "0");
 
 export default function ComprasSuscripcionesView({
-  cambiarVista,
   tituloMes: tituloMesProp,
   posLocationId: posLocationIdProp,
 }) {
@@ -467,203 +469,39 @@ export default function ComprasSuscripcionesView({
     )}`;
 
   return (
-    <Box
-      sx={{
-        p: { xs: 0.75, sm: 1.5, md: 3, lg: 4 },
-        minHeight: "100%",
-        background:
-          theme.palette.mode === "dark"
-            ? `linear-gradient(180deg, ${alpha("#0b1220", 0.96)} 0%, ${alpha(
-                "#111827",
-                0.98,
-              )} 100%)`
-            : `linear-gradient(180deg, ${alpha("#f8fbff", 1)} 0%, ${alpha(
-                "#eef4ff",
-                1,
-              )} 100%)`,
-      }}
-    >
+    <Box sx={{ width: "100%", minWidth: 0 }}>
       <Box sx={{ maxWidth: 1500, mx: "auto" }}>
-        <Paper
-          elevation={0}
-          sx={{
-            p: { xs: 1.2, sm: 2.2, md: 3 },
-            borderRadius: { xs: 3, md: 5 },
-            mb: { xs: 1.2, md: 3 },
-            overflow: "hidden",
-            position: "relative",
-            border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-            background:
-              theme.palette.mode === "dark"
-                ? `linear-gradient(135deg, ${alpha(
-                    theme.palette.primary.main,
-                    0.12,
-                  )} 0%, ${alpha("#0f172a", 0.94)} 60%, ${alpha(
-                    "#111827",
-                    0.98,
-                  )} 100%)`
-                : `linear-gradient(135deg, ${alpha(
-                    theme.palette.primary.main,
-                    0.12,
-                  )} 0%, ${alpha("#ffffff", 0.96)} 55%, ${alpha(
-                    "#f6faff",
-                    1,
-                  )} 100%)`,
-            boxShadow: `0 16px 40px ${alpha(theme.palette.common.black, 0.08)}`,
-          }}
-        >
-          <Box
-            sx={{
-              position: "absolute",
-              right: -50,
-              top: -50,
-              width: 180,
-              height: 180,
-              borderRadius: "50%",
-              background: alpha(theme.palette.primary.main, 0.08),
-              filter: "blur(10px)",
-            }}
-          />
-          <Box
-            sx={{
-              position: "absolute",
-              right: 80,
-              bottom: -60,
-              width: 160,
-              height: 160,
-              borderRadius: "50%",
-              background: alpha(theme.palette.success.main, 0.08),
-              filter: "blur(10px)",
-              display: { xs: "none", md: "block" },
-            }}
-          />
-
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            alignItems={{ xs: "stretch", md: "center" }}
-            spacing={{ xs: 1.2, md: 2 }}
-            sx={{ position: "relative", zIndex: 1 }}
-          >
-            <Box>
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                mb={{ xs: 0.8, md: 1.2 }}
-                flexWrap="wrap"
-                useFlexGap
-              >
-                <Chip
-                  icon={<PointOfSaleRoundedIcon />}
-                  label="Facturación POS"
-                  color="primary"
-                  variant="filled"
-                  size="small"
-                  sx={{
-                    borderRadius: 999,
-                    fontWeight: 700,
-                    px: 0.4,
-                  }}
-                />
-                <Chip
-                  label={allowed ? "Taeconta activo" : "Acceso restringido"}
-                  color={allowed ? "success" : "warning"}
-                  variant="outlined"
-                  size="small"
-                  sx={{ borderRadius: 999, fontWeight: 700 }}
-                />
-              </Stack>
-
-              <Typography
-                variant="h4"
-                sx={{
-                  fontWeight: 900,
-                  lineHeight: 1.05,
-                  letterSpacing: -0.5,
-                  fontSize: { xs: "1.25rem", sm: "1.7rem", md: "2.15rem" },
-                }}
-              >
-                Ventas Facturables
-              </Typography>
-
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "text.secondary",
-                  mt: 0.8,
-                  maxWidth: 780,
-                  fontSize: { xs: ".87rem", sm: "1rem" },
-                }}
-              >
-                Consulta ventas del mes actual, filtra rápidamente por folio y
-                genera facturas de forma más ordenada y profesional desde tu
-                POS.
-              </Typography>
-            </Box>
-
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              width={{ xs: "100%", md: "auto" }}
-            >
-              <Button
-                variant="outlined"
-                color="primary"
-                size="small"
-                startIcon={<RefreshRoundedIcon />}
-                onClick={reloadVentas}
-                disabled={loading}
-                sx={{
-                  borderRadius: 2.5,
-                  px: 1.8,
-                  py: 1,
-                  fontWeight: 700,
-                  textTransform: "none",
-                  minWidth: { xs: "100%", sm: "auto" },
-                  bgcolor: alpha(theme.palette.background.paper, 0.6),
-                  backdropFilter: "blur(8px)",
-                }}
-              >
-                {loading ? "Actualizando..." : "Actualizar"}
-              </Button>
-
-              <Button
-                variant="contained"
-                color="success"
-                size="small"
-                startIcon={<DashboardIcon />}
-                onClick={() => cambiarVista?.("menu")}
-                sx={{
-                  borderRadius: 2.5,
-                  px: 2,
-                  py: 1,
-                  fontWeight: 800,
-                  textTransform: "none",
-                  minWidth: { xs: "100%", sm: "auto" },
-                  boxShadow: `0 10px 25px ${alpha(
-                    theme.palette.success.main,
-                    0.24,
-                  )}`,
-                }}
-              >
-                Regresar al Panel
-              </Button>
+        <Paper elevation={0} sx={posSectionHeader}>
+          <Stack direction={{ xs: "column", sm: "row" }} gap={2} justifyContent="space-between" alignItems={{ sm: "center" }}>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start" minWidth={0}>
+              <Box sx={posSectionIcon}><ReceiptLongOutlinedIcon /></Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography component="h2" sx={posSectionTitle}>Facturación</Typography>
+                <Typography variant="body2" sx={{ mt: 0.5, color: "#c7cbd1 !important" }}>Consulta ventas del mes, busca por folio y genera facturas.</Typography>
+                <Chip size="small" label={allowed ? "Taeconta activo" : "Acceso restringido"} sx={{ ...posHeaderChip, mt: 1.25 }} />
+              </Box>
             </Stack>
+            <Button variant="contained" startIcon={<RefreshRoundedIcon />} onClick={reloadVentas} disabled={loading} sx={posHeaderButton}>
+              {loading ? "Actualizando…" : "Actualizar"}
+            </Button>
           </Stack>
         </Paper>
-
-        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1.5, mb: 2 }}>
           {[
-            ["Total facturable", "facturable"], ["Ventas de contado", "cash"],
-            ["Créditos liquidados", "credit_paid"], ["Ventas facturadas", "invoiced"],
-          ].map(([label, key]) => <Paper key={key} sx={{ p: 2, flex: "1 1 200px", borderRadius: 3 }}>
-            <Typography color="text.secondary">{label}</Typography>
-            <Typography fontWeight={800}>{summary.unknown.count > 0 && summary[key].count === 0 && ["cash", "credit_paid"].includes(key) ? "No disponible" : summary[key].missing > 0 && summary[key].missing === summary[key].count ? "No disponible" : posMoney(summary[key].amount)}</Typography>
+            ["Total facturable", "facturable", ReceiptLongOutlinedIcon, "#fff3cc", "#785900"],
+            ["Ventas de contado", "cash", PaymentsOutlinedIcon, "#eaf8f1", "#206348"],
+            ["Créditos liquidados", "credit_paid", CreditScoreOutlinedIcon, "#eef3ff", "#294c81"],
+            ["Ventas facturadas", "invoiced", PointOfSaleRoundedIcon, "#f2edff", "#634390"],
+          ].map(([label, key, Icon, background, foreground]) => <Paper elevation={0} key={key} sx={{ ...posMobileCard, p: 2 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.75 }}>
+              <Box sx={{ display: "grid", placeItems: "center", width: 32, height: 32, flexShrink: 0, borderRadius: 1.5, bgcolor: background, color: foreground }}><Icon fontSize="small" /></Box>
+              <Typography variant="body2" color="text.secondary" fontWeight={700}>{label}</Typography>
+            </Stack>
+            <Typography fontWeight={850} sx={{ fontSize: { xs: 18, sm: 21 }, fontVariantNumeric: "tabular-nums" }}>{summary.unknown.count > 0 && summary[key].count === 0 && ["cash", "credit_paid"].includes(key) ? "No disponible" : summary[key].missing > 0 && summary[key].missing === summary[key].count ? "No disponible" : posMoney(summary[key].amount)}</Typography>
             <Typography variant="caption">{summary[key].count} ventas{summary.unknown.count > 0 && ["cash", "credit_paid"].includes(key) ? " identificadas · información incompleta" : " recibidas del mes"}</Typography>
             {summary[key].missing > 0 && <Typography variant="caption" color="warning.main" display="block">Importe incompleto: {summary[key].missing} ventas sin neto válido.</Typography>}
           </Paper>)}
-        </Stack>
+        </Box>
         <Typography variant="body2" sx={{ mb: 2 }} color="text.secondary">ISR retenido del periodo: {summary.retention.missing === ventasRaw.length && ventasRaw.length > 0 ? "No disponible" : posMoney(summary.retention.amount)}{summary.retention.missing > 0 ? ` · Faltan importes en ${summary.retention.missing} ventas` : ""}</Typography>
         {summary.unknown.count > 0 && <Paper sx={{ p: 2, mb: 2, borderRadius: 3 }}>
           <Typography>{summary.unknown.count} ventas por {summary.unknown.missing ? "importe neto incompleto" : posMoney(summary.unknown.amount)} sin tipo confirmado.</Typography>

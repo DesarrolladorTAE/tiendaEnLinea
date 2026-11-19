@@ -12,7 +12,6 @@ export default function ProductInfoSection({
   basePriceStr,
   onRecalculateBase,
   isEdit = false,
-  canEditPurchaseCost = false,
 }) {
   return (
     <div className="row">
@@ -88,38 +87,24 @@ export default function ProductInfoSection({
       </div>
 
       <div className="col-md-4 mb-3">
-        <label className="form-label">Costo de Compra</label>
+        <label className="form-label" htmlFor="product-purchase-cost">Costo de Compra</label>
 
         <input
+          id="product-purchase-cost"
           type="text"
           className="form-control bg-secondary border-secondary text-light"
-          readOnly={isEdit && !canEditPurchaseCost}
-          placeholder={
-            isEdit && !canEditPurchaseCost
-              ? "Se actualiza desde entradas"
-              : "Costo de compra"
-          }
-          {...register("costo_compra", { onChange: () => { if (watch("price_mode") === "factor") setValue("factor_preview_enabled", true); } })}
+          placeholder={isEdit ? "Costo de compra (opcional)" : "Costo de compra"}
+          aria-describedby={isEdit ? "product-purchase-cost-help" : undefined}
+          {...register("costo_compra")}
         />
 
-        {isEdit &&
-          (canEditPurchaseCost ? (
-            <small className="text-success d-block mt-1">
-              ✔️ Esta tienda tiene permiso para modificar el costo de compra
-              directamente desde el producto.
-            </small>
-          ) : (
-            <small className="text-warning d-block mt-1">
-              ⚠️ El costo de compra solo se puede cambiar al registrar entradas
-              de producto.
-              <br />
-              Dirígete al apartado{" "}
-              <Link to="/admin/compra" className="text-info fw-bold">
-                Entradas Producto
-              </Link>
-              .
-            </small>
-          ))}
+        {isEdit && (
+          <small id="product-purchase-cost-help" className="text-warning d-block mt-1">
+            Si recibiste mercancía con un costo nuevo, te recomendamos registrarlo desde{" "}
+            <Link to="/admin/compra" className="text-info fw-bold">Entradas de producto</Link>
+            {" "}para mantener el historial de costos.
+          </small>
+        )}
       </div>
       <ProfitFactorControl watch={watch} setValue={setValue} />
     </div>

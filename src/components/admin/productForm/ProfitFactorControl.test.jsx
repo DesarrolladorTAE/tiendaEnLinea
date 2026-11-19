@@ -26,14 +26,10 @@ test("cost unlocks the modal, applying previews 145 including IVA, and manual mo
   expect(checkbox.disabled).toBe(false);
   expect(configure.disabled).toBe(true);
   await act(async () => Simulate.change(checkbox, { target: { checked: true } }));
-  expect(document.querySelector('[role="dialog"]')).toBeNull();
-  expect(configure.disabled).toBe(false);
-  expect(host.querySelector('input[name="price"]').readOnly).toBe(true);
-  expect(host.querySelector('input[name="price"]').disabled).toBe(false);
-  expect(host.textContent).not.toContain("porcentaje que aumentas al costo de compra");
-  await act(async () => Simulate.click(configure));
   const dialog = document.querySelector('[role="dialog"]');
-  expect(dialog.textContent).toContain("porcentaje que aumentas al costo de compra");
+  expect(checkbox.closest(".border").classList.contains("border-info")).toBe(true);
+  expect(dialog.textContent).toContain("Porcentaje de aumento sobre el costo de compra");
+  expect(dialog.querySelector("input").classList.contains("bg-secondary")).toBe(true);
   const apply = [...dialog.querySelectorAll("button")].find(button => button.textContent === "Usar este factor");
   expect(apply.disabled).toBe(true);
   await act(async () => Simulate.change(dialog.querySelector("input"), { target: { value: "45" } }));
@@ -55,19 +51,27 @@ test("cost unlocks the modal, applying previews 145 including IVA, and manual mo
   expect(host.querySelector('input[name="price"]').readOnly).toBe(false);
 });
 
-test("cancel preserves the amount; unchecking the option unlocks manual editing", async () => {
-  await act(async () => { form.setValue("costo_compra", "100"); form.setValue("price", "77"); });
+test("canceling automatic setup for zero preserves manual pricing", async () => {
+  await act(async () => { form.setValue("costo_compra", "100"); form.setValue("price", "77"); form.setValue("profit_factor", "0"); });
   const checkbox = host.querySelector('input[type="checkbox"]');
   await act(async () => Simulate.change(checkbox, { target: { checked: true } }));
-  const configure = [...host.querySelectorAll("button")].find(button => button.textContent === "Configurar factor");
-  await act(async () => Simulate.click(configure));
+  expect(document.querySelector('[role="dialog"] input').value).toBe("");
   const cancel = [...document.querySelectorAll('[role="dialog"] button')].find(button => button.textContent === "Cancelar");
   await act(async () => Simulate.click(cancel));
-  expect(form.getValues("price_mode")).toBe("factor");
-  expect(form.getValues("price")).toBe("77");
-  expect(checkbox.checked).toBe(true);
-  expect(host.querySelector('input[name="price"]').readOnly).toBe(true);
-  await act(async () => Simulate.change(checkbox, { target: { checked: false } }));
   expect(form.getValues("price_mode")).toBe("manual");
+  expect(form.getValues("price")).toBe("77");
+  expect(checkbox.checked).toBe(false);
+  expect(checkbox.closest(".border").classList.contains("border-secondary")).toBe(true);
   expect(host.querySelector('input[name="price"]').readOnly).toBe(false);
+});
+
+test("enabling a positive factor keeps the dialog closed", async () => {
+  await act(async () => {
+    form.setValue("costo_compra", "100");
+    form.setValue("profit_factor", "45");
+  });
+  const checkbox = host.querySelector('input[type="checkbox"]');
+  await act(async () => Simulate.change(checkbox, { target: { checked: true } }));
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(checkbox.checked).toBe(true);
 });

@@ -44,21 +44,22 @@ test("allows checkout with cash control disabled and leaves the box closed", asy
   await mount({ ...optional, cash_control_enabled: false });
   await act(async () => expect(await cash.verifyCheckout()).toBeNull());
   expect(cash.canSell).toBe(true);
-  expect(cash.canOpenWithoutPrompt).toBe(false);
   expect(client.post).not.toHaveBeenCalled();
   expect(saveAs).not.toHaveBeenCalled();
 });
 
-test("opens with zero cash at checkout only, then verifies sales permission", async () => {
-  await mount(optional);
-  expect(cash.canOpenWithoutPrompt).toBe(true);
+test("requires explicit opening even without an initial amount, and blocks again when closed", async () => {
+  await mount({ ...optional, can_sell: true });
+  expect(cash.canSell).toBe(false);
+  await act(async () => expect(await cash.verifyCheckout()).toBe("Abre la caja para cobrar."));
   expect(client.post).not.toHaveBeenCalled();
+
   client.get
-    .mockResolvedValueOnce({ data: optional })
     .mockResolvedValueOnce({ data: new Blob(["pdf"]) })
     .mockResolvedValueOnce({ data: new Blob(["xlsx"]) })
     .mockResolvedValueOnce({ data: { ...optional, session: { id: 42 }, can_sell: true } });
   client.post.mockResolvedValue({ data: { session: { id: 42 } } });
+  await act(async () => { await cash.openSession({}); });
   await act(async () => expect(await cash.verifyCheckout()).toBeNull());
   expect(client.post).toHaveBeenCalledWith("/pos/7/cash/open", {}, expect.anything());
   expect(cash.canSell).toBe(true);
@@ -68,6 +69,10 @@ test("opens with zero cash at checkout only, then verifies sales permission", as
     });
     expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), `inventario-inicial-42.${format}`);
   }
+  client.get.mockResolvedValue({ data: optional });
+  await act(async () => expect(await cash.verifyCheckout()).toBe("Abre la caja para cobrar."));
+  expect(cash.canSell).toBe(false);
+  expect(client.post).toHaveBeenCalledTimes(1);
 });
 
 test("downloads both formats when the operator opens with an initial amount and tracks failed formats", async () => {
@@ -83,24 +88,27 @@ test("downloads both formats when the operator opens with an initial amount and 
 test("does not attempt automatic opening when the store requires an initial amount", async () => {
   await mount({ ...optional, opening_amount_required: true });
   await act(async () => expect(await cash.verifyCheckout()).toBe("Abre la caja para cobrar."));
-  expect(cash.canOpenWithoutPrompt).toBe(false);
   expect(client.post).not.toHaveBeenCalled();
 });
 
-test("keeps the sale blocked when the API rejects the opening after a cut", async () => {
-  await mount(optional);
-  client.post.mockRejectedValue({
-    response: { status: 422, data: { errors: { cash_session: ["La caja ya fue cortada hoy."] } } },
-  });
-  await act(async () => expect(await cash.verifyCheckout()).toBe("La caja ya fue cortada hoy."));
-  expect(cash.canSell).toBe(false);
-});
-
-test("does not try to open the terminal again after recording today's cut", async () => {
-  await mount(optional);
+test("keeps the terminal closed after today's cut when a schedule is configured", async () => {
+  await mount({ ...optional, schedule: { open: "08:00:00", close: "19:00:00" } });
   act(() => cash.recordCut({ business_date: cashBusinessDate() }));
   expect(cash.cutToday).toBe(true);
-  expect(cash.canOpenWithoutPrompt).toBe(false);
   await act(async () => expect(await cash.verifyCheckout()).toContain("ya fue cortada hoy"));
   expect(client.post).not.toHaveBeenCalled();
+});
+
+test("allows the operator to reopen on the same day with free hours", async () => {
+  await mount({ ...optional, schedule: { open: null, close: null } });
+  act(() => cash.recordCut({ business_date: cashBusinessDate() }));
+  expect(cash.cutToday).toBe(false);
+  expect(cash.canSell).toBe(false);
+  await act(async () => expect(await cash.verifyCheckout()).toBe("Abre la caja para cobrar."));
+  client.post.mockResolvedValue({ data: {} });
+  await act(async () => { await cash.openSession({}); });
+  expect(client.post).toHaveBeenCalledWith("/pos/7/cash/open", {}, expect.anything());
+  client.get.mockResolvedValue({ data: { ...optional, session: { id: 43 }, can_sell: true } });
+  await act(async () => expect(await cash.verifyCheckout()).toBeNull());
+  expect(cash.canSell).toBe(true);
 });

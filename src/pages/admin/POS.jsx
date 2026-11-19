@@ -38,6 +38,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
+import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 
 import axiosClient from "../../config/axiosClient";
 import useLimitePOS from "../../hooks/useLimitePOS";
@@ -51,6 +52,7 @@ import {
 
 import AssignWarehousesDialog from "./modals/AssignWarehousesDialog";
 import AdminCashDialog from "../../components/cash/AdminCashDialog";
+import POSModulesDialog from "../../components/adminpos/POSModulesDialog";
 import PointOfSaleOutlinedIcon from "@mui/icons-material/PointOfSaleOutlined";
 
 const COLORS = {
@@ -164,6 +166,9 @@ export default function POS() {
   // ✅ modal asignaciones
   const [assignOpen, setAssignOpen] = useState(false);
   const [cashPos, setCashPos] = useState(null);
+  const [modulesPos, setModulesPos] = useState(null);
+  const [modulesRevision, setModulesRevision] = useState(0);
+  const [cashVisibility, setCashVisibility] = useState(null);
   const [assignPos, setAssignPos] = useState(null);
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignWarehouseIds, setAssignWarehouseIds] = useState([]);
@@ -180,6 +185,32 @@ export default function POS() {
       return name.includes(s) || code.includes(s) || access.includes(s);
     });
   }, [rows, q]);
+
+  const terminalIds = rows.map(({ id }) => String(id)).filter((id) => /^\d+$/.test(id)).join(",");
+  const visibilityKey = `${terminalIds}:${modulesRevision}`;
+  const visibleCashIds = cashVisibility?.key === visibilityKey ? cashVisibility.ids : null;
+
+  useEffect(() => {
+    if (!terminalIds) return;
+    const controller = new AbortController();
+    const requests = terminalIds.split(",").map(async (id) => {
+      const { data } = await axiosClient.get("/pos/modules/enabled", {
+        params: { pos_location_id: id },
+        signal: controller.signal,
+      });
+      return Array.isArray(data?.data) && data.data.some(({ key, visible }) => key === "cash" && visible === true)
+        ? id
+        : null;
+    });
+    void Promise.allSettled(requests).then((results) => {
+      if (controller.signal.aborted) return;
+      setCashVisibility({
+        key: visibilityKey,
+        ids: new Set(results.filter(({ status }) => status === "fulfilled").map(({ value }) => value).filter(Boolean)),
+      });
+    });
+    return () => controller.abort();
+  }, [terminalIds, visibilityKey]);
 
   const fetchPOS = useCallback(
     async (opts = { silent: false }) => {
@@ -532,7 +563,7 @@ export default function POS() {
         </Stack>
 
         <Stack
-          direction={isMobile ? "column" : "row"}
+          direction={{ xs: "column", md: "row" }}
           spacing={1}
           alignItems="center"
           sx={{ width: "100%", mt: 1 }}
@@ -559,9 +590,9 @@ export default function POS() {
           />
 
           <Stack
-            direction={isMobile ? "column" : "row"}
+            direction={{ xs: "column", sm: "row" }}
             spacing={1}
-            sx={{ width: isMobile ? "100%" : "auto" }}
+            sx={{ width: { xs: "100%", md: "auto" }, flexShrink: 0 }}
           >
             <Button
               onClick={() => fetchPOS({ silent: false })}
@@ -872,13 +903,10 @@ export default function POS() {
                               </Button>
 
                               {!isNew && (
-                                <Button
-                                  variant="outlined"
-                                  startIcon={<PointOfSaleOutlinedIcon />}
-                                  onClick={() => setCashPos(pos)}
-                                >
-                                  Caja
-                                </Button>
+                                <>
+                                  {visibleCashIds?.has(String(pos.id)) && <Button variant="outlined" startIcon={<PointOfSaleOutlinedIcon />} onClick={() => setCashPos(pos)}>Caja</Button>}
+                                  <Button variant="outlined" startIcon={<TuneRoundedIcon />} onClick={() => setModulesPos(pos)}>Módulos de este POS</Button>
+                                </>
                               )}
                               <Button
                                 onClick={() => iniciarSesionPOS(pos)}
@@ -994,7 +1022,8 @@ export default function POS() {
         </Card>
 
         {/* ✅ Modal de asignación */}
-        {cashPos && <AdminCashDialog key={cashPos.id} pos={cashPos} onClose={() => setCashPos(null)} />}
+        {cashPos && visibleCashIds?.has(String(cashPos.id)) && <AdminCashDialog key={cashPos.id} pos={cashPos} onClose={() => setCashPos(null)} />}
+        {modulesPos && <POSModulesDialog key={modulesPos.id} pos={modulesPos} onClose={() => setModulesPos(null)} onSaved={() => setModulesRevision((value) => value + 1)} />}
         <AssignWarehousesDialog
           open={assignOpen}
           onClose={closeAssignDialog}

@@ -12,18 +12,17 @@ import {
   Alert,
   CircularProgress,
   Chip,
-  Grid,
+  Divider,
   useMediaQuery,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SettingsSuggestRoundedIcon from "@mui/icons-material/SettingsSuggestRounded";
 import CableRoundedIcon from "@mui/icons-material/CableRounded";
-import AutoModeRoundedIcon from "@mui/icons-material/AutoModeRounded";
 import axiosClientPOS from "../../config/axiosClientPOS";
 import { showSuccess, showError } from "../../utils/alerts";
 import PosAvailableApps from "./PosAvailableApps";
+import { posHeaderButton, posHeaderChip, posMobileCard, posSectionHeader, posSectionIcon, posSectionTitle } from "./posSectionStyles";
 
 const APP_OPTIONS = [
   { value: "windows_usb", label: "Windows USB" },
@@ -35,7 +34,7 @@ const APP_OPTIONS = [
   { value: "whatsapp", label: "WhatsApp" },
 ];
 
-export default function PosLocationPrintSettings({ cambiarVista, posLocationId }) {
+export default function PosLocationPrintSettings({ posLocationId }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -138,135 +137,19 @@ export default function PosLocationPrintSettings({ cambiarVista, posLocationId }
   }
 
   return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        width: "100%",
-        overflowX: "hidden",
-        p: { xs: 1.5, sm: 2.5, md: 4 },
-        background:
-          "radial-gradient(circle at top left, rgba(37,99,235,.16), transparent 34%), linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%)",
-      }}
-    >
-      <Box sx={{ width: "100%", maxWidth: 1050, mx: "auto" }}>
-        <Box sx={{ mb: { xs: 2, md: 3.5 }, display: "flex" }}>
-          <Button
-            fullWidth={isMobile}
-            startIcon={<DashboardIcon />}
-            onClick={() => cambiarVista("menu")}
-            sx={{
-              px: { xs: 2, md: 2.6 },
-              py: 1.05,
-              borderRadius: "14px",
-              fontWeight: 900,
-              fontSize: { xs: "0.82rem", sm: "0.88rem" },
-              textTransform: "none",
-              color: "#166534",
-              bgcolor: "rgba(240,253,244,.95)",
-              border: "1px solid rgba(22,101,52,.28)",
-              boxShadow: "0 10px 24px rgba(22,101,52,.10)",
-              letterSpacing: ".2px",
-              "&:hover": {
-                bgcolor: "#dcfce7",
-                borderColor: "rgba(22,101,52,.42)",
-                boxShadow: "0 14px 30px rgba(22,101,52,.16)",
-                transform: "translateY(-1px)",
-              },
-            }}
-          >
-            Regresar al Panel
-          </Button>
-        </Box>
-
-        <Paper
-          elevation={0}
-          sx={{
-            overflow: "hidden",
-            borderRadius: { xs: 3, md: 5 },
-            border: "1px solid rgba(37,99,235,.14)",
-            boxShadow: {
-              xs: "0 12px 34px rgba(15,23,42,.10)",
-              md: "0 24px 70px rgba(15,23,42,.12)",
-            },
-            bgcolor: "#fff",
-          }}
-        >
-          <Box
-            sx={{
-              p: { xs: 2.3, sm: 3, md: 4 },
-              color: "#fff",
-              background:
-                "linear-gradient(135deg, #0f172a 0%, #1d4ed8 48%, #38bdf8 100%)",
-            }}
-          >
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={{ xs: 2, sm: 2 }}
-              alignItems={{ xs: "flex-start", sm: "center" }}
-              justifyContent="space-between"
-            >
-              <Stack
-                direction={{ xs: "column", sm: "row" }}
-                spacing={2}
-                alignItems={{ xs: "flex-start", sm: "center" }}
-              >
-                <Box
-                  sx={{
-                    width: { xs: 50, md: 58 },
-                    height: { xs: 50, md: 58 },
-                    minWidth: { xs: 50, md: 58 },
-                    borderRadius: 4,
-                    bgcolor: "rgba(255,255,255,.18)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <SettingsSuggestRoundedIcon
-                    sx={{ fontSize: { xs: 30, md: 34 } }}
-                  />
-                </Box>
-
-                <Box sx={{ maxWidth: "100%" }}>
-                  <Typography
-                    fontWeight={950}
-                    color="white"
-                    sx={{
-                      fontSize: { xs: "1.45rem", sm: "1.85rem", md: "2.2rem" },
-                      lineHeight: 1.08,
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    Configuración del punto de venta
-                  </Typography>
-
-                  <Typography
-                    sx={{
-                      opacity: 0.92,
-                      mt: 0.8,
-                      color: "white",
-                      fontSize: { xs: "0.9rem", md: "1rem" },
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    Administra la aplicación principal que recibirá el payload de
-                    impresión.
-                  </Typography>
+    <Box sx={{ width: "100%", minWidth: 0, maxWidth: 1500, mx: "auto" }}>
+      <Box>
+        <Paper elevation={0} sx={{ borderRadius: 3, overflow: "hidden", border: "1px solid #dce3ec" }}>
+          <Box sx={{ ...posSectionHeader, mb: 0, borderRadius: 0 }}>
+            <Stack direction={{ xs: "column", sm: "row" }} gap={2} justifyContent="space-between" alignItems={{ sm: "center" }}>
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <Box sx={posSectionIcon}><SettingsSuggestRoundedIcon /></Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography component="h2" sx={posSectionTitle}>Configuración del punto de venta</Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5, color: "#c7cbd1 !important" }}>Configura la aplicación que recibe los tickets del POS.</Typography>
                 </Box>
               </Stack>
-
-              <Chip
-                label={form.is_enabled ? "Módulo activo" : "Módulo inactivo"}
-                sx={{
-                  color: "#fff",
-                  fontWeight: 900,
-                  alignSelf: { xs: "flex-start", sm: "center" },
-                  bgcolor: form.is_enabled
-                    ? "rgba(34,197,94,.22)"
-                    : "rgba(255,255,255,.18)",
-                  border: "1px solid rgba(255,255,255,.35)",
-                }}
-              />
+              <Chip label={form.is_enabled ? "Módulo activo" : "Módulo inactivo"} sx={{ ...posHeaderChip, alignSelf: { xs: "start", sm: "center" } }} />
             </Stack>
           </Box>
 
@@ -277,29 +160,19 @@ export default function PosLocationPrintSettings({ cambiarVista, posLocationId }
               </Alert>
             )}
 
-            <Grid container spacing={{ xs: 2, md: 3 }}>
-              <Grid item xs={12} sm={12} md={6}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 2, md: 3 },
-                    borderRadius: { xs: 3, md: 4 },
-                    border: "1px solid #dbeafe",
-                    bgcolor: "#f8fbff",
-                    height: "100%",
-                  }}
-                >
-                  <Stack spacing={{ xs: 2, md: 2.5 }}>
+            <Box sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 3fr) minmax(0, 2fr)" },
+              alignItems: "start",
+              gap: { xs: 2.5, lg: 3 },
+            }}>
+              <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+                <Paper elevation={0} sx={{ ...posMobileCard, p: { xs: 2, md: 3 }, bgcolor: "#f8fbff" }}>
+                  <Stack spacing={2}>
                     <Stack direction="row" spacing={1.5} alignItems="center">
-                      <CableRoundedIcon sx={{ color: "#2563eb" }} />
-                      <Typography
-                        fontWeight={950}
-                        sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}
-                      >
-                        Conectividad principal
-                      </Typography>
+                      <CableRoundedIcon sx={{ color: "#785900" }} />
+                      <Typography component="h3" fontWeight={850} sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}>Impresión de tickets</Typography>
                     </Stack>
-
                     <FormControlLabel
                       sx={{
                         alignItems: "flex-start",
@@ -348,32 +221,7 @@ export default function PosLocationPrintSettings({ cambiarVista, posLocationId }
                         Aplicación seleccionada: <b>{selectedApp.label}</b>
                       </Alert>
                     )}
-                  </Stack>
-                </Paper>
-              </Grid>
-
-              <Grid item xs={12} sm={12} md={6}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: { xs: 2, md: 3 },
-                    borderRadius: { xs: 3, md: 4 },
-                    border: "1px solid #dbeafe",
-                    bgcolor: "#ffffff",
-                    height: "100%",
-                  }}
-                >
-                  <Stack spacing={{ xs: 2, md: 2.5 }}>
-                    <Stack direction="row" spacing={1.5} alignItems="center">
-                      <AutoModeRoundedIcon sx={{ color: "#2563eb" }} />
-                      <Typography
-                        fontWeight={950}
-                        sx={{ fontSize: { xs: "1.1rem", md: "1.25rem" } }}
-                      >
-                        Automatización
-                      </Typography>
-                    </Stack>
-
+                    <Divider />
                     <FormControlLabel
                       sx={{
                         alignItems: "flex-start",
@@ -392,7 +240,7 @@ export default function PosLocationPrintSettings({ cambiarVista, posLocationId }
                           disabled={!form.is_enabled}
                         />
                       }
-                      label="Enviar payload automáticamente después de cada venta"
+                      label="Enviar el ticket automáticamente después de cada venta"
                     />
 
                     <Alert
@@ -403,41 +251,34 @@ export default function PosLocationPrintSettings({ cambiarVista, posLocationId }
                         lineHeight: 1.35,
                       }}
                     >
-                      Al activar esta opción el POS enviará el ticket a la
-                      aplicación configurada sin intervención manual.
+                      El ticket se enviará a la aplicación seleccionada.
                     </Alert>
                   </Stack>
                 </Paper>
-              </Grid>
-            </Grid>
-            <PosAvailableApps />
-            <Button
-              fullWidth={isMobile}
-              variant="contained"
-              size="large"
-              startIcon={
-                saving ? (
-                  <CircularProgress size={18} color="inherit" />
-                ) : (
-                  <SaveRoundedIcon />
-                )
-              }
-              onClick={handleSubmit}
-              disabled={saving || !posLocationId}
-              sx={{
-                mt: { xs: 3, md: 4 },
-                py: 1.5,
-                px: { xs: 2, md: 5 },
-                borderRadius: 3,
-                fontWeight: 950,
-                fontSize: { xs: "0.86rem", md: "0.95rem" },
-                background:
-                  "linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #38bdf8 100%)",
-                boxShadow: "0 16px 35px rgba(37,99,235,.32)",
-              }}
-            >
-              {saving ? "Guardando..." : "Guardar configuración"}
-            </Button>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={
+                    saving ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <SaveRoundedIcon />
+                    )
+                  }
+                  onClick={handleSubmit}
+                  disabled={saving || !posLocationId}
+                  sx={{
+                    alignSelf: { sm: "flex-start" },
+                    py: 1.5,
+                    px: { xs: 2, md: 5 },
+                    ...posHeaderButton,
+                  }}
+                >
+                  {saving ? "Guardando..." : "Guardar configuración"}
+                </Button>
+              </Stack>
+              <PosAvailableApps />
+            </Box>
           </Box>
         </Paper>
       </Box>

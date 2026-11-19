@@ -55,7 +55,7 @@ export default function ToursPage({ mode = "store", posBranchId, posLocationId, 
     if (isStore) navigate(`/admin/branches/${branchId}/tours/${tour.id}/departures`, { state: { tourName: tour.name } });
     else setSelectedTour(tour);
   };
-  const back = onBack || (() => navigate("/admin/services"));
+  const back = isStore ? onBack || (() => navigate("/admin/services")) : undefined;
   if (!validBranch) return <Alert severity="warning">{isStore ? "Selecciona una sucursal para ver Tours." : "El punto de venta no tiene una sucursal disponible. Vuelve a iniciar sesión."}<Button onClick={back}>Volver</Button></Alert>;
 
   if (!isStore && selectedTour) return <TourDeparturesPage mode="pos" posLocationId={posLocationId} posBranchId={posBranchId} posServiceId={selectedTour.id} tourName={selectedTour.name} onBack={() => setSelectedTour(null)} />;

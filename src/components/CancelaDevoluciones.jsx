@@ -24,17 +24,13 @@ import ReplayIcon from "@mui/icons-material/Replay";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import axiosClient from "../config/axiosClientPOS";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import HistoryIcon from "@mui/icons-material/History";
 
 //Modales
 import ModalTicketVenta from "./ModalTicketVenta";
 import ModalCancelarVenta from "./ModalCancelarVenta";
 import ModalDevolverVenta from "./ModalDevolverVenta";
 
-export default function CancelaDevoluciones({ cambiarVista }) {
+export default function CancelaDevoluciones() {
   const hoy = new Date().toISOString().slice(0, 10);
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,99 +87,6 @@ export default function CancelaDevoluciones({ cambiarVista }) {
 
   return (
     <Box sx={{ p: 4 }}>
-      {/* Botones de navegación */}
-      <Box display="flex" justifyContent="center" mb={4}>
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={2}
-          alignItems="center"
-          justifyContent="center"
-          width={{ xs: "100%", md: "auto" }}
-        >
-          <Button
-            variant="contained"
-            color="success"
-            size="large"
-            startIcon={<ShoppingCartIcon />}
-            sx={{
-              borderRadius: 3,
-              px: 3,
-              py: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              boxShadow: 3,
-              width: { xs: "100%", md: "auto" },
-            }}
-            onClick={() => cambiarVista("venta")}
-          >
-            Ventas
-          </Button>
-          <Button
-            variant="contained"
-            color="secondary"
-            size="large"
-            startIcon={<HistoryIcon />}
-            sx={{
-              borderRadius: 3,
-              paddingX: 3,
-              paddingY: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              boxShadow: 3,
-            }}
-            onClick={() => cambiarVista("historial")}
-          >
-            Historial
-          </Button>
-
-          <Button
-            variant="contained"
-            color="warning"
-            size="large"
-            startIcon={<ReceiptLongIcon />}
-            sx={{
-              borderRadius: 3,
-              px: 3,
-              py: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              boxShadow: 3,
-              width: { xs: "100%", md: "auto" },
-            }}
-            onClick={() => cambiarVista("facturas")}
-          >
-            Facturas
-          </Button>
-
-          <Button
-            variant="outlined"
-            color="success"
-            size="large"
-            startIcon={<DashboardIcon />}
-            sx={{
-              borderRadius: 3,
-              px: 3,
-              py: 1.5,
-              fontWeight: "bold",
-              textTransform: "none",
-              fontSize: "1rem",
-              borderWidth: 2,
-              boxShadow: 2,
-              "&:hover": {
-                borderWidth: 2,
-              },
-              width: { xs: "100%", md: "auto" },
-            }}
-            onClick={() => cambiarVista("menu")}
-          >
-            Regresar al Panel
-          </Button>
-        </Stack>
-      </Box>
-
       <Stack direction={{ xs: "column", md: "row" }} spacing={3}>
         {/* Filtros */}
         <Paper

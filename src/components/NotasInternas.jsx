@@ -7,7 +7,7 @@ import {
   Select, FormControlLabel, Checkbox, Chip, Switch, Grow, Zoom, Slide
 } from "@mui/material";
 import { alpha, keyframes } from "@mui/material/styles";
-import DashboardIcon from "@mui/icons-material/Dashboard";
+import { posHeaderButton, posHeaderInput, posHeaderOutline, posMobileCard, posSectionHeader, posSectionIcon, posSectionTitle } from "./POS/posSectionStyles";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -68,7 +68,7 @@ const usePosLocationId = () =>
   }, []);
 
 // ==== Componente ====
-export default function NotasInternas({ cambiarVista }) {
+export default function NotasInternas() {
   const posLocationId = usePosLocationId();
 
   // Filtros
@@ -236,78 +236,22 @@ export default function NotasInternas({ cambiarVista }) {
   };
 
   return (
-    <Box p={{ xs: 2, sm: 3, md: 4 }}>
-      {/* Barra superior */}
-      <Box
-        sx={{
-          mb: 2,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          flexWrap: "wrap",
-        }}
-      >
-        <Button
-          variant="outlined"
-          color="success"
-          startIcon={<DashboardIcon />}
-          onClick={() => cambiarVista?.("menu")}
-          sx={{ borderRadius: 3, textTransform: "none", fontWeight: 700 }}
-        >
-          Regresar al Panel
-        </Button>
-      </Box>
-
+    <Box sx={{ minWidth: 0, maxWidth: 1500, mx: "auto" }}>
         {/* Header / Filtros */}
-        <Paper
-          elevation={0}
-          sx={(t) => ({
-            p: { xs: 2, sm: 3 },
-            mb: 2,
-            borderRadius: 3,
-            border: `1px solid ${t.palette.divider}`,
-            background:
-              t.palette.mode === "dark"
-                ? alpha(t.palette.info.main, 0.10)
-                : alpha(t.palette.info.main, 0.07),
-          })}
-        >
+        <Paper elevation={0} sx={posSectionHeader}>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={5}>
+            <Grid size={{ xs: 12, lg: 4 }}>
               <Stack direction="row" spacing={1.5} alignItems="center">
-                <NoteAltIcon
-                  sx={(t) => ({
-                    fontSize: 32,
-                    color: t.palette.mode === "dark" ? t.palette.info.light : t.palette.info.main,
-                  })}
-                />
-                <Typography
-                  component="h2"
-                  sx={(t) => ({
-                    m: 0,
-                    fontWeight: 900,
-                    letterSpacing: 0.2,
-                    fontSize: { xs: "1.2rem", sm: "1.5rem" },
-                    background:
-                      t.palette.mode === "dark"
-                        ? "linear-gradient(90deg, #e6eefc 0%, #9fd1ff 100%)"
-                        : "linear-gradient(90deg, #111827 0%, #1f6feb 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  })}
-                >
-                  Notas internas
-                </Typography>
+                <Box sx={posSectionIcon}><NoteAltIcon /></Box>
+                <Typography component="h2" sx={posSectionTitle}>Notas internas</Typography>
               </Stack>
             </Grid>
-
-            <Grid item xs={12} md={7}>
+            <Grid size={{ xs: 12, lg: 8 }}>
               <Stack
-                direction={{ xs: "column", lg: "row" }}
+                direction="column"
                 spacing={1.2}
                 justifyContent="flex-end"
-                alignItems={{ xs: "stretch", lg: "center" }}
+                alignItems="stretch"
               >
                 <TextField
                   size="small"
@@ -322,13 +266,14 @@ export default function NotasInternas({ cambiarVista }) {
                     ),
                     endAdornment: q ? (
                       <InputAdornment position="end">
-                        <IconButton size="small" onClick={() => setQ("")}>
+                        <IconButton size="small" aria-label="Limpiar búsqueda" onClick={() => setQ("")}>
                           <ClearIcon fontSize="small" />
                         </IconButton>
                       </InputAdornment>
                     ) : null,
                   }}
-                  sx={{ minWidth: { xs: "100%", sm: 280 } }}
+                  sx={posHeaderInput}
+                  inputProps={{ "aria-label": "Buscar nota" }}
                 />
 
                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
@@ -342,12 +287,13 @@ export default function NotasInternas({ cambiarVista }) {
                         onClick={() => setStatusFilter(t.key)}
                         color={statusFilter === t.key ? "info" : "default"}
                         variant={statusFilter === t.key ? "filled" : "outlined"}
-                        sx={{ height: 30, borderRadius: 2 }}
+                        aria-pressed={statusFilter === t.key}
+                        sx={{ height: 36, borderRadius: 2, color: statusFilter === t.key ? "#17191c" : "#fff", bgcolor: statusFilter === t.key ? "#ffc107" : "transparent", borderColor: "#69737f", "&:hover": { bgcolor: statusFilter === t.key ? "#ffe082" : "#313844" } }}
                       />
                     ))}
                   </Stack>
-                  <Divider flexItem orientation="vertical" sx={{ mx: 1 }} />
                   <FormControlLabel
+                    sx={{ m: 0, color: "#e0e5ed", "& .MuiSwitch-switchBase.Mui-checked": { color: "#ffc107" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#ffc107" } }}
                     control={
                       <Switch
                         checked={onlyStarred}
@@ -371,7 +317,7 @@ export default function NotasInternas({ cambiarVista }) {
                         onClick={load}
                         disabled={loading}
                         startIcon={loading ? <CircularProgress size={16} /> : <RefreshIcon />}
-                        sx={{ textTransform: "none", borderRadius: 2, fontWeight: 700 }}
+                        sx={posHeaderOutline}
                       >
                         {loading ? "Cargando" : "Actualizar"}
                       </Button>
@@ -383,7 +329,7 @@ export default function NotasInternas({ cambiarVista }) {
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={onCreate}
-                      sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800 }}
+                      sx={posHeaderButton}
                     >
                       Nueva nota
                     </Button>
@@ -393,10 +339,10 @@ export default function NotasInternas({ cambiarVista }) {
             </Grid>
           </Grid>
 
-          <Divider sx={{ mt: 2 }} />
+          <Divider sx={{ mt: 2, borderColor: "#434953" }} />
 
           <Stack direction="row" spacing={1} alignItems="center" sx={{ pt: 1.5 }}>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "#c7cbd1 !important" }}>
               {visibleRows.length} resultado{visibleRows.length === 1 ? "" : "s"}
             </Typography>
           </Stack>
@@ -426,8 +372,7 @@ export default function NotasInternas({ cambiarVista }) {
                   elevation={0}
                   sx={(t) => ({
                     p: 2,
-                    borderRadius: 3,
-                    border: `1px solid ${t.palette.divider}`,
+                    ...posMobileCard,
                     background:
                       t.palette.mode === "dark"
                         ? alpha(t.palette.background.paper, 0.7)
@@ -567,7 +512,7 @@ export default function NotasInternas({ cambiarVista }) {
             />
 
             <Grid container spacing={2}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Select
                   fullWidth
                   value={form.estatus}
@@ -580,7 +525,7 @@ export default function NotasInternas({ cambiarVista }) {
                   ))}
                 </Select>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <TextField
                   label="Recordar en"
                   type="datetime-local"

@@ -2,12 +2,10 @@ import { saveAs } from "file-saver";
 
 export const cashTimeZone = "America/Mexico_City";
 export const cashPath = (posId) => `/pos/${posId}/cash`;
+export const hasCashSchedule = (status) => Boolean(status?.schedule?.open && status?.schedule?.close);
 export const canSellWithCash = (status) =>
-  status?.cash_control_enabled === false || status?.can_sell === true;
-export const canOpenCashWithoutPrompt = (status) =>
-  status?.cash_control_enabled === true &&
-  status.opening_amount_required === false &&
-  status.session === null;
+  status?.cash_control_enabled === false ||
+  (Boolean(status?.session) && status?.can_sell === true);
 
 const dateTime = new Intl.DateTimeFormat("es-MX", {
   dateStyle: "short",
@@ -22,8 +20,8 @@ const day = new Intl.DateTimeFormat("en-CA", {
 });
 const money = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
-export function cashBusinessDate() {
-  const parts = Object.fromEntries(day.formatToParts().map(({ type, value }) => [type, value]));
+export function cashBusinessDate(date = new Date()) {
+  const parts = Object.fromEntries(day.formatToParts(date).map(({ type, value }) => [type, value]));
   return `${parts.year}-${parts.month}-${parts.day}`;
 }
 

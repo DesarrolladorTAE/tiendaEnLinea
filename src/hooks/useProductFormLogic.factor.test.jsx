@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); });
 
-test.each(["45.0000", 0])("stored factor %s selects factor mode without recalculating the saved price", async factor => {
+test.each(["45.0000"])("stored factor %s selects factor mode without recalculating the saved price", async factor => {
   client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") ? { ...product, profit_factor: factor } : [] }));
   await act(async () => root.render(<Harness showControl />));
   expect(host.querySelector('input[type="checkbox"]').checked).toBe(true);
@@ -45,11 +45,15 @@ test.each(["45.0000", 0])("stored factor %s selects factor mode without recalcul
   expect(client.post.mock.calls[0][1].get("price")).toBe("120.00");
 });
 
-test("a product without a factor keeps manual mode", async () => {
-  client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") ? { ...product, profit_factor: null } : [] }));
+test.each([null, 0, "0.0000"])("a product with factor %j opens in manual mode with a blank factor", async factor => {
+  client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") ? { ...product, profit_factor: factor } : [] }));
   await act(async () => root.render(<Harness showControl />));
   expect(host.querySelector('input[type="checkbox"]').checked).toBe(false);
   expect(latest.form.getValues("price_mode")).toBe("manual");
+  expect(latest.form.getValues("profit_factor")).toBe("");
+  await act(async () => latest.actions.onSubmit({ ...latest.form.getValues(), costo_compra: "200" }));
+  expect(client.post.mock.calls[0][1].has("profit_factor")).toBe(false);
+  expect(client.patch).not.toHaveBeenCalled();
 });
 
 test("factor-only edit skips the full form and uses all three server values", async () => {
@@ -62,10 +66,26 @@ test("factor-only edit skips the full form and uses all three server values", as
   expect(latest.form.getValues("base_price")).toBe("125.017241");
 });
 
-test("changed purchase cost is saved before applying the factor to the stored cost", async () => {
+test.each([["", null], ["0", "0"]])("manual edit sends optional purchase cost %j as %j", async (input, expected) => {
+  await act(async () => root.render(<Harness />));
+  await act(async () => latest.actions.onSubmit({ ...draft, price_mode: "manual", costo_compra: input }));
+  expect(client.post.mock.calls[0][1].get("purchase_cost")).toBe(expected);
+});
+
+test("changing only the purchase cost saves it without applying the stored factor", async () => {
+  client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") ? { ...product, profit_factor: "45.0000" } : [] }));
   changes = { costo_compra: true };
   await act(async () => root.render(<Harness />));
-  await act(async () => latest.actions.onSubmit({ ...draft, costo_compra: "200" }));
+  await act(async () => latest.actions.onSubmit({ ...latest.form.getValues(), costo_compra: "200" }));
+  expect(client.post.mock.calls[0][1].get("purchase_cost")).toBe("200");
+  expect(client.post.mock.calls[0][1].get("price")).toBe("120.00");
+  expect(client.patch).not.toHaveBeenCalled();
+});
+
+test("changed purchase cost is saved before explicitly applying the factor", async () => {
+  changes = { costo_compra: true };
+  await act(async () => root.render(<Harness />));
+  await act(async () => latest.actions.onSubmit({ ...draft, costo_compra: "200", factor_preview_enabled: true }));
   expect(client.post.mock.calls[0][1].get("purchase_cost")).toBe("200");
   expect(client.post.mock.invocationCallOrder[0]).toBeLessThan(client.patch.mock.invocationCallOrder[0]);
   expect(client.patch.mock.calls[0][1]).toEqual({ profit_factor: 45 });

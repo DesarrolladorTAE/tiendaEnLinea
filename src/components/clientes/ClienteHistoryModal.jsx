@@ -29,6 +29,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import HistoryIcon from "@mui/icons-material/History";
+import { posMobileCard, posSectionIcon, posTableHeader } from "../POS/posSectionStyles";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
@@ -200,10 +201,8 @@ function StatCard({ icon, label, value }) {
     <Paper
       elevation={0}
       sx={{
-        borderRadius: 3,
+        ...posMobileCard,
         p: 2,
-        border: "1px solid",
-        borderColor: alpha("#0f172a", 0.08),
         bgcolor: "#fff",
         height: "100%",
       }}
@@ -216,7 +215,7 @@ function StatCard({ icon, label, value }) {
             borderRadius: 2.5,
             display: "grid",
             placeItems: "center",
-            bgcolor: alpha("#0ea5e9", 0.1),
+            bgcolor: "#fff3cc",
             color: "#0284c7",
             flexShrink: 0,
           }}
@@ -285,11 +284,7 @@ function SaleProductsList({ sale }) {
     >
       <Table size="small">
         <TableHead>
-          <TableRow
-            sx={{
-              bgcolor: alpha("#0ea5e9", 0.06),
-            }}
-          >
+          <TableRow sx={posTableHeader}>
             <TableCell sx={{ fontWeight: 900 }}>Producto</TableCell>
             <TableCell sx={{ fontWeight: 900, width: 100 }}>Cantidad</TableCell>
             <TableCell sx={{ fontWeight: 900, width: 140 }}>Unitario</TableCell>
@@ -323,7 +318,7 @@ function SalesTableDesktop({ sales, expandedSales, toggleSale, currentDayLabel }
     <TableContainer sx={{ maxHeight: "calc(100dvh - 390px)" }}>
       <Table stickyHeader size="small">
         <TableHead>
-          <TableRow>
+          <TableRow sx={posTableHeader}>
             <TableCell sx={{ fontWeight: 900, minWidth: 120 }}>Venta</TableCell>
             <TableCell sx={{ fontWeight: 900, minWidth: 170 }}>Fecha</TableCell>
             <TableCell sx={{ fontWeight: 900, minWidth: 130 }}>Estado</TableCell>
@@ -742,15 +737,15 @@ export default function ClienteHistoryModal({ open, onClose, cliente }) {
         sx={{
           px: { xs: 2, sm: 3 },
           py: { xs: 1.15, sm: 2 },
-          background:
-            "linear-gradient(90deg, #0f172a 0%, #0369a1 45%, #0ea5e9 100%)",
+          bgcolor: "#1d2025",
+          borderTop: "3px solid #ffc107",
           color: "#fff",
           display: "flex",
           alignItems: "center",
           gap: 1.2,
         }}
       >
-        <HistoryIcon />
+        <Box sx={posSectionIcon}><HistoryIcon /></Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography
             sx={{
@@ -774,7 +769,7 @@ export default function ClienteHistoryModal({ open, onClose, cliente }) {
           </Typography>
         </Box>
 
-        <IconButton onClick={onClose} sx={{ color: "#fff" }}>
+        <IconButton aria-label="Cerrar historial del cliente" onClick={onClose} sx={{ color: "#fff", minWidth: 44, minHeight: 44 }}>
           <CloseIcon />
         </IconButton>
       </Box>

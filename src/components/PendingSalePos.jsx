@@ -19,14 +19,13 @@ import {
   LinearProgress,
 } from "@mui/material";
 
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 import PaymentsIcon from "@mui/icons-material/Payments";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import PendingActionsOutlinedIcon from "@mui/icons-material/PendingActionsOutlined";
 
 import axiosClient from "../config/axiosClientPOS";
 import { showError, showSuccess } from "../utils/alerts";
@@ -44,7 +43,7 @@ const NEEDS_LAST4 = ["td", "tc", "transferencia"];
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 
-export default function PendingSalesPOS({ cambiarVista, posLocationId }) {
+export default function PendingSalesPOS({ posLocationId }) {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -250,91 +249,57 @@ export default function PendingSalesPOS({ cambiarVista, posLocationId }) {
   };
 
   return (
-    <Box>
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        spacing={1.5}
-        alignItems={{ xs: "stretch", sm: "center" }}
-        justifyContent="space-between"
-        mb={2}
-      >
-        <Button
-          variant="outlined"
-          startIcon={<ArrowBackIcon />}
-          onClick={() => cambiarVista("menu")}
-          sx={{ borderRadius: 3, fontWeight: 900, textTransform: "none" }}
-        >
-          Volver al panel
-        </Button>
-
-        <Button
-          variant="contained"
-          startIcon={<RefreshIcon />}
-          onClick={fetchPendingSales}
-          disabled={loading}
-          sx={{
-            borderRadius: 3,
-            fontWeight: 900,
-            textTransform: "none",
-            background: "linear-gradient(135deg,#f59e0b,#f97316)",
-            boxShadow: "0 12px 28px rgba(245,158,11,.25)",
-          }}
-        >
-          Actualizar
-        </Button>
-      </Stack>
-
+    <Box sx={{ minWidth: 0, maxWidth: 1500, mx: "auto" }}>
       <Paper
+        elevation={0}
         sx={{
-          p: { xs: 2, md: 3 },
-          borderRadius: 5,
-          mb: 2,
-          color: "#111827",
-          background:
-            "linear-gradient(135deg, rgba(255,247,237,1) 0%, rgba(255,255,255,1) 55%)",
-          border: "1px solid rgba(245,158,11,.25)",
-          boxShadow: "0 18px 50px rgba(0,0,0,.08)",
+          p: { xs: 2, sm: 3 },
+          borderRadius: 3,
+          mb: 2.5,
+          bgcolor: "#1d2025",
+          color: "#fff",
+          border: "1px solid #30343b",
+          borderTop: "3px solid #ffc107",
         }}
       >
         <Stack
-          direction={{ xs: "column", md: "row" }}
+          direction={{ xs: "column", sm: "row" }}
           justifyContent="space-between"
-          spacing={2}
+          alignItems={{ sm: "center" }}
+          gap={2}
         >
           <Box>
-            <Stack direction="row" spacing={1} alignItems="center">
-              <WarningAmberIcon sx={{ color: "#f59e0b" }} />
-              <Typography variant="h5" sx={{ fontWeight: 950 }}>
+            <Stack direction="row" spacing={1.25} alignItems="center">
+              <Box sx={{ width: 42, height: 42, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: 2, bgcolor: "#ffc107", color: "#17191c" }}>
+                <PendingActionsOutlinedIcon />
+              </Box>
+              <Typography component="h2" sx={{ color: "#fff !important", fontSize: { xs: 25, md: 32 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.035em" }}>
                 Ventas pendientes
               </Typography>
             </Stack>
 
-            <Typography color="text.secondary">
-              Controla ventas abiertas, anticipos y saldos por liquidar.
-            </Typography>
+            <Typography sx={{ mt: 1, color: "#c7cbd1 !important" }}>Consulta anticipos y saldos por liquidar.</Typography>
           </Box>
 
-          <Chip
-            color="warning"
-            label={`${sales.length} venta(s) abierta(s)`}
-            sx={{
-              fontWeight: 900,
-              alignSelf: { xs: "flex-start", md: "center" },
-            }}
-          />
+          <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchPendingSales} disabled={loading}
+            sx={{ minHeight: 44, borderRadius: 2, fontWeight: 800, textTransform: "none", bgcolor: "#ffc107", color: "#17191c", boxShadow: "none", "&:hover": { bgcolor: "#ffe082" }, "&.Mui-disabled": { bgcolor: "#4a4330", color: "#e4dbc4" } }}>
+            {loading ? "Actualizando…" : "Actualizar"}
+          </Button>
         </Stack>
 
-        <Grid container spacing={1.5} mt={2}>
-          <Grid item xs={12} md={4}>
+        <Chip size="small" label={`${sales.length} ${sales.length === 1 ? "venta abierta" : "ventas abiertas"}`}
+          sx={{ mt: 2.5, fontWeight: 800, bgcolor: "#3d3520", color: "#ffd454" }} />
+        <Grid container spacing={1.5} sx={{ mt: 1.5 }}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <SummaryCard title="Total vendido" value={money(totals.total)} />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <SummaryCard
               title="Pagado / anticipos"
               value={money(totals.paid)}
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid size={{ xs: 12, sm: 4 }}>
             <SummaryCard
               title="Saldo pendiente"
               value={money(totals.pending)}
@@ -638,22 +603,24 @@ function SummaryCard({ title, value, danger = false }) {
       variant="outlined"
       sx={{
         p: 2,
-        borderRadius: 4,
-        bgcolor: danger ? "rgba(239,68,68,.06)" : "rgba(255,255,255,.75)",
+        borderRadius: 2,
+        height: "100%",
+        bgcolor: danger ? "#3b2a2b" : "#292e36",
+        borderColor: danger ? "#754444" : "#494f58",
       }}
     >
       <Typography
         variant="caption"
-        color="text.secondary"
-        sx={{ fontWeight: 800 }}
+        sx={{ color: "#d6dbe2 !important", fontWeight: 700 }}
       >
         {title}
       </Typography>
       <Typography
         sx={{
-          fontSize: 24,
+          fontSize: { xs: 21, md: 24 },
           fontWeight: 950,
-          color: danger ? "error.main" : "inherit",
+          overflowWrap: "anywhere",
+          color: danger ? "#ffb4ab !important" : "#fff !important",
         }}
       >
         {value}

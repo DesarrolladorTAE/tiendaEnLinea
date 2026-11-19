@@ -24,7 +24,6 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import SearchIcon from "@mui/icons-material/Search";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
@@ -34,10 +33,11 @@ import PaymentsIcon from "@mui/icons-material/Payments";
 import axiosClient from "../config/axiosClientPOS";
 import CreditHistoryModal from "./credito/CreditHistoryModal";
 import CreditPaymentModal from "./credito/CreditPaymentModal";
+import { posHeaderButton, posHeaderChip, posHeaderInput, posMobileCard, posSectionHeader, posSectionIcon, posSectionTitle, posTableHeader } from "./POS/posSectionStyles";
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
-export default function CreditoFiadoPOS({ cambiarVista, posLocationId }) {
+export default function CreditoFiadoPOS({ posLocationId }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -151,72 +151,29 @@ export default function CreditoFiadoPOS({ cambiarVista, posLocationId }) {
   );
 
   return (
-    <Box p={{ xs: 1.5, sm: 3, md: 4 }}>
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        justifyContent="space-between"
-        spacing={2}
-        mb={2}
-      >
-        <Button
-          variant="outlined"
-          color="success"
-          startIcon={<DashboardIcon />}
-          onClick={() => cambiarVista?.("menu")}
-          sx={{ borderRadius: 3, textTransform: "none", fontWeight: 800 }}
-        >
-          Regresar al Panel
-        </Button>
-
-        <Button
-          variant="outlined"
-          startIcon={loading ? <CircularProgress size={16} /> : <RefreshIcon />}
-          onClick={() => loadAccounts(page)}
-          disabled={loading}
-          sx={{ borderRadius: 3, textTransform: "none", fontWeight: 800 }}
-        >
-          Actualizar
-        </Button>
-      </Stack>
-
-      <Paper
-        sx={{
-          p: { xs: 2, sm: 3 },
-          mb: 2,
-          borderRadius: 3,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
+    <Box sx={{ minWidth: 0, maxWidth: 1500, mx: "auto" }}>
+      <Paper elevation={0} sx={posSectionHeader}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           justifyContent="space-between"
           spacing={2}
         >
-          <Stack direction="row" spacing={1.5} alignItems="center">
-            <CreditScoreIcon sx={{ fontSize: 36, color: "#b45309" }} />
+          <Stack direction="row" spacing={1.5} alignItems="center" minWidth={0}>
+            <Box sx={posSectionIcon}><CreditScoreIcon /></Box>
             <Box>
-              <Typography
-                sx={{
-                  fontWeight: 950,
-                  fontSize: { xs: "1.25rem", sm: "1.6rem" },
-                }}
-              >
-                Clientes con Crédito activo
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Consulta cuentas autorizadas, saldo pendiente, historial y
-                abonos.
-              </Typography>
+              <Typography component="h2" sx={posSectionTitle}>Créditos y fiados</Typography>
+              <Typography variant="body2" sx={{ color: "#c7cbd1 !important", mt: 0.5 }}>Consulta saldos, historial y abonos.</Typography>
             </Box>
           </Stack>
 
+          <Stack direction={{ xs: "column", sm: "row" }} gap={1} sx={{ width: { md: 420 }, minWidth: 0 }}>
           <TextField
             size="small"
             placeholder="Buscar cliente o teléfono"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            sx={{ minWidth: { xs: "100%", md: 340 } }}
+            sx={{ ...posHeaderInput, minWidth: 0, flex: 1 }}
+            inputProps={{ "aria-label": "Buscar cliente o teléfono" }}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -225,23 +182,23 @@ export default function CreditoFiadoPOS({ cambiarVista, posLocationId }) {
               ),
             }}
           />
+          <Button variant="contained" startIcon={loading ? <CircularProgress color="inherit" size={16} /> : <RefreshIcon />}
+            onClick={() => loadAccounts(page)} disabled={loading} sx={posHeaderButton}>Actualizar</Button>
+          </Stack>
         </Stack>
 
-        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 2 }}>
+        <Stack direction="row" gap={1} useFlexGap flexWrap="wrap" sx={{ mt: 2, pt: 2, borderTop: "1px solid #434953" }}>
           <Chip
             label={`Créditos activos: ${summary?.total_active ?? meta.total}`}
-            color="warning"
-            variant="outlined"
+            sx={posHeaderChip}
           />
           <Chip
             label={`Con deuda: ${summary?.total_with_debt ?? 0}`}
-            color="error"
-            variant="outlined"
+            sx={{ ...posHeaderChip, bgcolor: "#472c30", color: "#ffb4ab" }}
           />
           <Chip
             label={`Saldo total: ${money(summary?.total_balance)}`}
-            color="primary"
-            variant="outlined"
+            sx={{ ...posHeaderChip, bgcolor: "#293c4b", color: "#c6e5ff" }}
           />
         </Stack>
       </Paper>
@@ -286,8 +243,8 @@ export default function CreditoFiadoPOS({ cambiarVista, posLocationId }) {
                         key={r.id}
                         variant="outlined"
                         sx={{
+                          ...posMobileCard,
                           p: 1.8,
-                          borderRadius: 3,
                           borderColor: hasDebt ? "#fed7aa" : "divider",
                           bgcolor: hasDebt ? "#fff7ed" : "background.paper",
                         }}
@@ -298,6 +255,8 @@ export default function CreditoFiadoPOS({ cambiarVista, posLocationId }) {
                             justifyContent="space-between"
                             alignItems="flex-start"
                             spacing={1}
+                            useFlexGap
+                            flexWrap="wrap"
                           >
                             <Box>
                               <Typography sx={{ fontWeight: 950 }}>
@@ -333,7 +292,7 @@ export default function CreditoFiadoPOS({ cambiarVista, posLocationId }) {
 
                           <Divider />
 
-                          <Stack direction="row" spacing={1} flexWrap="wrap">
+                          <Stack direction="row" gap={1} useFlexGap flexWrap="wrap">
                             <Chip
                               label={`Saldo: ${money(r.current_balance)}`}
                               color={hasDebt ? "warning" : "default"}
@@ -371,9 +330,7 @@ export default function CreditoFiadoPOS({ cambiarVista, posLocationId }) {
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow
-                      sx={{ "& th": { bgcolor: "#f8fafc", fontWeight: 900 } }}
-                    >
+                    <TableRow sx={posTableHeader}>
                       <TableCell>Cliente</TableCell>
                       <TableCell>Teléfono</TableCell>
                       <TableCell>Saldo</TableCell>

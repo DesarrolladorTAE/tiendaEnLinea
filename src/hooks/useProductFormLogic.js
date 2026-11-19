@@ -7,7 +7,7 @@ import { showSuccess, showError } from "../utils/alerts";
 import { useAdminUi } from "../context/AdminUiContext";
 import { inventoryFlag, activeVariant } from "../utils/productInventory";
 import { notifyInventoryChanged } from "../utils/inventoryEvents";
-import { calculateProfitPrice, hasProfitFactor, saveProductProfitFactor } from "../utils/productProfitFactor";
+import { calculateProfitPrice, hasConfiguredProfitFactor, hasProfitFactor, saveProductProfitFactor } from "../utils/productProfitFactor";
 
 /**
  * ✅ Helper: agrega a FormData usando notación bracket
@@ -400,8 +400,8 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       sku: product.sku || "",
       name: product.name || "",
       price: priceFromApi,
-      price_mode: hasProfitFactor(product) ? "factor" : "manual",
-      profit_factor: product.profit_factor ?? "",
+      price_mode: hasConfiguredProfitFactor(product) ? "factor" : "manual",
+      profit_factor: hasConfiguredProfitFactor(product) ? product.profit_factor : "",
       factor_preview_enabled: false,
       stock: product.stock?.toString() || "",
       discount: product.discount?.toString() || "",
@@ -497,7 +497,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
     let generalSaved = false;
     const productId = id || createdProductId.current;
     const factorChanged = !hasProfitFactor({ profit_factor: initialProfitFactor }) || Number(data.profit_factor) !== Number(initialProfitFactor);
-    const byFactor = data.price_mode === "factor" && (!productId || factorChanged || data.factor_preview_enabled || ["price_mode", "profit_factor", "costo_compra", "iva"].some(key => Boolean(dirtyFields[key])));
+    const byFactor = data.price_mode === "factor" && (!productId || factorChanged || data.factor_preview_enabled || ["price_mode", "profit_factor", "iva"].some(key => Boolean(dirtyFields[key])));
     const confirmFactor = async targetId => {
       const product = await saveProductProfitFactor(axiosClient, targetId, data.profit_factor);
       setValue("factor_preview_enabled", false);
@@ -695,7 +695,10 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       }
 
       // SAT
-      formData.append("purchase_cost", data.costo_compra?.toString() || "0");
+      const purchaseCost = data.costo_compra?.toString().trim();
+      if (purchaseCost || !productId) {
+        formData.append("purchase_cost", purchaseCost || "0");
+      }
       formData.append(
         "unidad_medida_id",
         data.unidad_medida?.value

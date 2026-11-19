@@ -17,8 +17,7 @@ import {
   Chip,
   Snackbar,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
-import DashboardIcon from "@mui/icons-material/Dashboard";
+import { posHeaderButton, posHeaderChip, posHeaderInput, posHeaderOutline, posSectionHeader, posSectionIcon, posSectionTitle } from "./POS/posSectionStyles";
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
@@ -45,7 +44,7 @@ const PLAN_LABELS = {
   4: "Avanzado",
 };
 
-export default function ClientesPOS({ cambiarVista }) {
+export default function ClientesPOS() {
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState([]);
@@ -243,76 +242,29 @@ export default function ClientesPOS({ cambiarVista }) {
   }, [planId, rows.length]);
 
   return (
-    <Box p={{ xs: 1.5, sm: 3, md: 4 }} sx={{ minWidth: 0, width: "100%" }}>
-      <Box
-        sx={{
-          mb: 2,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 2,
-          flexWrap: "wrap",
-        }}
-      >
-        <Button
-          variant="outlined"
-          color="success"
-          startIcon={<DashboardIcon />}
-          onClick={() => cambiarVista?.("menu")}
-          sx={{ borderRadius: 3, textTransform: "none", fontWeight: 700 }}
-        >
-          Regresar al Panel
-        </Button>
-      </Box>
+    <Box sx={{ minWidth: 0, width: "100%", maxWidth: 1500, mx: "auto" }}>
 
       {/* <GateTaeconta> */}
       <Paper
         elevation={0}
-        sx={(t) => ({
-          p: { xs: 2, sm: 3 },
-          mb: 2,
-          borderRadius: 3,
-          border: `1px solid ${t.palette.divider}`,
-          background:
-            t.palette.mode === "dark"
-              ? alpha(t.palette.primary.main, 0.08)
-              : "linear-gradient(120deg, #ede9fe, #ccfbf1)",
-        })}
+        sx={posSectionHeader}
       >
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} lg={6}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <PeopleAltIcon
-                sx={(t) => ({
-                  fontSize: 32,
-                  color:
-                    t.palette.mode === "dark"
-                      ? t.palette.primary.light
-                      : t.palette.primary.main,
-                })}
-              />
-              <Box>
+          <Grid size={{ xs: 12, lg: 5 }}>
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <Box sx={posSectionIcon}><PeopleAltIcon /></Box>
+              <Box sx={{ minWidth: 0 }}>
                 <Typography
                   component="h2"
-                  sx={(t) => ({
-                    m: 0,
-                    fontWeight: 900,
-                    letterSpacing: 0.2,
-                    fontSize: { xs: "1.2rem", sm: "1.5rem" },
-                    background:
-                      t.palette.mode === "dark"
-                        ? "linear-gradient(90deg, #ffffff 0%, #9fd1ff 100%)"
-                        : "linear-gradient(90deg, #111827 0%, #2563eb 100%)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  })}
+                  sx={posSectionTitle}
                 >
                   {headerTitle}
                 </Typography>
 
                 <Stack
                   direction="row"
-                  spacing={1}
+                  gap={0.75}
+                  useFlexGap
                   alignItems="center"
                   flexWrap="wrap"
                   sx={{ mt: 0.5 }}
@@ -321,23 +273,20 @@ export default function ClientesPOS({ cambiarVista }) {
                     size="small"
                     icon={<Groups2OutlinedIcon />}
                     label={`Plan: ${planName}`}
-                    color="primary"
-                    variant="outlined"
+                    sx={posHeaderChip}
                   />
 
                   {typeof clientsLimit === "number" ? (
                     <Chip
                       size="small"
                       label={`${rows.length}/${clientsLimit}`}
-                      color={canCreate ? "success" : "warning"}
-                      variant="outlined"
+                      sx={posHeaderChip}
                     />
                   ) : (
                     <Chip
                       size="small"
                       label={`${rows.length} clientes`}
-                      color="success"
-                      variant="outlined"
+                      sx={posHeaderChip}
                     />
                   )}
                 </Stack>
@@ -345,8 +294,7 @@ export default function ClientesPOS({ cambiarVista }) {
                 {Boolean(planId) && (
                   <Typography
                     variant="caption"
-                    color="text.secondary"
-                    sx={{ display: "block", mt: 0.5 }}
+                    sx={{ display: "block", mt: 0.75, color: "#c7cbd1 !important" }}
                   >
                     Plan actual: <b>{planId}</b>{" "}
                     {planId === 2
@@ -360,18 +308,20 @@ export default function ClientesPOS({ cambiarVista }) {
             </Stack>
           </Grid>
 
-          <Grid item xs={12} lg={6}>
+          <Grid size={{ xs: 12, lg: 7 }}>
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              spacing={1.2}
+              gap={1.2}
+              useFlexGap
               justifyContent="flex-end"
               alignItems={{ xs: "stretch", sm: "center" }}
-              sx={{ flexWrap: "wrap", gap: 1.2, "& > *": { minWidth: 0 } }}
+              sx={{ flexWrap: "wrap", "& > *": { minWidth: 0 } }}
             >
               <TextField
                 size="small"
                 placeholder="Buscar cliente (Nombre, RFC, email, teléfono)"
                 value={q}
+                inputProps={{ "aria-label": "Buscar cliente" }}
                 onChange={(e) => setQ(e.target.value)}
                 InputProps={{
                   startAdornment: (
@@ -381,21 +331,21 @@ export default function ClientesPOS({ cambiarVista }) {
                   ),
                   endAdornment: q ? (
                     <InputAdornment position="end">
-                      <IconButton size="small" onClick={() => setQ("")}>
+                      <IconButton size="small" aria-label="Limpiar búsqueda" onClick={() => setQ("")}>
                         <ClearIcon fontSize="small" />
                       </IconButton>
                     </InputAdornment>
                   ) : null,
                 }}
-                sx={{ width: { xs: "100%", sm: 260 }, flexGrow: 1 }}
+                sx={{ ...posHeaderInput, width: "100%", flexGrow: 1 }}
               />
 
-              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", gap: 1 }}>
+              <Stack direction={{ xs: "column", sm: "row" }} gap={1} useFlexGap flexWrap="wrap" sx={{ "& > span > button": { width: { xs: "100%", sm: "auto" } } }}>
                 <Button
                   variant="outlined"
                   startIcon={<FileUploadOutlinedIcon />}
                   onClick={() => setImportOpen(true)}
-                  sx={{ textTransform: "none", borderRadius: 2, fontWeight: 800, color: "#6d28d9", borderColor: "#c4b5fd" }}
+                  sx={posHeaderOutline}
                 >
                   Importar / exportar
                 </Button>
@@ -408,11 +358,7 @@ export default function ClientesPOS({ cambiarVista }) {
                       startIcon={
                         loading ? <CircularProgress size={16} /> : <RefreshIcon />
                       }
-                      sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        fontWeight: 700,
-                      }}
+                      sx={posHeaderOutline}
                     >
                       {loading ? "Cargando" : "Actualizar"}
                     </Button>
@@ -435,11 +381,7 @@ export default function ClientesPOS({ cambiarVista }) {
                       }
                       onClick={onCreate}
                       disabled={!canCreate}
-                      sx={{
-                        textTransform: "none",
-                        borderRadius: 2,
-                        fontWeight: 800,
-                      }}
+                      sx={posHeaderButton}
                     >
                       Nuevo cliente
                     </Button>
@@ -450,7 +392,7 @@ export default function ClientesPOS({ cambiarVista }) {
           </Grid>
         </Grid>
 
-        <Divider sx={{ mt: 2 }} />
+        <Divider sx={{ mt: 2, borderColor: "#434953" }} />
 
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -459,10 +401,10 @@ export default function ClientesPOS({ cambiarVista }) {
           alignItems={{ xs: "flex-start", sm: "center" }}
           sx={{ pt: 1.5 }}
         >
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "#c7cbd1 !important" }}>
             {rows.length} resultado{rows.length === 1 ? "" : "s"}
           </Typography>
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" sx={{ color: "#c7cbd1 !important" }}>
             {planMessage}
           </Typography>
         </Stack>

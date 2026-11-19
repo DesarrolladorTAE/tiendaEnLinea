@@ -15,9 +15,6 @@ import {
   Avatar,
 } from "@mui/material";
 import TuneIcon from "@mui/icons-material/Tune";
-import ShoppingCartIcon from "@mui/icons-material/ShoppingCart";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import DashboardIcon from "@mui/icons-material/Dashboard";
 import PrintIcon from "@mui/icons-material/Print";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -558,7 +555,6 @@ export default function HistorialPOSMobile({
   handleFiltrar,
   limpiarFiltros,
   hoyISO,
-  cambiarVista,
   abrirTicket,
   abrirDetalles,
   cancelarVenta,
@@ -675,40 +671,7 @@ export default function HistorialPOSMobile({
   return (
     <Box sx={{ width: "100%", px: 0, py: 0.5 }}>
       <Stack spacing={1.25}>
-        <Stack direction="row" spacing={1}>
-          <Button
-            fullWidth
-            variant="contained"
-            color="success"
-            startIcon={<ShoppingCartIcon />}
-            sx={{ borderRadius: 3, textTransform: "none", fontWeight: 800 }}
-            onClick={() => cambiarVista?.("venta")}
-          >
-            Ventas
-          </Button>
 
-          <Button
-            fullWidth
-            variant="contained"
-            color="warning"
-            startIcon={<ReceiptLongIcon />}
-            sx={{ borderRadius: 3, textTransform: "none", fontWeight: 800 }}
-            onClick={() => cambiarVista?.("facturas")}
-          >
-            Facturas
-          </Button>
-        </Stack>
-
-        <Button
-          fullWidth
-          variant="outlined"
-          color="success"
-          startIcon={<DashboardIcon />}
-          sx={{ borderRadius: 3, textTransform: "none", fontWeight: 800 }}
-          onClick={() => cambiarVista?.("menu")}
-        >
-          Regresar al panel
-        </Button>
 
         <Paper
           elevation={0}

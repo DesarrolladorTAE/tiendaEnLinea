@@ -6,15 +6,13 @@ import {
   useMediaQuery,
   Button,
   Paper,
+  TextField,
 } from "@mui/material";
 
 import { useTheme } from "@mui/material/styles";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 
-import PointOfSaleRoundedIcon from "@mui/icons-material/PointOfSaleRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
-import CreditScoreRoundedIcon from "@mui/icons-material/CreditScoreRounded";
-import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
-import DashboardCustomizeRoundedIcon from "@mui/icons-material/DashboardCustomizeRounded";
 
 import useHistorialPOSSimple from "./useHistorialPOSSimple";
 
@@ -28,7 +26,7 @@ import ModalCancelarVenta from "./ModalCancelarVenta";
 import ModalDevolverVenta from "./ModalDevolverVenta";
 import ModalClienteVenta from "./ModalClienteVenta";
 
-export default function HistorialPOSPage({ cambiarVista }) {
+export default function HistorialPOSPage({ posLocationId: terminalId }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -50,185 +48,99 @@ export default function HistorialPOSPage({ cambiarVista }) {
     handleFiltrar,
     limpiarFiltros,
     summary,
-    posLocationId,
+    posLocationId: historyPosLocationId,
   } = useHistorialPOSSimple();
+  const posLocationId = terminalId ?? historyPosLocationId;
 
   const [ticketId, setTicketId] = useState(null);
   const [detallesId, setDetallesId] = useState(null);
   const [cancelarId, setCancelarId] = useState(null);
   const [devolverId, setDevolverId] = useState(null);
   const [clienteData, setClienteData] = useState(null);
+  const [folio, setFolio] = useState("");
+  const [folioError, setFolioError] = useState(false);
+
+  const buscarFolio = (event) => {
+    event.preventDefault();
+    if (!posLocationId) return;
+    const id = folio.trim().replace(/^#\s*/, "").replace(/^0+/, "");
+    if (!/^[1-9]\d*$/.test(id)) {
+      setFolioError(true);
+      return;
+    }
+    setFolioError(false);
+    setDetallesId(id);
+  };
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={{ xs: 2, sm: 3 }} sx={{ minWidth: 0 }}>
       <Paper
         elevation={0}
         sx={{
-          p: {
-            xs: 2,
-            md: 3,
-          },
-          borderRadius: 5,
-          border: "1px solid",
-          borderColor: "divider",
-          background:
-            "linear-gradient(135deg, rgba(15,23,42,.04), rgba(255,255,255,.96))",
-          boxShadow: "0 18px 45px rgba(15,23,42,.07)",
+          p: { xs: 2, sm: 3 },
+          borderRadius: { xs: 3, sm: 4 },
+          bgcolor: "#1d2025",
+          color: "#fff",
+          borderTop: "3px solid #ffc107",
+          boxShadow: "0 10px 22px rgba(23,25,28,.14)",
         }}
       >
-        <Stack
-          direction={{
-            xs: "column",
-            md: "row",
-          }}
-          spacing={2}
-          justifyContent="space-between"
-          alignItems={{
-            xs: "stretch",
-            md: "center",
-          }}
-        >
-          <Box>
-            <Typography
-              variant="h4"
-              fontWeight={950}
-              sx={{
-                fontSize: {
-                  xs: "1.7rem",
-                  md: "2.2rem",
-                },
-              }}
-            >
-              Historial de Ventas
+        <Stack spacing={2.5}>
+          <Stack direction="row" alignItems="center" spacing={1.5} minWidth={0}>
+            <Box sx={{ display: "grid", placeItems: "center", width: 44, height: 44, flexShrink: 0, borderRadius: 2, bgcolor: "#ffc107", color: "#17191c" }}>
+              <HistoryOutlinedIcon />
+            </Box>
+            <Typography component="h2" sx={{ color: "#fff !important", fontWeight: 800, fontSize: { xs: 21, sm: 28 } }}>
+              Historial de ventas
             </Typography>
-
-            <Typography
-              color="text.secondary"
-              sx={{
-                mt: 0.5,
-              }}
-            >
-              Movimientos, pagos, créditos, facturas, cancelaciones y
-              devoluciones.
-            </Typography>
-          </Box>
-
-          <Stack
-            direction={{
-              xs: "column",
-              sm: "row",
-            }}
-            spacing={1}
-            sx={{
-              width: {
-                xs: "100%",
-                md: "auto",
-              },
-            }}
-          >
-            <Button
-              fullWidth={isMobile}
-              variant="contained"
-              color="inherit"
-              startIcon={<DashboardCustomizeRoundedIcon />}
-              onClick={() => cambiarVista?.("menu")}
-              sx={{
-                borderRadius: 3,
-                fontWeight: 900,
-                textTransform: "none",
-                minHeight: 46,
-                bgcolor: "grey.900",
-                color: "#fff",
-                "&:hover": {
-                  bgcolor: "grey.800",
-                },
-              }}
-            >
-              Regresar al panel
-            </Button>
-
-            <Button
-              fullWidth={isMobile}
-              variant="outlined"
-              startIcon={<PointOfSaleRoundedIcon />}
-              onClick={() => cambiarVista?.("venta")}
-              sx={{
-                borderRadius: 3,
-                fontWeight: 900,
-                textTransform: "none",
-                minHeight: 46,
-              }}
-            >
-              Ventas
-            </Button>
-
-            <Button
-              fullWidth={isMobile}
-              variant="outlined"
-              startIcon={<PendingActionsRoundedIcon />}
-              onClick={() => cambiarVista?.("ventas_pendientes")}
-              sx={{
-                borderRadius: 3,
-                fontWeight: 900,
-                textTransform: "none",
-                minHeight: 46,
-              }}
-            >
-              Pendientes
-            </Button>
-
-            <Button
-              fullWidth={isMobile}
-              variant="outlined"
-              startIcon={<CreditScoreRoundedIcon />}
-              onClick={() => cambiarVista?.("credito_fiado")}
-              sx={{
-                borderRadius: 3,
-                fontWeight: 900,
-                textTransform: "none",
-                minHeight: 46,
-              }}
-            >
-              Crédito
-            </Button>
-
-            <Button
-              fullWidth={isMobile}
-              variant="outlined"
-              startIcon={<ReceiptLongRoundedIcon />}
-              onClick={() => cambiarVista?.("facturas")}
-              sx={{
-                borderRadius: 3,
-                fontWeight: 900,
-                textTransform: "none",
-                minHeight: 46,
-              }}
-            >
-              Facturas
-            </Button>
           </Stack>
+          <HistorialPOSFilters
+            modoConsulta={modoConsulta}
+            setModoConsulta={setModoConsulta}
+            fechaInicio={fechaInicio}
+            setFechaInicio={setFechaInicio}
+            fechaFin={fechaFin}
+            setFechaFin={setFechaFin}
+            tipoPago={tipoPago}
+            setTipoPago={setTipoPago}
+            onApply={handleFiltrar}
+            onClear={limpiarFiltros}
+            loading={loading}
+          />
         </Stack>
       </Paper>
-
-
-      <HistorialPOSFilters
-        modoConsulta={modoConsulta}
-        setModoConsulta={setModoConsulta}
-        fechaInicio={fechaInicio}
-        setFechaInicio={setFechaInicio}
-        fechaFin={fechaFin}
-        setFechaFin={setFechaFin}
-        tipoPago={tipoPago}
-        setTipoPago={setTipoPago}
-        onApply={handleFiltrar}
-        onClear={limpiarFiltros}
-        loading={loading}
-      />
 
       <HistorialPOSResumen
         summary={summary}
         rows={historialRows}
       />
+
+      <Paper elevation={0} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 3, border: "1px solid", borderColor: "divider" }}>
+        <Box component="form" role="search" aria-label="Buscar venta por folio" onSubmit={buscarFolio}
+          sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "minmax(0, 1fr) auto" }, gap: 1, alignItems: "start", width: "100%", maxWidth: { sm: 460 } }}>
+          <TextField
+            id="pos-sale-folio"
+            size="small"
+            label="Folio de venta (ID)"
+            placeholder="Ej. 84353"
+            value={folio}
+            onChange={(event) => {
+              setFolio(event.target.value);
+              setFolioError(false);
+            }}
+            error={folioError}
+            helperText={folioError ? "Ingresa un folio numérico válido." : undefined}
+            inputProps={{ inputMode: "numeric" }}
+            sx={{
+              "& .MuiOutlinedInput-root": { bgcolor: "#fff", minHeight: 44, borderRadius: 2 },
+            }}
+          />
+          <Button type="submit" variant="contained" startIcon={<SearchRoundedIcon />} disabled={!posLocationId}
+            sx={{ bgcolor: "#ffc107", color: "#17191c", minHeight: 44, borderRadius: 2, fontWeight: 800, textTransform: "none", "&:hover": { bgcolor: "#ffe082" } }}>
+            Buscar folio
+          </Button>
+        </Box>
+      </Paper>
 
       {historialGroups.length > 0 ? (
         <>
@@ -239,8 +151,7 @@ export default function HistorialPOSPage({ cambiarVista }) {
               borderRadius: 4,
               border: "1px solid",
               borderColor: "divider",
-              background:
-                "linear-gradient(135deg, rgba(255,255,255,.98), rgba(248,250,252,.92))",
+              bgcolor: "#eef1f5",
             }}
           >
             <Stack
@@ -379,8 +290,10 @@ export default function HistorialPOSPage({ cambiarVista }) {
       />
 
       <ModalDetallesVenta
+        key={`${posLocationId}/${detallesId}`}
         open={Boolean(detallesId)}
         ventaId={detallesId}
+        requiredPosLocationId={posLocationId ?? null}
         onClose={() => setDetallesId(null)}
       />
 

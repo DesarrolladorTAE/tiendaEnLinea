@@ -25,15 +25,12 @@ import { alpha, useTheme } from "@mui/material/styles";
 
 import axiosClient from "../config/axiosClientPOS";
 import POSSaleInformation from "./POSSaleInformation";
+import { getPOSSaleStatus } from "./POS/saleStatus";
 import { posDate, saleInfo } from "../utils/posSaleInfo";
 
 
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import ShoppingBagRoundedIcon from "@mui/icons-material/ShoppingBagRounded";
 import CreditScoreRoundedIcon from "@mui/icons-material/CreditScoreRounded";
-import PendingActionsRoundedIcon from "@mui/icons-material/PendingActionsRounded";
-import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
-import AutorenewRoundedIcon from "@mui/icons-material/AutorenewRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
 
@@ -43,49 +40,6 @@ const money = (n) =>
     currency: "MXN",
     minimumFractionDigits: 2,
   });
-
-const STATUS_CONFIG = {
-  paid: {
-    label: "Venta pagada",
-    color: "success",
-    icon: <ReceiptLongRoundedIcon />,
-  },
-  open: {
-    label: "Venta pendiente",
-    color: "warning",
-    icon: <PendingActionsRoundedIcon />,
-  },
-  credit: {
-    label: "Venta a crédito pendiente",
-    color: "primary",
-    icon: <CreditScoreRoundedIcon />,
-  },
-  credit_paid: {
-    label: "Venta a crédito saldada",
-    color: "success",
-    icon: <CreditScoreRoundedIcon />,
-  },
-  cancelled: {
-    label: "Venta cancelada",
-    color: "error",
-    icon: <CancelRoundedIcon />,
-  },
-  partially_cancelled: {
-    label: "Cancelación parcial",
-    color: "error",
-    icon: <CancelRoundedIcon />,
-  },
-  devuelta: {
-    label: "Venta devuelta",
-    color: "info",
-    icon: <AutorenewRoundedIcon />,
-  },
-  devuelta_parcial: {
-    label: "Devolución parcial",
-    color: "info",
-    icon: <AutorenewRoundedIcon />,
-  },
-};
 
 const PAYMENT_LABELS = {
   efectivo: "Efectivo",
@@ -108,7 +62,7 @@ const getPagoConcepto = (index, pago, pagos, totalVenta) => {
   return "Abono registrado";
 };
 
-export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResumen }) {
+export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResumen, requiredPosLocationId }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -123,7 +77,12 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
 
       try {
         const { data } = await axiosClient.get(`/ventas/${ventaId}`);
-        if (active) setDetalles(data?.sale ? data : null);
+        const sale = data?.sale;
+        const salePosId = sale?.pos_location_id ?? sale?.pos_location?.id;
+        const belongsToTerminal = requiredPosLocationId === undefined || (
+          salePosId != null && String(salePosId) === String(requiredPosLocationId) && String(sale.id) === String(ventaId)
+        );
+        if (active) setDetalles(sale && belongsToTerminal ? data : null);
       } catch (error) {
         console.error("Error al cargar detalles", error);
         if (active) setDetalles(null);
@@ -132,21 +91,13 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
       }
     };
 
-    if (ventaId && open) cargarDetalles();
+    if (ventaId && open && requiredPosLocationId !== null) cargarDetalles();
     return () => { active = false; };
-  }, [ventaId, open]);
+  }, [ventaId, open, requiredPosLocationId]);
 
   const sale = useMemo(() => detalles?.sale ? { ...ventaResumen, ...detalles.sale, credit_movements: detalles.credit_movements ?? detalles.sale.credit_movements ?? ventaResumen?.credit_movements } : null, [detalles, ventaResumen]);
 
-  const statusConfig = useMemo(() => {
-    return (
-      STATUS_CONFIG[sale?.status] || {
-        label: sale?.status_label || "Movimiento",
-        color: "default",
-        icon: <ReceiptLongRoundedIcon />,
-      }
-    );
-  }, [sale]);
+  const statusConfig = getPOSSaleStatus(sale);
 
   const pagos = Array.isArray(detalles?.payments) ? detalles.payments : Array.isArray(sale?.payments) ? sale.payments : [];
   const items = Array.isArray(detalles?.items) ? detalles.items : [];
@@ -201,7 +152,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
 
               <Box>
                 <Typography fontWeight={950} sx={{ fontSize: { xs: 20, md: 26 } , color:"white"}}>
-                  Ticket #{sale?.id || ventaId}
+                  {requiredPosLocationId !== undefined && !sale ? "Consulta de folio" : `Ticket #${sale?.id || ventaId}`}
                 </Typography>
 
                 <Typography variant="body2" sx={{ opacity: 0.78 , color: "white" }}>
@@ -210,7 +161,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
               </Box>
             </Stack>
 
-            <Chip
+            {(sale || requiredPosLocationId === undefined) && <Chip
               label={statusConfig.label}
               color={statusConfig.color}
               sx={{
@@ -218,7 +169,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
                 borderRadius: 2,
                 color: "#fff",
               }}
-            />
+            />}
           </Stack>
         </Box>
       </DialogTitle>
@@ -232,7 +183,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
           <Stack spacing={2.5}>
             <POSSaleInformation sale={sale} payments={pagos} />
             <Grid container spacing={2}>
-              <Grid item xs={12} md={8}>
+              <Grid size={{ xs: 12, md: 8 }}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -250,7 +201,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
                   </Typography>
 
                   <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant="caption" color="text.secondary" fontWeight={800}>
                         Fecha
                       </Typography>
@@ -259,7 +210,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
                       </Typography>
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant="caption" color="text.secondary" fontWeight={800}>
                         Cliente
                       </Typography>
@@ -273,7 +224,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
                       ) : null}
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant="caption" color="text.secondary" fontWeight={800}>
                         Punto de venta
                       </Typography>
@@ -282,7 +233,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
                       </Typography>
                     </Grid>
 
-                    <Grid item xs={12} sm={6}>
+                    <Grid size={{ xs: 12, sm: 6 }}>
                       <Typography variant="caption" color="text.secondary" fontWeight={800}>
                         Estado
                       </Typography>
@@ -299,7 +250,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
                 </Paper>
               </Grid>
 
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -410,7 +361,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
             </Paper>
 
             <Grid container spacing={2}>
-              <Grid item xs={12} md={7}>
+              <Grid size={{ xs: 12, md: 7 }}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -494,7 +445,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
                 </Paper>
               </Grid>
 
-              <Grid item xs={12} md={5}>
+              <Grid size={{ xs: 12, md: 5 }}>
                 <Paper
                   elevation={0}
                   sx={{
@@ -602,7 +553,9 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
           </Stack>
         ) : (
           <Box py={8} textAlign="center">
-            <Typography fontWeight={900}>No se encontraron detalles.</Typography>
+            <Typography fontWeight={900}>{requiredPosLocationId === undefined
+              ? "No se encontraron detalles."
+              : "No se encontró el folio en este punto de venta."}</Typography>
           </Box>
         )}
       </DialogContent>

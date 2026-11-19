@@ -1,4 +1,5 @@
 import React from "react";
+import { posMobileCard } from "../POS/posSectionStyles";
 import {
     Stack,
     Paper,
@@ -90,8 +91,8 @@ export default function CreditHistoryMobileCards({
                         key={m.id}
                         variant="outlined"
                         sx={{
+                            ...posMobileCard,
                             p: 1.5,
-                            borderRadius: 3,
                             bgcolor: cancelled || reversal ? "#fef2f2" : "background.paper",
                             borderColor: cancelled || reversal ? "#fecaca" : "divider",
                         }}

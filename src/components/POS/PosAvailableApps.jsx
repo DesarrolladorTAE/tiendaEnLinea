@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { posMobileCard } from "./posSectionStyles";
 import {
   Alert,
   Box,
@@ -123,10 +124,10 @@ export default function PosAvailableApps() {
       <Paper
         elevation={0}
         sx={{
-          mt: 3,
+          minWidth: 0,
           p: { xs: 1.5, sm: 2, md: 3 },
           borderRadius: { xs: 3, md: 4 },
-          border: "1px solid #dbeafe",
+          border: "1px solid #dce3ec",
           bgcolor: "#ffffff",
           overflow: "hidden",
         }}
@@ -177,10 +178,8 @@ export default function PosAvailableApps() {
                     elevation={0}
                     sx={{
                       p: { xs: 1.6, sm: 2, md: 2.2 },
-                      borderRadius: 3,
-                      border: "1px solid #e5e7eb",
-                      bgcolor:
-                        "linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)",
+                      ...posMobileCard,
+                      bgcolor: "#f8fafc",
                       transition: ".18s ease",
                       "&:hover": {
                         borderColor: meta.border,
@@ -190,9 +189,9 @@ export default function PosAvailableApps() {
                     }}
                   >
                     <Stack
-                      direction={{ xs: "column", md: "row" }}
+                      direction={{ xs: "column", md: "row", lg: "column" }}
                       spacing={{ xs: 1.8, md: 2 }}
-                      alignItems={{ xs: "stretch", md: "center" }}
+                      alignItems={{ xs: "stretch", md: "center", lg: "stretch" }}
                       justifyContent="space-between"
                     >
                       <Stack
@@ -338,13 +337,15 @@ export default function PosAvailableApps() {
                       </Stack>
 
                       <Stack
-                        direction={{ xs: "row", sm: "row", md: "column" }}
-                        spacing={1}
-                        alignItems={{ xs: "center", md: "stretch" }}
+                        direction={{ xs: "column", sm: "row", md: "column", lg: "row" }}
+                        gap={1}
+                        useFlexGap
+                        flexWrap="wrap"
+                        alignItems="stretch"
                         justifyContent={{ xs: "space-between", md: "center" }}
                         sx={{
-                          width: { xs: "100%", md: "auto" },
-                          minWidth: { md: 150 },
+                          width: { xs: "100%", md: "auto", lg: "100%" },
+                          minWidth: { md: 150, lg: 0 },
                         }}
                       >
                         <Tooltip title="Ver información de la app">

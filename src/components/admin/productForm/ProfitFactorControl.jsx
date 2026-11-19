@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, TextField, Typography } from "@mui/material";
+import { Dialog, DialogActions, DialogContent, DialogTitle } from "@mui/material";
 import { calculateProfitPrice, validPurchaseCost } from "../../../utils/productProfitFactor";
 
 const money = value => Number(value).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
@@ -13,6 +13,7 @@ export default function ProfitFactorControl({ watch, setValue, disabled = false 
   const byFactor = watch("price_mode") === "factor";
   const previewEnabled = watch("factor_preview_enabled") === true;
   const available = validPurchaseCost(cost) && !disabled;
+  const highlighted = byFactor || open;
   let preview, error;
   try { preview = calculateProfitPrice(cost, draft, iva); } catch (err) { error = err.message; }
 
@@ -34,16 +35,20 @@ export default function ProfitFactorControl({ watch, setValue, disabled = false 
     setOpen(false);
   };
 
-  const openEditor = () => {
-    setDraft(factor === "" || factor == null ? "" : String(factor));
+  const openEditor = (value = factor) => {
+    setDraft(value == null ? "" : String(value));
     setOpen(true);
   };
 
   return <div className="col-12 mb-3">
-    <div className={`rounded-3 border p-3 ${byFactor ? "border-info" : "border-secondary"}`} style={{ background: byFactor ? "rgba(13,202,240,.08)" : "rgba(255,255,255,.025)" }}>
+    <div className={`rounded-3 border p-3 ${highlighted ? "border-info" : "border-secondary"}`} style={{ background: highlighted ? "rgba(13,202,240,.08)" : "rgba(255,255,255,.025)" }}>
       <div className="d-flex flex-wrap align-items-center justify-content-between gap-3">
         <div className="form-check mb-0">
           <input id="product-price-by-factor" type="checkbox" className="form-check-input" checked={byFactor} disabled={disabled || (!available && !byFactor)} onChange={event => {
+            if (event.target.checked && Number(factor ?? 0) === 0) {
+              openEditor("");
+              return;
+            }
             setValue("price_mode", event.target.checked ? "factor" : "manual", { shouldDirty: true });
             setValue("factor_preview_enabled", event.target.checked);
             if (!event.target.checked) setOpen(false);
@@ -51,24 +56,29 @@ export default function ProfitFactorControl({ watch, setValue, disabled = false 
           <label className="form-check-label fw-semibold" htmlFor="product-price-by-factor">Usar factor de utilidad</label>
           {byFactor && factor !== "" && factor != null && <span className="badge bg-info text-dark ms-2">{factor}%</span>}
         </div>
-        <button type="button" className="btn btn-sm btn-outline-info" disabled={!byFactor || !available} onClick={openEditor}>Configurar factor</button>
+        <button type="button" className="btn btn-sm btn-outline-info" disabled={!byFactor || !available} onClick={() => openEditor()}>Configurar factor</button>
       </div>
       {!available && !byFactor && <small className="d-block text-warning mt-2">Primero captura el costo de compra.</small>}
       {byFactor && (factor === "" || factor == null) && <small className="d-block text-info mt-2">Configura el factor para calcular el precio.</small>}
     </div>
-    {byFactor && (!validPurchaseCost(cost) || iva === "") && <div className="text-warning mt-1">Completa el costo de compra y la tasa de IVA antes de guardar, o vuelve al precio manual.</div>}
-    <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs" aria-labelledby="profit-factor-title">
-      <DialogTitle id="profit-factor-title">Precio por factor de utilidad</DialogTitle>
+    {byFactor && previewEnabled && (!validPurchaseCost(cost) || iva === "") && <div className="text-warning mt-1">Completa el costo de compra y la tasa de IVA para calcular el precio.</div>}
+    <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="xs" aria-labelledby="profit-factor-title" PaperProps={{ sx: { bgcolor: "#24282c", color: "#fff", border: "1px solid #495057", borderRadius: 3 } }}>
+      <DialogTitle className="text-white" sx={{ color: "#fff !important" }} id="profit-factor-title">Cambiar factor de utilidad</DialogTitle>
       <DialogContent>
-        <Stack spacing={2} sx={{ pt: 1 }}>
-          <Typography variant="body2">El factor es el porcentaje que aumentas al costo de compra para obtener el precio final, que ya incluye IVA. No es un multiplicador ni el porcentaje de margen sobre el precio de venta.</Typography>
-          <Typography variant="body2">Por ejemplo: costo $100 + factor 45% = precio final $145. Con IVA de 16%, su base sin IVA es $125.</Typography>
-          <TextField label="Factor de utilidad (%)" value={draft} onChange={event => setDraft(event.target.value)} inputProps={{ inputMode: "decimal" }} helperText="De 0 a 999999.9999; máximo cuatro decimales." autoFocus />
-          {preview ? <Alert severity="info">Costo: {money(cost)}<br />Precio final: <strong>{money(preview.price)}</strong><br />Base sin IVA: ${preview.base_price.toFixed(6)}</Alert> : <Alert severity="warning">{error}</Alert>}
-          <Typography variant="caption" color="text.secondary">Aplica al precio general. Los precios propios de variantes y almacenes se conservan. Este cálculo se aplica al guardar; los cambios futuros del costo no recalculan el precio automáticamente.</Typography>
-        </Stack>
+        {watch("name") && <p className="fw-semibold mb-3 text-white">{watch("name")}</p>}
+        <label htmlFor="product-form-profit-factor" className="small mb-1">Factor de utilidad (%)</label>
+        <input id="product-form-profit-factor" className="form-control form-control-sm bg-secondary text-light" value={draft} onChange={event => setDraft(event.target.value)} inputMode="decimal" aria-describedby="product-form-profit-factor-help" autoFocus />
+        <small id="product-form-profit-factor-help" className="d-block text-info mt-1">Porcentaje de aumento sobre el costo de compra. El precio final ya incluye IVA.</small>
+        {preview ? (
+          <small className="d-block mt-2">Costo de compra: {money(cost)}<br />Nuevo precio: <strong>{money(preview.price)}</strong><br />Base sin IVA: ${preview.base_price.toFixed(6)}</small>
+        ) : draft.trim() && (
+          <small className="d-block text-warning mt-1" role="alert">{error}</small>
+        )}
       </DialogContent>
-      <DialogActions><Button onClick={() => setOpen(false)}>Cancelar</Button><Button variant="contained" disabled={!preview || !available} onClick={apply}>Usar este factor</Button></DialogActions>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <button type="button" className="btn btn-sm btn-success" disabled={!preview || !available} onClick={apply}>Usar este factor</button>
+        <button type="button" className="btn btn-sm btn-outline-light" onClick={() => setOpen(false)}>Cancelar</button>
+      </DialogActions>
     </Dialog>
   </div>;
 }

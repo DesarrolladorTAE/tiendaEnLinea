@@ -1,5 +1,49 @@
 .trc-module { --trc-accent:#1565c0; --trc-soft:#eaf4ff; color:#192536; min-width:0; background:linear-gradient(155deg,#f4f8fc 0%,#f8fafc 55%,#edf5ff 100%); min-height:100%; }
 .trc-module--admin { --trc-accent:#1565c0; --trc-soft:#eaf4ff; background:linear-gradient(155deg,#eff6ff 0%,#f8fafc 46%,#f3f6fb 100%); }
+.trc-module.trc-module--pos {
+  --trc-accent: #785900;
+  --trc-soft: #fff3cc;
+}
+.trc-module--pos:not(.trc-checkout-paper) {
+  background: transparent;
+}
+.trc-checkout-paper.trc-module--pos,
+.trc-module--pos.trc-checkout-paper .MuiDialogContent-root {
+  background: #fff;
+  color: #192536;
+}
+.trc-module--pos .trc-heading {
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid #30343b;
+  border-top: 3px solid #ffc107;
+  border-radius: 12px;
+  background: #1d2025;
+}
+.trc-module--pos .trc-heading .trc-heading-icon {
+  border-radius: 12px;
+  background: #ffc107;
+}
+.trc-module--pos .trc-heading .trc-title { color: #fff !important; }
+.trc-module--pos .trc-heading .trc-description { color: #c7cbd1 !important; }
+.trc-module--pos .trc-heading .trc-eyebrow { color: #ffd454; }
+.trc-module--pos .trc-heading .trc-header-status { color: #ffd454; border-color: #847038; }
+.trc-module--pos .trc-balance.MuiPaper-root { background: #252b34 !important; border-left: 4px solid #ffc107 !important; }
+.trc-module--pos .MuiButton-containedPrimary:not(.Mui-disabled) { background: #ffc107; color: #17191c; }
+.trc-module--pos .MuiButton-containedPrimary:hover:not(.Mui-disabled) { background: #ffe082; }
+.trc-module--pos .MuiTableHead-root .MuiTableCell-root { background: #eef2f6; color: #222a35; border-bottom: 2px solid #ffc107; }
+.trc-module--pos .MuiTabs-root .MuiTab-root { min-height: 44px; }
+.trc-module--pos .trc-checkout-heading {
+  background: #1d2025;
+  border-top: 3px solid #ffc107;
+}
+.trc-module--pos .trc-checkout-heading h2,
+.trc-module--pos .trc-checkout-heading .trc-carrier-name,
+.trc-module--pos .trc-checkout-heading .MuiIconButton-root { color: #fff; }
+.trc-module--pos .trc-checkout-heading .trc-eyebrow { color: #ffd454; }
+@media (max-width: 600px) {
+  .trc-module--pos .trc-heading .trc-title { font-size: 23px; overflow-wrap: anywhere; }
+  .trc-module--pos .trc-balance .MuiButton-root { width: 100%; }
+}
 .trc-heading { display:flex; justify-content:space-between; gap:20px; align-items:center; padding:28px; border:1px solid #e3e8ef; border-radius:24px; background:linear-gradient(120deg,#fff 45%,var(--trc-soft)); box-shadow:0 12px 36px #1e293b06; }
 .trc-heading-icon { display:grid; place-items:center; flex-shrink:0; width:64px; height:64px; border-radius:20px; color:var(--trc-accent); background:var(--trc-soft); border:1px solid color-mix(in srgb,var(--trc-accent) 15%,transparent); }
 .trc-heading .trc-heading-icon { width:128px; height:88px; padding:8px; background:#fff; border-color:#dbe7ed; }

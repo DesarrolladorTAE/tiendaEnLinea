@@ -24,6 +24,7 @@ import PhoneIphoneIcon from "@mui/icons-material/PhoneIphone";
 import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
 import BadgeIcon from "@mui/icons-material/Badge";
 import CreditScoreIcon from "@mui/icons-material/CreditScore";
+import { posMobileCard, posTableHeader } from "../POS/posSectionStyles";
 
 export default function ClientesTable({
   rows = [],
@@ -117,12 +118,9 @@ export default function ClientesTable({
               key={r.id}
               elevation={0}
               sx={(t) => ({
-                borderRadius: 3,
+                ...posMobileCard,
                 p: 1.5,
-                backgroundImage: t.palette.mode === "dark" ? "none" : "linear-gradient(140deg, #faf8ff, #ffffff 65%, #f0fdfa)",
                 boxShadow: "0 4px 16px #17203308",
-                "& .MuiIconButton-root": { minWidth: 44, minHeight: 44 },
-                border: `1px solid ${alpha(t.palette.divider, 0.9)}`,
                 bgcolor:
                   t.palette.mode === "dark"
                     ? alpha(t.palette.background.paper, 0.85)
@@ -132,9 +130,7 @@ export default function ClientesTable({
               <Stack spacing={1.2}>
                 <Stack spacing={0.5} sx={{ minWidth: 0 }}>
                   <Stack direction="row" spacing={1} alignItems="center">
-                    <PersonOutlineIcon
-                      sx={{ fontSize: 18, color: "text.secondary" }}
-                    />
+                    <PersonOutlineIcon sx={{ fontSize: 20, color: "#785900", flexShrink: 0 }} />
                     <Typography
                       sx={{
                         fontWeight: 800,
@@ -290,19 +286,7 @@ export default function ClientesTable({
       <TableContainer sx={{ overflow: "visible" }}>
         <Table size="medium" sx={{ tableLayout: "fixed", width: "100%", "& th, & td": { px: { md: 1, lg: 1.5 }, overflowWrap: "anywhere" }, "& .MuiChip-root": { maxWidth: "100%", height: "auto", minHeight: 24 }, "& .MuiChip-label": { whiteSpace: "normal", py: 0.5 } }}>
           <TableHead>
-            <TableRow
-              sx={{
-                "& th": {
-                  bgcolor: (t) =>
-                    t.palette.mode === "dark"
-                      ? alpha(t.palette.background.paper, 0.95)
-                      : "#ede9fe",
-                  color: "text.primary",
-                  fontWeight: 800,
-                  borderBottom: (t) => `1px solid ${t.palette.divider}`,
-                },
-              }}
-            >
+            <TableRow sx={posTableHeader}>
               <TableCell>Cliente</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Teléfono</TableCell>
