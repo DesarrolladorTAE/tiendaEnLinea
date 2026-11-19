@@ -9,6 +9,8 @@ import client from "../../config/axiosClient";
 import { cashDateTime, cashError, cashPath, cashTimeZone } from "../../utils/cashControl";
 import { CashHistory } from "./CashReports";
 import CashDialog, { cashPanel } from "./CashDialog";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+import ScheduleOutlinedIcon from "@mui/icons-material/ScheduleOutlined";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -95,6 +97,8 @@ export default function AdminCashDialog({ pos, onClose }) {
             {settings && (
               <>
                 <Stack spacing={1.5} sx={cashPanel} component="form" onSubmit={(event) => save(event, false)}>
+                  <Stack direction="row" spacing={1} alignItems="center"><SettingsOutlinedIcon sx={{ color: "#ad7900" }} /><Typography variant="h6" fontWeight={800}>Control y horario</Typography></Stack>
+                  <Typography variant="body2" color="text.secondary">Define cómo se abre la caja y en qué horario puede operar.</Typography>
                   <FormControlLabel label="Activar control de caja" control={<Switch checked={settings.cash_control_enabled} disabled={busy} onChange={(_, checked) => set("cash_control_enabled", checked)} />} />
                   <FormControlLabel label="Pedir fondo inicial antes de cobrar" control={<Switch checked={settings.cash_opening_amount_required} disabled={busy || !settings.cash_control_enabled} onChange={(_, checked) => set("cash_opening_amount_required", checked)} />} />
                   <Typography variant="body2" color="text.secondary">
@@ -106,13 +110,14 @@ export default function AdminCashDialog({ pos, onClose }) {
                   </Typography>
                   <Typography variant="body2" color="text.secondary">Horario de Ciudad de México. Deja ambas horas vacías para usar horario libre.</Typography>
                   <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                    <TextField label="Hora de apertura" type="time" value={settings.cash_open_time} onChange={(event) => set("cash_open_time", event.target.value)} InputLabelProps={{ shrink: true }} disabled={busy} />
-                    <TextField label="Hora de cierre" type="time" value={settings.cash_close_time} onChange={(event) => set("cash_close_time", event.target.value)} InputLabelProps={{ shrink: true }} disabled={busy} />
+                    <TextField fullWidth label="Hora de apertura" type="time" value={settings.cash_open_time} onChange={(event) => set("cash_open_time", event.target.value)} InputLabelProps={{ shrink: true }} disabled={busy} />
+                    <TextField fullWidth label="Hora de cierre" type="time" value={settings.cash_close_time} onChange={(event) => set("cash_close_time", event.target.value)} InputLabelProps={{ shrink: true }} disabled={busy} />
                   </Stack>
                   <Button variant="contained" type="submit" disabled={busy} sx={{ alignSelf: "start" }}>Guardar configuración</Button>
                 </Stack>
                 <Stack spacing={1.5} sx={cashPanel} component="form" onSubmit={(event) => save(event, true)}>
-                  <Typography variant="h6">Tiempo extra</Typography>
+                  <Stack direction="row" spacing={1} alignItems="center"><ScheduleOutlinedIcon sx={{ color: "#ad7900" }} /><Typography variant="h6" fontWeight={800}>Tiempo extra</Typography></Stack>
+                  <Typography variant="body2" color="text.secondary">Permite que una caja abierta continúe operando hasta la fecha y hora autorizadas.</Typography>
                   <Chip sx={{ alignSelf: "start" }} label={status.session ? `Caja abierta #${status.session.id}` : "Sin sesión de caja abierta"} />
                   {status.session?.authorized_until && <Typography variant="body2">Autorizado hasta {cashDateTime(status.session.authorized_until)}</Typography>}
                   {status.cash_control_enabled && status.session && (

@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, Stack, TextField, Typography, useMediaQuery, useTheme } from "@mui/material";
+import { Alert, Box, Button, Card, CardContent, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Pagination, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, useMediaQuery, useTheme } from "@mui/material";
 import { useTienda } from "../../context/TiendaContext";
 import { canReceiveTransfer, isInternalTransfer, transferItemName, destinationLabel, transferCollection, transferError, transfersApi } from "../../services/admin/inventoryTransfers";
 import { notifyInventoryChanged } from "../../utils/inventoryEvents";
 import NewInventoryTransferDialog from "./NewInventoryTransferDialog";
-import { warehouseDialogStyles, warehouseGrid, warehousePanel } from "./warehouseStyles";
+import { warehouseDialogStyles, warehousePanel } from "./warehouseStyles";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 
 const statuses = { pending: "En tránsito", accepted: "Aceptado", rejected: "Rechazado" };
 const branchName = (row, side, branches = []) => row[`${side}_branch`]?.name || row[`${side}_branch_name`] || row[`${side}_branch_snapshot`]?.name || branches.find(branch => Number(branch.id) === Number(row[`${side}_branch_id`]))?.name || `Sucursal #${row[`${side}_branch_id`] ?? "—"}`;
@@ -18,6 +21,15 @@ const warehouseName = (row, side, warehouses) => {
     warehouses.find(warehouse => String(warehouse.id) === String(id))?.name ||
     (id ? `Almacén #${id}` : "Almacén de origen");
 };
+
+function ItemImage({ item }) {
+  const image = item.variant?.image_url || item.source_variant?.image_url || item.image_url || item.product_image_url || item.source_product?.image_url || item.product?.image_url || item.product?.primary_image?.image_url || item.product?.images?.[0]?.image_url;
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [image]);
+  return <Box sx={{ width: 64, height: 64, flexShrink: 0, borderRadius: 2, bgcolor: "#f4f5f7", display: "grid", placeItems: "center", overflow: "hidden" }}>
+    {image && !failed ? <Box component="img" src={image} alt={transferItemName(item)} onError={() => setFailed(true)} sx={{ width: "100%", height: "100%", objectFit: "contain" }} /> : <Inventory2OutlinedIcon aria-label="Producto sin imagen" sx={{ color: "#9299a5", fontSize: 30 }} />}
+  </Box>;
+}
 
 export default function InventoryTransfers({ branch, onChanged, internal = false }) {
   const { tienda } = useTienda();
@@ -59,12 +71,27 @@ export default function InventoryTransfers({ branch, onChanged, internal = false
     {notice && <Alert severity="success" onClose={() => setNotice("")}>{notice}</Alert>}
     <Stack direction="row" flexWrap="wrap" gap={1} role="group" aria-label="Consulta de traspasos">{[["outgoing", "Enviados"], ["incoming", "Recibidos"], ["all", "Historial"]].map(([value, label]) => <Button key={value} variant={direction === value ? "contained" : "outlined"} aria-pressed={direction === value} onClick={() => { setDirection(value); setPage(1); }}>{label}</Button>)}</Stack>
     <Stack direction={{ xs: "column", sm: "row" }} gap={1}><TextField select size="small" label="Estado" value={status} sx={{ width: { xs: "100%", sm: 250 } }} onChange={e => { setStatus(e.target.value); setPage(1); }}><MenuItem value="">Todos los estados</MenuItem>{Object.entries(statuses).map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField><TextField size="small" label="Filtrar folio en esta página" value={folioQuery} onChange={e => setFolioQuery(e.target.value)} /><Button variant="outlined" onClick={() => setRevision(v => v + 1)}>Actualizar</Button></Stack>
-    {state.loading ? <CircularProgress aria-label="Cargando traspasos" /> : state.error ? <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{state.error}</Alert> : !visibleRows.length ? <Alert severity="info">No hay traspasos con estos filtros en esta página.</Alert> : <Box sx={warehouseGrid}>{visibleRows.map(row => <Card key={row.id} variant="outlined" sx={{ borderRadius: 3 }}><CardContent><Stack spacing={1.5}>
-      <Stack direction="row" gap={1} justifyContent="space-between" flexWrap="wrap"><Typography fontWeight={800}>{folio(row)}</Typography><Chip size="small" label={statuses[row.status] || row.status} color={row.status === "accepted" ? "success" : row.status === "rejected" ? "error" : "warning"} /></Stack>
-      <Typography sx={{ overflowWrap: "anywhere" }}>{internal ? warehouseName(row, "source", warehouses) : branchName(row, "source", branches)} → {internal ? warehouseName(row, "destination", warehouses) : branchName(row, "destination", branches)}</Typography>{!internal && <Typography variant="body2">Destino: {destinationLabel(row)}</Typography>}
-      <Typography variant="caption" color="text.secondary">{date(row.created_at)}</Typography>
-      <Button variant="outlined" onClick={() => setSelected(row.id)}>Ver detalle y comprobante</Button>
-    </Stack></CardContent></Card>)}</Box>}
+    {state.loading ? <CircularProgress aria-label="Cargando traspasos" /> : state.error ? <Alert severity="error" sx={{ whiteSpace: "pre-line" }}>{state.error}</Alert> : !visibleRows.length ? <Alert severity="info">No hay traspasos con estos filtros en esta página.</Alert> : <>
+      <TableContainer sx={{ display: { xs: "none", md: "block" }, bgcolor: "background.paper", border: "1px solid #e3e5e8", borderRadius: 3, overflow: "auto" }}>
+        <Table aria-label="Listado de traspasos" sx={{ minWidth: 760 }}>
+          <TableHead><TableRow sx={{ bgcolor: "#f7f8fa", "& th": { fontWeight: 800, color: "#505866", fontSize: 12, borderColor: "#e9ebee" } }}><TableCell>FOLIO</TableCell><TableCell>ORIGEN</TableCell><TableCell>DESTINO</TableCell><TableCell>FECHA DE ENVÍO</TableCell><TableCell>ESTADO</TableCell><TableCell align="right">ACCIÓN</TableCell></TableRow></TableHead>
+          <TableBody>{visibleRows.map(row => <TableRow key={row.id} hover sx={{ "& td": { borderColor: "#eef0f2", py: 2 } }}>
+            <TableCell><Typography fontWeight={800}>{folio(row)}</Typography></TableCell>
+            <TableCell>{internal ? warehouseName(row, "source", warehouses) : branchName(row, "source", branches)}</TableCell>
+            <TableCell><Typography variant="body2" fontWeight={700}>{internal ? warehouseName(row, "destination", warehouses) : branchName(row, "destination", branches)}</Typography>{!internal && <Typography variant="caption" color="text.secondary">{destinationLabel(row)}</Typography>}</TableCell>
+            <TableCell><Typography variant="body2" color="text.secondary">{date(row.created_at)}</Typography></TableCell>
+            <TableCell><Chip size="small" label={statuses[row.status] || row.status} color={row.status === "accepted" ? "success" : row.status === "rejected" ? "error" : "warning"} /></TableCell>
+            <TableCell align="right"><Button size="small" variant="outlined" onClick={() => setSelected(row.id)}>Ver detalle y comprobante</Button></TableCell>
+          </TableRow>)}</TableBody>
+        </Table>
+      </TableContainer>
+      <Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" } }}>{visibleRows.map(row => <Card key={row.id} variant="outlined" sx={{ borderRadius: 3 }}><CardContent><Stack spacing={1.5}>
+        <Stack direction="row" gap={1} justifyContent="space-between" alignItems="center"><Typography fontWeight={800}>{folio(row)}</Typography><Chip size="small" label={statuses[row.status] || row.status} color={row.status === "accepted" ? "success" : row.status === "rejected" ? "error" : "warning"} /></Stack>
+        <Box sx={{ bgcolor: "#f7f8fa", borderRadius: 2, p: 1.5 }}><Typography variant="caption" color="text.secondary">ORIGEN → DESTINO</Typography><Typography fontWeight={700} sx={{ overflowWrap: "anywhere" }}>{internal ? warehouseName(row, "source", warehouses) : branchName(row, "source", branches)} → {internal ? warehouseName(row, "destination", warehouses) : branchName(row, "destination", branches)}</Typography>{!internal && <Typography variant="body2" color="text.secondary">{destinationLabel(row)}</Typography>}</Box>
+        <Typography variant="caption" color="text.secondary">Enviado: {date(row.created_at)}</Typography>
+        <Button fullWidth variant="outlined" onClick={() => setSelected(row.id)}>Ver detalle y comprobante</Button>
+      </Stack></CardContent></Card>)}</Stack>
+    </>}
     {state.lastPage > 1 && <Pagination page={page} count={state.lastPage} size="small" onChange={(_, next) => setPage(next)} />}
     {creating && <NewInventoryTransferDialog key={branch.id} branch={branch} branches={branches} internal={internal} onClose={() => { setCreating(false); setRevision(v => v + 1); }} onSaved={() => { setCreating(false); setPage(1); refresh(); setNotice("Traspaso enviado. Las existencias están en tránsito."); }} />}
     {selected && <TransferDetail id={selected} branchId={branch.id} branches={branches} warehouses={warehouses} internal={internal} onClose={() => setSelected(null)} onChanged={refresh} />}
@@ -105,21 +132,23 @@ function TransferDetail({ id, branchId, branches, warehouses, internal, onClose,
       {error && <Alert severity="error" sx={{ whiteSpace: "pre-line" }} action={<Button disabled={busy} onClick={() => setRevision(v => v + 1)}>Actualizar</Button>}>{error}</Alert>}
       {pdfError && <Alert severity="error" sx={{ whiteSpace: "pre-line" }} action={<Button disabled={busy} onClick={() => document(pdfError.download)}>Reintentar PDF</Button>}>{pdfError.message}</Alert>}
       {loading ? <CircularProgress /> : record && <>
-        <Chip sx={{ alignSelf: "flex-start" }} label={statuses[record.status] || record.status} color={record.status === "pending" ? "warning" : record.status === "accepted" ? "success" : "error"} />
+        <Box sx={{ p: 2.5, borderRadius: 3, bgcolor: "#f7f8fa", border: "1px solid #eceef1" }}><Stack spacing={1.5}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between"><Stack direction="row" spacing={1} alignItems="center"><LocalShippingOutlinedIcon sx={{ color: "#ad7900" }} /><Typography fontWeight={800}>Resumen del envío</Typography></Stack><Chip size="small" label={statuses[record.status] || record.status} color={record.status === "pending" ? "warning" : record.status === "accepted" ? "success" : "error"} /></Stack>
         <Typography fontWeight={800}>{internal ? warehouseName(record, "source", warehouses) : branchName(record, "source", branches)} → {internal ? warehouseName(record, "destination", warehouses) : branchName(record, "destination", branches)}</Typography>
         {!internal && <Typography>Destino: {destinationLabel(record)}</Typography>}
         <Typography variant="body2">Enviado: {date(record.created_at)}</Typography>
-        <Typography sx={{ whiteSpace: "pre-wrap" }}>Observaciones: {record.notes || "Sin observaciones"}</Typography>
-        <Typography variant="h6" fontWeight={800}>Mercancía</Typography>
-        {array(record.items).map((item, index) => <Box key={item.id || index} sx={warehousePanel}><Typography fontWeight={800}>{transferItemName(item)}</Typography><Typography variant="body2">{item.variant_name || item.source_variant_name || item.variant_snapshot?.name || item.source_variant?.name || item.variant?.name || "Producto simple"} · SKU: {item.sku || item.product_sku || item.product?.sku || "—"} · OE: {item.oe || item.oe_number || item.product_snapshot?.oe_number || "—"}</Typography><Typography>Cantidad: {item.quantity} · Origen: {item.source_warehouse?.name || item.source_warehouse_name || (item.source_warehouse_id ? `Almacén #${item.source_warehouse_id}` : "Inventario global")}</Typography></Box>)}
-        <Typography variant="h6" fontWeight={800}>Historial de eventos</Typography>
+        <Typography variant="body2" sx={{ whiteSpace: "pre-wrap" }}>Observaciones: {record.notes || "Sin observaciones"}</Typography>
+        </Stack></Box>
+        <Stack direction="row" spacing={1} alignItems="center"><Inventory2OutlinedIcon sx={{ color: "#ad7900" }} /><Typography variant="h6" fontWeight={800}>Mercancía</Typography><Chip size="small" label={array(record.items).length} /></Stack>
+        {array(record.items).map((item, index) => <Box key={item.id || index} sx={{ ...warehousePanel, borderRadius: 3 }}><Stack direction="row" spacing={2} alignItems="center"><ItemImage item={item} /><Box sx={{ minWidth: 0, flex: 1 }}><Typography fontWeight={800}>{transferItemName(item)}</Typography><Typography variant="body2" color="text.secondary">{item.variant_name || item.source_variant_name || item.variant_snapshot?.name || item.source_variant?.name || item.variant?.name || "Producto simple"} · SKU: {item.sku || item.product_sku || item.product?.sku || "—"} · OE: {item.oe || item.oe_number || item.product_snapshot?.oe_number || "—"}</Typography><Typography variant="body2">Origen: {item.source_warehouse?.name || item.source_warehouse_name || (item.source_warehouse_id ? `Almacén #${item.source_warehouse_id}` : "Inventario global")}</Typography></Box><Box sx={{ textAlign: "right", flexShrink: 0 }}><Typography variant="caption" color="text.secondary">Cantidad</Typography><Typography fontWeight={800}>{item.quantity}</Typography></Box></Stack></Box>)}
+        <Stack direction="row" spacing={1} alignItems="center"><HistoryOutlinedIcon sx={{ color: "#ad7900" }} /><Typography variant="h6" fontWeight={800}>Historial de eventos</Typography></Stack>
         {!array(record.events).length && <Typography variant="body2">Sin eventos adicionales.</Typography>}
-        {array(record.events).map((event, index) => <Box key={event.id || index} sx={warehousePanel}><Typography fontWeight={700}>{statuses[event.action || event.event_type || event.type] || event.action || event.event_type || event.type || "Movimiento"}</Typography><Typography variant="caption">{date(event.created_at)} · {event.actor_name || event.actor?.name || ""}</Typography><Typography sx={{ whiteSpace: "pre-wrap" }}>{event.notes || ""}</Typography></Box>)}
+        {array(record.events).map((event, index) => <Box key={event.id || index} sx={{ ...warehousePanel, borderRadius: 3, borderLeft: "3px solid #ffb900" }}><Typography fontWeight={700}>{statuses[event.action || event.event_type || event.type] || event.action || event.event_type || event.type || "Movimiento"}</Typography><Typography variant="caption" color="text.secondary">{date(event.created_at)}{event.actor_name || event.actor?.name ? ` · ${event.actor_name || event.actor?.name}` : ""}</Typography><Typography sx={{ whiteSpace: "pre-wrap" }}>{event.notes || ""}</Typography></Box>)}
         {record.status === "pending" && !canReceive && <Alert severity="info">Para aceptar o rechazar este traspaso, entra a la sucursal destino: {branchName(record, "destination", branches)} y consulta Recibidos.</Alert>}
         {canReceive && !action && <Stack direction={{ xs: "column", sm: "row" }} gap={1}><Button disabled={busy} variant="contained" onClick={() => { setAction("accept"); setNotes(""); }}>Revisar y aceptar</Button><Button disabled={busy} color="error" variant="outlined" onClick={() => { setAction("reject"); setNotes(""); }}>Rechazar envío</Button></Stack>}
         {canReceive && action && <Box sx={warehousePanel}><Stack spacing={2}><Alert severity="warning">{action === "accept" ? "Se recibirá toda la mercancía en el inventario destino. Revisa las cantidades antes de confirmar." : "Se rechazará el envío completo y las unidades se reintegrarán inmediatamente al inventario de origen."}</Alert><TextField label={action === "reject" ? "Motivo del rechazo (obligatorio)" : "Observaciones de recepción"} required={action === "reject"} multiline minRows={2} value={notes} disabled={busy} onChange={e => setNotes(e.target.value)} /><Stack direction={{ xs: "column", sm: "row" }} gap={1}><Button disabled={busy} onClick={() => setAction("")}>Volver</Button><Button disabled={busy || (action === "reject" && !notes.trim())} color={action === "reject" ? "error" : "primary"} variant="contained" onClick={decide}>{busy ? "Procesando…" : action === "accept" ? "Confirmar recepción completa" : "Confirmar rechazo y reintegro"}</Button></Stack></Stack></Box>}
       </>}
     </Stack></DialogContent><DialogActions><Button disabled={busy} onClick={onClose}>Cerrar</Button><Button disabled={busy || !record} variant="outlined" aria-busy={pdfAction === "view"} startIcon={pdfAction === "view" ? <CircularProgress size={16} color="inherit" /> : undefined} onClick={() => document(false)}>{pdfAction === "view" ? "Generando PDF..." : "Ver PDF"}</Button><Button disabled={busy || !record} variant="contained" aria-busy={pdfAction === "download"} startIcon={pdfAction === "download" ? <CircularProgress size={16} color="inherit" /> : undefined} onClick={() => document(true)}>{pdfAction === "download" ? "Descargando..." : "Descargar PDF"}</Button></DialogActions>
-    {pdf && <Dialog open fullScreen={mobile} fullWidth maxWidth="lg" onClose={() => setPdf("")} sx={warehouseDialogStyles}><DialogTitle>Comprobante de traspaso ? {record ? folio(record) : `#${id}`}</DialogTitle><DialogContent><Box component="iframe" title="PDF del traspaso" src={pdf} sx={{ border: 0, width: "100%", height: "70dvh" }} /><Button component="a" href={pdf} target="_blank" rel="noopener noreferrer">Abrir PDF en otra pestaña</Button></DialogContent><DialogActions><Button onClick={() => setPdf("")}>Cerrar PDF</Button></DialogActions></Dialog>}
+    {pdf && <Dialog open fullScreen={mobile} fullWidth maxWidth="lg" onClose={() => setPdf("")} sx={warehouseDialogStyles}><DialogTitle>Comprobante de traspaso · {record ? folio(record) : `#${id}`}</DialogTitle><DialogContent><Box component="iframe" title="PDF del traspaso" src={pdf} sx={{ border: 0, width: "100%", height: "70dvh" }} /><Button component="a" href={pdf} target="_blank" rel="noopener noreferrer">Abrir PDF en otra pestaña</Button></DialogContent><DialogActions><Button onClick={() => setPdf("")}>Cerrar PDF</Button></DialogActions></Dialog>}
   </Dialog>;
 }

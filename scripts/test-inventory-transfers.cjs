@@ -68,8 +68,11 @@ async function main() {
   const internalBody = helpers.internalTransferBody(internal);
   assert.deepEqual(internalBody, {
     source_branch_id: 1, destination_branch_id: 1, destination_warehouse_id: 5, notes: "Reposición",
-    items: [{ product_id: 1, variant_id: 2, source_warehouse_id: 3, destination_product_id: 1, destination_variant_id: 2, quantity: "1.125" }],
+    items: [{ product_id: 1, variant_id: 2, source_warehouse_id: 3, quantity: "1.125" }],
   });
+  assert.deepEqual(helpers.internalTransferBody({ ...internal, items: [{ ...base, source_warehouse_id: 3, destination_product_id: 99, destination_variant_id: 98 }] }).items, [
+    { product_id: 1, source_warehouse_id: 3, quantity: "2.50" },
+  ]);
   assert.ok(helpers.isInternalTransfer(internalBody));
   assert.ok(!helpers.isInternalTransfer(body));
   for (const destination of [3, 6, 99]) assert.throws(() => helpers.internalTransferBody({ ...internal, destination }));
@@ -97,7 +100,7 @@ async function main() {
   Object.defineProperty(global, "navigator", { configurable: true, value: dom.window.navigator });
   const React = require("react"); const { createRoot } = require("react-dom/client");
   const div = ({ children }) => React.createElement("div", null, children);
-  const mui = Object.fromEntries(["Alert", "Box", "Card", "CardContent", "CircularProgress", "Dialog", "DialogActions", "DialogContent", "DialogTitle", "MenuItem", "Pagination", "Stack", "TextField", "Typography"].map(key => [key, div]));
+  const mui = Object.fromEntries(["Alert", "Box", "Card", "CardContent", "CircularProgress", "Dialog", "DialogActions", "DialogContent", "DialogTitle", "MenuItem", "Pagination", "Stack", "Table", "TableBody", "TableCell", "TableContainer", "TableHead", "TableRow", "TextField", "Typography"].map(key => [key, div]));
   mui.Button = ({ children, disabled, onClick, startIcon, "aria-busy": ariaBusy }) => React.createElement("button", { disabled, onClick, "aria-busy": ariaBusy }, startIcon, children);
   mui.Alert = ({ children, action }) => React.createElement("div", null, children, action);
   mui.IconButton = mui.Button;
@@ -140,6 +143,9 @@ async function main() {
   mui.Chip = div;
   const Transfers = compile("src/components/warehouses/InventoryTransfers.jsx", {
     "@mui/material": mui,
+    "@mui/icons-material/Inventory2Outlined": div,
+    "@mui/icons-material/LocalShippingOutlined": div,
+    "@mui/icons-material/HistoryOutlined": div,
     "../../context/TiendaContext": { useTienda: () => ({ tienda: { id: 7 } }) },
     "../../utils/inventoryEvents": { notifyInventoryChanged: () => {} },
     "./NewInventoryTransferDialog": () => null,

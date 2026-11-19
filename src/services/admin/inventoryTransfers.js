@@ -45,11 +45,7 @@ export function internalTransferBody({ branchId, source, destination, warehouses
     destination_branch_id: Number(branchId),
     destination_warehouse_id: Number(destination),
     notes: notes.trim(),
-    items: validateTransferItems(items.map(row => ({
-      ...row,
-      destination_product_id: row.product_id,
-      destination_variant_id: row.variant_id,
-    }))),
+    items: validateTransferItems(items.map(({ destination_product_id, destination_variant_id, ...row }) => row)),
   };
 }
 export function transferQuantityInput(row, value, { destinationGeneral = false } = {}) {

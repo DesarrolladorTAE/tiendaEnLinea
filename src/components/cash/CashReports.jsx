@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  Alert, Box, Button, CircularProgress, Divider, Pagination, Paper, Stack,
+  Alert, Box, Button, Chip, CircularProgress, Divider, Pagination, Paper, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
 } from "@mui/material";
 import { cashDateTime, cashError, cashMoney, downloadCashReport } from "../../utils/cashControl";
@@ -139,6 +139,7 @@ export function CashHistory({ client, path }) {
   const current = result?.key === key ? result : null;
   return (
     <Stack spacing={2}>
+      {!id && <Box><Typography variant="h6" fontWeight={800}>Historial de cortes</Typography><Typography variant="body2" color="text.secondary">Consulta las aperturas, los cortes y el reporte de cada sesión.</Typography></Box>}
       {id && <Button sx={{ alignSelf: "start" }} onClick={() => setId(null)}>Volver a los cortes</Button>}
       {!current && <CircularProgress size={24} aria-label="Cargando historial" />}
       {current?.error && <Alert severity="error" action={<Button color="inherit" onClick={() => setAttempt(attempt + 1)}>Reintentar</Button>}>{current.error}</Alert>}
@@ -147,17 +148,21 @@ export function CashHistory({ client, path }) {
       ) : (
         <>
           {current.data.data?.length ? (
-            <CashTable columns={["Sesión", "Apertura", "Corte", "Reporte"]}>
+            <><Box sx={{ display: { xs: "none", md: "block" } }}><CashTable columns={["Sesión", "Apertura", "Corte", "Reporte"]}>
               {current.data.data.map((session) => (
                 <TableRow key={session.id}>
                   <TableCell>#{session.id}</TableCell>
                   <TableCell>{cashDateTime(session.opened_at)}</TableCell>
                   <TableCell>{session.closed_at ? cashDateTime(session.closed_at) : "Abierta"}</TableCell>
-                  <TableCell><Button onClick={() => setId(session.id)} aria-label={`Ver reporte de caja ${session.id}`}>Ver</Button></TableCell>
+                  <TableCell><Button variant="outlined" onClick={() => setId(session.id)} aria-label={`Ver reporte de caja ${session.id}`}>Ver reporte</Button></TableCell>
                 </TableRow>
               ))}
-            </CashTable>
-          ) : <Typography color="text.secondary">Todavía no hay sesiones de caja.</Typography>}
+            </CashTable></Box><Stack spacing={1.5} sx={{ display: { xs: "flex", md: "none" } }}>{current.data.data.map(session => <Paper key={session.id} variant="outlined" sx={{ p: 2, borderRadius: 3 }}><Stack spacing={1.5}>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1}><Typography fontWeight={800}>Sesión #{session.id}</Typography><Chip size="small" label={session.closed_at ? "Cerrada" : "Abierta"} color={session.closed_at ? "default" : "success"} /></Stack>
+              <Box sx={{ bgcolor: "#f7f8fa", borderRadius: 2, p: 1.5 }}><Typography variant="body2" color="text.secondary">Apertura</Typography><Typography fontWeight={700}>{cashDateTime(session.opened_at)}</Typography><Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Corte</Typography><Typography fontWeight={700}>{session.closed_at ? cashDateTime(session.closed_at) : "Aún abierta"}</Typography></Box>
+              <Button fullWidth variant="outlined" onClick={() => setId(session.id)} aria-label={`Ver reporte de caja ${session.id}`}>Ver reporte</Button>
+            </Stack></Paper>)}</Stack></>
+          ) : <Alert severity="info">Todavía no hay sesiones de caja.</Alert>}
           {current.data.last_page > 1 && <Pagination page={page} count={current.data.last_page} onChange={(_, value) => setPage(value)} />}
         </>
       ))}
