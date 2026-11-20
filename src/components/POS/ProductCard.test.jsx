@@ -2,7 +2,7 @@ import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { Simulate } from "react-dom/test-utils";
 import ProductCard from "./ProductCard";
-import { productStock, hasProductVariants } from "../../utils/productInventory";
+import { productStock } from "../../utils/productInventory";
 
 test("variant selections create separate cart keys for each warehouse while parent stock is zero", () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
@@ -13,10 +13,10 @@ test("variant selections create separate cart keys for each warehouse while pare
   ] };
   const button = text => [...document.querySelectorAll("button")].find(b => b.textContent.includes(text));
   try {
-    act(() => root.render(<ProductCard product={product} cart={[]} onAdd={onAdd} getQuantityInCart={() => 0} getAvailableStock={productStock} getProductImage={() => null} isVariantProduct={hasProductVariants} />));
-    expect(host.textContent).toContain("Stock: 7");
+    act(() => root.render(<table><tbody><ProductCard product={product} cart={[]} onAdd={onAdd} getQuantityInCart={() => 0} getAvailableStock={productStock} getProductImage={() => null} /></tbody></table>));
+    expect(host.querySelector("td:last-child").textContent).toBe("7");
     expect(host.textContent).not.toContain("Sin stock");
-    act(() => Simulate.click(button("Ver catálogo")));
+    act(() => Simulate.click(button("Ver variantes")));
     const chooseWarehouse = name => {
       act(() => Simulate.mouseDown(document.querySelector('[role="combobox"]'), { button: 0 }));
       const option = [...document.querySelectorAll('[role="option"]')].find(option => option.textContent.includes(name));

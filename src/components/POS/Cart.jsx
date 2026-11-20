@@ -15,9 +15,7 @@ import {
   Button,
   TextField,
   Tooltip,
-  FormGroup,
   FormControlLabel,
-  Checkbox,
   Stack,
   Divider,
   Chip,
@@ -32,7 +30,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import DiscountIcon from "@mui/icons-material/Percent";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
-import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
 
 import ModalCambioDescuento from "./ModalCambioDescuento";
@@ -762,7 +759,12 @@ export default function CartSidebar({
         (!pendingSale && (paymentInvalid || multiInvalid))));
 
   const paperSx = {
-    p: { xs: 1.5, md: 2 },
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr)",
+    "@container (min-width: 640px)": {
+      gridTemplateColumns: "minmax(0, 1.25fr) minmax(0, 1fr)",
+    },
+    alignItems: "start",
     borderRadius: 3,
     background: "#fff",
     borderColor: "divider",
@@ -775,13 +777,6 @@ export default function CartSidebar({
           paddingBottom: `calc(${kb}px + 24px + env(safe-area-inset-bottom))`,
         }
       : {}),
-  };
-
-  const rootSx = {
-    position: variant === "desktop" ? "sticky" : "relative",
-    top: variant === "desktop" ? 20 : "auto",
-    alignSelf: "start",
-    zIndex: 1,
   };
 
   const inputCommon = {
@@ -800,438 +795,229 @@ export default function CartSidebar({
 
   return (
     <>
-      <Box sx={rootSx}>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 1,
-          }}
-        >
-          <Stack direction="row" spacing={1} alignItems="center">
-            <ShoppingCartRoundedIcon fontSize="small" />
-            <Typography variant="h6" sx={{ fontWeight: 900 }}>
-              Carrito!
-            </Typography>
-            <Chip
-              size="small"
-              label={`${cart.length} item${cart.length === 1 ? "" : "s"}`}
-              sx={{ ml: 0.5 }}
-            />
-          </Stack>
-
-          <Stack alignItems="flex-end" spacing={0}>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{ fontWeight: 700 }}
-            >
-              {appliesIsrRetention ? "A recibir" : "Total"}
-            </Typography>
-
-            <Typography sx={{ fontWeight: 900 }}>
-              ${amountToPay.toFixed(2)}
-            </Typography>
-          </Stack>
-        </Box>
-
-        <Box
-          sx={{
-            mb: 1.5,
-            p: 1.25,
-            border: "1px solid",
-            borderColor: pendingSale ? "warning.main" : "divider",
-            borderRadius: 2,
-            bgcolor: pendingSale ? "rgba(255,152,0,0.08)" : "#fff",
-          }}
-        >
-          <FormControlLabel
-            control={
-              <Switch
-                checked={pendingSale}
-                disabled={creditSale}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setPendingSale(checked);
-
-                  if (checked) {
-                    setCreditSale(false);
-                    setOpenPendingModal(true);
-                    setScannerEnabled?.(false);
-                  } else {
-                    setPendingHasAdvance(false);
-                    setOpenPendingModal(false);
-                    setScannerEnabled?.(true);
-                  }
-                }}
-              />
-            }
-            label={
-              <Box>
-                <Typography sx={{ fontWeight: 900 }}>
-                  Venta pendiente
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Actívalo si el cliente no pagará completo por ahora.
-                </Typography>
-              </Box>
-            }
-          />
-
-          {pendingSale && (
-            <Chip
-              size="small"
-              color="warning"
-              sx={{ mt: 1, fontWeight: 800 }}
-              label={pendingHasAdvance ? "Con anticipo" : "Sin anticipo"}
-            />
-          )}
-        </Box>
-
+      <Box sx={{ containerType: "inline-size" }}>
         <Paper ref={paperRef} variant="outlined" sx={paperSx}>
           {cart.length === 0 ? (
-            <Typography color="text.secondary">Sin artículos</Typography>
+            <Typography color="text.secondary" sx={{ p: 2, gridColumn: "1 / -1" }}>Sin artículos</Typography>
           ) : (
-            <Box component="ul" sx={{ listStyle: "none", p: 0, m: 0 }}>
-              {cart.map((item) => {
-                const cartKey = getCartKey(item);
+            <>
+              <Box component="ul" aria-label="Artículos del carrito" sx={{ listStyle: "none", p: 0, m: 0 }}>
+                {cart.map((item) => {
+                  const cartKey = getCartKey(item);
 
-                return (
-                  <Box
-                    key={cartKey}
-                    component="li"
-                    sx={{
-                      py: 1.2,
-                      borderBottom: "1px solid",
-                      borderColor: "divider",
-                    }}
-                  >
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="flex-start"
-                      spacing={1}
-                    >
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: 700 }}
-                          noWrap
-                        >
-                          {item.display_name || item.name}
-                        </Typography>
-
-                        {!!item.warehouse_name && (
-                          <Typography variant="caption" color="text.secondary">
-                            Almacén: <b>{item.warehouse_name}</b>
-                          </Typography>
-                        )}
-
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          display="block"
-                        >
-                          ${Number(item.price || 0).toFixed(2)} c/u · Subtotal:
-                          $
-                          {(
-                            Number(item.price || 0) * Number(item.quantity || 0)
-                          ).toFixed(2)}
-                        </Typography>
-
-                        {!loadingWorkers && posWorkers.length > 0 && (
-                          <ItemWorkerAssign
-                            workers={posWorkers}
-                            value={item.worker_id || null}
-                            onChange={(workerId, workerObj) => {
-                              setCart((prev) =>
-                                prev.map((prod) =>
-                                  getCartKey(prod) === cartKey
-                                    ? {
-                                        ...prod,
-                                        worker_id: workerId,
-                                        worker: workerObj,
-                                      }
-                                    : prod,
-                                ),
-                              );
-                            }}
-                          />
-                        )}
-
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          sx={{ mt: 1 }}
-                        >
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              if (Number(item.quantity) > 1) {
-                                setCart((prev) =>
-                                  prev.map((prod) =>
-                                    getCartKey(prod) === cartKey
-                                      ? {
-                                          ...prod,
-                                          quantity:
-                                            Math.floor(Number(prod.quantity)) -
-                                            1,
-                                        }
-                                      : prod,
-                                  ),
-                                );
-                              } else {
-                                onRemove(cartKey);
-                              }
-                            }}
-                          >
-                            <RemoveRoundedIcon fontSize="small" />
-                          </IconButton>
-
-                          <TextField
-                            value={item.inputValue ?? item.quantity}
-                            type="text"
-                            size="small"
-                            {...inputCommon}
-                            inputProps={{
-                              style: { textAlign: "center", width: 72 },
-                              inputMode: "decimal",
-                              pattern: "[0-9]*[.,]?[0-9]*",
-                            }}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              if (/^\d*\.?\d*$/.test(val)) {
-                                const qty = val === "" || val === "." ? 0 : parseFloat(val);
-                                if (qty > Number(item.stock_available ?? 0)) {
-                                  showError("La cantidad supera las existencias de la variante y almacén seleccionados.");
-                                  return;
-                                }
-                                setCart((prev) =>
-                                  prev.map((prod) =>
-                                    getCartKey(prod) === cartKey
-                                      ? {
-                                          ...prod,
-                                          inputValue: val,
-                                          quantity:
-                                            val === "" || val === "."
-                                              ? 0
-                                              : parseFloat(val),
-                                        }
-                                      : prod,
-                                  ),
-                                );
-                              }
-                            }}
-                            onBlurCapture={() => {
-                              setCart((prev) =>
-                                prev
-                                  .map((prod) =>
-                                    getCartKey(prod) === cartKey
-                                      ? { ...prod, inputValue: undefined }
-                                      : prod,
-                                  )
-                                  .filter((prod) => {
-                                    if (getCartKey(prod) !== cartKey)
-                                      return true;
-                                    return Number(prod.quantity || 0) > 0;
-                                  }),
-                              );
-                            }}
-                          />
-
-                          <IconButton
-                            size="small"
-                            disabled={Math.floor(Number(item.quantity)) + 1 > Number(item.stock_available ?? 0)}
-                            onClick={() => {
-                              setCart((prev) =>
-                                prev.map((prod) =>
-                                  getCartKey(prod) === cartKey
-                                    ? {
-                                        ...prod,
-                                        quantity:
-                                          Math.floor(Number(prod.quantity)) + 1,
-                                      }
-                                    : prod,
-                                ),
-                              );
-                            }}
-                          >
-                            <AddRoundedIcon fontSize="small" />
-                          </IconButton>
-                        </Stack>
-                      </Box>
-
-                      <Stack direction="row" spacing={0.5} alignItems="center">
-                        <Tooltip title="Editar descuento">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => {
-                              setProductoEditar({ ...item, cart_key: cartKey });
-                              setModalDescuentoActivo?.(true);
-                            }}
-                          >
-                            <DiscountIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-
-                        <Tooltip title="Eliminar">
-                          <IconButton
-                            size="small"
-                            onClick={() => onRemove(cartKey)}
-                            color="error"
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    </Stack>
-                  </Box>
-                );
-              })}
-
-              <Box sx={{ pt: 1.5 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
-                  {appliesIsrRetention ? "Total a recibir" : "Total"}: $
-                  {amountToPay.toFixed(2)}
-                </Typography>
-
-                <Box sx={{ mt: 1.2 }}>
-                  {!loadingClients && clients.length > 0 && (
-                    <SaleClientAssign
-                      clients={clients}
-                      value={selectedClient}
-                      onChange={setSelectedClient}
-                      loading={loadingClients}
-                    />
-                  )}
-
-                  <Box sx={{ my: 2 }}>
-                    {shipment.loading && <Typography role="status">Consultando opciones de envío…</Typography>}
-                    {shipment.error && <Typography color="error">{shipment.error} <Button onClick={shipment.refresh}>Reintentar envíos</Button></Typography>}
-                    <ShipmentFields config={shipment.config} value={shipment.values} onChange={shipment.setValues} disabled={submittingSale} />
-                    {shipment.values.shipping_method_id && !shipment.config?.enabled && <Button disabled={submittingSale} onClick={shipment.reset}>Quitar entrega seleccionada</Button>}
-                  </Box>
-                  <IsrRetentionPreview
-                    clientId={selectedClient?.id ?? null}
-                    totalAmount={total}
-                    onChange={handleRetentionChange}
-                  />
-
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    sx={{ mt: 1 }}
-                  >
-                    <Button
-                      variant="outlined"
-                      startIcon={<PersonAddAlt1RoundedIcon />}
-                      onClick={handleOpenQuickClient}
-                      fullWidth={isMobile}
+                  return (
+                    <Box
+                      key={cartKey}
+                      component="li"
                       sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 800,
+                        px: 1.25,
+                        py: 0.75,
+                        "&:nth-of-type(even)": { bgcolor: "action.hover" },
+                        borderBottom: "1px solid",
+                        borderColor: "divider",
                       }}
                     >
-                      Crear cliente rápido
-                    </Button>
-
-                    {selectedClient && (
-                      <Button
-                        variant="text"
-                        color="inherit"
-                        onClick={() => setSelectedClient(null)}
-                        fullWidth={isMobile}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 700,
-                        }}
+                      <Stack
+                        direction="row"
+                        justifyContent="space-between"
+                        alignItems="flex-start"
+                        spacing={1}
                       >
-                        Quitar cliente
-                      </Button>
-                    )}
-                  </Stack>
-                </Box>
-
-                {selectedClient && (
-                  <Box
-                    sx={{
-                      mt: 1.5,
-                      p: 1.25,
-                      border: "1px solid",
-                      borderColor: creditSale ? "primary.main" : "divider",
-                      borderRadius: 2,
-                      bgcolor: creditSale ? "rgba(25,118,210,0.06)" : "#fff",
-                    }}
-                  >
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={creditSale}
-                          disabled={loadingCredit || !creditActive}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setCreditSale(checked);
-
-                            if (checked) {
-                              setPendingSale(false);
-                              setPendingHasAdvance(false);
-                              setPendingAdvancePayment(null);
-                              setPendingDueAt(null);
-                              setPendingNote("");
-                            }
-                          }}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography sx={{ fontWeight: 900 }}>
-                            Venta a Crédito
+                        <Box sx={{ minWidth: 0, flex: 1 }}>
+                          <Typography
+                            variant="body2"
+                            sx={{ fontWeight: 700, overflowWrap: "anywhere" }}
+                          >
+                            {item.display_name || item.name}
                           </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {loadingCredit
-                              ? "Validando cuenta de fiado..."
-                              : !hasCreditAccount
-                                ? "Este cliente no tiene fiado configurado."
-                                : !creditActive
-                                  ? "Fiado desactivado para este cliente."
-                                  : isUnlimitedCredit
-                                    ? "Fiado activo sin límite."
-                                    : `Disponible: $${availableCredit.toFixed(2)}`}
+
+                          {!!item.warehouse_name && (
+                            <Typography variant="caption" color="text.secondary">
+                              Almacén: <b>{item.warehouse_name}</b>
+                            </Typography>
+                          )}
+
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            display="block"
+                          >
+                            {item.quantity} × ${Number(item.price || 0).toFixed(2)} · $
+                            {(
+                              Number(item.price || 0) * Number(item.quantity || 0)
+                            ).toFixed(2)}
                           </Typography>
+
+                          {!loadingWorkers && posWorkers.length > 0 && (
+                            <ItemWorkerAssign
+                              workers={posWorkers}
+                              value={item.worker_id || null}
+                              onChange={(workerId, workerObj) => {
+                                setCart((prev) =>
+                                  prev.map((prod) =>
+                                    getCartKey(prod) === cartKey
+                                      ? {
+                                          ...prod,
+                                          worker_id: workerId,
+                                          worker: workerObj,
+                                        }
+                                      : prod,
+                                  ),
+                                );
+                              }}
+                            />
+                          )}
+
+                          <Stack
+                            direction="row"
+                            spacing={1}
+                            alignItems="center"
+                            sx={{ mt: 0.25 }}
+                          >
+                            <IconButton
+                              size="small"
+                              aria-label="Reducir cantidad"
+                              onClick={() => {
+                                if (Number(item.quantity) > 1) {
+                                  setCart((prev) =>
+                                    prev.map((prod) =>
+                                      getCartKey(prod) === cartKey
+                                        ? {
+                                            ...prod,
+                                            quantity:
+                                              Math.floor(Number(prod.quantity)) -
+                                              1,
+                                          }
+                                        : prod,
+                                    ),
+                                  );
+                                } else {
+                                  onRemove(cartKey);
+                                }
+                              }}
+                            >
+                              <RemoveRoundedIcon fontSize="small" />
+                            </IconButton>
+
+                            <TextField
+                              value={item.inputValue ?? item.quantity}
+                              type="text"
+                              size="small"
+                              {...inputCommon}
+                              inputProps={{
+                                style: { textAlign: "center", width: 42, padding: "3px 4px" },
+                                "aria-label": "Piezas de " + (item.display_name || item.name),
+                                inputMode: "decimal",
+                                pattern: "[0-9]*[.,]?[0-9]*",
+                              }}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (/^\d*\.?\d*$/.test(val)) {
+                                  const qty = val === "" || val === "." ? 0 : parseFloat(val);
+                                  if (qty > Number(item.stock_available ?? 0)) {
+                                    showError("La cantidad supera las existencias de la variante y almacén seleccionados.");
+                                    return;
+                                  }
+                                  setCart((prev) =>
+                                    prev.map((prod) =>
+                                      getCartKey(prod) === cartKey
+                                        ? {
+                                            ...prod,
+                                            inputValue: val,
+                                            quantity:
+                                              val === "" || val === "."
+                                                ? 0
+                                                : parseFloat(val),
+                                          }
+                                        : prod,
+                                    ),
+                                  );
+                                }
+                              }}
+                              onBlurCapture={() => {
+                                setCart((prev) =>
+                                  prev
+                                    .map((prod) =>
+                                      getCartKey(prod) === cartKey
+                                        ? { ...prod, inputValue: undefined }
+                                        : prod,
+                                    )
+                                    .filter((prod) => {
+                                      if (getCartKey(prod) !== cartKey)
+                                        return true;
+                                      return Number(prod.quantity || 0) > 0;
+                                    }),
+                                );
+                              }}
+                            />
+
+                            <IconButton
+                              size="small"
+                              aria-label="Aumentar cantidad"
+                              disabled={Math.floor(Number(item.quantity)) + 1 > Number(item.stock_available ?? 0)}
+                              onClick={() => {
+                                setCart((prev) =>
+                                  prev.map((prod) =>
+                                    getCartKey(prod) === cartKey
+                                      ? {
+                                          ...prod,
+                                          quantity:
+                                            Math.floor(Number(prod.quantity)) + 1,
+                                        }
+                                      : prod,
+                                  ),
+                                );
+                              }}
+                            >
+                              <AddRoundedIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
                         </Box>
-                      }
-                    />
 
-                    {creditSale && (
-                      <Stack spacing={0.7} sx={{ mt: 1 }}>
-                        <Chip
-                          size="small"
-                          color="primary"
-                          sx={{ fontWeight: 800 }}
-                          label={
-                            creditAccount?.payment_due_date
-                              ? `Fecha de pago: ${String(
-                                  creditAccount.payment_due_date,
-                                ).slice(0, 10)}`
-                              : "Sin fecha límite"
-                          }
-                        />
+                        <Stack direction="row" spacing={0.5} alignItems="center">
+                          <Tooltip title="Editar descuento">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => {
+                                setProductoEditar({ ...item, cart_key: cartKey });
+                                setModalDescuentoActivo?.(true);
+                              }}
+                            >
+                              <DiscountIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
 
-                        <Typography variant="body2" sx={{ fontWeight: 800 }}>
-                          Monto a crédito: ${amountToPay.toFixed(2)}
-                        </Typography>
+                          <Tooltip title="Eliminar">
+                            <IconButton
+                              size="small"
+                              onClick={() => onRemove(cartKey)}
+                              color="error"
+                            >
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
                       </Stack>
-                    )}
-                  </Box>
-                )}
+                    </Box>
+                  );
+                })}
+              </Box>
+
+              <Box component="section" aria-label="Cobro" sx={{
+                minWidth: 0, p: 1.5,
+                borderTop: 1, borderColor: "divider",
+                "@container (min-width: 640px)": { borderTop: 0, borderLeft: 1, borderColor: "divider" },
+              }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={800}>
+                  {appliesIsrRetention ? "Total a recibir" : "Total"}
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 900, fontVariantNumeric: "tabular-nums", mb: 1.5 }}>
+                  ${amountToPay.toFixed(2)}
+                </Typography>
 
                 {!pendingSale && !creditSale && (
-                  <Box sx={{ mt: 1.5 }}>
+                  <Box sx={{ mb: 1.5 }}>
                     <Typography
                       variant="subtitle2"
                       sx={{ fontWeight: 800 }}
@@ -1240,46 +1026,26 @@ export default function CartSidebar({
                       Método(s) de pago (máx. 3)
                     </Typography>
 
-                    <Stack spacing={1.25}>
+                    <Stack spacing={0.75}>
                       {METHODS.map(({ key, label }) => {
                         const isChecked = selected.includes(key);
                         const d = details[key];
 
                         return (
-                          <Box
-                            key={key}
-                            sx={{
-                              p: 1.25,
-                              border: "1px solid",
-                              borderColor: isChecked
-                                ? "primary.main"
-                                : "divider",
-                              borderRadius: 2,
-                              background: isChecked
-                                ? "rgba(25,118,210,0.04)"
-                                : "#fff",
-                              transition: "all 120ms ease",
-                            }}
-                          >
-                            <FormGroup>
-                              <FormControlLabel
-                                control={
-                                  <Checkbox
-                                    checked={isChecked}
-                                    onChange={() => toggleMethod(key)}
-                                    size="small"
-                                  />
-                                }
-                                label={
-                                  <Typography sx={{ fontWeight: 700 }}>
-                                    {label}
-                                  </Typography>
-                                }
-                              />
-                            </FormGroup>
+                          <Box key={key}>
+                            <Button
+                              fullWidth
+                              size="small"
+                              variant={isChecked ? "contained" : "outlined"}
+                              aria-pressed={isChecked}
+                              onClick={() => toggleMethod(key)}
+                              sx={{ justifyContent: "flex-start", textTransform: "none", fontWeight: 700 }}
+                            >
+                              {label}
+                            </Button>
 
                             {isChecked && (
-                              <Box sx={{ pl: 4.5, pt: 1 }}>
+                              <Box sx={{ pt: 0.5 }}>
                                 {selectedCount === 1 ? (
                                   key === "efectivo" ? (
                                     <>
@@ -1498,6 +1264,191 @@ export default function CartSidebar({
                   </Box>
                 )}
 
+                <Box
+                  sx={{
+                    mb: 1.5,
+                    p: 1.25,
+                    border: "1px solid",
+                    borderColor: pendingSale ? "warning.main" : "divider",
+                    borderRadius: 2,
+                    bgcolor: pendingSale ? "rgba(255,152,0,0.08)" : "#fff",
+                  }}
+                >
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={pendingSale}
+                        disabled={creditSale}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setPendingSale(checked);
+
+                          if (checked) {
+                            setCreditSale(false);
+                            setOpenPendingModal(true);
+                            setScannerEnabled?.(false);
+                          } else {
+                            setPendingHasAdvance(false);
+                            setOpenPendingModal(false);
+                            setScannerEnabled?.(true);
+                          }
+                        }}
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography sx={{ fontWeight: 900 }}>
+                          Venta pendiente
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Actívalo si el cliente no pagará completo por ahora.
+                        </Typography>
+                      </Box>
+                    }
+                  />
+
+                  {pendingSale && (
+                    <Chip
+                      size="small"
+                      color="warning"
+                      sx={{ mt: 1, fontWeight: 800 }}
+                      label={pendingHasAdvance ? "Con anticipo" : "Sin anticipo"}
+                    />
+                  )}
+                </Box>
+
+                <Box sx={{ mt: 1.2 }}>
+                  {!loadingClients && clients.length > 0 && (
+                    <SaleClientAssign
+                      clients={clients}
+                      value={selectedClient}
+                      onChange={setSelectedClient}
+                      loading={loadingClients}
+                    />
+                  )}
+
+                  <Box sx={{ my: 2 }}>
+                    {shipment.loading && <Typography role="status">Consultando opciones de envío…</Typography>}
+                    {shipment.error && <Typography color="error">{shipment.error} <Button onClick={shipment.refresh}>Reintentar envíos</Button></Typography>}
+                    <ShipmentFields config={shipment.config} value={shipment.values} onChange={shipment.setValues} disabled={submittingSale} />
+                    {shipment.values.shipping_method_id && !shipment.config?.enabled && <Button disabled={submittingSale} onClick={shipment.reset}>Quitar entrega seleccionada</Button>}
+                  </Box>
+                  <IsrRetentionPreview
+                    clientId={selectedClient?.id ?? null}
+                    totalAmount={total}
+                    onChange={handleRetentionChange}
+                  />
+
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    sx={{ mt: 1 }}
+                  >
+                    <Button
+                      variant="outlined"
+                      startIcon={<PersonAddAlt1RoundedIcon />}
+                      onClick={handleOpenQuickClient}
+                      fullWidth={isMobile}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 800,
+                      }}
+                    >
+                      Crear cliente rápido
+                    </Button>
+
+                    {selectedClient && (
+                      <Button
+                        variant="text"
+                        color="inherit"
+                        onClick={() => setSelectedClient(null)}
+                        fullWidth={isMobile}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Quitar cliente
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
+
+                {selectedClient && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      p: 1.25,
+                      border: "1px solid",
+                      borderColor: creditSale ? "primary.main" : "divider",
+                      borderRadius: 2,
+                      bgcolor: creditSale ? "rgba(25,118,210,0.06)" : "#fff",
+                    }}
+                  >
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={creditSale}
+                          disabled={loadingCredit || !creditActive}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setCreditSale(checked);
+
+                            if (checked) {
+                              setPendingSale(false);
+                              setPendingHasAdvance(false);
+                              setPendingAdvancePayment(null);
+                              setPendingDueAt(null);
+                              setPendingNote("");
+                            }
+                          }}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography sx={{ fontWeight: 900 }}>
+                            Fiado
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {loadingCredit
+                              ? "Validando cuenta de fiado..."
+                              : !hasCreditAccount
+                                ? "Este cliente no tiene fiado configurado."
+                                : !creditActive
+                                  ? "Fiado desactivado para este cliente."
+                                  : isUnlimitedCredit
+                                    ? "Fiado activo sin límite."
+                                    : `Disponible: $${availableCredit.toFixed(2)}`}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+
+                    {creditSale && (
+                      <Stack spacing={0.7} sx={{ mt: 1 }}>
+                        <Chip
+                          size="small"
+                          color="primary"
+                          sx={{ fontWeight: 800 }}
+                          label={
+                            creditAccount?.payment_due_date
+                              ? `Fecha de pago: ${String(
+                                  creditAccount.payment_due_date,
+                                ).slice(0, 10)}`
+                              : "Sin fecha límite"
+                          }
+                        />
+
+                        <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                          Monto a crédito: ${amountToPay.toFixed(2)}
+                        </Typography>
+                      </Stack>
+                    )}
+                  </Box>
+                )}
+
                 {pendingSale && pendingHasAdvance && pendingAdvancePayment && (
                   <Box
                     sx={{
@@ -1643,7 +1594,7 @@ export default function CartSidebar({
                         : `Cobrar $${amountToPay.toFixed(2)}`}
                 </Button>
               </Box>
-            </Box>
+            </>
           )}
         </Paper>
 

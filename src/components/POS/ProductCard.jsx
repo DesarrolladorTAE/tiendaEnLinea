@@ -3,6 +3,9 @@ import React, { useMemo, useState, useEffect } from "react";
 import { productStock, hasProductVariants, usesWarehouses, variantStock, activeVariant } from "../../utils/productInventory";
 import {
   Paper,
+  TableCell,
+  TableRow,
+  ButtonBase,
   Box,
   Typography,
   Button,
@@ -20,10 +23,8 @@ import {
   useTheme,
 } from "@mui/material";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
-import LocalOfferRoundedIcon from "@mui/icons-material/LocalOfferRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
-import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
 
@@ -63,8 +64,6 @@ export default function ProductCard({
   getQuantityInCart,
   getAvailableStock,
   getProductImage,
-  isVariantProduct,
-  isMdUp = false,
 }) {
   const theme = useTheme();
 
@@ -104,24 +103,8 @@ export default function ProductCard({
     return Number.isFinite(Number(st)) ? Number(st) : 0;
   }, [product, getAvailableStock]);
 
-  // ✅ Hint almacén
-  const stockHint = useMemo(() => {
-    if (!useWh) return null;
-    if (hasVariants) return globalStock > 0 ? "Existencias por variante y almacén" : "Consulta el detalle de cada variante";
-    const withStock = productWarehouseRows.filter((r) => (Number(r.qty) || 0) > 0);
-    if (!withStock.length) return "Sin stock";
-    const top = withStock.slice(0, 1).map((r) => `${r.warehouse_name}: ${Number(r.qty) || 0}`);
-    return top.join(" • ");
-  }, [useWh, hasVariants, globalStock, productWarehouseRows]);
-
-  // ====== producto simple ======
   const simpleCartKey = String(baseId);
   const qtyInCartSimple = getQuantityInCart(simpleCartKey);
-  const canAddSimple = !hasVariants;
-
-  // ✅ si es multi-almacén, NO click directo (solo botón)
-  const canClickCardToAdd = isMdUp && canAddSimple && !useWh;
-
   // ---- Modal selección almacén (solo si realmente hay 2+ almacenes en data) ----
   const [openSimpleWh, setOpenSimpleWh] = useState(false);
   const [selectedSimpleWarehouseId, setSelectedSimpleWarehouseId] = useState("");
@@ -395,234 +378,44 @@ export default function ProductCard({
     setSelectedWarehouseId("");
   };
 
+  const stock = productStock(product, { activeOnly: true });
+  const pieces = cart.reduce(
+    (sum, item) => String(item.product_id ?? item.id) === String(baseId)
+      ? sum + (Number(item.quantity) || 0)
+      : sum,
+    0,
+  );
+
   return (
     <>
-      {/* CARD */}
-      <Paper
-        variant="outlined"
-        onClick={() => {
-          if (hasVariants) openDetails();
-          else if (canClickCardToAdd) addSimpleOne();
-        }}
-        sx={{
-          width: "100%",
-          alignSelf: "stretch",
-          p: 1.5,
-          borderRadius: 4,
-          overflow: "hidden",
-          position: "relative",
-          cursor: hasVariants || canClickCardToAdd ? "pointer" : "default",
-          background: `linear-gradient(180deg, ${alpha(theme.palette.primary.main, 0.06)}, #fff)`,
-          borderColor: alpha(theme.palette.primary.main, 0.18),
-          boxShadow: "0 10px 30px rgba(0,0,0,0.06)",
-          transition: "transform .15s ease, box-shadow .15s ease",
-          "&:hover": {
-            transform: hasVariants || canClickCardToAdd ? "translateY(-2px)" : "none",
-            boxShadow:
-              hasVariants || canClickCardToAdd
-                ? "0 14px 38px rgba(0,0,0,0.10)"
-                : "0 10px 30px rgba(0,0,0,0.06)",
-          },
-          height: "100%",
-          minHeight: { xs: 278, md: 305 },
-          display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
-        }}
-      >
-        {/* Badge */}
-        <Box sx={{ position: "absolute", top: 12, right: 12 }}>
-          {hasDiscount ? (
-            <Chip
-              icon={<LocalOfferRoundedIcon />}
-              label={`-${Number(product?.discount) || 0}%`}
-              size="small"
-              sx={{
-                fontWeight: 900,
-                bgcolor: alpha("#ef4444", 0.14),
-                border: `1px solid ${alpha("#ef4444", 0.22)}`,
-              }}
-            />
-          ) : hasVariants ? (
-            <Chip
-              icon={<TuneRoundedIcon />}
-              label="Variantes"
-              size="small"
-              sx={{
-                fontWeight: 900,
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
-                border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
-              }}
-            />
-          ) : null}
-        </Box>
-
-        {/* Imagen */}
-        <Box
-          sx={{
-            height: { xs: 104, md: 120 },
-            borderRadius: 3,
-            bgcolor: alpha("#111827", 0.03),
-            border: `1px solid ${alpha("#111827", 0.08)}`,
-            overflow: "hidden",
-            mb: 1.25,
-            position: "relative",
-            minWidth: 0,
-          }}
-        >
-          {productImg ? (
-            <Box
-              component="img"
-              src={productImg}
-              alt={product?.name}
-              sx={{
-                width: "100%",
-                height: "100%",
-                display: "block",
-                objectFit: "contain",
-                objectPosition: "center",
-              }}
-            />
-          ) : (
-            <Box sx={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>
-              <Inventory2RoundedIcon sx={{ fontSize: 34, opacity: 0.5 }} />
+      <TableRow hover>
+        <TableCell sx={{ overflowWrap: "anywhere", color: "text.secondary" }}>
+          {product.sku || "—"}
+        </TableCell>
+        <TableCell sx={{ overflowWrap: "anywhere" }}>
+          <ButtonBase
+            disabled={!hasVariants && (stock === null || pieces >= stock)}
+            onClick={hasVariants ? openDetails : addSimpleOne}
+            aria-label={hasVariants ? `Ver variantes de ${product.name}` : `Agregar ${product.name}`}
+            sx={{
+              textAlign: "left",
+              justifyContent: "flex-start",
+              width: "100%",
+              py: 0.5,
+              color: "primary.main",
+              "&:hover, &.Mui-focusVisible": { textDecoration: "underline" },
+              "&.Mui-disabled": { color: "text.primary" },
+            }}
+          >
+            <Box>
+              <Typography variant="body2" fontWeight={800}>{product.name}</Typography>
+              {hasVariants && <Typography variant="caption" color="text.secondary">Ver variantes</Typography>}
             </Box>
-          )}
-
-          <Box
-            sx={{
-              position: "absolute",
-              inset: 0,
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.00) 40%, rgba(0,0,0,0.18) 100%)",
-              pointerEvents: "none",
-            }}
-          />
-        </Box>
-
-        {/* Nombre */}
-        <Typography
-          sx={{
-            fontWeight: 950,
-            lineHeight: 1.15,
-            mb: 0.6,
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-            wordBreak: "break-word",
-            minHeight: "2.3em",
-          }}
-        >
-          {product?.name}
-        </Typography>
-
-        {product?.sku ? (
-          <Typography sx={{ fontSize: 12, color: "text.secondary", mb: 0.8 }} noWrap>
-            SKU: {product.sku}
-          </Typography>
-        ) : (
-          <Box sx={{ height: 18 }} />
-        )}
-
-        <Stack
-          direction={{ xs: "column", sm: "row" }}
-          alignItems={{ xs: "flex-start", sm: "flex-end" }}
-          justifyContent="space-between"
-          spacing={{ xs: 0.75, sm: 1 }}
-          sx={{ minWidth: 0 }}
-        >
-          <Box sx={{ minWidth: 0, width: "100%" }}>
-            {hasVariants ? (
-              <>
-                <Typography sx={{ fontSize: 12, color: "text.secondary", fontWeight: 900 }}>
-                  Precio
-                </Typography>
-                <Typography sx={{ fontSize: { xs: 14, sm: 16 }, fontWeight: 950, lineHeight: 1.05 }}>
-                  Según variante
-                </Typography>
-              </>
-            ) : hasDiscount ? (
-              <>
-                <Typography
-                  sx={{ fontSize: 12, color: "text.secondary", textDecoration: "line-through" }}
-                  noWrap
-                >
-                  ${money(product?.price)}
-                </Typography>
-                <Typography sx={{ fontSize: 18, fontWeight: 950 }} noWrap>
-                  ${priceFinalProduct}
-                </Typography>
-              </>
-            ) : (
-              <Typography sx={{ fontSize: 18, fontWeight: 950 }} noWrap>
-                ${priceFinalProduct}
-              </Typography>
-            )}
-          </Box>
-
-          <Chip
-            size="small"
-            icon={<Inventory2RoundedIcon />}
-            label={productStock(product, { activeOnly: true }) === null ? "Consultar existencias" : `Stock: ${globalStock}`}
-            sx={{
-              fontWeight: 900,
-              bgcolor: alpha("#10b981", 0.1),
-              border: `1px solid ${alpha("#10b981", 0.18)}`,
-              flex: "0 0 auto",
-              alignSelf: { xs: "flex-start", sm: "flex-end" },
-              maxWidth: "100%",
-            }}
-          />
-        </Stack>
-
-        {useWh && (
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1, minWidth: 0 }}>
-            <WarehouseRoundedIcon sx={{ fontSize: 16, opacity: 0.7, flex: "0 0 auto" }} />
-            <Typography sx={{ fontSize: 12, color: "text.secondary" }} noWrap>
-              {stockHint || "Almacén"}
-            </Typography>
-          </Stack>
-        )}
-
-        <Box sx={{ flexGrow: 1 }} />
-
-        {hasVariants ? (
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<TuneRoundedIcon />}
-            onClick={(e) => {
-              e.stopPropagation();
-              openDetails();
-            }}
-            sx={{
-              textTransform: "none",
-              fontWeight: 950,
-              borderRadius: 3,
-              py: 1.05,
-              whiteSpace: "nowrap",
-              fontSize: { xs: 13, sm: 14 },
-            }}
-          >
-            Ver catálogo
-          </Button>
-        ) : (
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<ShoppingCartRoundedIcon />}
-            disabled={globalStock <= 0}
-            onClick={(e) => {
-              e.stopPropagation();
-              addSimpleOne();
-            }}
-            sx={{ textTransform: "none", fontWeight: 950, borderRadius: 3 }}
-          >
-            Agregar
-          </Button>
-        )}
-      </Paper>
+          </ButtonBase>
+        </TableCell>
+        <TableCell align="right">{pieces}</TableCell>
+        <TableCell align="right">{stock ?? "—"}</TableCell>
+      </TableRow>
 
       {/* MODAL ALMACÉN (producto simple multi) — solo aparece si hay 2+ almacenes */}
       <Dialog
@@ -757,7 +550,7 @@ export default function ProductCard({
         <DialogContent sx={{ p: 2 }}>
           <Grid container spacing={2}>
             {/* LISTA VARIANTES */}
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 4 }}>
               <Paper
                 variant="outlined"
                 sx={{
@@ -771,115 +564,38 @@ export default function ProductCard({
                   Variantes disponibles
                 </Typography>
 
-                <Stack spacing={1}>
+                <Stack divider={<Divider />}>
                   {variants.length ? (
                     variants.map((v) => {
-                      const vImg = v?.image_url || v?.image || productImg || null;
-                      const attrs = normalizeAttrs(v?.variant_attributes || v?.attributes);
+                      const attrs = normalizeAttrs(v.variant_attributes || v.attributes);
                       const selected = String(v.id) === String(selectedVariantId);
-
-                      const stockTotal = variantStock(v, useWh) ?? 0;
+                      const stock = variantStock(v, useWh);
 
                       return (
-                        <Paper
+                        <ButtonBase
                           key={v.id}
-                          variant="outlined"
-                          onClick={() => {
-                            setSelectedVariantId(String(v.id));
-                          }}
+                          onClick={() => setSelectedVariantId(String(v.id))}
+                          aria-pressed={selected}
                           sx={{
-                            p: 1,
-                            borderRadius: 3,
-                            cursor: "pointer",
-                            borderColor: selected
-                              ? alpha(theme.palette.primary.main, 0.55)
-                              : alpha("#111827", 0.1),
-                            bgcolor: selected ? alpha(theme.palette.primary.main, 0.06) : "#fff",
-                            transition: "transform .12s ease",
-                            "&:hover": { transform: "translateY(-1px)" },
+                            display: "flex", justifyContent: "space-between", gap: 1,
+                            px: 1, py: 0.75, textAlign: "left", borderRadius: 1,
+                            bgcolor: selected ? "action.selected" : "transparent",
+                            "&:hover, &.Mui-focusVisible": { bgcolor: "action.hover" },
                           }}
                         >
-                          <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-                            <Box
-                              sx={{
-                                width: 58,
-                                height: 58,
-                                borderRadius: 2.5,
-                                overflow: "hidden",
-                                border: `1px solid ${alpha("#111827", 0.1)}`,
-                                bgcolor: alpha("#111827", 0.03),
-                                flex: "0 0 auto",
-                              }}
-                            >
-                              {vImg ? (
-                                <Box
-                                  component="img"
-                                  src={vImg}
-                                  alt={pickVariantLabel(v)}
-                                  sx={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
-                                />
-                              ) : (
-                                <Box sx={{ width: "100%", height: "100%", display: "grid", placeItems: "center" }}>
-                                  <StyleRoundedIcon sx={{ opacity: 0.55 }} />
-                                </Box>
-                              )}
-                            </Box>
-
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography sx={{ fontWeight: 950, fontSize: 13 }} noWrap>
-                                {pickVariantLabel(v)}
+                          <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                            <Typography variant="body2" fontWeight={800}>{pickVariantLabel(v)}</Typography>
+                            {v.sku && v.sku !== pickVariantLabel(v) && (
+                              <Typography display="block" variant="caption" color="text.secondary">{v.sku}</Typography>
+                            )}
+                            {attrs.length > 0 && (
+                              <Typography variant="caption" color="text.secondary">
+                                {attrs.map(({ name, value }) => [name, value].filter(Boolean).join(": ")).join(" · ")}
                               </Typography>
-
-                              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.25, flexWrap: "wrap" }}>
-                                <Chip
-                                  size="small"
-                                  label={`Stock: ${stockTotal}`}
-                                  sx={{
-                                    height: 22,
-                                    fontWeight: 900,
-                                    bgcolor: alpha("#10b981", 0.1),
-                                    border: `1px solid ${alpha("#10b981", 0.18)}`,
-                                  }}
-                                />
-                                {useWh && (
-                                  <Chip
-                                    size="small"
-                                    icon={<WarehouseRoundedIcon />}
-                                    label={variantWarehouses.length === 1 ? "Almacén" : "Multi"}
-                                    sx={{
-                                      height: 22,
-                                      fontWeight: 900,
-                                      bgcolor: alpha("#6366f1", 0.1),
-                                      border: `1px solid ${alpha("#6366f1", 0.18)}`,
-                                    }}
-                                  />
-                                )}
-                              </Stack>
-
-                              {!!attrs.length && (
-                                <Stack direction="row" spacing={0.75} sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
-                                  {attrs.slice(0, 3).map((a, idx) => (
-                                    <Chip
-                                      key={`${v.id}-${idx}`}
-                                      size="small"
-                                      variant="outlined"
-                                      label={`${a.name}${a.value ? `: ${a.value}` : ""}`}
-                                      sx={{ height: 22, fontWeight: 800, bgcolor: alpha("#111827", 0.02) }}
-                                    />
-                                  ))}
-                                  {attrs.length > 3 && (
-                                    <Chip
-                                      size="small"
-                                      variant="outlined"
-                                      label={`+${attrs.length - 3}`}
-                                      sx={{ height: 22, fontWeight: 900, bgcolor: alpha("#111827", 0.02) }}
-                                    />
-                                  )}
-                                </Stack>
-                              )}
-                            </Box>
-                          </Stack>
-                        </Paper>
+                            )}
+                          </Box>
+                          <Typography variant="caption" sx={{ flexShrink: 0 }}>Stock: {stock ?? "—"}</Typography>
+                        </ButtonBase>
                       );
                     })
                   ) : (
@@ -892,12 +608,12 @@ export default function ProductCard({
             </Grid>
 
             {/* DETALLE */}
-            <Grid item xs={12} md={8}>
+            <Grid size={{ xs: 12, md: 8 }}>
               <Grid container spacing={2}>
-                <Grid item xs={12} md={5}>
+                <Grid size={{ xs: 12, md: 5 }}>
                   <Box
                     sx={{
-                      height: 320,
+                      height: { xs: 140, md: 320 },
                       borderRadius: 4,
                       overflow: "hidden",
                       border: `1px solid ${alpha("#111827", 0.1)}`,
@@ -946,7 +662,7 @@ export default function ProductCard({
                   </Paper>
                 </Grid>
 
-                <Grid item xs={12} md={7}>
+                <Grid size={{ xs: 12, md: 7 }}>
                   <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 4, mb: 2 }}>
                     <Typography sx={{ fontWeight: 950, mb: 0.5 }}>
                       Variante seleccionada

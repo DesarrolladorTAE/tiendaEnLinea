@@ -17,7 +17,7 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
-import ProductCard from "./POS/ProductCard";
+import ProductsGrid from "./POS/ProductsGrid";
 import Cart from "./POS/Cart";
 import { usePOSLogic } from "../hooks/POS/usePOSLogic";
 import TicketDialog from "./POS/TicketDialog";
@@ -44,6 +44,11 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
 
   // ✅ Drawer carrito
   const [cartOpen, setCartOpen] = useState(false);
+  const mobileCartOpen = !isMdUp && cartOpen;
+
+  useEffect(() => {
+    if (isMdUp) setCartOpen(false);
+  }, [isMdUp]);
 
   // ✅ Categorías
   const [categories, setCategories] = useState([]);
@@ -89,21 +94,17 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     page,
     setPage,
 
-    selectedVariation,
-    selectedSize,
     setSelectedVariation,
     setSelectedSize,
 
     handleAdd,
     handleRemove,
-    handleDecrease,
     handleCheckout,
     refetchProducts,
 
     getAvailableStock,
     getQuantityInCart,
     getProductImage,
-    isVariantProduct,
   } = usePOSLogic({
     setTicketData,
     setShowTicket,
@@ -169,7 +170,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
         scannerEnabled &&
         !showTicket &&
         !modalDescuentoActivo &&
-        !cartOpen &&
+        !mobileCartOpen &&
         inputRef.current &&
         document.activeElement !== inputRef.current &&
         document.activeElement?.tagName === "BODY"
@@ -186,7 +187,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     showTicket,
     modalDescuentoActivo,
     isTouchDevice,
-    cartOpen,
+    mobileCartOpen,
   ]);
 
   // ✅ cuando cambia search o categoría: reset a page 1 y pedir al backend
@@ -321,6 +322,20 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     }
   };
 
+  const cartContent = (
+    <Cart
+      cart={cart}
+      setCart={setCart}
+      onRemove={handleRemove}
+      onCheckout={onCheckout}
+      checkoutBlocked={!cash.canSell}
+      setScannerEnabled={setScannerEnabled}
+      setModalDescuentoActivo={setModalDescuentoActivo}
+      variant={isMdUp ? "desktop" : "mobile"}
+      posLocationId={posLocationId}
+    />
+  );
+
   return (
     <Box
       sx={{
@@ -402,20 +417,32 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(175px, 220px) minmax(0, 1fr)" },
+          gridTemplateColumns: {
+            xs: "minmax(0, 1fr)",
+            md: "minmax(0, 1fr) minmax(290px, 0.95fr)",
+            lg: "minmax(145px, 175px) minmax(0, 1fr) minmax(320px, 1fr)",
+          },
+          gridTemplateAreas: {
+            xs: '"categories" "products" "pagination"',
+            md: '"categories categories" "products cart" "pagination cart"',
+            lg: '"categories products cart" "categories pagination cart"',
+          },
+          gridTemplateRows: "auto auto min-content",
           gap: 2,
           alignItems: "stretch",
         }}
       >
-        <CategoriesRail
-          categories={categories}
-          selectedCategoryId={selectedCategoryId}
-          onSelect={setSelectedCategoryId}
-          loading={loadingCategories}
-        />
+        <Box sx={{ gridArea: "categories", minWidth: 0, display: "grid" }}>
+          <CategoriesRail
+            categories={categories}
+            selectedCategoryId={selectedCategoryId}
+            onSelect={setSelectedCategoryId}
+            loading={loadingCategories}
+          />
+        </Box>
 
         <Box aria-busy={refreshingStock} sx={{
-          position: "relative", minWidth: 0,
+          gridArea: "products", position: "relative", minWidth: 0,
           minHeight: { xs: refreshingStock || !products.length ? 250 : 0, lg: 360 },
         }}>
           {!refreshingStock && !products.length && (
@@ -445,39 +472,16 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               )}
             </Stack>
           )}
-          <Box
-            sx={{
-              visibility: refreshingStock ? "hidden" : "visible",
-              display: "grid",
-              gap: { xs: 1.25, md: 2 },
-              gridTemplateColumns: {
-                xs: "repeat(2, minmax(0, 1fr))",
-                sm: "repeat(2, minmax(0, 1fr))",
-                md: "repeat(3, minmax(0, 1fr))",
-              },
-              alignItems: "stretch",
-            }}
-          >
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                selectedVariation={selectedVariation}
-                selectedSize={selectedSize}
-                setSelectedVariation={setSelectedVariation}
-                setSelectedSize={setSelectedSize}
-                cart={cart}
-                onAdd={handleAdd}
-                onRemove={handleRemove}
-                handleDecrease={handleDecrease}
-                getQuantityInCart={getQuantityInCart}
-                getAvailableStock={getAvailableStock}
-                getProductImage={getProductImage}
-                isVariantProduct={isVariantProduct}
-                isMdUp={isMdUp}
-              />
-            ))}
-          </Box>
+          {!refreshingStock && products.length > 0 && (
+            <ProductsGrid
+              products={products}
+              cart={cart}
+              onAdd={handleAdd}
+              getQuantityInCart={getQuantityInCart}
+              getAvailableStock={getAvailableStock}
+              getProductImage={getProductImage}
+            />
+          )}
           {refreshingStock && (
             <Stack role="status" alignItems="center" spacing={2} sx={{
               position: "absolute", inset: 0, pt: { xs: 3, sm: 4 }, px: 2,
@@ -502,7 +506,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
         {/* Paginación real (backend) */}
         {totalPages > 1 && <Paper
           sx={{
-            gridColumn: { lg: 2 },
+            gridArea: "pagination",
             p: 1.25,
             borderRadius: 3,
             background: "#fff",
@@ -552,6 +556,15 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
           </Box>
         </Paper>}
 
+        {isMdUp && (
+          <Box component="section" aria-labelledby="pos-order-title" sx={{ gridArea: "cart", minWidth: 0 }}>
+            <Typography id="pos-order-title" component="h2" variant="h6" sx={{ mb: 1, fontWeight: 900 }}>
+              Tu orden
+            </Typography>
+            {cartContent}
+          </Box>
+        )}
+
         <TicketDialog
           open={showTicket}
           onClose={handleCloseTicket}
@@ -563,51 +576,43 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
         />
       </Box>
 
-      {/* Burbuja carrito */}
-      <Box sx={{ position: "fixed", right: 20, bottom: 96, zIndex: 1500 }}>
-        <Badge badgeContent={cartCount} color="error">
-          <IconButton
-            onClick={toggleCart}
-            sx={{
-              width: 64,
-              height: 64,
-              borderRadius: "50%",
-              background: cartOpen
-                ? "linear-gradient(135deg, #111827, #374151)"
-                : "linear-gradient(135deg, #f59e0b, #fbbf24)",
-              color: cartOpen ? "#fff" : "#111827",
-              boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
-              border: `1px solid ${alpha("#000", 0.12)}`,
-              "&:active": { transform: "scale(0.98)" },
-            }}
-          >
-            {cartOpen ? <CloseRoundedIcon /> : <ShoppingCartRoundedIcon />}
-          </IconButton>
-        </Badge>
-      </Box>
+      {!isMdUp && (
+        <>
+          <Box sx={{ position: "fixed", right: 20, bottom: 96, zIndex: 1500 }}>
+            <Badge badgeContent={cartCount} color="error">
+              <IconButton
+                aria-label={cartOpen ? "Cerrar carrito" : "Abrir carrito"}
+                onClick={toggleCart}
+                sx={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background: cartOpen
+                    ? "linear-gradient(135deg, #111827, #374151)"
+                    : "linear-gradient(135deg, #f59e0b, #fbbf24)",
+                  color: cartOpen ? "#fff" : "#111827",
+                  boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
+                  border: `1px solid ${alpha("#000", 0.12)}`,
+                  "&:active": { transform: "scale(0.98)" },
+                }}
+              >
+                {cartOpen ? <CloseRoundedIcon /> : <ShoppingCartRoundedIcon />}
+              </IconButton>
+            </Badge>
+          </Box>
 
-      {/* Drawer carrito */}
-      <Drawer
-        anchor={isMdUp ? "right" : "bottom"}
-        open={cartOpen}
-        onClose={() => setCartOpen(false)}
-        disableScrollLock
-        ModalProps={{
-          keepMounted: true,
-          disableEnforceFocus: true,
-        }}
-        PaperProps={{
-          sx: isMdUp
-            ? {
-                width: 420,
-                height: "100vh",
-                background: "#fff",
-                borderLeft: "1px solid",
-                borderColor: "divider",
-                display: "flex",
-                flexDirection: "column",
-              }
-            : {
+          {/* Drawer carrito */}
+          <Drawer
+            anchor="bottom"
+            open={mobileCartOpen}
+            onClose={() => setCartOpen(false)}
+            disableScrollLock
+            ModalProps={{
+              keepMounted: true,
+              disableEnforceFocus: true,
+            }}
+            PaperProps={{
+              sx: {
                 height: "100svh",
                 maxHeight: "100svh",
                 width: "100%",
@@ -619,71 +624,63 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
                 overflow: "hidden",
                 touchAction: "pan-y",
               },
-        }}
-      >
-        {/* Header */}
-        <Box
-          sx={{
-            p: 1.25,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            borderBottom: "1px solid",
-            borderColor: "divider",
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-            background: "#fff",
-            flexShrink: 0,
-          }}
-        >
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 900 }}>
-              Tu orden
-            </Typography>
-
-            <Typography
+            }}
+          >
+            {/* Header */}
+            <Box
               sx={{
-                fontSize: 12,
-                color: "#6b7280",
+                p: 1.25,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid",
+                borderColor: "divider",
+                position: "sticky",
+                top: 0,
+                zIndex: 10,
+                background: "#fff",
+                flexShrink: 0,
               }}
             >
-              {cartCount} producto(s)
-            </Typography>
-          </Box>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                  Tu orden
+                </Typography>
 
-          <IconButton onClick={() => setCartOpen(false)}>
-            <CloseRoundedIcon />
-          </IconButton>
-        </Box>
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    color: "#6b7280",
+                  }}
+                >
+                  {cartCount} producto(s)
+                </Typography>
+              </Box>
 
-        {/* Contenido scrollable */}
-        <Box
-          sx={{
-            flex: 1,
-            minHeight: 0,
-            overflowY: "auto",
-            overflowX: "hidden",
-            WebkitOverflowScrolling: "touch",
-            overscrollBehaviorY: "contain",
-            touchAction: "pan-y",
-            p: 1.25,
-            pb: "calc(32px + env(safe-area-inset-bottom))",
-          }}
-        >
-          <Cart
-            cart={cart}
-            setCart={setCart}
-            onRemove={handleRemove}
-            onCheckout={onCheckout}
-            checkoutBlocked={!cash.canSell}
-            setScannerEnabled={setScannerEnabled}
-            setModalDescuentoActivo={setModalDescuentoActivo}
-            variant={isMdUp ? "desktop" : "mobile"}
-            posLocationId={posLocationId}
-          />
-        </Box>
-      </Drawer>
+              <IconButton aria-label="Cerrar carrito" onClick={() => setCartOpen(false)}>
+                <CloseRoundedIcon />
+              </IconButton>
+            </Box>
+
+            {/* Contenido scrollable */}
+            <Box
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                overflowX: "hidden",
+                WebkitOverflowScrolling: "touch",
+                overscrollBehaviorY: "contain",
+                touchAction: "pan-y",
+                p: 1.25,
+                pb: "calc(32px + env(safe-area-inset-bottom))",
+              }}
+            >
+              {cartContent}
+            </Box>
+          </Drawer>
+        </>
+      )}
     </Box>
   );
 }
