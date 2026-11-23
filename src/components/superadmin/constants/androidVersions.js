@@ -1,0 +1,81 @@
+const ANDROID_VERSIONS = [
+  {
+    api: 36,
+    value: "android16",
+    label: "Android 16",
+    version: "16.0",
+    color: "#22c55e",
+  },
+  {
+    api: 35,
+    value: "android15",
+    label: "Android 15",
+    version: "15.0",
+    color: "#22c55e",
+  },
+  {
+    api: 34,
+    value: "android14",
+    label: "Android 14",
+    version: "14",
+    color: "#16a34a",
+  },
+  {
+    api: 33,
+    value: "android13",
+    label: "Android 13",
+    version: "13",
+    color: "#16a34a",
+  },
+  {
+    api: 32,
+    value: "android12l",
+    label: "Android 12L",
+    version: "12.1",
+    color: "#65a30d",
+  },
+  {
+    api: 31,
+    value: "android12",
+    label: "Android 12",
+    version: "12",
+    color: "#65a30d",
+  },
+  {
+    api: 30,
+    value: "android11",
+    label: "Android 11",
+    version: "11",
+    color: "#ca8a04",
+  },
+  {
+    api: 29,
+    value: "android10",
+    label: "Android 10",
+    version: "10",
+    color: "#d97706",
+  },
+  {
+    api: 28,
+    value: "android9",
+    label: "Android 9 Pie",
+    version: "9",
+    color: "#ea580c",
+  },
+  {
+    api: 27,
+    value: "android81",
+    label: "Android 8.1 Oreo",
+    version: "8.1",
+    color: "#ef4444",
+  },
+  {
+    api: 26,
+    value: "android80",
+    label: "Android 8.0 Oreo",
+    version: "8.0",
+    color: "#ef4444",
+  },
+];
+
+export default ANDROID_VERSIONS;

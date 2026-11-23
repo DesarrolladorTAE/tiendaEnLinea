@@ -1,0 +1,61 @@
+//src/utils/complementos.js
+
+const complementos = [
+  {
+    complemento_id: 1,
+    nombre: "🌐 Dominio personalizado (.com)",
+    precio: 700,
+    tipo: "anual"
+  },
+  {
+    complemento_id: 2,
+    nombre: "💳 Implementación de pasarela de pago",
+    precio: 1000,
+    tipo: "único",
+  },
+  {
+    complemento_id: 3,
+    nombre: "💎 Plantilla premium de catálogo",
+    precio: 2500,
+    tipo: "único"
+  },
+  {
+    complemento_id: 4,
+    nombre: "🧾 Implementación Autofacturación CFDI",
+    precio: 149,
+    tipo: "mensual"
+  },
+  {
+    complemento_id: 5,
+    nombre: "📄 Folios CFDI (paquete 100)",
+    precio: 500,
+    tipo: "unidad"
+  },
+  {
+    complemento_id: 6,
+    nombre: "📥 Importación masiva de productos",
+    precio: 999,
+    tipo: "único",
+    nota: "Gratis en plan Avanzado"
+  },
+  {
+    complemento_id: 7,
+    nombre: "🤖 WhatsApp Pro automatizado",
+    precio: 199,
+    tipo: "mensual",
+  },
+    {
+    complemento_id: 8,
+    nombre: "Renovación de Dominio y hosting anual grupointercomp.com",
+    precio: 1700,
+    tipo: "anual",
+  },
+  {
+    complemento_id: 9,
+    nombre: "MataDatos en Marca Blanca",
+    precio: 1000,
+    tipo: "unico",
+  }
+];
+
+export default complementos;

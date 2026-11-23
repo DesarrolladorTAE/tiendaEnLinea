@@ -1,0 +1,40 @@
+.storefront-shell[data-page="customer-sales"] .sf-facebook-cover {
+  height: clamp(120px, 18vw, 200px);
+}
+
+.storefront-shell[data-page="customer-sales"] .sf-facebook-profile {
+  align-items: center;
+  padding-top: 16px;
+}
+
+.storefront-shell[data-page="customer-sales"] .sf-facebook-profile > img,
+.storefront-shell[data-page="customer-sales"] .sf-facebook-profile > svg {
+  width: 96px;
+  height: 96px;
+  margin-top: -42px;
+}
+
+.storefront-shell[data-page="customer-sales"] .sf-facebook-copy {
+  padding-top: 0;
+}
+
+.storefront-shell[data-page="customer-sales"] .sf-facebook-copy h1 {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+}
+
+.storefront-shell[data-page="customer-sales"] .sf-facebook-tabs a:first-child {
+  color: var(--sf-secondary) !important;
+  border-color: transparent !important;
+}
+
+.storefront-shell[data-page="customer-sales"] .sf-facebook-tabs a.is-active {
+  color: var(--sf-accent) !important;
+  border-color: var(--sf-accent) !important;
+}
+
+@media (max-width: 700px) {
+  .storefront-shell[data-page="customer-sales"] .sf-facebook-profile {
+    padding-top: 0;
+    gap: 10px;
+  }
+}

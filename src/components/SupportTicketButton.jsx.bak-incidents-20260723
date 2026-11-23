@@ -1,0 +1,164 @@
+import React, { useEffect, useState } from "react";
+import { MdSupportAgent } from "react-icons/md";
+import { useLocation } from "react-router-dom";
+
+import SupportTicketModal from "./SupportTicketModal";
+
+const SUPPORT_ERROR_STORAGE_KEY =
+  "LAST_SUPPORT_HTTP_ERROR";
+
+const SUPPORT_ERROR_EVENT =
+  "support:http-error";
+
+const containerStyle = {
+  position: "fixed",
+  bottom: "90px",
+  right: "20px",
+  zIndex: 9999,
+  width: "60px",
+  height: "60px",
+};
+
+const buttonStyle = {
+  width: "60px",
+  height: "60px",
+  backgroundColor: "#23388B",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: "50%",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.3)",
+  cursor: "pointer",
+};
+
+const badgeStyle = {
+  position: "absolute",
+  top: "-8px",
+  right: "-8px",
+  minWidth: "28px",
+  height: "28px",
+  padding: "0 6px",
+  borderRadius: "14px",
+  backgroundColor: "#d32f2f",
+  color: "#ffffff",
+  border: "2px solid #ffffff",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  fontSize: "11px",
+  fontWeight: 700,
+  lineHeight: 1,
+  boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
+};
+
+const readStoredError = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const storedError = sessionStorage.getItem(
+      SUPPORT_ERROR_STORAGE_KEY
+    );
+
+    return storedError
+      ? JSON.parse(storedError)
+      : null;
+  } catch (error) {
+    console.warn(
+      "No fue posible leer el último error de soporte:",
+      error
+    );
+
+    return null;
+  }
+};
+
+const getBadgeText = (status) => {
+  if (status === "NETWORK") {
+    return "RED";
+  }
+
+  return status ? String(status) : null;
+};
+
+const SupportTicketButton = () => {
+  const { pathname } = useLocation();
+
+  const [open, setOpen] = useState(false);
+
+  const [lastError, setLastError] = useState(
+    readStoredError
+  );
+
+  useEffect(() => {
+    const handleSupportError = (event) => {
+      setLastError(
+        event.detail || readStoredError()
+      );
+    };
+
+    window.addEventListener(
+      SUPPORT_ERROR_EVENT,
+      handleSupportError
+    );
+
+    return () => {
+      window.removeEventListener(
+        SUPPORT_ERROR_EVENT,
+        handleSupportError
+      );
+    };
+  }, []);
+
+  const isPrivateSupportRoute =
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/prueba/pos") ||
+    pathname.startsWith("/pos");
+
+  if (!isPrivateSupportRoute) {
+    return null;
+  }
+
+  const badgeText = getBadgeText(
+    lastError?.status
+  );
+
+  const buttonTitle = lastError
+    ? `Reportar el último error: ${lastError.status}`
+    : "Abrir centro de soporte";
+
+  return (
+    <>
+      <div style={containerStyle}>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          style={buttonStyle}
+          title={buttonTitle}
+          aria-label={buttonTitle}
+        >
+          <MdSupportAgent size={30} />
+        </button>
+
+        {badgeText && (
+          <span
+            style={badgeStyle}
+            title={`Último error: ${lastError.status}`}
+          >
+            {badgeText}
+          </span>
+        )}
+      </div>
+
+      <SupportTicketModal
+        open={open}
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
+};
+
+export default SupportTicketButton;

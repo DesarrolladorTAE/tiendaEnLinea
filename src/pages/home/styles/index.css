@@ -1,0 +1,30 @@
+@import "./variables.css";
+@import "./globals.css";
+@import "./animations.css";
+
+@import "./Navbar.css";
+@import "./Hero.css";
+@import "./Platform.css";
+@import "./Features.css";
+@import "./Plans.css";
+@import "./Contact.css";
+@import "./Footer.css";
+
+.landing-page--contact {
+  min-height: 100svh;
+  background: transparent;
+}
+
+.landing-root--transparent-navbar .landing-main {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+.landing-root--transparent-navbar .landing-page--contact {
+  margin-top: 0;
+  background: transparent;
+}
+
+.landing-root--transparent-navbar .contact-section {
+  margin-top: 0;
+}

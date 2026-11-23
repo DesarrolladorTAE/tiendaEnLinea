@@ -1,0 +1,143 @@
+@use "../../../node_modules/bootstrap/dist/css/bootstrap.css";
+
+@use "../../../node_modules/react-modal-video/scss/modal-video";
+
+@use "variables";
+@use "helper";
+@use "common";
+@use "preloader";
+@use "header";
+@use "slider";
+@use "support";
+@use "section-title";
+@use "product";
+@use "blog";
+@use "footer";
+@use "banner";
+@use "suscribe";
+@use "about";
+@use "image-slider";
+@use "testimonial";
+@use "brand-logo";
+@use "timers";
+@use "breadcrumb";
+@use "sidebar";
+@use "shop";
+@use "product-details";
+@use "cart";
+@use "compare";
+@use "checkout";
+@use "contact";
+@use "blog-details";
+@use "login-register";
+@use "my-account";
+@use "404" as not-found;
+@use "video-popup";
+@use "catalogo";
+@use "modalproduct";
+
+@import "../css/icons.min.css";
+
+// Preserve Bootstrap's selector aliases in the theme when using precompiled Bootstrap CSS.
+@for $level from 1 through 6 {
+  .h#{$level} { @extend h#{$level} !optional; }
+}
+.small { @extend small !optional; }
+.mark { @extend mark !optional; }
+.container-sm, .container-md, .container-lg, .container-xl, .container-xxl {
+  @extend .container-fluid !optional;
+}
+.btn-group-sm > .btn { @extend .btn-sm !optional; }
+.btn-group-lg > .btn { @extend .btn-lg !optional; }
+
+
+.hover-bg-light:hover {
+  background-color: #f0f0f0;
+}
+
+.swal-popup-override {
+  z-index: 1600 !important;
+}
+
+/* Fuerza a que el popup de SweetAlert esté por encima del Dialog */
+.swal2-container {
+  z-index: 2000 !important;
+}
+
+/* 🎄 Animación de latido */
+@keyframes christmasPulse {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+
+/* ✨ Efecto de brillo */
+@keyframes christmasGlow {
+  0% { box-shadow: 0 0 5px rgba(255, 200, 200, 0.4); }
+  50% { box-shadow: 0 0 18px rgba(255, 255, 255, 0.9); }
+  100% { box-shadow: 0 0 5px rgba(255, 200, 200, 0.4); }
+}
+
+/* ❄️ Mini nieve alrededor del botón */
+@keyframes snowFallSmall {
+  0% {
+    transform: translateY(0) translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(20px) translateX(5px);
+    opacity: 0;
+  }
+}
+
+/* 🔔 Campanitas */
+@keyframes bellShake {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(12deg); }
+  40% { transform: rotate(-12deg); }
+  60% { transform: rotate(6deg); }
+  80% { transform: rotate(-6deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* 🎄 Botón navideño principal */
+.christmas-button {
+  position: fixed;
+  right: 25px;
+  bottom: 95px;
+  font-size: 28px;
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  color: #fff;
+  z-index: 1200;
+
+  /* fuerza a eliminar estilos heredados negros */
+  border: none !important;
+  outline: none !important;
+  background: linear-gradient(135deg, #b91c1c, #dc2626) !important;
+
+  transition: transform 0.2s ease-in-out;
+  animation: christmasPulse 2s ease-in-out infinite,
+             christmasGlow 2.5s ease-in-out infinite;
+}
+
+.christmas-button.christmas-active {
+  background: linear-gradient(135deg, #166534, #15803d) !important;
+}
+
+
+/* ❄️ Nieve decorativa al lado del botón */
+.christmas-button::after {
+  content: "❄️";
+  position: absolute;
+  font-size: 16px;
+  right: -4px;
+  top: -6px;
+  opacity: 0.9;
+  animation: snowFallSmall 1.8s linear infinite;
+}
