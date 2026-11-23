@@ -37,11 +37,19 @@ function FactorEditorDialog({ productId, onClose, onSaved }) {
     if (!preview || loading || submitting.current) return;
     submitting.current = true; setSaving(true); setError("");
     try {
-      const updated = await saveProductProfitFactor(client, productId, factor);
-      onSaved(productId, updated); onClose();
+      const confirmed = await saveProductProfitFactor(client, productId, factor);
+      try {
+        const { data } = await client.get(`/admin/productos/${productId}`);
+        const updated = data?.data ?? data;
+        if (!updated || String(updated.id) !== String(productId)) throw new Error("Detalle inválido");
+        onSaved(productId, updated); onClose();
+      } catch {
+        onSaved(productId, confirmed);
+        setError("El factor se aplicó, pero no se pudo recargar el detalle. Vuelve a abrir el producto para ver todos los precios.");
+      }
     } catch (err) {
       const details = err.response?.data;
-      setError(details?.errors ? Object.values(details.errors).flat().join("\n") : details?.message || err.message || "No se pudo guardar el factor.");
+      setError(!err.response && (err.code === "ERR_NETWORK" || err.message === "Network Error") ? "No se pudo confirmar el factor por un error de conexión. Verifica CORS para PATCH y vuelve a cargar el producto antes de reintentar." : details?.errors ? Object.values(details.errors).flat().join("\n") : details?.message || err.message || "No se pudo guardar el factor.");
     } finally { submitting.current = false; setSaving(false); }
   };
 

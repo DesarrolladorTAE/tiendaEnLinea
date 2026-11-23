@@ -187,26 +187,7 @@ export default function IsrRetentionPreview({
     return null;
   }
 
-  if (!retentionInfo.applies_retention) {
-    return (
-      <Alert
-        severity="success"
-        variant="outlined"
-        sx={{
-          mt: 1.5,
-          borderRadius: 2,
-        }}
-      >
-        <Typography sx={{ fontWeight: 800 }}>
-          No aplica retención ISR
-        </Typography>
-
-        <Typography variant="body2">
-          {retentionInfo.message}
-        </Typography>
-      </Alert>
-    );
-  }
+  if (!retentionInfo.applies_retention) return null;
 
   const calculation =
     retentionInfo.calculation || {};

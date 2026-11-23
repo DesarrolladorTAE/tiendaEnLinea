@@ -58,6 +58,7 @@ export default function ProfitFactorControl({ watch, setValue, disabled = false 
         </div>
         <button type="button" className="btn btn-sm btn-outline-info" disabled={!byFactor || !available} onClick={() => openEditor()}>Configurar factor</button>
       </div>
+      {byFactor && <small className="d-block text-info mt-2">Al guardar se aplicará este factor al producto, sus variantes y cada almacén usando su propio costo. Los precios por almacén son estimados hasta guardar; las existencias no cambian.</small>}
       {!available && !byFactor && <small className="d-block text-warning mt-2">Primero captura el costo de compra.</small>}
       {byFactor && (factor === "" || factor == null) && <small className="d-block text-info mt-2">Configura el factor para calcular el precio.</small>}
     </div>

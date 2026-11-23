@@ -41,8 +41,8 @@ test.each(["45.0000"])("stored factor %s selects factor mode without recalculati
   expect(latest.form.getValues("price")).toBe("120.00");
   expect(client.patch).not.toHaveBeenCalled();
   await act(async () => latest.actions.onSubmit(latest.form.getValues()));
-  expect(client.patch).not.toHaveBeenCalled();
-  expect(client.post.mock.calls[0][1].get("price")).toBe("120.00");
+  expect(client.patch).toHaveBeenCalledWith("/admin/products/8/profit-factor", { profit_factor: 45 });
+  expect(client.post.mock.invocationCallOrder[0]).toBeLessThan(client.patch.mock.invocationCallOrder[0]);
 });
 
 test.each([null, 0, "0.0000"])("a product with factor %j opens in manual mode with a blank factor", async factor => {
@@ -56,10 +56,13 @@ test.each([null, 0, "0.0000"])("a product with factor %j opens in manual mode wi
   expect(client.patch).not.toHaveBeenCalled();
 });
 
-test("factor-only edit skips the full form and uses all three server values", async () => {
+test("factor edit saves the form then reloads all server prices", async () => {
+  client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") && client.patch.mock.calls.length ? { ...product, profit_factor: "45.0000", price: "145.02", base_price: "125.017241" } : url.startsWith("/admin/productos/") ? product : [] }));
   await act(async () => root.render(<Harness />));
   await act(async () => latest.actions.onSubmit(draft));
-  expect(client.post).not.toHaveBeenCalled();
+  expect(client.post).toHaveBeenCalledTimes(1);
+  expect(client.post.mock.invocationCallOrder[0]).toBeLessThan(client.patch.mock.invocationCallOrder[0]);
+  expect(client.get).toHaveBeenCalledWith("/admin/productos/8");
   expect(client.patch).toHaveBeenCalledWith("/admin/products/8/profit-factor", { profit_factor: 45 });
   expect(latest.form.getValues("profit_factor")).toBe("45.0000");
   expect(latest.form.getValues("price")).toBe("145.02");
@@ -72,14 +75,14 @@ test.each([["", null], ["0", "0"]])("manual edit sends optional purchase cost %j
   expect(client.post.mock.calls[0][1].get("purchase_cost")).toBe(expected);
 });
 
-test("changing only the purchase cost saves it without applying the stored factor", async () => {
+test("changing the purchase cost reapplies the stored factor after saving", async () => {
   client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") ? { ...product, profit_factor: "45.0000" } : [] }));
   changes = { costo_compra: true };
   await act(async () => root.render(<Harness />));
   await act(async () => latest.actions.onSubmit({ ...latest.form.getValues(), costo_compra: "200" }));
   expect(client.post.mock.calls[0][1].get("purchase_cost")).toBe("200");
-  expect(client.post.mock.calls[0][1].get("price")).toBe("120.00");
-  expect(client.patch).not.toHaveBeenCalled();
+  expect(Number(client.post.mock.calls[0][1].get("price"))).toBe(120);
+  expect(client.patch).toHaveBeenCalledWith("/admin/products/8/profit-factor", { profit_factor: 45 });
 });
 
 test("changed purchase cost is saved before explicitly applying the factor", async () => {
@@ -101,7 +104,8 @@ test("creation saves first and a failed factor retry does not create a duplicate
   expect(client.patch.mock.calls[0][0]).toBe("/admin/products/12/profit-factor");
   expect(showError).toHaveBeenCalledWith(expect.stringContaining("El producto se guardó"));
   await act(async () => latest.actions.onSubmit(draft));
-  expect(client.post).toHaveBeenCalledTimes(1);
+  expect(client.post.mock.calls.filter(([url]) => url === "/cargar/productos")).toHaveLength(1);
+  expect(client.post.mock.calls[1][0]).toBe("/admin/productos/12");
   expect(client.patch).toHaveBeenCalledTimes(2);
   log.mockRestore();
 });
@@ -120,4 +124,23 @@ test("invalid factor prevents any mutation", async () => {
   await act(async () => latest.actions.onSubmit({ ...draft, profit_factor: "45.12345" }));
   expect(client.patch).not.toHaveBeenCalled();
   expect(client.post).not.toHaveBeenCalled();
+});
+
+test("variant warehouse prices and costs survive the form mapping including explicit zero", () => {
+  const { mapBackendVariantsToForm, normalizeVariantsForBackend } = require("./useProductFormLogic");
+  const input = [{ id: 44, name: "Variante", warehouse_stocks: [{ warehouse_id: 7, stock: 2, price: 0, purchase_cost: 140 }] }];
+  const form = mapBackendVariantsToForm(input);
+  expect(form[0].warehouse_stocks[0]).toMatchObject({ warehouse_id: "7", price: 0, purchase_cost: 140 });
+  expect(normalizeVariantsForBackend(form, true)[0]).toMatchObject({ id: 44, warehouse_stocks: [{ warehouse_id: "7", price: 0, purchase_cost: 140 }] });
+});
+
+test("reports an unconfirmed factor after a network error without claiming a rollback", async () => {
+  client.patch.mockRejectedValueOnce({ code: "ERR_NETWORK", message: "Network Error" });
+  const log = jest.spyOn(console, "error").mockImplementation(() => {});
+  await act(async () => root.render(<Harness />));
+  await act(async () => latest.actions.onSubmit(draft));
+  expect(showError).toHaveBeenCalledWith(expect.stringContaining("El producto se guard\u00f3, pero no se pudo confirmar el factor"));
+  expect(showError).toHaveBeenCalledWith(expect.stringContaining("CORS"));
+  expect(mockNavigate).not.toHaveBeenCalled();
+  log.mockRestore();
 });

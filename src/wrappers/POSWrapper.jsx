@@ -22,6 +22,7 @@ const POSWrapper = () => {
     useState(null);
 
   const [posBranchId, setPosBranchId] = useState(null);
+  const [interfaceDesign, setInterfaceDesign] = useState("actual");
 
   const location = useLocation();
 
@@ -30,6 +31,7 @@ const POSWrapper = () => {
 
   const setPosContext = (posMeOrPosObj) => {
     setPosBranchId(Number(posMeOrPosObj?.branch_id) || null);
+    setInterfaceDesign(posMeOrPosObj?.interface_design === "clasico" ? "clasico" : "actual");
     const id =
       Number(posMeOrPosObj?.id) ||
       Number(posMeOrPosObj?.pos_id) ||
@@ -83,6 +85,7 @@ const POSWrapper = () => {
             branch_id: adminBranchId,
           });
 
+          axiosClientPOS.post("/pos/me").then(({ data }) => { setPosName(data?.name || adminPosName || "Sucursal"); setPosContext({ ...data, id: data?.id ?? data?.pos_id ?? adminPosId, branch_id: data?.branch_id ?? adminBranchId }); }).catch(() => {});
           setIsAuthenticated(true);
 
           setPosName(
@@ -175,6 +178,8 @@ const POSWrapper = () => {
             posDesdeAdmin={fromAdmin}
             posLocationId={posLocationId}
             posBranchId={posBranchId}
+            interfaceDesign={interfaceDesign}
+            onRefreshInterface={async () => { const { data } = await axiosClientPOS.post("/pos/me"); setPosContext({ ...data, id: data?.id ?? data?.pos_id ?? posLocationId, branch_id: data?.branch_id ?? posBranchId }); }}
           />
 
           {/* <SupportTicketButton /> */}

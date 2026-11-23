@@ -7,7 +7,7 @@ import { showSuccess, showError } from "../utils/alerts";
 import { useAdminUi } from "../context/AdminUiContext";
 import { inventoryFlag, activeVariant } from "../utils/productInventory";
 import { notifyInventoryChanged } from "../utils/inventoryEvents";
-import { calculateProfitPrice, hasConfiguredProfitFactor, hasProfitFactor, saveProductProfitFactor } from "../utils/productProfitFactor";
+import { calculateProfitPrice, hasConfiguredProfitFactor, saveProductProfitFactor } from "../utils/productProfitFactor";
 
 /**
  * ✅ Helper: agrega a FormData usando notación bracket
@@ -72,6 +72,8 @@ export function normalizeVariantsForBackend(rawVariants = [], useWarehouses = fa
 
           // ✅ tu tabla usa "stock" (no qty)
           stock: toNumOrEmpty(r?.stock),
+          price: r?.price === "" || r?.price == null ? null : Number(r.price),
+          purchase_cost: r?.purchase_cost === "" || r?.purchase_cost == null ? null : Number(r.purchase_cost),
 
           // ✅ extras (opcionales)
           min_stock: toNumOrEmpty(r?.min_stock),
@@ -164,6 +166,8 @@ export function mapBackendVariantsToForm(backendVariants = []) {
       ? v.warehouse_stocks.map((r) => ({
           warehouse_id: String(r?.warehouse_id ?? "").trim(),
           stock: r?.stock ?? "",
+          price: r?.price ?? "",
+          purchase_cost: r?.purchase_cost ?? "",
           min_stock: r?.min_stock ?? "",
           max_stock: r?.max_stock ?? "",
           reorder_point: r?.reorder_point ?? "",
@@ -243,7 +247,6 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
   const [ivaOriginal, setIvaOriginal] = useState(null);
   const [initialPrice, setInitialPrice] = useState(null);
   const [initialBasePrice, setInitialBasePrice] = useState(null);
-  const [initialProfitFactor, setInitialProfitFactor] = useState(null);
 
   // imágenes principales
   const [imageFiles, setImageFiles] = useState([]);
@@ -450,7 +453,6 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
     setIvaOriginal(product.iva !== null ? Number(product.iva) : null);
     setInitialPrice(product.price);
     setInitialBasePrice(product.base_price);
-    setInitialProfitFactor(product.profit_factor ?? null);
   };
 
   // ===== INIT =====
@@ -495,32 +497,25 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
   // ===== SUBMIT =====
   const onSubmit = async (data) => {
     let generalSaved = false;
+    let factorApplied = false;
     const productId = id || createdProductId.current;
-    const factorChanged = !hasProfitFactor({ profit_factor: initialProfitFactor }) || Number(data.profit_factor) !== Number(initialProfitFactor);
-    const byFactor = data.price_mode === "factor" && (!productId || factorChanged || data.factor_preview_enabled || ["price_mode", "profit_factor", "iva"].some(key => Boolean(dirtyFields[key])));
+    const byFactor = data.price_mode === "factor";
     const confirmFactor = async targetId => {
       const product = await saveProductProfitFactor(axiosClient, targetId, data.profit_factor);
+      factorApplied = true;
       setValue("factor_preview_enabled", false);
       setValue("profit_factor", product.profit_factor);
       setValue("price", String(product.price));
       setValue("base_price", String(product.base_price));
       setInitialPrice(product.price);
       setInitialBasePrice(product.base_price);
-      setInitialProfitFactor(product.profit_factor);
+      try { await fetchProduct(targetId); } catch (error) { throw new Error("El factor se aplicó, pero no se pudo recargar el producto. Vuelve a abrirlo para ver todos los precios."); }
     };
     try {
       if (byFactor) {
         const preview = calculateProfitPrice(data.costo_compra, data.profit_factor, data.iva);
         data = { ...data, price: preview.price, base_price: preview.base_price };
-        const priceFields = new Set(["price_mode", "profit_factor", "price", "base_price", "factor_preview_enabled"]);
-        const otherChanges = imageFiles.length > 0 || Object.keys(dirtyFields).some(key => !priceFields.has(key));
-        if (productId && !otherChanges) {
-          await confirmFactor(productId);
-          showSuccess("Precio actualizado por factor de utilidad.");
-          notifyInventoryChanged();
-          navigate("/admin/products");
-          return;
-        }
+
       }
       const useWh = inventoryFlag(data.use_warehouse_inventory);
 
@@ -797,7 +792,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
         generalSaved = true;
         if (byFactor) {
           const result = response.data;
-          const newId = result?.data?.id ?? result?.product?.id ?? result?.producto?.id ?? result?.id;
+          const newId = result?.product_id ?? result?.data?.product_id ?? result?.data?.id ?? result?.product?.id ?? result?.producto?.id ?? result?.id;
           if (!newId) {
             navigate("/admin/products");
             throw new Error("El producto se creó, pero el servidor no devolvió su ID. Abre su edición para aplicar el factor.");
@@ -814,8 +809,10 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
     } catch (error) {
       if (generalSaved && byFactor) notifyInventoryChanged();
       console.error("❌ Error en la API:", error.response?.data || error);
-      const prefix = generalSaved && byFactor ? "El producto se guardó, pero no se pudo confirmar el factor. " : "";
-      if (error.response?.data?.errors) {
+      const prefix = generalSaved && byFactor && !factorApplied ? "El producto se guardó, pero no se pudo confirmar el factor. " : "";
+      if (generalSaved && byFactor && !factorApplied && !error.response && (error.code === "ERR_NETWORK" || error.message === "Network Error")) {
+        showError("El producto se guardó, pero no se pudo confirmar el factor por un error de conexión. Revisa la configuración CORS del servidor para PATCH y vuelve a abrir el producto antes de reintentar.");
+      } else if (error.response?.data?.errors) {
         showError(
           `${prefix}${Object.values(error.response.data.errors).flat().join("\n")}`,
         );

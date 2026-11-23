@@ -3,6 +3,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import ProductField from "../../../admin/ProductField";
 import ProfitFactorControl from "../ProfitFactorControl";
+import { inventoryFlag } from "../../../../utils/productInventory";
 
 export default function ProductInfoSection({
   register,
@@ -13,6 +14,7 @@ export default function ProductInfoSection({
   onRecalculateBase,
   isEdit = false,
 }) {
+  const hasWarehouses = inventoryFlag(watch("use_warehouse_inventory"));
   return (
     <div className="row">
       <ProductField
@@ -32,10 +34,10 @@ export default function ProductInfoSection({
       />
 
       <ProductField
-        label={watch("price_mode") === "factor" ? "Precio final calculado (incluye IVA)" : "Precio Final (incluye IVA)"}
+        label={hasWarehouses ? "Precio general de respaldo (incluye IVA)" : watch("price_mode") === "factor" ? "Precio final calculado (incluye IVA)" : "Precio Final (incluye IVA)"}
         name="price"
         readOnly={watch("price_mode") === "factor"}
-        helperText={watch("price_mode") === "factor" ? "Calculado por factor. Desmarca la casilla para editarlo." : undefined}
+        helperText={hasWarehouses ? "Precio general del producto; cada almacén puede tener el suyo. El factor también recalcula este precio." : watch("price_mode") === "factor" ? "Calculado por factor. Desmarca la casilla para editarlo." : undefined}
         type="text"
         register={register}
         validation={{ required: watch("price_mode") === "factor" ? false : "El precio es obligatorio" }}
@@ -87,7 +89,7 @@ export default function ProductInfoSection({
       </div>
 
       <div className="col-md-4 mb-3">
-        <label className="form-label" htmlFor="product-purchase-cost">Costo de Compra</label>
+        <label className="form-label" htmlFor="product-purchase-cost">{hasWarehouses ? "Costo general de respaldo" : "Costo de Compra"}</label>
 
         <input
           id="product-purchase-cost"
@@ -97,6 +99,8 @@ export default function ProductInfoSection({
           aria-describedby={isEdit ? "product-purchase-cost-help" : undefined}
           {...register("costo_compra")}
         />
+
+        {hasWarehouses && <small className="text-info d-block mt-1">El costo general es necesario para aplicar el factor y se usa como respaldo cuando un almacén no tiene costo propio.</small>}
 
         {isEdit && (
           <small id="product-purchase-cost-help" className="text-warning d-block mt-1">

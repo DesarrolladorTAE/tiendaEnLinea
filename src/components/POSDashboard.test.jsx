@@ -129,3 +129,25 @@ test("opens the cut page in its own URL and preserves the cart when navigating b
     host.remove();
   }
 });
+
+test("classic cards show only authorized modules and preserve the cart when returning to the menu", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  posClient.get.mockResolvedValue(catalog("sales", "history"));
+  const host = document.createElement("div"); document.body.appendChild(host); const root = createRoot(host);
+  const card = label => [...host.querySelectorAll("button")].find(item => item.textContent.startsWith(label));
+  try {
+    await act(async () => root.render(<MemoryRouter><POSDashboard posName="Centro" posLocationId={7} interfaceDesign="clasico" /></MemoryRouter>));
+    expect(host.querySelector('nav[aria-label="Secciones del punto de venta"]')).toBeNull();
+    expect(card("Venta")).toBeDefined(); expect(card("Historial")).toBeDefined(); expect(card("Clientes")).toBeUndefined();
+    await act(async () => card("Venta").click());
+    await act(async () => button(host, "Productos en carrito: 0").click());
+    await act(async () => button(host, "Men\u00fa principal").click());
+    await act(async () => card("Venta").click());
+    expect(button(host, "Productos en carrito: 1")).toBeDefined();
+  } finally { act(() => root.unmount()); host.remove(); }
+});
+
+test("unknown interface defaults to the current navigation", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true; const host = document.createElement("div"), root = createRoot(host);
+  try { await act(async () => root.render(<MemoryRouter><POSDashboard posLocationId={7} interfaceDesign="futuro" /></MemoryRouter>)); expect(host.querySelector('nav[aria-label="Secciones del punto de venta"]')).not.toBeNull(); } finally { act(() => root.unmount()); }
+});

@@ -126,3 +126,11 @@ test("inventory changes refresh cart products even when they are not on the visi
   expect(latest.cart[0].stock_available).toBe(1);
   expect(latest.cart[0].quantity).toBe(2);
 });
+
+test("refreshing inventory updates warehouse prices and preserves a manual discount", async () => {
+  await act(async () => latest.setCart([{ ...line(2), manual_discount: true, discount_percent: 10, original_price: 100 }]));
+  const fresh = { ...products[0], price: 90, variants: [{ ...products[0].variants[0], price: 120, warehouse_stocks: [{ warehouse_id: 2, stock: 4, price: 140 }] }] };
+  client.get.mockImplementation(async (_, config) => ({ data: { products: config.params.per_page === 100 ? [fresh] : [], meta: { last_page: 1 } } }));
+  await act(async () => window.dispatchEvent(new Event("products:changed")));
+  expect(latest.cart[0]).toMatchObject({ original_price: 140, price_original: 140, price: 126, discount_percent: 10 });
+});

@@ -1,5 +1,6 @@
 // src/components/POS/ProductCard.jsx
 import React, { useMemo, useState, useEffect } from "react";
+import { salePriceAfterDiscount } from "../../utils/posSalePrice";
 import { productStock, hasProductVariants, usesWarehouses, variantStock, activeVariant } from "../../utils/productInventory";
 import {
   Paper,
@@ -27,6 +28,20 @@ import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
 import ShoppingCartRoundedIcon from "@mui/icons-material/ShoppingCartRounded";
 import StyleRoundedIcon from "@mui/icons-material/StyleRounded";
+
+const posDialogPaper = {
+  borderRadius: { xs: 2, sm: 2.5 }, overflow: "hidden",
+  m: { xs: 1.5, sm: 4 }, maxHeight: { xs: "calc(100dvh - 24px)", sm: "calc(100% - 64px)" },
+  "& .MuiDialogTitle-root": { bgcolor: "#1c1f24", color: "#fff", borderTop: "4px solid #ffba08" },
+  "& .MuiDialogTitle-root .MuiTypography-root:nth-of-type(2)": { color: "#dedede" },
+  "& .MuiDialogTitle-root .MuiIconButton-root": { color: "#ffba08" },
+  "& .MuiDialogContent-root": { bgcolor: "#fffdf7" },
+  "& .MuiDialogContent-root .MuiPaper-root": { borderRadius: 1.5 },
+  "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 1, "&.Mui-focused fieldset": { borderColor: "#d49a00" } },
+  "& .MuiInputLabel-root.Mui-focused": { color: "#775800" },
+  "& .MuiButton-contained": { bgcolor: "#ffba08", color: "#1c1f24", boxShadow: "none", borderRadius: 1, minHeight: 44, "&:hover": { bgcolor: "#e9a900", boxShadow: "none" }, "&.Mui-disabled": { bgcolor: "#e3e3e3", color: "#888" } },
+  "& .MuiButton-outlined": { color: "#1c1f24", borderColor: "#bfbfbf", borderRadius: 1, minHeight: 44, "&:hover": { bgcolor: "#fff4d0", borderColor: "#d49a00" } },
+};
 
 function money(n) {
   const x = Number(n) || 0;
@@ -64,6 +79,7 @@ export default function ProductCard({
   getQuantityInCart,
   getAvailableStock,
   getProductImage,
+  classic = false,
 }) {
   const theme = useTheme();
 
@@ -92,6 +108,7 @@ export default function ProductCard({
         warehouse_id: r.warehouse_id,
         warehouse_name: r.warehouse_name || `Almacén ${r.warehouse_id}`,
         qty: r.qty ?? 0,
+        price: r.price ?? null,
         location_bin: r.location_bin ?? null,
       }))
       .sort((a, b) => (Number(b.qty) || 0) - (Number(a.qty) || 0));
@@ -145,9 +162,10 @@ export default function ProductCard({
       warehouse_name: row.warehouse_name,
       display_name: `${product?.name} — ${row.warehouse_name}`,
       name: product?.name,
-      original_price: Number(product?.price ?? 0),
-      price_original: Number(product?.price ?? 0),
-      price: Number(priceFinalProduct),
+      original_price: Number(row.price ?? product?.price ?? 0),
+      price_original: Number(row.price ?? product?.price ?? 0),
+      price: salePriceAfterDiscount(Number(row.price ?? product?.price ?? 0), product?.discount),
+      discount: Number(product?.discount || 0),
       quantity: 1,
       has_variants: false,
       stock_available: stock,
@@ -210,9 +228,10 @@ export default function ProductCard({
       warehouse_name: simpleWarehouseRow.warehouse_name,
       display_name: `${product?.name} — ${simpleWarehouseRow.warehouse_name}`,
       name: product?.name,
-      original_price: Number(product?.price ?? 0),
-      price_original: Number(product?.price ?? 0),
-      price: Number(priceFinalProduct),
+      original_price: Number(simpleWarehouseRow.price ?? product?.price ?? 0),
+      price_original: Number(simpleWarehouseRow.price ?? product?.price ?? 0),
+      price: salePriceAfterDiscount(Number(simpleWarehouseRow.price ?? product?.price ?? 0), product?.discount),
+      discount: Number(product?.discount || 0),
       quantity: 1,
       has_variants: false,
       stock_available: Number(stock) || 0,
@@ -257,6 +276,7 @@ export default function ProductCard({
         warehouse_id: r.warehouse_id,
         warehouse_name: r.warehouse_name || `Almacén ${r.warehouse_id}`,
         stock: Number(r.stock) || 0,
+        price: r.price ?? null,
         location_bin: r.location_bin ?? null,
       }))
       .sort((a, b) => (b.stock || 0) - (a.stock || 0));
@@ -288,10 +308,10 @@ export default function ProductCard({
   }, [variantWarehouses, selectedWarehouseId]);
 
   const effectiveUnitPrice = useMemo(() => {
-    const p = selectedVariant?.price ?? product?.price ?? 0;
+    const p = selectedWarehouseRow?.price ?? (variantWarehouses.length === 1 ? variantWarehouses[0]?.price : null) ?? selectedVariant?.price ?? product?.price ?? 0;
     const d = Number(product?.discount) || 0;
     return d > 0 ? Number(discountedPrice(p, d)) : Number(p);
-  }, [selectedVariant, product]);
+  }, [selectedVariant, selectedWarehouseRow, variantWarehouses, product]);
 
   const variantCartKey = useMemo(() => {
     if (!selectedVariantId) return null;
@@ -351,8 +371,9 @@ export default function ProductCard({
       warehouse_id: useWh ? whId : null,
       warehouse_name: useWh ? whRow?.warehouse_name : null,
 
-      original_price: Number(selectedVariant?.price ?? product?.price ?? 0),
-      price_original: Number(selectedVariant?.price ?? product?.price ?? 0),
+      original_price: Number(whRow?.price ?? selectedVariant?.price ?? product?.price ?? 0),
+      price_original: Number(whRow?.price ?? selectedVariant?.price ?? product?.price ?? 0),
+      discount: Number(product?.discount || 0),
       price: Number(effectiveUnitPrice),
 
       display_name: `${product?.name} — ${variantLabel}`,
@@ -388,9 +409,18 @@ export default function ProductCard({
 
   return (
     <>
-      <TableRow hover>
+      {classic ? <Paper variant="outlined" sx={{ p: 1.5, height: "100%", display: "flex", flexDirection: "column", borderRadius: 2.5, borderColor: "#cfe3fa", bgcolor: "#f8fbff" }}>
+        <Box sx={{ height: { xs: 135, sm: 150 }, borderRadius: 2, overflow: "hidden", bgcolor: "#e9eff4", display: "grid", placeItems: "center" }}>{productImg ? <Box component="img" src={productImg} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover" }} onError={event => { event.currentTarget.style.display = "none"; event.currentTarget.nextSibling.style.display = "grid"; }} /> : null}<Box aria-label="Sin imagen" sx={{ display: productImg ? "none" : "grid", placeItems: "center", color: "#98a6b5" }}><Inventory2RoundedIcon sx={{ fontSize: 45 }} /></Box></Box>
+        <Typography sx={{ fontWeight: 900, fontSize: 17, mt: 1, lineHeight: 1.2, overflowWrap: "anywhere", flex: 1 }}>{product.name}</Typography>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75 }}>SKU: {product.sku || "-"}</Typography>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1, mb: 1.5 }}><Typography sx={{ fontWeight: 900, fontSize: 20 }}>${priceFinalProduct}</Typography><Chip size="small" label={`Stock: ${stock ?? "-"}`} sx={{ fontWeight: 800, bgcolor: "#e0f5ed", color: "#155e48" }} /></Stack>
+        <Button variant="contained" startIcon={<ShoppingCartRoundedIcon />} disabled={!hasVariants && (stock === null || pieces >= stock)} onClick={hasVariants ? openDetails : addSimpleOne} aria-label={hasVariants ? `Ver variantes de ${product.name}` : `Agregar ${product.name}`} sx={{ bgcolor: "#1976d2", textTransform: "none", fontWeight: 900, borderRadius: 2, "&:hover": { bgcolor: "#135da5" } }}>{hasVariants ? "Ver variantes" : "Agregar"}</Button>
+      </Paper> : <TableRow hover>
         <TableCell sx={{ overflowWrap: "anywhere", color: "text.secondary" }}>
-          {product.sku || "—"}
+          <Stack direction="row" spacing={1} alignItems="center">
+            {productImg && <Box component="img" src={productImg} alt="" onError={(event) => { event.currentTarget.style.display = "none"; event.currentTarget.nextSibling.style.display = "flex"; }} sx={{ width: 44, height: 44, objectFit: "contain", borderRadius: 2, bgcolor: "#fff", border: "1px solid rgba(0,0,0,0.06)", flexShrink: 0 }} />}
+            <Box aria-label="Sin imagen" sx={{ display: productImg ? "none" : "flex", width: 44, height: 44, alignItems: "center", justifyContent: "center", bgcolor: "action.hover", borderRadius: 2, flexShrink: 0 }}><Inventory2RoundedIcon fontSize="small" color="disabled" /></Box>
+          </Stack>
         </TableCell>
         <TableCell sx={{ overflowWrap: "anywhere" }}>
           <ButtonBase
@@ -409,13 +439,13 @@ export default function ProductCard({
           >
             <Box>
               <Typography variant="body2" fontWeight={800}>{product.name}</Typography>
+              <Typography display="block" variant="caption" color="text.secondary">SKU: {product.sku || "-"}</Typography>
               {hasVariants && <Typography variant="caption" color="text.secondary">Ver variantes</Typography>}
             </Box>
           </ButtonBase>
         </TableCell>
-        <TableCell align="right">{pieces}</TableCell>
-        <TableCell align="right">{stock ?? "—"}</TableCell>
-      </TableRow>
+        <TableCell align="right" sx={{ fontWeight: 800, color: "text.primary" }}>{stock ?? "—"}</TableCell>
+      </TableRow>}
 
       {/* MODAL ALMACÉN (producto simple multi) — solo aparece si hay 2+ almacenes */}
       <Dialog
@@ -423,7 +453,7 @@ export default function ProductCard({
         onClose={() => setOpenSimpleWh(false)}
         fullWidth
         maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 4, overflow: "hidden" } }}
+        PaperProps={{ sx: posDialogPaper }}
       >
         <DialogTitle sx={{ p: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -527,7 +557,7 @@ export default function ProductCard({
         onClose={closeDetails}
         fullWidth
         maxWidth="lg"
-        PaperProps={{ sx: { borderRadius: 4, overflow: "hidden" } }}
+        PaperProps={{ sx: posDialogPaper }}
       >
         <DialogTitle sx={{ p: 2 }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
@@ -579,8 +609,9 @@ export default function ProductCard({
                           sx={{
                             display: "flex", justifyContent: "space-between", gap: 1,
                             px: 1, py: 0.75, textAlign: "left", borderRadius: 1,
-                            bgcolor: selected ? "action.selected" : "transparent",
-                            "&:hover, &.Mui-focusVisible": { bgcolor: "action.hover" },
+                            bgcolor: selected ? "#fff1c4" : "transparent",
+                            border: "1px solid", borderColor: selected ? "#e4ac17" : "transparent",
+                            "&:hover, &.Mui-focusVisible": { bgcolor: "#fff8e5" },
                           }}
                         >
                           <Box sx={{ minWidth: 0, overflowWrap: "anywhere" }}>

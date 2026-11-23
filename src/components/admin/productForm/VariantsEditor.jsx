@@ -1,6 +1,7 @@
 // src/components/admin/productForm/VariantsEditor.jsx
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useWatch, useFormState } from "react-hook-form";
+import FactorPricePreview from "./FactorPricePreview";
 import { productStock, usesWarehouses } from "../../../utils/productInventory";
 
 function HelpOverlay({ open, onClose }) {
@@ -152,6 +153,11 @@ function AttributesEditor({ control, register, vIndex }) {
  */
 function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, warehouses = [] }) {
   const useWarehouses = watch("use_warehouse_inventory");
+  const factorMode = useWatch({ control, name: "price_mode" }) === "factor";
+  const factor = useWatch({ control, name: "profit_factor" });
+  const iva = useWatch({ control, name: "iva" });
+  const productCost = useWatch({ control, name: "costo_compra" });
+  const variantCost = useWatch({ control, name: `variants.${vIndex}.purchase_cost` });
 
   const warehouseInventories = useWatch({ control, name: "warehouse_inventories" }) || [];
   const selectedIds = useMemo(() => {
@@ -400,6 +406,14 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
                   />
                 </div>
 
+                <div className="col-md-3 mb-2">
+                  <label className="form-label text-white">Costo de compra</label>
+                  <input className="form-control" type="number" min="0" step="any" placeholder="Usar costo de variante" {...register(`variants.${vIndex}.warehouse_stocks.${i}.purchase_cost`)} />
+                </div>
+                <div className="col-md-3 mb-2">
+                  <label className="form-label text-white">Precio de venta</label>
+                  <input className="form-control" type="number" min="0" step="any" readOnly={factorMode} placeholder="Usar precio de variante" {...register(`variants.${vIndex}.warehouse_stocks.${i}.price`)} />
+                </div>
                 <div className="col-md-6 mb-2">
                   <label className="form-label text-white">Ubicación</label>
                   <input
@@ -410,9 +424,7 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
                 </div>
               </div>
 
-              <small className="text-muted">
-                Estos datos se guardan por almacén (control interno).
-              </small>
+              {factorMode ? <FactorPricePreview cost={rows[i]?.purchase_cost} fallbackCost={variantCost === "" || variantCost == null ? productCost : variantCost} fallbackLabel={variantCost === "" || variantCost == null ? "producto" : "variante"} factor={factor} iva={iva} /> : <small className="text-muted">Estos datos se guardan por almacén (control interno).</small>}
             </div>
           ))}
         </div>
@@ -423,6 +435,10 @@ function VariantWarehousesEditor({ control, register, watch, setValue, vIndex, w
 
 export default function VariantsEditor({ control, register, watch, setValue, warehouses = [] }) {
   const [helpOpen, setHelpOpen] = useState(false);
+  const factorMode = useWatch({ control, name: "price_mode" }) === "factor";
+  const factor = useWatch({ control, name: "profit_factor" });
+  const iva = useWatch({ control, name: "iva" });
+  const productCost = useWatch({ control, name: "costo_compra" });
   const { errors } = useFormState({ control });
 
   const { fields, append, remove } = useFieldArray({ control, name: "variants" });
@@ -520,7 +536,8 @@ export default function VariantsEditor({ control, register, watch, setValue, war
 
                 <div className="col-md-4 mb-2">
                   <label className="form-label text-white mb-1">Precio (opcional)</label>
-                  <input className="form-control" type="number" placeholder="Si vacío -> usa precio del producto" {...register(`variants.${index}.price`)} />
+                  <input className="form-control" type="number" readOnly={factorMode} placeholder="Si vacío -> usa precio del producto" {...register(`variants.${index}.price`)} />
+                  {factorMode && <FactorPricePreview cost={variants?.[index]?.purchase_cost} fallbackCost={productCost} factor={factor} iva={iva} />}
                 </div>
 
                 <div className="col-md-4 mb-2">

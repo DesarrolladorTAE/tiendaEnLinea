@@ -57,7 +57,7 @@ test("search preserves the branch factor threshold and another branch without fa
 
 test("changes a factor directly from the table and shows the authoritative price without a full product update", async () => {
   const rows = Array.from({ length: 101 }, (_, index) => ({ id: index + 1, name: `Producto ${index + 1}`, stock: 1, iva: 0.16, price: 145, profit_factor: "45" }));
-  axiosClient.get.mockImplementation(url => Promise.resolve({ data: url === "/admin/productos/1" ? { ...rows[0], purchase_cost: 100 } : url === "/admin/branches/123/products" ? rows : [] }));
+  axiosClient.get.mockImplementation(url => Promise.resolve({ data: url === "/admin/productos/1" ? { ...rows[0], purchase_cost: 100, ...(axiosClient.patch.mock.calls.length ? { profit_factor: "60.0000", price: "160.04", base_price: "137.965517" } : {}) } : url === "/admin/branches/123/products" ? rows : [] }));
   axiosClient.patch.mockResolvedValue({ data: { data: { ...rows[0], profit_factor: "60.0000", price: "160.04", base_price: "137.965517", stock: 999 } } });
   mount(); await tick();
   await act(async () => Simulate.click(host.querySelector('[aria-label="Cambiar factor de utilidad de Producto 1"]')));
@@ -76,7 +76,7 @@ test("changes a factor directly from the table and shows the authoritative price
 
 test("changing one of 101 positive factors to zero hides the column immediately", async () => {
   const rows = Array.from({ length: 101 }, (_, index) => ({ id: index + 1, name: `Producto ${index + 1}`, stock: 1, iva: 0, price: 145, profit_factor: "45.0000" }));
-  axiosClient.get.mockImplementation(url => Promise.resolve({ data: url === "/admin/productos/1" ? { ...rows[0], purchase_cost: 100 } : url === "/admin/branches/123/products" ? rows : [] }));
+  axiosClient.get.mockImplementation(url => Promise.resolve({ data: url === "/admin/productos/1" ? { ...rows[0], purchase_cost: 100, ...(axiosClient.patch.mock.calls.length ? { profit_factor: "0.0000", price: 100, base_price: 100 } : {}) } : url === "/admin/branches/123/products" ? rows : [] }));
   axiosClient.patch.mockResolvedValue({ data: { data: { ...rows[0], profit_factor: "0.0000", price: 100, base_price: 100 } } });
   mount(); await tick();
   await act(async () => Simulate.click(host.querySelector('[aria-label="Cambiar factor de utilidad de Producto 1"]')));

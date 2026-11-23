@@ -7,6 +7,7 @@ import {
   Chip,
   CircularProgress,
   Divider,
+  Stack,
   IconButton,
   TextField,
   Typography,
@@ -25,6 +26,7 @@ import BluetoothIcon from "@mui/icons-material/Bluetooth";
 import SettingsIcon from "@mui/icons-material/Settings";
 import PrintRoundedIcon from "@mui/icons-material/PrintRounded";
 
+import SaleDocumentPreview from "./SaleDocumentPreview";
 import axiosClientPOS from "../../config/axiosClientPOS";
 import { showSuccess, showError } from "../../utils/alerts";
 
@@ -73,6 +75,7 @@ export default function TicketDialog({
   ticketUrl,
   onSend,
   posLocationId,
+  branchId,
 }) {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
@@ -84,6 +87,10 @@ export default function TicketDialog({
   const [sendingPayload, setSendingPayload] = useState(false);
   const [printSetting, setPrintSetting] = useState(null);
   const [autoSent, setAutoSent] = useState(false);
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const [previewAttempt, setPreviewAttempt] = useState(0);
 
   const digitsOnly = (v) =>
     String(v || "")
@@ -148,6 +155,20 @@ export default function TicketDialog({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, sale?.id, printSetting?.enabled, printSetting?.app_type, printSetting?.auto_send_payload]);
+
+  useEffect(() => {
+    if (!open || !sale?.id) return;
+    let active = true;
+    setPreview(null); setPreviewError(false); setPreviewLoading(true);
+    axiosClientPOS.get(`/sales/${sale.id}/documents/default/preview`)
+      .then(({ data }) => {
+        if (!data?.document || !data?.config || !["ticket", "nota_venta", "comprobante"].includes(data.document_type)) throw new Error("Invalid document preview");
+        if (active) setPreview(data);
+      })
+      .catch(() => { if (active) setPreviewError(true); })
+      .finally(() => { if (active) setPreviewLoading(false); });
+    return () => { active = false; };
+  }, [open, sale?.id, previewAttempt]);
 
   const handleClose = () => {
     setPhone("");
@@ -408,332 +429,26 @@ export default function TicketDialog({
 
   if (!open) return null;
 
-  const buttonBaseSx = {
-    minHeight: { xs: 42, sm: 44 },
-    fontSize: { xs: "0.78rem", sm: "0.9rem" },
-    fontWeight: 900,
-    px: { xs: 1, sm: 1.5 },
-    py: 0.9,
-    borderRadius: 2,
-    textTransform: "none",
-    lineHeight: 1.1,
-    "& .MuiButton-startIcon": {
-      mr: { xs: 0.5, sm: 0.8 },
-    },
-  };
+  const totalLabel = sale?.receiptPayload?.is_credit_sale ? "Venta a crédito" : sale?.receiptPayload?.is_pending_sale ? "Venta pendiente" : "Venta completada";
+  const actionColor = meta.color || "#ffba08";
 
-  const ticketPreview = (
-    <Box
-      sx={{
-        width: "100%",
-        flex: "1 1 auto",
-        minHeight: 320,
-        height: isDesktop ? "100%" : 360,
-        borderRadius: 2.5,
-        overflow: "hidden",
-        border: "1px solid",
-        borderColor: "divider",
-        bgcolor: "#fff",
-      }}
-    >
-      {!ticketUrl ? (
-        <Box
-          sx={{
-            height: "100%",
-            minHeight: 260,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexDirection: "column",
-            gap: 1.5,
-            bgcolor: "#fff",
-          }}
-        >
-          <CircularProgress />
-          <Typography sx={{ fontWeight: 900, color: "#6b7280" }}>
-            Cargando ticket...
-          </Typography>
-        </Box>
-      ) : (
-        <iframe
-          src={ticketUrl}
-          width="100%"
-          height="100%"
-          title="Vista previa del documento"
-          style={{
-            border: "none",
-            display: "block",
-            background: "#fff",
-          }}
-        />
-      )}
+  return <Box sx={{ bgcolor: "#fffdf7", border: "1px solid #e6e2d8", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>
+    <Box sx={{ p: { xs: 1.5, sm: 2 }, textAlign: "center", bgcolor: "#f4f1e8", overflow: "hidden" }}>
+      <Typography sx={{ fontWeight: 900, color: "#1c1f24", mb: 1 }}>{totalLabel}</Typography>
+      {sale?.receiptContext?.client && <Box sx={{ mb: 1.5, p: 1, textAlign: "left", border: "1px solid #e7d9ad", bgcolor: "#fffaf0", borderRadius: 1 }}><Typography variant="body2" fontWeight={900}>{sale.receiptContext.client.nombre_alias || sale.receiptContext.client.name || sale.receiptContext.client.nombre}</Typography>{sale.receiptContext.creditSale && <Typography variant="caption" display="block">Venta a fiado{sale.receiptContext.creditAccount?.payment_due_date ? ` - pago: ${String(sale.receiptContext.creditAccount.payment_due_date).slice(0, 10)}` : ""}</Typography>}</Box>}
+      {previewLoading && <Box role="status" sx={{ py: 4 }}><CircularProgress size={24} /><Typography sx={{ mt: 1 }}>Cargando vista previa...</Typography></Box>}
+      {previewError && <Alert severity="warning" sx={{ textAlign: "left" }} action={<Button color="inherit" size="small" onClick={() => setPreviewAttempt(value => value + 1)}>Reintentar</Button>}>No se pudo cargar la vista previa. La venta se guardó; puedes descargar el documento o reintentar.</Alert>}
+      {preview && <SaleDocumentPreview preview={preview} />}
     </Box>
-  );
-
-  const content = (
-    <Box
-      sx={{
-        height: { xs: "100%", lg: "auto" },
-        display: "flex",
-        flexDirection: "column",
-        minHeight: 0,
-        bgcolor: "background.default",
-      }}
-    >
-      <Box
-        sx={{
-          flex: "1 1 auto",
-          minHeight: 0,
-          p: { xs: 1, sm: 1.5, md: 2 },
-          display: "grid",
-          gridTemplateRows: isDesktop ? "minmax(360px, 1fr) auto" : "auto",
-          gap: { xs: 0.75, sm: 1.5 },
-          overflow: isDesktop ? "hidden" : "auto",
-        }}
-      >
-        {ticketPreview}
-
-        {sale?.whatsapp?.attempted && <Alert severity={sale.whatsapp.sent ? "success" : "warning"}>
-          {sale.whatsapp.sent ? "Documento enviado automáticamente por WhatsApp." : "La venta se guardó, pero el envío automático por WhatsApp no se completó. Puedes reintentarlo con el botón WhatsApp."}
-        </Alert>}
-        <TextField
-          label="Número WhatsApp"
-          fullWidth
-          size={isMobile ? "small" : "medium"}
-          value={phone}
-          onChange={(e) => setPhone(digitsOnly(e.target.value))}
-          placeholder="5512345678"
-          inputProps={{
-            maxLength: 10,
-            inputMode: "numeric",
-            pattern: "\\d{10}",
-          }}
-          helperText="Ingresa 10 dígitos."
-        />
-      </Box>
-
-      <Divider />
-
-      <Box
-        sx={{
-          p: { xs: 1, sm: 1.5, md: 2 },
-          flexShrink: 0,
-          bgcolor: "background.paper",
-          pb: { xs: "max(12px, env(safe-area-inset-bottom))", sm: 1.5 },
-        }}
-      >
-        {loadingConfig ? (
-          <Alert severity="info" sx={{ borderRadius: 2, mb: 1 }}>
-            Cargando conectividad...
-          </Alert>
-        ) : printSetting?.enabled ? (
-          <Chip
-            size={isMobile ? "small" : "medium"}
-            label={`Conectado: ${meta.label}`}
-            sx={{
-              mb: 1,
-              maxWidth: "100%",
-              fontWeight: 900,
-              bgcolor: `${meta.color}18`,
-              color: meta.color,
-            }}
-          />
-        ) : (
-          <Alert severity="warning" sx={{ borderRadius: 2, mb: 1 }}>
-            No hay conectividad configurada.
-          </Alert>
-        )}
-
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr 1fr", sm: "1fr 1fr" },
-            gap: { xs: 0.8, sm: 1 },
-          }}
-        >
-          <Button
-            onClick={handleConfiguredPayload}
-            disabled={!canSendPayload}
-            variant="contained"
-            fullWidth
-            startIcon={
-              sendingPayload || loadingConfig ? (
-                <CircularProgress size={17} color="inherit" />
-              ) : (
-                meta.icon
-              )
-            }
-            sx={{
-              ...buttonBaseSx,
-              bgcolor: meta.color,
-              boxShadow: `0 10px 22px ${meta.color}36`,
-              "&:hover": {
-                bgcolor: meta.color,
-                filter: "brightness(.92)",
-              },
-              "&.Mui-disabled": {
-                bgcolor: "#d1d5db",
-                color: "#6b7280",
-                boxShadow: "none",
-              },
-            }}
-          >
-            {sendingPayload || loadingConfig ? "..." : meta.label}
-          </Button>
-
-          <Button
-            onClick={handleSend}
-            disabled={!isValidPhone || isBusy}
-            fullWidth
-            variant="contained"
-            color="success"
-            startIcon={
-              loadingSend ? (
-                <CircularProgress size={17} color="inherit" />
-              ) : (
-                <WhatsAppIcon fontSize="small" />
-              )
-            }
-            sx={buttonBaseSx}
-          >
-            {loadingSend ? "..." : "WhatsApp"}
-          </Button>
-
-          <Button onClick={() => deliverDocumentPdf(axiosClientPOS, sale.id).catch(error => showError(error.message))} disabled={!sale?.id || isBusy} variant="outlined" fullWidth>Descargar documento</Button>
-          <Button
-            onClick={handleClose}
-            disabled={isBusy}
-            fullWidth
-            color="inherit"
-            variant="outlined"
-            sx={{
-              ...buttonBaseSx,
-              gridColumn: "1 / -1",
-            }}
-          >
-            Cerrar
-          </Button>
-        </Box>
-      </Box>
-    </Box>
-  );
-
-  if (isDesktop) {
-    return (
-      <Box
-        sx={{
-          position: "fixed",
-          inset: 0,
-          zIndex: 1400,
-          bgcolor: "rgba(15,23,42,.45)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: 2,
-        }}
-      >
-        <Box
-          sx={{
-            width: "100%",
-            maxWidth: 760,
-            maxHeight: "92vh",
-            bgcolor: "background.paper",
-            borderRadius: 3,
-            overflow: "hidden",
-            boxShadow: "0 24px 80px rgba(0,0,0,.25)",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          <Box
-            sx={{
-              px: 2,
-              py: 1.5,
-              display: "flex",
-              alignItems: "center",
-              borderBottom: "1px solid",
-              borderColor: "divider",
-              flexShrink: 0,
-            }}
-          >
-            <Typography
-              sx={{
-                flex: 1,
-                fontWeight: 900,
-                fontSize: "1.1rem",
-              }}
-            >
-              Documento #{sale?.id || ""}
-            </Typography>
-
-            <IconButton onClick={handleClose}>
-              <CloseIcon />
-            </IconButton>
-          </Box>
-
-          <Box sx={{ minHeight: 0, overflow: "hidden" }}>{content}</Box>
-        </Box>
-      </Box>
-    );
-  }
-
-  return (
-    <Box
-      sx={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 1600,
-        bgcolor: "background.default",
-        display: "flex",
-        flexDirection: "column",
-        width: "100vw",
-        height: "100dvh",
-        overflow: "hidden",
-      }}
-    >
-      <Box
-        sx={{
-          px: 1,
-          py: 0.75,
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          borderBottom: "1px solid",
-          borderColor: "divider",
-          bgcolor: "background.paper",
-          minHeight: { xs: 54, sm: 60 },
-          flexShrink: 0,
-        }}
-      >
-        <IconButton onClick={handleClose} size="small">
-          <ArrowBackIcon />
-        </IconButton>
-
-        <Typography
-          variant="h6"
-          sx={{
-            flex: 1,
-            fontWeight: 900,
-            fontSize: { xs: "0.98rem", sm: "1.08rem" },
-          }}
-        >
-          Documento #{sale?.id || ""}
-        </Typography>
-
-        <IconButton onClick={handleClose} size="small">
-          <CloseIcon />
-        </IconButton>
-      </Box>
-
-      <Box
-        sx={{
-          flex: 1,
-          minHeight: 0,
-          overflow: "hidden",
-        }}
-      >
-        {content}
-      </Box>
-    </Box>
-  );
+    {sale?.whatsapp?.attempted && <Alert severity={sale.whatsapp.sent ? "success" : "warning"}>{sale.whatsapp.sent ? "Documento enviado por WhatsApp." : "La venta se guardó, pero no se pudo enviar por WhatsApp."}</Alert>}
+    <Stack spacing={1} sx={{ p: 2 }}>
+      {loadingConfig && <Typography variant="caption">Consultando configuración de impresión...</Typography>}
+      {!loadingConfig && !printSetting?.enabled && <Alert severity="warning">La impresión no está configurada para este punto de venta.</Alert>}
+      <Button variant="contained" fullWidth startIcon={<PrintRoundedIcon />} disabled={!canSendPayload || printSetting?.app_type === "whatsapp" || printSetting?.app_type === "document_pdf"} onClick={handleConfiguredPayload} sx={{ bgcolor: actionColor, color: "#fff", fontWeight: 900, textTransform: "none", borderRadius: 2, minHeight: 44, "&:hover": { bgcolor: actionColor, filter: "brightness(.9)" } }}>{sendingPayload ? "Imprimiendo..." : "Imprimir"}</Button>
+      <Button variant="outlined" fullWidth onClick={() => deliverDocumentPdf(axiosClientPOS, sale.id).catch(error => showError(error.message))} disabled={!sale?.id || isBusy} sx={{ borderColor: "#c7b27a", color: "#1c1f24", fontWeight: 800, textTransform: "none", borderRadius: 2, minHeight: 44 }}>Descargar ticket</Button>
+      <TextField label="Número WhatsApp" fullWidth size="small" value={phone} onChange={e => setPhone(digitsOnly(e.target.value))} inputProps={{ maxLength: 10, inputMode: "numeric" }} />
+      <Button onClick={handleSend} disabled={!isValidPhone || isBusy} startIcon={<WhatsAppIcon />} sx={{ color: "#187a3f", textTransform: "none", fontWeight: 800 }}>Enviar por WhatsApp</Button>
+      <Button onClick={handleClose} disabled={isBusy} fullWidth variant="outlined" color="inherit" sx={{ textTransform: "none", fontWeight: 800, borderRadius: 2 }}>Nueva venta</Button>
+    </Stack>
+  </Box>;
 }

@@ -4,6 +4,7 @@ import axiosClient from "../../config/axiosClientPOS";
 import { showError, showSuccess } from "../../utils/alerts";
 import { productStock, hasProductVariants, usesWarehouses, validateInventoryItems } from "../../utils/productInventory";
 import { fetchPOSScope, fetchPOSProductPage, loadCartInventory, searchPOSProductField } from "../../utils/posInventory";
+import { resolveSalePrice, salePriceAfterDiscount } from "../../utils/posSalePrice";
 import { notifyInventoryChanged, subscribeInventoryChanges } from "../../utils/inventoryEvents";
 
 export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verifyCheckout, refreshCash }) {
@@ -84,7 +85,12 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
         inventoryProducts.forEach(product => inventoryCache.current.set(String(product.id), product));
         setCart(previous => previous.map(item => {
           const product = inventoryProducts.find(p => String(p.id) === String(item.product_id));
-          return product || refreshCart ? { ...item, stock_available: productStock(product, { variantId: item.variant_id, warehouseId: item.warehouse_id, activeOnly: true }) ?? 0 } : item;
+          if (!product) return refreshCart ? { ...item, stock_available: 0 } : item;
+          const stock_available = productStock(product, { variantId: item.variant_id, warehouseId: item.warehouse_id, activeOnly: true }) ?? 0;
+          const original = refreshCart ? resolveSalePrice(product, item.variant_id, item.warehouse_id) : null;
+          if (original == null) return { ...item, stock_available };
+          const discount = item.manual_discount ? Number(item.discount_percent ?? item.discount ?? 0) : Number(product.discount ?? 0);
+          return { ...item, stock_available, original_price: original, price_original: original, price: salePriceAfterDiscount(original, discount), discount, discount_percent: discount };
         }));
 
         setProducts(data.products.map(product => inventoryCache.current.get(String(product.id)) || product));

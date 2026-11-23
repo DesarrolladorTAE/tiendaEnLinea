@@ -1,6 +1,7 @@
 // src/components/admin/productForm/sections/LocationsProductSection.jsx
 import React, { useMemo } from "react";
 import { useFieldArray, useWatch } from "react-hook-form";
+import FactorPricePreview from "../FactorPricePreview";
 
 /**
  * Multi-almacén (WAREHOUSES)
@@ -22,6 +23,10 @@ export default function LocationsProductSection({
   warehouses = [],
 }) {
   const useWarehouses = watch("use_warehouse_inventory");
+  const factorMode = useWatch({ control, name: "price_mode" }) === "factor";
+  const factor = useWatch({ control, name: "profit_factor" });
+  const iva = useWatch({ control, name: "iva" });
+  const productCost = useWatch({ control, name: "costo_compra" });
 
   // ✅ re-render confiable
   const rows = useWatch({ control, name: "warehouse_inventories" }) || [];
@@ -291,13 +296,14 @@ export default function LocationsProductSection({
 
                         <div className="col-md-2 mb-2">
                           <label className="form-label text-white">
-                            Precio (opcional){" "}
+                            {factorMode ? "Precio guardado" : "Precio (opcional)"}{" "}
                             <span title="Si vacío, usa el global">❓</span>
                           </label>
                           <input
                             className="form-control"
                             type="number"
                             step="0.01"
+                            readOnly={factorMode}
                             placeholder="si vacío: global"
                             {...register(`warehouse_inventories.${i}.price`)}
                           />
@@ -321,9 +327,9 @@ export default function LocationsProductSection({
                   </div>
 
                   {!hasVariants ? (
-                    <small className="text-white">
-                      Si dejas precio/costo vacío, se usa el global.
-                    </small>
+                    <div>
+                      {factorMode ? <FactorPricePreview cost={rows[i]?.purchase_cost} fallbackCost={productCost} factor={factor} iva={iva} /> : <small className="text-white">Si dejas precio/costo vacío, se usa el global.</small>}
+                    </div>
                   ) : (
                     <small className="text-white">
                       Con variantes: el stock/precio por almacén se define dentro

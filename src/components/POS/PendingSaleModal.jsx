@@ -155,15 +155,15 @@ export default function PendingSaleModal({
             PaperProps={{
                 sx: {
                     borderRadius: { xs: 0, sm: 3 },
-                    p: { xs: 1, sm: 2 },
+                    overflow: "hidden",
                 },
             }}
         >
-            <DialogTitle sx={{ fontWeight: 900, textAlign: "center" }}>
+            <DialogTitle sx={{ fontWeight: 900, textAlign: "left", bgcolor: "#1c1f24", color: "#ffba08", borderTop: "4px solid #ffba08" }}>
                 Venta pendiente
             </DialogTitle>
 
-            <DialogContent dividers>
+            <DialogContent dividers sx={{ p: { xs: 2, sm: 3 }, bgcolor: "#fffdf7" }}>
                 {!showAdvanceForm ? (
                     <Stack spacing={2} alignItems="center">
                         <Typography
@@ -177,6 +177,7 @@ export default function PendingSaleModal({
                             fullWidth
                             variant="contained"
                             color="warning"
+                            disableElevation
                             onClick={() => setShowAdvanceForm(true)}
                             sx={{
                                 borderRadius: 3,

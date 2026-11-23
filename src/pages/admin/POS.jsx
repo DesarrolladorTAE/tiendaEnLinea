@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   Grid,
   Collapse,
+  MenuItem,
 } from "@mui/material";
 import { useTheme, alpha, keyframes } from "@mui/material/styles";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
@@ -159,6 +160,7 @@ export default function POS() {
   const [visibles, setVisibles] = useState({});
   const [editando, setEditando] = useState({});
   const [openEdit, setOpenEdit] = useState({});
+  const [savingInterface, setSavingInterface] = useState({});
 
   // ✅ almacenes para selector
   const [warehouses, setWarehouses] = useState([]);
@@ -362,6 +364,7 @@ export default function POS() {
         id: tempId,
         branch_id: activeBranch?.id,
         name: "",
+        interface_design: "actual",
         code: "",
         access_code: generarCodigo(),
 
@@ -397,6 +400,7 @@ export default function POS() {
           const { data } = await axiosClient.post(`/branches/${activeBranch.id}/pos`, {
             name: punto.name,
             access_code: punto.access_code,
+            interface_design: punto.interface_design === "clasico" ? "clasico" : "actual",
           });
           const saved = data?.pos ?? data?.data ?? data;
           setRows((ps) => ps.map((x) => (x.id === id ? saved : x)));
@@ -407,6 +411,7 @@ export default function POS() {
               branch_id: activeBranch.id,
               name: punto.name,
               access_code: punto.access_code,
+              interface_design: punto.interface_design === "clasico" ? "clasico" : "actual",
             });
             const saved = data?.pos ?? data?.data ?? data;
             setRows((ps) => ps.map((x) => (x.id === id ? saved : x)));
@@ -431,6 +436,18 @@ export default function POS() {
     } catch (err) {
       alertFromAxiosError(err, "Error al guardar POS");
     }
+  };
+
+  const updateInterfaceDesign = async (pos, value) => {
+    if (String(pos.id).startsWith("new-")) { actualizarCampo(pos.id, "interface_design", value); return; }
+    setSavingInterface(previous => ({ ...previous, [pos.id]: true }));
+    try {
+      const { data } = await axiosClient.put(`/pos/${pos.id}`, { interface_design: value });
+      const next = data?.pos?.interface_design === "clasico" ? "clasico" : "actual";
+      setRows(previous => previous.map(row => row.id === pos.id ? { ...row, interface_design: next } : row));
+      await showSuccess("Interfaz actualizada");
+    } catch (error) { alertFromAxiosError(error, "No se pudo cambiar la interfaz"); }
+    finally { setSavingInterface(previous => ({ ...previous, [pos.id]: false })); }
   };
 
   const eliminarPunto = async (id) => {
@@ -943,6 +960,11 @@ export default function POS() {
                                   Eliminar
                                 </Button>
                               </Stack>
+
+                              <TextField select size="small" fullWidth disabled={!!savingInterface[pos.id]} label="Interfaz del punto de venta" value={pos?.interface_design === "clasico" ? "clasico" : "actual"} onChange={event => updateInterfaceDesign(pos, event.target.value)} helperText={isNew ? "Se guardará al crear el POS" : "Se guarda al seleccionar"}>
+                                <MenuItem value="actual">Actual - navegación superior</MenuItem>
+                                <MenuItem value="clasico">Clásico - tarjetas</MenuItem>
+                              </TextField>
 
                               {/* Panel de edición real */}
                               <Collapse in={isOpen} timeout={200}>

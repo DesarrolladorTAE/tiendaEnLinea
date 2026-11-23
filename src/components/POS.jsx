@@ -13,11 +13,13 @@ import {
   IconButton,
   Badge,
   Paper,
+  TextField,
   alpha,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
 import ProductsGrid from "./POS/ProductsGrid";
+import ProductCard from "./POS/ProductCard";
 import Cart from "./POS/Cart";
 import { usePOSLogic } from "../hooks/POS/usePOSLogic";
 import TicketDialog from "./POS/TicketDialog";
@@ -30,7 +32,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { showError, showSuccess } from "../utils/alerts";
 
-export default function POS({ cash, cart, setCart, posName, branchId, branchName }) {
+export default function POS({ cash, cart, setCart, posName, branchId, branchName, classic = false }) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -44,11 +46,11 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
 
   // ✅ Drawer carrito
   const [cartOpen, setCartOpen] = useState(false);
-  const mobileCartOpen = !isMdUp && cartOpen;
+  const mobileCartOpen = (classic || !isMdUp) && cartOpen;
 
   useEffect(() => {
-    if (isMdUp) setCartOpen(false);
-  }, [isMdUp]);
+    if (isMdUp && !classic) setCartOpen(false);
+  }, [isMdUp, classic]);
 
   // ✅ Categorías
   const [categories, setCategories] = useState([]);
@@ -120,47 +122,6 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
   );
 
   // ✅ Descargar PDF del ticket
-  useEffect(() => {
-    if (!showTicket || !ticketData?.id) return;
-
-    let alive = true;
-
-    const loadTicket = async () => {
-      try {
-        setTicketBlobUrl((prev) => {
-          if (prev) URL.revokeObjectURL(prev);
-          return "";
-        });
-
-        const resp = await axiosClient.get(
-          `/sales/${ticketData.id}/documents/default/pdf`,
-          { responseType: "arraybuffer" },
-        );
-
-        if (!alive) return;
-
-        const blob = new Blob([resp.data], { type: "application/pdf" });
-        const url = URL.createObjectURL(blob);
-
-        setTicketBlobUrl(url);
-      } catch (e) {
-        console.error("Error cargando ticket:", e);
-
-        if (alive) {
-          showError("❌ No se pudo previsualizar el ticket.");
-          setShowTicket(false);
-        }
-      }
-    };
-
-    loadTicket();
-
-    return () => {
-      alive = false;
-    };
-  }, [showTicket, ticketData?.id]);
-
-  // ✅ Mantener enfoque escáner SOLO desktop
   useEffect(() => {
     if (isTouchDevice) return;
 
@@ -259,10 +220,12 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     }
   };
 
-  const onCheckout = async (payload) => {
+  const onCheckout = async (payload, receiptContext) => {
+    const receiptItems = cart.map(item => ({ ...item }));
     const sale = await handleCheckout(payload);
     if (!sale) return;
 
+    setTicketData(previous => ({ ...previous, receiptItems, receiptPayload: payload, receiptContext, receiptPosName: posName }));
     setSearch("");
     setSelectedCategoryId(null);
     setSelectedVariation({});
@@ -272,7 +235,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     setPage(1);
     await refetchProducts({ nextPage: 1, categoryId: null });
 
-    setCartOpen(false);
+    if (!isMdUp || classic) setCartOpen(true);
 
     if (!isTouchDevice) {
       requestAnimationFrame(() =>
@@ -322,7 +285,9 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     }
   };
 
-  const cartContent = (
+  const cartContent = showTicket ? (
+    <TicketDialog open onClose={handleCloseTicket} sale={ticketData} posLocationId={posLocationId} branchId={branchId} onSend={handleSendTicket} />
+  ) : (
     <Cart
       cart={cart}
       setCart={setCart}
@@ -331,7 +296,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
       checkoutBlocked={!cash.canSell}
       setScannerEnabled={setScannerEnabled}
       setModalDescuentoActivo={setModalDescuentoActivo}
-      variant={isMdUp ? "desktop" : "mobile"}
+      variant={isMdUp && !classic ? "desktop" : "mobile"}
       posLocationId={posLocationId}
     />
   );
@@ -342,11 +307,11 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
         pb: { xs: 12, md: 4 },
       }}
     >
-      <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 2, sm: 2.5 }, mb: 2, "& .mb-3": { mb: "0 !important" } }}>
-        <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "stretch", sm: "center" }} gap={1} mb={1.5}>
+      {classic ? <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2 }}><TextField fullWidth size="small" placeholder="Buscar producto (nombre o SKU)" aria-label="Buscar producto" value={search} onChange={event => setSearch(event.target.value)} onFocus={() => setScannerEnabled(false)} onBlur={() => { if (!isTouchDevice) setScannerEnabled(true); }} /></Paper> : <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 1.5, sm: 1.75 }, mb: 1.5, "& .mb-3": { mb: "0 !important" }, "& .MuiOutlinedInput-root": { borderRadius: "6px" }, "& .MuiInputBase-input": { py: 1 } }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} mb={1}>
           <Box sx={{ minWidth: 0 }}>
-            <Typography id="pos-product-list-title" component="h2" sx={{ color: "#fff !important", fontSize: { xs: 25, sm: 32 }, fontWeight: 500, lineHeight: 1.2, mb: 0.75 }}>
-              <span aria-hidden="true">🛒 </span>Lista de Productos
+            <Typography id="pos-product-list-title" component="h2" sx={{ color: "#fff !important", fontSize: { xs: 20, sm: 24 }, fontWeight: 800, lineHeight: 1.2, mb: 0.4 }}>
+              <span aria-hidden="true">🛒 </span>Productos
             </Typography>
             {(branchName || branchId || posName) && (
               <span className="badge bg-warning text-dark">
@@ -355,17 +320,17 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               </span>
             )}
           </Box>
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{
-            px: 1.75, py: 1.15, minWidth: { sm: 205 }, borderRadius: "18px",
+          <Stack direction="row" spacing={1} alignItems="center" sx={{
+            px: 1, py: 0.75, minWidth: 0, borderRadius: "8px",
             border: "1px solid rgba(255,255,255,.1)", background: "linear-gradient(120deg, #292c30, #202226)",
           }}>
-            <Box sx={{ width: 40, height: 40, borderRadius: "12px", display: "grid", placeItems: "center", flexShrink: 0, color: "#f6ce73", bgcolor: "rgba(246,206,115,.1)", border: "1px solid rgba(246,206,115,.12)" }}>
-              <FiPackage size={21} aria-hidden="true" />
+            <Box sx={{ width: 32, height: 32, borderRadius: "6px", display: "grid", placeItems: "center", flexShrink: 0, color: "#f6ce73", bgcolor: "rgba(246,206,115,.1)", border: "1px solid rgba(246,206,115,.12)" }}>
+              <FiPackage size={18} aria-hidden="true" />
             </Box>
             <Box role="status" sx={{ flex: 1 }}>
               <Typography sx={{ color: "#a8adb5 !important", fontSize: 11 }}>{search.trim() || selectedCategoryId != null ? "Resultados" : "En este punto de venta"}</Typography>
               <Stack direction="row" spacing={0.75} alignItems="baseline">
-                <Typography sx={{ color: "#fff !important", fontSize: 26, fontWeight: 700, lineHeight: 1.2 }}>{Number(meta?.total ?? products.length).toLocaleString("es-MX")}</Typography>
+                <Typography sx={{ color: "#fff !important", fontSize: 19, fontWeight: 700, lineHeight: 1.2 }}>{Number(meta?.total ?? products.length).toLocaleString("es-MX")}</Typography>
                 <Typography sx={{ color: "#d0d3d8 !important", fontSize: 12 }}>productos</Typography>
               </Stack>
             </Box>
@@ -376,7 +341,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               aria-label={refreshingStock ? "Actualizando stock" : "Actualizar stock"}
               title="Actualizar stock"
               sx={{
-                width: 44, height: 44, flexShrink: 0, borderRadius: 2,
+                width: 36, height: 36, flexShrink: 0, borderRadius: 1,
                 bgcolor: "#1d4ed8", color: "#fff",
                 "&:hover": { bgcolor: "#2563eb" },
                 "&.Mui-disabled": { bgcolor: "#1e3a8a", color: "#bfdbfe" },
@@ -397,7 +362,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
             if (!isTouchDevice) setScannerEnabled(true);
           }}
         />
-      </Box>
+      </Box>}
 
       <input
         ref={inputRef}
@@ -417,12 +382,12 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: {
+          gridTemplateColumns: classic ? { xs: "minmax(0, 1fr)", md: "minmax(200px, 245px) minmax(0, 1fr)" } : {
             xs: "minmax(0, 1fr)",
             md: "minmax(0, 1fr) minmax(290px, 0.95fr)",
             lg: "minmax(145px, 175px) minmax(0, 1fr) minmax(320px, 1fr)",
           },
-          gridTemplateAreas: {
+          gridTemplateAreas: classic ? { xs: '"categories" "products" "pagination"', md: '"categories products" "categories pagination"' } : {
             xs: '"categories" "products" "pagination"',
             md: '"categories categories" "products cart" "pagination cart"',
             lg: '"categories products cart" "categories pagination cart"',
@@ -434,6 +399,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
       >
         <Box sx={{ gridArea: "categories", minWidth: 0, display: "grid" }}>
           <CategoriesRail
+            classic={classic}
             categories={categories}
             selectedCategoryId={selectedCategoryId}
             onSelect={setSelectedCategoryId}
@@ -472,16 +438,14 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               )}
             </Stack>
           )}
-          {!refreshingStock && products.length > 0 && (
-            <ProductsGrid
+          {!refreshingStock && products.length > 0 && (classic ? <><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}><Box><Typography component="h2" sx={{ fontWeight: 900, fontSize: 22 }}>Productos</Typography><Typography variant="body2" color="text.secondary">{Number(meta?.total ?? products.length).toLocaleString("es-MX")} encontrados</Typography></Box><Button onClick={refreshStock} aria-label="Actualizar stock" sx={{ minWidth: 40 }}><RefreshRoundedIcon /></Button></Stack><Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(2,minmax(0,1fr))", lg: "repeat(3,minmax(0,1fr))" }, gap: 1.5 }}>{products.map(product => <ProductCard key={product.id} classic product={product} cart={cart} onAdd={handleAdd} getQuantityInCart={getQuantityInCart} getAvailableStock={getAvailableStock} getProductImage={getProductImage} />)}</Box></> : <ProductsGrid
               products={products}
               cart={cart}
               onAdd={handleAdd}
               getQuantityInCart={getQuantityInCart}
               getAvailableStock={getAvailableStock}
               getProductImage={getProductImage}
-            />
-          )}
+            />) }
           {refreshingStock && (
             <Stack role="status" alignItems="center" spacing={2} sx={{
               position: "absolute", inset: 0, pt: { xs: 3, sm: 4 }, px: 2,
@@ -556,27 +520,19 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
           </Box>
         </Paper>}
 
-        {isMdUp && (
+        {isMdUp && !classic && (
           <Box component="section" aria-labelledby="pos-order-title" sx={{ gridArea: "cart", minWidth: 0 }}>
-            <Typography id="pos-order-title" component="h2" variant="h6" sx={{ mb: 1, fontWeight: 900 }}>
-              Tu orden
+            <Typography id="pos-order-title" component="h2" variant="h6" sx={{ mb: 0, px: 2, py: 1.25, fontWeight: 900, bgcolor: "#1c1f24", color: "#fff", borderTop: "3px solid #ffba08", borderRadius: "12px 12px 0 0" }}>
+              {showTicket ? "Ticket de venta" : "Tu orden"}
             </Typography>
             {cartContent}
           </Box>
         )}
 
-        <TicketDialog
-          open={showTicket}
-          onClose={handleCloseTicket}
-          sale={ticketData}
-          ticketUrl={ticketBlobUrl}
-          onPrint={handlePrint}
-          onSend={handleSendTicket}
-          posLocationId={posLocationId}
-        />
+
       </Box>
 
-      {!isMdUp && (
+      {(!isMdUp || classic) && (
         <>
           <Box sx={{ position: "fixed", right: 20, bottom: 96, zIndex: 1500 }}>
             <Badge badgeContent={cartCount} color="error">
@@ -638,26 +594,27 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                background: "#fff",
+                background: "#1c1f24",
+                color: "#fff",
                 flexShrink: 0,
               }}
             >
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                  Tu orden
+                  {showTicket ? "Ticket de venta" : "Tu orden"}
                 </Typography>
 
                 <Typography
                   sx={{
                     fontSize: 12,
-                    color: "#6b7280",
+                    color: "#d1d5db",
                   }}
                 >
                   {cartCount} producto(s)
                 </Typography>
               </Box>
 
-              <IconButton aria-label="Cerrar carrito" onClick={() => setCartOpen(false)}>
+              <IconButton aria-label="Cerrar carrito" onClick={() => setCartOpen(false)} sx={{ color: "#fff" }}>
                 <CloseRoundedIcon />
               </IconButton>
             </Box>

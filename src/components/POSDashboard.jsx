@@ -19,6 +19,7 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import LogoutIcon from "@mui/icons-material/Logout";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 
 import POS from "./POS";
 import HistorialVentas from "./HistorialVentas";
@@ -53,6 +54,10 @@ const sections = [
   { key: "internal_notes", id: "notas", title: "Notas internas", icon: <StickyNote2OutlinedIcon /> },
   { key: "settings", id: "configuracion_pos", title: "Configuración", icon: <SettingsOutlinedIcon /> },
 ];
+
+const classicDescriptions = {
+  caja: "Abre y administra la caja", venta: "Accede al módulo principal de ventas", historial: "Consulta las ventas realizadas", pedidos_web: "Revisa los pedidos de productos de esta caja", ventas_pendientes: "Consulta y cobra ventas pendientes", credito_fiado: "Administra crédito y fiados", clientes: "Consulta y administra clientes", facturas: "Consulta tus facturas", ventas_servicios: "Ventas, reservas y pagos de servicios", reportes_servicios: "Consulta los reportes de servicios", telorecargo: "Recargas, saldo y solicitudes de abono", notas: "Consulta las notas internas", configuracion_pos: "Configura las opciones de la terminal",
+};
 
 const navButton = {
   minHeight: 44,
@@ -114,10 +119,12 @@ function SalesCashGate({ cash, posName }) {
   );
 }
 
-export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, posBranchId }) {
+export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, posBranchId, interfaceDesign = "actual", onRefreshInterface }) {
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const [cart, setCart] = useState([]);
+  const [refreshError, setRefreshError] = useState("");
+  const classic = interfaceDesign === "clasico";
   const modules = useVisiblePOSModules(posLocationId);
   const cash = useCashStatus(posLocationId);
   const activeSession = cash.status?.session;
@@ -132,7 +139,7 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
   const sectionHeader = useRef(null);
 
   const changeSection = (id) => {
-    if (sectionId === id) return;
+    if (requestedSection === id) return;
     setParams((previous) => {
       const query = new URLSearchParams(previous);
       query.set("seccion", id);
@@ -145,6 +152,13 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
     previousSection.current = sectionId;
     sectionHeader.current?.scrollIntoView?.({ block: "start" });
   }, [sectionId]);
+
+  const goToClassicMenu = () => setParams(previous => { const query = new URLSearchParams(previous); query.delete("seccion"); return query; }, { state: location.state });
+  const refreshMenu = async () => {
+    setRefreshError("");
+    await modules.refresh();
+    try { await onRefreshInterface?.(); } catch { setRefreshError("No se pudo actualizar la interfaz del punto de venta."); }
+  };
 
   const signOut = () => {
     localStorage.removeItem("POS_TOKEN");
@@ -182,7 +196,7 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
         if (!cash.canSell) {
           return <SalesCashGate cash={cash} posName={posName} />;
         }
-        return <POS cash={cash} cart={cart} setCart={setCart} posName={posName} branchId={posBranchId} branchName={location.state?.branchName} />;
+        return <POS cash={cash} cart={cart} setCart={setCart} posName={posName} branchId={posBranchId} branchName={location.state?.branchName} classic={classic} />;
       default:
         if (modules.error) return <Alert severity="error">{modules.error}</Alert>;
         if (!modules.keys) return <CircularProgress size={24} aria-label="Consultando módulos" />;
@@ -196,23 +210,23 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
 
   return (
     <Box sx={{ minHeight: "100dvh", minWidth: 0, bgcolor: "#f5f6f8" }}>
-      <Box ref={sectionHeader} component="header" sx={{ bgcolor: "#1d2025", color: "#fff", borderTop: "3px solid #ffc107", boxShadow: "0 4px 16px rgba(23,25,28,.14)" }}>
+      <Box ref={sectionHeader} component="header" sx={{ bgcolor: classic ? "#f3f3f3" : "#1d2025", color: classic ? "#111" : "#fff", borderTop: classic ? "none" : "3px solid #ffc107", boxShadow: classic ? "none" : "0 4px 16px rgba(23,25,28,.14)" }}>
         <Box sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, sm: 3, lg: 4 } }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1.5} sx={{ py: { xs: 1.25, sm: 1.75 }, borderBottom: "1px solid #373a41" }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1.5} sx={{ py: { xs: 1.25, sm: 1.75 }, borderBottom: classic ? "none" : "1px solid #373a41" }}>
             <Stack direction="row" spacing={1.25} alignItems="center" minWidth={0}>
-              <Box sx={{ width: 44, height: 44, flexShrink: 0, borderRadius: 2, display: { xs: "none", sm: "grid" }, placeItems: "center", bgcolor: "#ffc107", color: "#17191c" }}><PointOfSaleOutlinedIcon /></Box>
+              <Box sx={{ width: 44, height: 44, flexShrink: 0, borderRadius: 2, display: { xs: "none", sm: "grid" }, placeItems: "center", bgcolor: classic ? "transparent" : "#ffc107", color: "#17191c" }}><PointOfSaleOutlinedIcon /></Box>
               <Box minWidth={0}>
-                <Typography sx={{ fontSize: 12, color: "#ffc107 !important", fontWeight: 800 }}>Punto de venta</Typography>
-                <Typography variant="h6" noWrap sx={{ color: "#fff !important", fontWeight: 800, lineHeight: 1.25 }}>{posName || "Terminal POS"}</Typography>
+                <Typography sx={{ fontSize: 12, color: classic ? "#444 !important" : "#ffc107 !important", fontWeight: 800 }}>Punto de venta</Typography>
+                <Typography variant="h6" noWrap sx={{ color: classic ? "#111 !important" : "#fff !important", fontWeight: 800, lineHeight: 1.25 }}>{posName || "Terminal POS"}</Typography>
               </Box>
             </Stack>
             <Stack direction="row" gap={0.75} alignItems="center" flexShrink={0}>
               {cashLabel && modules.keys?.includes("cash") && <Chip size="small" label={cashLabel} sx={{ display: { xs: "none", md: "inline-flex" }, bgcolor: activeSession ? "#174434" : "#363a43", color: activeSession ? "#bcf0d8" : "#e2e4e8" }} />}
-              <Button onClick={modules.refresh} disabled={modules.refreshing} aria-label="Actualizar menú" title="Actualizar menú" sx={{ ...navButton, minWidth: 44, "&.Mui-disabled": { color: "#aeb7c2" } }}><RefreshRoundedIcon fontSize="small" /></Button>
-              <Button onClick={signOut} aria-label="Cerrar sesión" sx={{ ...navButton, minWidth: 44 }}><LogoutIcon fontSize="small" /><Box component="span" sx={{ display: { xs: "none", sm: "inline" }, ml: 0.75 }}>Salir</Box></Button>
+              <Button onClick={refreshMenu} disabled={modules.refreshing} aria-label="Actualizar menú" title="Actualizar menú" sx={{ ...navButton, color: classic ? "#333" : navButton.color, minWidth: 44, "&.Mui-disabled": { color: "#aeb7c2" } }}><RefreshRoundedIcon fontSize="small" /></Button>
+              <Button onClick={signOut} aria-label="Cerrar sesión" sx={{ ...navButton, color: classic ? "#c62828" : navButton.color, minWidth: 44 }}><LogoutIcon fontSize="small" /><Box component="span" sx={{ display: { xs: "none", sm: "inline" }, ml: 0.75 }}>Salir</Box></Button>
             </Stack>
           </Stack>
-          <Box component="nav" aria-label="Secciones del punto de venta" sx={{
+          {!classic && <Box component="nav" aria-label="Secciones del punto de venta" sx={{
             display: { xs: "grid", sm: "flex" },
             gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
             flexWrap: "wrap",
@@ -241,19 +255,25 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
                 {title}
               </Button>
             ))}
-          </Box>
+          </Box>}
         </Box>
       </Box>
 
       <Box component="section" aria-labelledby="pos-section-title" sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, sm: 3, lg: 4 }, py: { xs: 2, md: 3 }, minWidth: 0 }}>
-        <Typography id="pos-section-title" component="h1" className={sectionId === "caja" ? undefined : "visually-hidden"} sx={{ color: "#1d2025", fontSize: { xs: 23, md: 29 }, fontWeight: 800, mb: 2, letterSpacing: "-.02em" }}>{section?.title ?? "Módulos del punto de venta"}</Typography>
+        {refreshError && <Alert severity="warning" sx={{ mb: 2 }}>{refreshError}</Alert>}
+        {classic && requestedSection && <Box sx={{ p: 1.25, mb: 2, bgcolor: "#fff", border: "1px solid #e0e0e0", borderRadius: 2, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 1 }}>
+          {visibleSections.filter(item => ["historial", "facturas"].includes(item.id) && item.id !== sectionId).map(item => <Button key={item.id} variant="contained" startIcon={item.icon} onClick={() => changeSection(item.id)} sx={{ minWidth: 140, bgcolor: item.id === "historial" ? "#fb9900" : "#ef4248", textTransform: "none", fontWeight: 800 }}>{item.title}</Button>)}
+          <Button variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={goToClassicMenu} sx={{ minWidth: 140, textTransform: "none", fontWeight: 800 }}>Menú principal</Button>
+        </Box>}
+        {classic && !requestedSection ? <Box component="section" aria-label="Módulos del punto de venta"><Typography component="h1" sx={{ fontSize: { xs: 22, sm: 28 }, fontWeight: 900, mb: 2 }}>Punto de venta: {posName || "Terminal POS"}</Typography>{modules.error ? <Alert severity="error">{modules.error}</Alert> : !modules.keys ? <CircularProgress aria-label="Consultando módulos" /> : visibleSections.length === 0 ? <Alert severity="info">La tienda no tiene módulos visibles para este punto de venta.</Alert> : <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: { xs: 1.5, sm: 2 } }}>{visibleSections.map(({ id, title, icon }, index) => <Button key={id} onClick={() => changeSection(id)} sx={{ minHeight: { xs: 120, sm: 175 }, p: 2, display: "flex", flexDirection: "column", gap: 1, bgcolor: ["#1662b6", "#137368", "#9b5e00", "#157638", "#214bc9", "#a0440d"][index % 6], color: "#fff", borderRadius: 2.5, textTransform: "none", boxShadow: "0 6px 14px #0002", "&:hover": { filter: "brightness(.9)" }, "& .MuiSvgIcon-root": { fontSize: 36 } }}>{icon}<Typography component="span" sx={{ color: "#fff !important", fontWeight: 900, fontSize: 18 }}>{title}</Typography><Typography component="span" sx={{ color: "#fff !important", fontSize: 13, maxWidth: 240, lineHeight: 1.3 }}>{classicDescriptions[id]}</Typography></Button>)}</Box>}</Box> : null}
+        {(!classic || requestedSection) && <><Typography id="pos-section-title" component="h1" className={sectionId === "caja" ? undefined : "visually-hidden"} sx={{ color: "#1d2025", fontSize: { xs: 23, md: 29 }, fontWeight: 800, mb: 2, letterSpacing: "-.02em" }}>{section?.title ?? "Módulos del punto de venta"}</Typography>
         {cash.downloads?.pending && <Alert severity="info" sx={{ mb: 2 }}>Preparando el PDF y Excel del inventario inicial…</Alert>}
         {Boolean(failedDownloads?.length) && (
           <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" onClick={() => cash.downloadOpening(cash.downloads.sessionId, failedDownloads)}>Reintentar</Button>}>
             No se pudo descargar {failedDownloads.map((format) => format === "pdf" ? "PDF" : "Excel").join(" y ")} del inventario inicial.
           </Alert>
         )}
-        <Suspense fallback={<CircularProgress size={24} aria-label="Cargando sección" />}>{renderSection()}</Suspense>
+        <Suspense fallback={<CircularProgress size={24} aria-label="Cargando sección" />}>{renderSection()}</Suspense></>}
       </Box>
     </Box>
   );

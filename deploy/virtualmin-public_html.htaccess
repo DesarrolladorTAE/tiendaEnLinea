@@ -19,7 +19,7 @@ RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=308,L]
 
   Header always set Access-Control-Allow-Origin "%{ORIGIN_OK}e" env=ORIGIN_OK
   Header always set Vary "Origin" env=ORIGIN_OK
-  Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE" env=ORIGIN_OK
+  Header always set Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, PATCH, DELETE" env=ORIGIN_OK
   Header always set Access-Control-Allow-Headers "X-Store-Name, Content-Type, Authorization, X-Requested-With" env=ORIGIN_OK
   Header always set Access-Control-Allow-Credentials "true" env=ORIGIN_OK
   Header always set Access-Control-Max-Age "86400" env=ORIGIN_OK

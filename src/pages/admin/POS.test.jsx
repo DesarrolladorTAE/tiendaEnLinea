@@ -4,7 +4,8 @@ import { MemoryRouter } from "react-router-dom";
 import client from "../../config/axiosClient";
 import POS from "./POS";
 
-jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn() } }));
+jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn() } }));
+jest.mock("../../utils/alerts", () => ({ showSuccess: jest.fn().mockResolvedValue(), showConfirm: jest.fn(), alertFromAxiosError: jest.fn() }));
 jest.mock("../../hooks/useLimitePOS", () => () => ({ limitePermitido: 10 }));
 jest.mock("../../context/AdminUiContext", () => {
   const context = { selectedBranch: { id: 1, name: "Centro" }, setSelectedBranch: jest.fn(), setHideLayout: jest.fn() };
@@ -45,4 +46,20 @@ test("shows Caja only for terminals whose effective modules include it and refre
     act(() => root.unmount());
     client.get.mockReset();
   }
+});
+
+
+test("changes only the interface preference of the selected POS", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  client.get.mockImplementation(async (url) => ({ data: url === "/branches/1/pos" ? { list: [{ id: 10, name: "Terminal Uno", interface_design: "actual" }] } : { data: [] } }));
+  client.put.mockResolvedValue({ data: { pos: { id: 10, interface_design: "clasico" } } });
+  const host = document.createElement("div"), root = createRoot(host); document.body.appendChild(host);
+  try {
+    await act(async () => root.render(<MemoryRouter><POS /></MemoryRouter>));
+    const select = host.querySelector('[role="combobox"]');
+    await act(async () => { select.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })); });
+    const option = [...document.querySelectorAll('[role="option"]')].find(item => item.textContent.includes("Clásico"));
+    await act(async () => option.click());
+    expect(client.put).toHaveBeenCalledWith("/pos/10", { interface_design: "clasico" });
+  } finally { act(() => root.unmount()); host.remove(); }
 });
