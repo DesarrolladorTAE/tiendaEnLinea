@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  Alert, Button, Chip, CircularProgress, FormControlLabel, Stack, Switch, TextField, Typography,
+  Alert, Button, Checkbox, Chip, CircularProgress, FormControlLabel, FormGroup, Stack, Switch, TextField, Typography,
 } from "@mui/material";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -19,11 +19,16 @@ export default function AdminCashDialog({ pos, onClose }) {
   const [history, setHistory] = useState(false);
   const [status, setStatus] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [warehouseDraft, setWarehouseDraft] = useState(null);
   const [until, setUntil] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const path = cashPath(pos.id);
+  const warehouses = status?.report_warehouses;
+  const warehouseIds = warehouseDraft ?? warehouses
+    ?.filter(({ assigned_to_pos, included_in_cash_report }) => !assigned_to_pos && included_in_cash_report)
+    .map(({ id }) => id) ?? [];
   const load = useCallback(async (signal) => {
     try {
       const { data } = await client.get(path, { signal });
@@ -35,6 +40,7 @@ export default function AdminCashDialog({ pos, onClose }) {
         cash_open_time: data.schedule?.open?.slice(0, 5) ?? "",
         cash_close_time: data.schedule?.close?.slice(0, 5) ?? "",
       });
+      return true;
     } catch (err) {
       if (!signal?.aborted) setError(cashError(err, "No se pudo consultar la caja."));
     }
@@ -47,18 +53,18 @@ export default function AdminCashDialog({ pos, onClose }) {
   }, [load]);
 
   const set = (key, value) => setSettings((current) => ({ ...current, [key]: value }));
-  const save = async (event, extend) => {
+  const save = async (event, action) => {
     event.preventDefault();
     if (busy) return;
     setError("");
     setNotice("");
-    if (!extend && Boolean(settings.cash_open_time) !== Boolean(settings.cash_close_time)) {
+    if (action === "schedule" && Boolean(settings.cash_open_time) !== Boolean(settings.cash_close_time)) {
       setError("Indica ambas horas o deja ambas vacías para usar horario libre.");
       return;
     }
     setBusy(true);
     try {
-      if (extend) {
+      if (action === "extend") {
         const date = dayjs.tz(until, cashTimeZone);
         if (!date.isValid() || date.valueOf() <= Date.now()) {
           setError("Indica una fecha y hora futuras en Ciudad de México.");
@@ -66,6 +72,11 @@ export default function AdminCashDialog({ pos, onClose }) {
         }
         await client.post(`${path}/extend`, { authorized_until: date.format("YYYY-MM-DDTHH:mm:ssZ") });
         setNotice("Tiempo extra autorizado.");
+      } else if (action === "warehouses") {
+        await client.put(`${path}/report-warehouses`, {
+          warehouse_ids: warehouses.filter(({ id, assigned_to_pos }) => !assigned_to_pos && warehouseIds.includes(id)).map(({ id }) => id),
+        });
+        setNotice("Almacenes del reporte guardados.");
       } else {
         await client.put(`${path}/schedule`, {
           ...settings,
@@ -74,7 +85,7 @@ export default function AdminCashDialog({ pos, onClose }) {
         });
         setNotice("Configuración guardada.");
       }
-      await load();
+      if (await load() && action === "warehouses") setWarehouseDraft(null);
     } catch (err) {
       setError(cashError(err, "No se pudieron guardar los cambios de caja."));
     } finally {
@@ -96,7 +107,7 @@ export default function AdminCashDialog({ pos, onClose }) {
             {!settings && !error && <CircularProgress size={24} aria-label="Cargando configuración" />}
             {settings && (
               <>
-                <Stack spacing={1.5} sx={cashPanel} component="form" onSubmit={(event) => save(event, false)}>
+                <Stack spacing={1.5} sx={cashPanel} component="form" onSubmit={(event) => save(event, "schedule")}>
                   <Stack direction="row" spacing={1} alignItems="center"><SettingsOutlinedIcon sx={{ color: "#ad7900" }} /><Typography variant="h6" fontWeight={800}>Control y horario</Typography></Stack>
                   <Typography variant="body2" color="text.secondary">Define cómo se abre la caja y en qué horario puede operar.</Typography>
                   <FormControlLabel label="Activar control de caja" control={<Switch checked={settings.cash_control_enabled} disabled={busy} onChange={(_, checked) => set("cash_control_enabled", checked)} />} />
@@ -115,7 +126,36 @@ export default function AdminCashDialog({ pos, onClose }) {
                   </Stack>
                   <Button variant="contained" type="submit" disabled={busy} sx={{ alignSelf: "start" }}>Guardar configuración</Button>
                 </Stack>
-                <Stack spacing={1.5} sx={cashPanel} component="form" onSubmit={(event) => save(event, true)}>
+                {Array.isArray(warehouses) && (
+                  <Stack spacing={1.5} sx={cashPanel} component="form" onSubmit={(event) => save(event, "warehouses")}>
+                    <Typography variant="h6" fontWeight={800}>Almacenes del reporte de caja</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Los almacenes seleccionados se incluyen en las capturas de inventario de apertura y corte.
+                    </Typography>
+                    <FormGroup>
+                      {warehouses.map(({ id, name, assigned_to_pos }) => (
+                        <FormControlLabel
+                          key={id}
+                          label={assigned_to_pos ? `${name} (siempre incluido)` : name}
+                          control={
+                            <Checkbox
+                              checked={Boolean(assigned_to_pos) || warehouseIds.includes(id)}
+                              disabled={busy || assigned_to_pos}
+                              onChange={(_, checked) => setWarehouseDraft(
+                                checked ? [...warehouseIds, id] : warehouseIds.filter((selected) => selected !== id),
+                              )}
+                            />
+                          }
+                        />
+                      ))}
+                    </FormGroup>
+                    {!warehouses.length && <Typography variant="body2">No hay almacenes disponibles.</Typography>}
+                    <Button variant="contained" type="submit" disabled={busy || !warehouseDraft} sx={{ alignSelf: "start" }}>
+                      Guardar almacenes del reporte
+                    </Button>
+                  </Stack>
+                )}
+                <Stack spacing={1.5} sx={cashPanel} component="form" onSubmit={(event) => save(event, "extend")}>
                   <Stack direction="row" spacing={1} alignItems="center"><ScheduleOutlinedIcon sx={{ color: "#ad7900" }} /><Typography variant="h6" fontWeight={800}>Tiempo extra</Typography></Stack>
                   <Typography variant="body2" color="text.secondary">Permite que una caja abierta continúe operando hasta la fecha y hora autorizadas.</Typography>
                   <Chip sx={{ alignSelf: "start" }} label={status.session ? `Caja abierta #${status.session.id}` : "Sin sesión de caja abierta"} />

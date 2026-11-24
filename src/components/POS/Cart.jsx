@@ -330,6 +330,7 @@ export default function CartSidebar({
     : total;
 
   const amountToPay = Number(payableTotal.toFixed(6));
+  const requiresPayment = amountToPay !== 0;
 
   // const payableTotalRounded = Number(payableTotal.toFixed(6));
 
@@ -407,7 +408,7 @@ export default function CartSidebar({
 
       const unitPrice = toNumber(item.price);
 
-      const discount = toNumber(item.discount || 0);
+      const discount = toNumber(item.discount_percent ?? item.discount ?? 0);
 
       return {
         product_id: baseId,
@@ -507,7 +508,7 @@ export default function CartSidebar({
 
         payments = [pendingAdvancePayment];
       }
-    } else {
+    } else if (requiresPayment) {
       if (selectedCount === 1) {
         const m = selected[0];
 
@@ -762,7 +763,7 @@ export default function CartSidebar({
     (creditSale && !canUseCredit) ||
     (!creditSale &&
       ((pendingSale && pendingHasAdvance && !pendingAdvancePayment) ||
-        (!pendingSale && (paymentInvalid || multiInvalid))));
+        (!pendingSale && requiresPayment && (paymentInvalid || multiInvalid))));
 
   const paperSx = {
     display: "block",
@@ -1219,7 +1220,7 @@ export default function CartSidebar({
 
                 </Box>
                 <Box sx={{ display: classic || checkoutStep === 2 ? "block" : "none" }}>
-                {!pendingSale && !creditSale && (
+                {!pendingSale && !creditSale && requiresPayment && (
                   <Box sx={{ mb: 1.5, "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 1, "& fieldset": { borderColor: "#b9b9b9" }, "&:hover fieldset": { borderColor: "#1c1f24" }, "&.Mui-focused fieldset": { borderColor: "#d49a00" } }, "& .MuiInputLabel-root.Mui-focused": { color: "#775800" } }}>
                     <Typography
                       variant="subtitle2"
@@ -1615,7 +1616,7 @@ export default function CartSidebar({
                       ? `Guardar crédito $${amountToPay.toFixed(2)}`
                       : pendingSale
                         ? `Guardar pendiente $${amountToPay.toFixed(2)}`
-                        : `Cobrar $${amountToPay.toFixed(2)}`}
+                        : requiresPayment ? `Cobrar $${amountToPay.toFixed(2)}` : "Registrar venta sin pago"}
                 </Button>
                 </Box>
                 {!classic && <Stack direction="row" spacing={1} sx={{ mt: 2 }}>

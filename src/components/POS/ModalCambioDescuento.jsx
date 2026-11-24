@@ -21,7 +21,7 @@ const ModalCambioDescuento = ({ open, onClose, product, onApply, onOpen }) => {
   const [discount, setDiscount] = useState(""); // en porcentaje
   const [discountedPrice, setDiscountedPrice] = useState(""); // precio final
 
-  const original = parseFloat(product.price_original || product.price);
+  const original = parseFloat(product.price_original ?? product.original_price ?? product.price);
 
   const resetState = () => {
     setActiveStep(0);
@@ -63,9 +63,9 @@ const ModalCambioDescuento = ({ open, onClose, product, onApply, onOpen }) => {
     }
 
     const precio = parseFloat(value);
-    if (precio <= 0 || precio > original) return;
+    if (!Number.isFinite(precio) || precio < 0 || precio > original) return;
 
-    const porcentaje = parseFloat((100 - (precio / original) * 100).toFixed(2));
+    const porcentaje = original === 0 ? 0 : parseFloat((100 - (precio / original) * 100).toFixed(2));
     setDiscountedPrice(value);
     setDiscount(porcentaje);
   };
@@ -74,7 +74,7 @@ const ModalCambioDescuento = ({ open, onClose, product, onApply, onOpen }) => {
     const precio = parseFloat(discountedPrice);
     const porcentaje = parseFloat(discount);
 
-    if (isNaN(precio) || precio <= 0 || precio > original) {
+    if (!Number.isFinite(original) || !Number.isFinite(precio) || precio < 0 || precio > original) {
       return showError("Precio con descuento inválido");
     }
 
