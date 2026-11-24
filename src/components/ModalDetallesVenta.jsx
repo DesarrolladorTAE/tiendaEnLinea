@@ -24,6 +24,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import axiosClient from "../config/axiosClientPOS";
+import SaleBatchAllocations from "./POS/SaleBatchAllocations";
 import POSSaleInformation from "./POSSaleInformation";
 import { getPOSSaleStatus } from "./POS/saleStatus";
 import { posDate, saleInfo } from "../utils/posSaleInfo";
@@ -182,6 +183,7 @@ export default function ModalDetallesVenta({ open, onClose, ventaId, ventaResume
         ) : detalles && sale ? (
           <Stack spacing={2.5}>
             <POSSaleInformation sale={sale} payments={pagos} />
+            <SaleBatchAllocations key={ventaId} saleId={ventaId} lines={items} />
             <Grid container spacing={2}>
               <Grid size={{ xs: 12, md: 8 }}>
                 <Paper

@@ -43,7 +43,7 @@ const NEEDS_LAST4 = ["td", "tc", "transferencia"];
 
 const money = (value) => `$${Number(value || 0).toFixed(2)}`;
 
-export default function PendingSalesPOS({ posLocationId }) {
+export default function PendingSalesPOS({ posLocationId, classic = false }) {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -252,7 +252,11 @@ export default function PendingSalesPOS({ posLocationId }) {
     <Box sx={{ minWidth: 0, maxWidth: 1500, mx: "auto" }}>
       <Paper
         elevation={0}
-        sx={{
+        sx={classic ? {
+          p: { xs: 2, sm: 3 }, borderRadius: 5, mb: 2,
+          border: "1px solid #f4d9ad", background: "linear-gradient(135deg, #fff7ec, #fff 70%)",
+          boxShadow: "0 18px 45px #0001",
+        } : {
           p: { xs: 2, sm: 3 },
           borderRadius: 3,
           mb: 2.5,
@@ -270,37 +274,37 @@ export default function PendingSalesPOS({ posLocationId }) {
         >
           <Box>
             <Stack direction="row" spacing={1.25} alignItems="center">
-              <Box sx={{ width: 42, height: 42, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: 2, bgcolor: "#ffc107", color: "#17191c" }}>
+              <Box sx={{ width: 42, height: 42, flexShrink: 0, display: "grid", placeItems: "center", borderRadius: 2, bgcolor: classic ? "transparent" : "#ffc107", color: classic ? "warning.main" : "#17191c" }}>
                 <PendingActionsOutlinedIcon />
               </Box>
-              <Typography component="h2" sx={{ color: "#fff !important", fontSize: { xs: 25, md: 32 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.035em" }}>
+              <Typography component="h2" sx={{ color: classic ? "text.primary" : "#fff !important", fontSize: { xs: 25, md: classic ? 26 : 32 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.035em" }}>
                 Ventas pendientes
               </Typography>
             </Stack>
 
-            <Typography sx={{ mt: 1, color: "#c7cbd1 !important" }}>Consulta anticipos y saldos por liquidar.</Typography>
+            <Typography sx={{ mt: 1, color: classic ? "text.secondary" : "#c7cbd1 !important" }}>Consulta anticipos y saldos por liquidar.</Typography>
           </Box>
 
           <Button variant="contained" startIcon={<RefreshIcon />} onClick={fetchPendingSales} disabled={loading}
-            sx={{ minHeight: 44, borderRadius: 2, fontWeight: 800, textTransform: "none", bgcolor: "#ffc107", color: "#17191c", boxShadow: "none", "&:hover": { bgcolor: "#ffe082" }, "&.Mui-disabled": { bgcolor: "#4a4330", color: "#e4dbc4" } }}>
+            sx={{ minHeight: 44, borderRadius: 2, fontWeight: 800, textTransform: "none", bgcolor: classic ? "warning.main" : "#ffc107", color: classic ? "#fff" : "#17191c", boxShadow: "none", "&:hover": { bgcolor: classic ? "warning.dark" : "#ffe082" }, "&.Mui-disabled": { bgcolor: "#4a4330", color: "#e4dbc4" } }}>
             {loading ? "Actualizando…" : "Actualizar"}
           </Button>
         </Stack>
 
         <Chip size="small" label={`${sales.length} ${sales.length === 1 ? "venta abierta" : "ventas abiertas"}`}
-          sx={{ mt: 2.5, fontWeight: 800, bgcolor: "#3d3520", color: "#ffd454" }} />
+          sx={{ mt: 2.5, fontWeight: 800, bgcolor: classic ? "warning.dark" : "#3d3520", color: classic ? "#fff" : "#ffd454" }} />
         <Grid container spacing={1.5} sx={{ mt: 1.5 }}>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <SummaryCard title="Total vendido" value={money(totals.total)} />
+          <Grid size={{ xs: 12, sm: classic ? "auto" : 4 }}>
+            <SummaryCard classic={classic} title="Total vendido" value={money(totals.total)} />
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <SummaryCard
+          <Grid size={{ xs: 12, sm: classic ? "auto" : 4 }}>
+            <SummaryCard classic={classic}
               title="Pagado / anticipos"
               value={money(totals.paid)}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 4 }}>
-            <SummaryCard
+          <Grid size={{ xs: 12, sm: classic ? "auto" : 4 }}>
+            <SummaryCard classic={classic}
               title="Saldo pendiente"
               value={money(totals.pending)}
               danger
@@ -597,7 +601,7 @@ export default function PendingSalesPOS({ posLocationId }) {
   );
 }
 
-function SummaryCard({ title, value, danger = false }) {
+function SummaryCard({ title, value, danger = false, classic = false }) {
   return (
     <Paper
       variant="outlined"
@@ -605,13 +609,13 @@ function SummaryCard({ title, value, danger = false }) {
         p: 2,
         borderRadius: 2,
         height: "100%",
-        bgcolor: danger ? "#3b2a2b" : "#292e36",
-        borderColor: danger ? "#754444" : "#494f58",
+        bgcolor: classic ? (danger ? "#fff0ed" : "#fff") : (danger ? "#3b2a2b" : "#292e36"),
+        borderColor: classic ? "divider" : (danger ? "#754444" : "#494f58"),
       }}
     >
       <Typography
         variant="caption"
-        sx={{ color: "#d6dbe2 !important", fontWeight: 700 }}
+        sx={{ color: classic ? "text.secondary" : "#d6dbe2 !important", fontWeight: 700 }}
       >
         {title}
       </Typography>
@@ -620,7 +624,7 @@ function SummaryCard({ title, value, danger = false }) {
           fontSize: { xs: 21, md: 24 },
           fontWeight: 950,
           overflowWrap: "anywhere",
-          color: danger ? "#ffb4ab !important" : "#fff !important",
+          color: classic ? (danger ? "error.main" : "text.primary") : (danger ? "#ffb4ab !important" : "#fff !important"),
         }}
       >
         {value}

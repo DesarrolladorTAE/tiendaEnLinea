@@ -6,11 +6,15 @@ import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import Sidebar from "../pages/admin/Sidebar";
 import { TiendaProvider, useTienda } from "../context/TiendaContext";
 import { AdminUiProvider, useAdminUi } from "../context/AdminUiContext";
+import axiosClient from "../config/axiosClient";
+import { hasPremiumCatalog, WHITE_LABEL_DEMO_PLAN } from "../utils/whiteLabelAccess";
+import { canAccessWorkers, storePlanId } from "../utils/storePlan";
 
 const drawerWidth = 240;
 
 const AdminContent = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [premiumCatalogStoreId, setPremiumCatalogStoreId] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
   const isDesktop = useMediaQuery(useTheme().breakpoints.up("md"));
@@ -18,7 +22,7 @@ const AdminContent = () => {
   useEffect(() => { setMobileOpen(false); }, [location.key, isDesktop]);
 
   // ✅ CORRECTO (tu contexto se llama tiendaLoading)
-  const { tiendaLoading } = useTienda();
+  const { tiendaLoading, tienda } = useTienda();
 
   // ✅ control para ocultar sidebar/topbar desde sucursales
   const { hideLayout } = useAdminUi();
@@ -30,7 +34,24 @@ const AdminContent = () => {
   ];
   const isGlobalSection = globalSections.some((path) => location.pathname.startsWith(path));
   const isPosWorkspace = /^\/admin\/prueba\/pos\/?$/.test(location.pathname);
-  const layoutHidden = !isPosWorkspace && (hideLayout || isGlobalSection);
+  const showGlobalHeader = isGlobalSection;
+  const layoutHidden = !isPosWorkspace && (hideLayout || showGlobalHeader);
+  const storeId = tienda?.id;
+  const planId = storePlanId(tienda);
+  const isDemo = planId === WHITE_LABEL_DEMO_PLAN;
+  const showWorkers = canAccessWorkers(planId);
+  const showWhiteLabel = Boolean(isDemo || (storeId && premiumCatalogStoreId === storeId));
+
+  useEffect(() => {
+    if (!storeId || isDemo || layoutHidden || tiendaLoading) return;
+    const request = new AbortController();
+    axiosClient.get("/mis-complementos", { signal: request.signal })
+      .then(({ data }) => {
+        if (!request.signal.aborted) setPremiumCatalogStoreId(hasPremiumCatalog(data?.data ?? data) ? storeId : null);
+      })
+      .catch(() => { if (!request.signal.aborted) setPremiumCatalogStoreId(null); });
+    return () => request.abort();
+  }, [storeId, isDemo, layoutHidden, tiendaLoading]);
 
   const handleDrawerToggle = () => setMobileOpen((p) => !p);
 
@@ -69,7 +90,7 @@ const AdminContent = () => {
             height: "100vh",
           }}
         >
-          <Sidebar />
+          <Sidebar showWhiteLabel={showWhiteLabel} showWorkers={showWorkers} />
         </Box>
       ) : null}
 
@@ -89,7 +110,7 @@ const AdminContent = () => {
             },
           }}
         >
-          <Sidebar onNavigate={() => setMobileOpen(false)} />
+          <Sidebar showWhiteLabel={showWhiteLabel} showWorkers={showWorkers} onNavigate={() => setMobileOpen(false)} />
         </Drawer>
       ) : null}
 
@@ -121,7 +142,7 @@ const AdminContent = () => {
           </IconButton>
         ) : null}
 
-        {isGlobalSection && (
+        {showGlobalHeader && (
           <Box component="header" sx={{ position: "sticky", top: 0, zIndex: 20, px: { xs: 2, sm: 3, md: 5 }, py: 1.5, bgcolor: "rgba(255,255,255,.92)", backdropFilter: "blur(14px)", borderBottom: "1px solid rgba(32,32,32,.08)" }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
               <Button onClick={() => navigate("/admin/sucursales")} startIcon={<ArrowBackRoundedIcon />} sx={{ color: "#202020", fontWeight: 800, textTransform: "none" }}>Sucursales</Button>

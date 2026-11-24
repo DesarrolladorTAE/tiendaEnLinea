@@ -189,7 +189,7 @@ export default function CategoryModal({
 
       <DialogContent dividers sx={{ borderColor: "rgba(255,255,255,0.06)" }}>
         <Typography variant="body2" sx={{ color: PALETTE.txt }}>
-          Puedes asignar múltiples categorías. Los humanos y sus taxonomías infinitas.
+          Selecciona una o más categorías para este producto.
         </Typography>
 
         <Divider sx={{ my: 2, borderColor: "rgba(255,255,255,0.06)" }} />
@@ -371,9 +371,6 @@ export default function CategoryModal({
               )}
             />
 
-            <Typography variant="caption" sx={{ color: PALETTE.txt, opacity: 0.75 }}>
-              Los grupos se muestran como encabezados. Las hijas van indentadas con la barrita.
-            </Typography>
           </Stack>
         )}
       </DialogContent>

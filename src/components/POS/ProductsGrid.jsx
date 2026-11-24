@@ -10,7 +10,7 @@ export default function ProductsGrid({ products, ...rowProps }) {
           <TableRow>
             <TableCell sx={{ width: { xs: 76, sm: 88 } }}>Imagen</TableCell>
             <TableCell>Producto</TableCell>
-            <TableCell align="right" sx={{ width: { xs: 55, sm: 80 } }}>Stock</TableCell>
+            <TableCell align="right" sx={{ width: { xs: 55, sm: 80 } }}>Físico</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>

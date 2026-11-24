@@ -228,3 +228,15 @@
 
 .trc-history-concept { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere; white-space:normal; line-height:1.45!important; }
 .trc-history-table .MuiTableBody-root .MuiTableCell-root:first-child { white-space:normal; min-width:160px; max-width:240px; }
+
+@media (max-width: 599px) {
+ .trc-module .MuiTab-root { min-height: 48px; }
+ .trc-module .MuiAlert-message { min-width: 0; overflow-wrap: anywhere; }
+ .trc-admin-config { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+ .trc-admin-config > *, .trc-checkout-heading > * { min-width: 0; }
+ .trc-admin-config .MuiButton-root { min-height: 44px; }
+ .trc-cash-payment { padding: 14px; }
+ .trc-checkout-actions > div { flex-direction: column; }
+ .trc-checkout-actions .MuiButton-root { width: 100%; }
+ .trc-detail-heading .MuiStack-root { flex-wrap: wrap; row-gap: 8px; }
+}

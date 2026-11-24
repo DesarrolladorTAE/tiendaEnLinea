@@ -3,30 +3,18 @@ import React, { useRef, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiHome, FiArrowLeft, FiMonitor } from "react-icons/fi";
 import LandingSeo from "../home/LandingSeo";
-import { getLoginBanners } from "../../utils/loginBannerCache";
+import CompanyCertificate from "../../components/login/CompanyCertificate";
+import LoginBanner, { useLoginBanner } from "../../components/login/LoginBanner";
 import axiosClient from "../../config/axiosClient";
 import axiosSuperadmin from "../../config/axiosSuperadmin";
 import LoginForm from "../../components/login/LoginForm";
 import RegisterForm from "../../components/login/RegisterForm";
-import { Modal, Box, Typography, TextField, Button } from "@mui/material";
+import { Modal, Box, Typography, TextField, Button, InputAdornment } from "@mui/material";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import PasswordResetModal from "../../components/login/PasswordResetModal";
 import { showError, showSuccess } from "../../utils/alerts";
 import "./LoginRegister.motion.css";
-
-const getExt = (u = "") => {
-  try {
-    const clean = u.split("?")[0].split("#")[0];
-    return clean.substring(clean.lastIndexOf(".") + 1).toLowerCase();
-  } catch {
-    return "";
-  }
-};
-const isImageUrl = (u) =>
-  ["png", "jpg", "jpeg", "gif", "webp", "avif"].includes(getExt(u));
-const isVideoUrl = (u) => ["mp4", "webm", "ogg"].includes(getExt(u));
-
-const IMAGE_MS = 5000;
-const VIDEO_MS = 15000;
 
 const LoginRegister = () => {
   const navigate = useNavigate();
@@ -55,20 +43,12 @@ const LoginRegister = () => {
   const [storeLogin, setStoreLogin] = useState({ login: "", password: "" });
   const [showResetModal, setShowResetModal] = useState(false);
 
-  const [showCertificateModal, setShowCertificateModal] = useState(false);
-
   const pressTimerRef = useRef(null);
 
   // referencia para hacer scroll al formulario de registro
   const registerFormRef = useRef(null);
 
-  /* ========= BANNERS ========= */
-  const [slidesLogin, setSlidesLogin] = useState([]);
-  const [activeLogin, setActiveLogin] = useState(0);
-  const [activeRegister, setActiveRegister] = useState(0);
-
-  const tLoginRef = useRef(null);
-  const tRegisterRef = useRef(null);
+  const banner = useLoginBanner(modo);
 
   // detectar ?ref o ?promo y pasar directo a registro
   useEffect(() => {
@@ -85,104 +65,6 @@ const LoginRegister = () => {
       }, 250);
     }
   }, []);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const urlOf = (b) =>
-      b?.url || b?.imagen || b?.image_url || b?.path || b?.src || b?.img;
-
-    const isActive = (b) => (b?.is_active ?? b?.activo ?? true) === true;
-
-    const textTags = (b) =>
-      `${b?.tipo || ""} ${b?.etiqueta || ""} ${b?.tag || ""} ${
-        b?.badge || ""
-      } ${b?.posicion || ""} ${b?.ubicacion || ""}`.toLowerCase();
-
-    const listTags = (b) =>
-      [...(b?.etiquetas || []), ...(b?.tags || [])].map((x) =>
-        String(x || "").toLowerCase(),
-      );
-
-    const hasAny = (b, words) =>
-      words.some(
-        (w) =>
-          textTags(b).includes(w) || listTags(b).some((t) => t.includes(w)),
-      );
-
-    (async () => {
-      try {
-        const arr = await getLoginBanners();
-
-        const candidates = arr.filter((b) => isActive(b) && urlOf(b));
-
-        const loginOnly = candidates.filter((b) =>
-          hasAny(b, ["login", "signin", "acceso"]),
-        );
-        const principal = candidates.filter(
-          (b) => String(b?.tipo || "").toLowerCase() === "principal",
-        );
-
-        const pool =
-          loginOnly.length > 0
-            ? loginOnly
-            : principal.length > 0
-              ? principal
-              : candidates;
-
-        const slides = pool.map((b) => ({
-          url: urlOf(b),
-          titulo: b?.titulo || b?.title || "",
-          descripcion: b?.descripcion || b?.description || "",
-        }));
-
-        if (mounted) {
-          setSlidesLogin(slides);
-          setActiveLogin(0);
-          setActiveRegister(0);
-        }
-      } catch (e) {
-        console.error("Error cargando banners (login):", e);
-        if (mounted) setSlidesLogin([]);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  const scheduleLogin = (idx) => {
-    clearTimeout(tLoginRef.current);
-    if (modo !== "login" || slidesLogin.length < 2) return;
-    const slide = slidesLogin[idx];
-    const dur = slide && isVideoUrl(slide.url) ? VIDEO_MS : IMAGE_MS;
-    tLoginRef.current = setTimeout(() => {
-      setActiveLogin((p) => (p + 1) % slidesLogin.length);
-    }, dur);
-  };
-
-  const scheduleRegister = (idx) => {
-    clearTimeout(tRegisterRef.current);
-    if (modo !== "register" || slidesLogin.length < 2) return;
-    const slide = slidesLogin[idx];
-    const dur = slide && isVideoUrl(slide.url) ? VIDEO_MS : IMAGE_MS;
-    tRegisterRef.current = setTimeout(() => {
-      setActiveRegister((p) => (p + 1) % slidesLogin.length);
-    }, dur);
-  };
-
-  useEffect(() => {
-    if (modo === "login") scheduleLogin(activeLogin);
-    return () => clearTimeout(tLoginRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, activeLogin, slidesLogin]);
-
-  useEffect(() => {
-    if (modo === "register") scheduleRegister(activeRegister);
-    return () => clearTimeout(tRegisterRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modo, activeRegister, slidesLogin]);
 
   /* ========= Login ========= */
   const handleLogin = async (e) => {
@@ -269,26 +151,9 @@ const LoginRegister = () => {
   };
 
   const isLogin = modo === "login";
-  const slides = slidesLogin;
-  const active = isLogin ? activeLogin : activeRegister;
-  const setActiveIdx = isLogin ? setActiveLogin : setActiveRegister;
-  const current = slides[active];
-  const hasMedia = Boolean(current?.url);
-  const isVid = hasMedia && isVideoUrl(current.url);
-  const isImg = hasMedia && isImageUrl(current.url);
-
-  useEffect(() => {
-    if (slides.length < 2) return;
-    const next = slides[(active + 1) % slides.length];
-    if (!isImageUrl(next?.url)) return;
-    const image = new Image();
-    image.decoding = "async";
-    image.src = next.url;
-  }, [active, slides]);
-
   const panelClass =
     `auth-panel ${isLogin ? "grid-login img-left" : "grid-register img-right"} ` +
-    (!hasMedia ? "no-media" : "");
+    (!banner.current ? "no-media" : "");
 
   return (
     <>
@@ -304,72 +169,7 @@ const LoginRegister = () => {
 
         <div className="container">
           <div className={panelClass}>
-            {/* MEDIA */}
-            {hasMedia ? (
-              <aside className="col-media">
-                <div key={current.url} className="auth-banner">
-                  <div className="frame">
-                    {isImg && (
-                      <img
-                        src={current.url}
-                        alt={current.titulo || "banner"}
-                        className="auth-img"
-                        decoding="async"
-                        style={{
-                          width: "100%",
-                          height: "auto",
-                          display: "block",
-                          borderRadius: 12,
-                        }}
-                      />
-                    )}
-
-                    {isVid && (
-                      <video
-                        key={current.url}
-                        className="auth-video"
-                        src={current.url}
-                        preload="metadata"
-                        autoPlay
-                        muted
-                        playsInline
-                        loop={false}
-                        controls={false}
-                        style={{
-                          width: "100%",
-                          height: "auto",
-                          display: "block",
-                          borderRadius: 12,
-                          background: "#000",
-                          objectFit: "contain",
-                        }}
-                      />
-                    )}
-                  </div>
-
-                  {slides.length > 1 && (
-                    <div className="auth-banner-dots">
-                      {slides.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            if (isLogin) {
-                              clearTimeout(tLoginRef.current);
-                              setActiveIdx(i);
-                            } else {
-                              clearTimeout(tRegisterRef.current);
-                              setActiveIdx(i);
-                            }
-                          }}
-                          className={`dot ${i === active ? "active" : ""}`}
-                          aria-label={`Ir al banner ${i + 1}`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </aside>
-            ) : null}
+            <LoginBanner {...banner} />
 
             {/* FORM */}
             <main className="col-form">
@@ -441,114 +241,7 @@ const LoginRegister = () => {
                   }}
                 />
 
-                {/* CERTIFICACIÓN SUPERIOR DERECHA */}
-                <Box
-                  component="button"
-                  type="button"
-                  onClick={() => setShowCertificateModal(true)}
-                  aria-label="Ver certificado de Empresa Guerrerense"
-                  sx={{
-                    position: "relative",
-                    p: 0,
-                    border: "none",
-                    bgcolor: "transparent",
-                    cursor: "pointer",
-                    zIndex: 2,
-                  }}
-                >
-                  <Box
-                    sx={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 0.7,
-                      py: 0.55,
-                      px: 0.8,
-                      borderRadius: "999px",
-                      border: "1px solid rgba(213, 0, 83, 0.20)",
-                      bgcolor: "rgba(255,255,255,0.94)",
-                      boxShadow: "0 5px 16px rgba(0,0,0,0.09)",
-                      backdropFilter: "blur(8px)",
-                      transition: "all 0.25s ease",
-
-                      "&:hover": {
-                        transform: "translateY(-2px) scale(1.02)",
-                        borderColor: "rgba(213, 0, 83, 0.45)",
-                        boxShadow: "0 9px 22px rgba(213, 0, 83, 0.14)",
-                      },
-                    }}
-                  >
-                    {/* MINIATURA */}
-                    <Box
-                      sx={{
-                        width: {
-                          xs: 28,
-                          sm: 34,
-                        },
-                        height: {
-                          xs: 28,
-                          sm: 34,
-                        },
-                        borderRadius: "70%",
-                        overflow: "hidden",
-                        flexShrink: 0,
-                        bgcolor: "#fff",
-                        border: "1.5px solid #d50053",
-                      }}
-                    >
-                      <Box
-                        component="img"
-                        src="/assets/images/certificado-thumb.jpg"
-                        decoding="async"
-                        alt="Empresa Guerrerense Certificada"
-                        sx={{
-                          width: "100%",
-                          height: "100%",
-                          objectFit: "cover",
-                          objectPosition: "88% 82%",
-                          display: "block",
-                        }}
-                      />
-                    </Box>
-
-                    {/* TEXTO */}
-                    <Box
-                      sx={{
-                        textAlign: "left",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <Typography
-                        sx={{
-                          fontSize: {
-                            xs: "0.48rem",
-                            sm: "0.56rem",
-                          },
-                          fontWeight: 700,
-                          color: "text.secondary",
-                          lineHeight: 1,
-                          textTransform: "uppercase",
-                          letterSpacing: "0.2px",
-                        }}
-                      >
-                        Empresa Guerrerense
-                      </Typography>
-
-                      <Typography
-                        sx={{
-                          fontSize: {
-                            xs: "0.6rem",
-                            sm: "0.7rem",
-                          },
-                          fontWeight: 900,
-                          color: "#d50053",
-                          lineHeight: 1.25,
-                        }}
-                      >
-                        Certificada
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
+                <CompanyCertificate />
               </Box>
 
               <div className="text-center mb-3">
@@ -699,6 +392,8 @@ const LoginRegister = () => {
               label="Correo o teléfono"
               fullWidth
               margin="dense"
+              autoComplete="username"
+              slotProps={{ input: { startAdornment: <InputAdornment position="start"><PersonOutlineRoundedIcon /></InputAdornment> } }}
               value={storeLogin.login}
               onChange={(e) =>
                 setStoreLogin({ ...storeLogin, login: e.target.value })
@@ -709,6 +404,8 @@ const LoginRegister = () => {
               type="password"
               fullWidth
               margin="dense"
+              autoComplete="current-password"
+              slotProps={{ input: { startAdornment: <InputAdornment position="start"><LockOutlinedIcon /></InputAdornment> } }}
               value={storeLogin.password}
               onChange={(e) =>
                 setStoreLogin({ ...storeLogin, password: e.target.value })
@@ -724,279 +421,6 @@ const LoginRegister = () => {
               Ingresar
             </Button>
           </form>
-        </Box>
-      </Modal>
-
-      <Modal
-        open={showCertificateModal}
-        onClose={() => setShowCertificateModal(false)}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          p: {
-            xs: 1,
-            md: 2,
-          },
-        }}
-      >
-        <Box
-          sx={{
-            width: "100%",
-            maxWidth: 1050,
-
-            // En móvil permitimos que el modal use casi toda la pantalla
-            maxHeight: {
-              xs: "98vh",
-              md: "92vh",
-            },
-
-            bgcolor: "background.paper",
-            borderRadius: {
-              xs: "16px",
-              md: "24px",
-            },
-            boxShadow: 24,
-            overflow: "hidden",
-            outline: "none",
-            display: "flex",
-            flexDirection: "column",
-          }}
-        >
-          {/* CABECERA */}
-          <Box
-            sx={{
-              px: {
-                xs: 1.5,
-                md: 3,
-              },
-              py: {
-                xs: 1,
-                md: 2,
-              },
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 1,
-              borderBottom: "1px solid",
-              borderColor: "divider",
-              flexShrink: 0,
-            }}
-          >
-            <Box>
-              <Typography
-                sx={{
-                  fontSize: {
-                    xs: "0.9rem",
-                    md: "1.2rem",
-                  },
-                  fontWeight: 900,
-                  color: "#d50053",
-                  lineHeight: 1.2,
-                }}
-              >
-                Empresa Guerrerense Certificada
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: {
-                    xs: "0.72rem",
-                    md: "0.82rem",
-                  },
-                  color: "text.secondary",
-                }}
-              >
-                Folio 2026-027
-              </Typography>
-            </Box>
-
-            <Button
-              type="button"
-              onClick={() => setShowCertificateModal(false)}
-              sx={{
-                minWidth: "auto",
-                px: {
-                  xs: 1,
-                  md: 2,
-                },
-                fontSize: {
-                  xs: "0.75rem",
-                  md: "0.875rem",
-                },
-                textTransform: "none",
-                fontWeight: 800,
-              }}
-            >
-              Cerrar
-            </Button>
-          </Box>
-
-          {/* CONTENIDO */}
-          <Box
-            sx={{
-              flex: 1,
-              minHeight: 0,
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-            }}
-          >
-            {/* INFORMACIÓN DE CERTIFICACIÓN */}
-            <Box
-              sx={{
-                px: {
-                  xs: 2,
-                  md: 5,
-                },
-                pt: {
-                  xs: 1.5,
-                  md: 2.5,
-                },
-                pb: {
-                  xs: 1.5,
-                  md: 2.5,
-                },
-                flexShrink: 0,
-                bgcolor: "background.paper",
-              }}
-            >
-              <Typography
-                sx={{
-                  fontSize: {
-                    xs: "0.88rem",
-                    md: "1.15rem",
-                  },
-                  fontWeight: 900,
-                  color: "text.primary",
-                  mb: 0.8,
-                  lineHeight: 1.25,
-                }}
-              >
-                Tecnologías Administrativas Elad, S. de R.L. de C.V.
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: {
-                    xs: "0.76rem",
-                    md: "0.9rem",
-                  },
-                  fontWeight: 700,
-                  color: "#d50053",
-                  mb: {
-                    xs: 0.8,
-                    md: 1.2,
-                  },
-                  lineHeight: 1.4,
-                }}
-              >
-                🏢 Consultoría Tecnológica Certificada
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: {
-                    xs: "0.72rem",
-                    md: "0.88rem",
-                  },
-                  lineHeight: 1.5,
-                  color: "text.secondary",
-                  mb: 0.7,
-                }}
-              >
-                📜 Certificado de Empresa Guerrerense | Folio: 2026-027
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: {
-                    xs: "0.7rem",
-                    md: "0.88rem",
-                  },
-                  lineHeight: 1.5,
-                  color: "text.secondary",
-                }}
-              >
-                ⚖️ Avalado por la Secretaría de Fomento y Desarrollo Económico
-                conforme a la Ley de Fomento Económico, Inversión y Desarrollo
-                del Estado de Guerrero.
-              </Typography>
-            </Box>
-
-            {/* SEPARADOR */}
-            <Box
-              sx={{
-                mx: {
-                  xs: 2,
-                  md: 5,
-                },
-                borderTop: "1px solid",
-                borderColor: "divider",
-              }}
-            />
-
-            {/* CERTIFICADO */}
-            <Box
-              sx={{
-                flex: 1,
-                minHeight: 0,
-
-                px: {
-                  xs: 1.5,
-                  md: 5,
-                },
-                pt: {
-                  xs: 1.5,
-                  md: 2.5,
-                },
-                pb: {
-                  xs: 1.5,
-                  md: 3,
-                },
-
-                bgcolor: "#f7f8fa",
-
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Box
-                component="img"
-                src="/assets/images/certificado.png"
-                alt="Certificado de Empresa Guerrerense"
-                sx={{
-                  display: "block",
-
-                  width: {
-                    xs: "100%",
-                    md: "82%",
-                  },
-
-                  maxWidth: "820px",
-
-                  height: "auto",
-
-                  maxHeight: {
-                    xs: "45vh",
-                    md: "48vh",
-                  },
-
-                  objectFit: "contain",
-
-                  borderRadius: {
-                    xs: "10px",
-                    md: "14px",
-                  },
-
-                  boxShadow: "0 10px 30px rgba(0,0,0,0.14)",
-
-                  bgcolor: "#fff",
-                }}
-              />
-            </Box>
-          </Box>
         </Box>
       </Modal>
     </>

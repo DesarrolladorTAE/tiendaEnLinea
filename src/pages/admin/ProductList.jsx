@@ -19,6 +19,9 @@ import useProductSearchPreference from "../../hooks/useProductSearchPreference";
 import ProductSearchBar from "../../components/products-list/ProductSearchBar";
 import VehicleDetailsDialog from "../../components/vehicles/VehicleDetailsDialog";
 import ProductTable from "../../components/products-list/ProductTable";
+import ProductBatchesDialog from "../../components/admin/ProductBatchesDialog";
+import BatchExpirationsDialog from "../../components/admin/BatchExpirationsDialog";
+import EventBusyOutlinedIcon from "@mui/icons-material/EventBusyOutlined";
 import ProductPagination from "../../components/products-list/ProductPagination";
 import useComplementosActivos from "../../hooks/useComplementosActivos";
 import Taebanner from "../../components/admin/promociones/Taebanner";
@@ -60,6 +63,8 @@ import { useAdminUi } from "../../context/AdminUiContext";
 const ProductImages = lazy(() => import("./ProductImages"));
 
 const ProductList = () => {
+  const [batchProduct, setBatchProduct] = useState(null);
+  const [showBatchExpirations, setShowBatchExpirations] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -447,6 +452,13 @@ const ProductList = () => {
             </button>
           )}
 
+          {activeBranch?.id && (
+            <Box sx={{ order: { xs: 1, md: 0 }, flexBasis: { xs: "100%", md: "auto" }, flexGrow: { md: 1 } }}>
+              <button type="button" className="btn btn-outline-warning d-inline-flex align-items-center gap-2"
+                onClick={() => setShowBatchExpirations(true)}><EventBusyOutlinedIcon fontSize="small" /> Caducidades</button>
+            </Box>
+          )}
+
           {puedeCrear ? (
             <Link
               to="new"
@@ -468,7 +480,15 @@ const ProductList = () => {
 
         {error && <p role="alert" className="text-danger text-center">{error} <button className="btn btn-sm btn-outline-warning" onClick={fetchProductos}>Reintentar</button></p>}
 
+        {activeBranch?.id && showBatchExpirations && <BatchExpirationsDialog key={activeBranch.id} branchId={activeBranch.id}
+          onClose={() => setShowBatchExpirations(false)} />}
+        {batchProduct && String(batchProduct.branchId) === String(activeBranch?.id) && (
+          <ProductBatchesDialog product={batchProduct.product} branchId={batchProduct.branchId}
+            onClose={() => setBatchProduct(null)} onChanged={refreshAfterImport} />
+        )}
+
         <ProductTable
+          onOpenBatches={activeBranch?.id ? product => setBatchProduct({ product, branchId: activeBranch.id }) : undefined}
           showVehicleCompatibilities={Number(tienda?.id) === 566}
           onOpenVehicles={setVehicleProduct}
           products={products}

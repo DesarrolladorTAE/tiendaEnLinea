@@ -325,6 +325,22 @@
 .col-form .MuiInputLabel-root.Mui-focused{ color:#2065d1 !important; }
 
 /* Si alguna animación/‘reveal’ los deja ocultos */
+.col-form .auth-credential .MuiInputBase-root {
+  display: flex !important;
+  border-radius: 10px;
+}
+.col-form .auth-credential .MuiInputBase-input {
+  border: 0 !important;
+  background: transparent !important;
+  box-sizing: border-box;
+  height: 48px !important;
+  padding: 10px 0 !important;
+  flex: 1;
+}
+.col-form .auth-credential .MuiInputAdornment-root {
+  color: #64748b;
+}
+
 .col-form .fade-in,
 .col-form .reveal,
 .col-form .form-row{

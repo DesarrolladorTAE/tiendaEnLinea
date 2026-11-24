@@ -37,6 +37,8 @@ export default function ProductForm() {
       profit_factor: "",
       factor_preview_enabled: false,
       stock: "",
+      batch_tracking_enabled: false,
+      expiration_required: false,
       discount: "",
       new: false,
       saleCount: "",
@@ -128,19 +130,38 @@ export default function ProductForm() {
 
             {/* 2) Inventario y Descuento */}
             <AccordionSection title="📦 Inventario y Descuento">
+              <div className="mb-3">
+                <label className="form-check">
+                  <input type="checkbox" className="form-check-input" {...register("batch_tracking_enabled")} />
+                  <span className="form-check-label">Controlar existencias por lote</span>
+                </label>
+                {watch("batch_tracking_enabled") && (
+                  <>
+                    <label className="form-check">
+                      <input type="checkbox" className="form-check-input" {...register("expiration_required")} />
+                      <span className="form-check-label">Exigir fecha exacta de caducidad en las entradas</span>
+                    </label>
+                    <p className="small mt-2 mb-0">
+                      {ui.id ? "Si el producto ya tiene existencias, activa el control mediante Apertura conciliada en Administrar lotes."
+                        : "El producto se crea con existencia cero. Registra el inventario desde Entradas de producto."}
+                    </p>
+                  </>
+                )}
+              </div>
               <InventoryDiscountSection
                 control={control}
                 register={register}
                 errors={errors}
                 watch={watch}
                 setValue={setValue}
+                batchTrackingEnabled={ui.batchTrackingEnabled || watch("batch_tracking_enabled")}
                 hasVariants={ui.hasVariants}
                 isEdit={!!ui.id}
               />
             </AccordionSection>
 
             {/* 3) Variantes */}
-            <AccordionSection title="🧩 Variantes">
+            {!ui.batchTrackingEnabled && !(ui.id && watch("batch_tracking_enabled")) && <AccordionSection title="🧩 Variantes">
               <VariantsSection
                 control={control}
                 register={register}
@@ -148,10 +169,10 @@ export default function ProductForm() {
                 setValue={setValue}
                 warehouses={ui.warehouses} // ✅ ahora warehouses
               />
-            </AccordionSection>
+            </AccordionSection>}
 
             {/* 4) Multi-almacenes (WAREHOUSES) */}
-            <AccordionSection title="🏬 Multi-almacenes (Almacenes)">
+            {!ui.batchTrackingEnabled && !(ui.id && watch("batch_tracking_enabled")) && <AccordionSection title="🏬 Multi-almacenes (Almacenes)">
               <LocationsProductSection
                 control={control}
                 register={register}
@@ -159,7 +180,7 @@ export default function ProductForm() {
                 setValue={setValue}
                 warehouses={ui.warehouses} // ✅ ahora warehouses
               />
-            </AccordionSection>
+            </AccordionSection>}
 
             <VehicleCompatibilitySection branchId={ui.branchId} watch={watch} setValue={setValue} isEdit={!!ui.id} />
 

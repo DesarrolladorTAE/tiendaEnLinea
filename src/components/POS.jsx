@@ -12,6 +12,7 @@ import {
   Drawer,
   IconButton,
   Badge,
+  Chip,
   Paper,
   TextField,
   alpha,
@@ -296,6 +297,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
       checkoutBlocked={!cash.canSell}
       setScannerEnabled={setScannerEnabled}
       setModalDescuentoActivo={setModalDescuentoActivo}
+      classic={classic}
       variant={isMdUp && !classic ? "desktop" : "mobile"}
       posLocationId={posLocationId}
     />
@@ -305,9 +307,10 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     <Box
       sx={{
         pb: { xs: 12, md: 4 },
+        bgcolor: classic ? "#fff" : undefined,
       }}
     >
-      {classic ? <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2 }}><TextField fullWidth size="small" placeholder="Buscar producto (nombre o SKU)" aria-label="Buscar producto" value={search} onChange={event => setSearch(event.target.value)} onFocus={() => setScannerEnabled(false)} onBlur={() => { if (!isTouchDevice) setScannerEnabled(true); }} /></Paper> : <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 1.5, sm: 1.75 }, mb: 1.5, "& .mb-3": { mb: "0 !important" }, "& .MuiOutlinedInput-root": { borderRadius: "6px" }, "& .MuiInputBase-input": { py: 1 } }}>
+      {classic ? <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2 }}><TextField fullWidth placeholder="Buscar producto (nombre o SKU)" inputProps={{ "aria-label": "Buscar producto" }} value={search} onChange={event => setSearch(event.target.value)} onFocus={() => setScannerEnabled(false)} onBlur={() => { if (!isTouchDevice) setScannerEnabled(true); }} /></Paper> : <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 1.5, sm: 1.75 }, mb: 1.5, "& .mb-3": { mb: "0 !important" }, "& .MuiOutlinedInput-root": { borderRadius: "6px" }, "& .MuiInputBase-input": { py: 1 } }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} mb={1}>
           <Box sx={{ minWidth: 0 }}>
             <Typography id="pos-product-list-title" component="h2" sx={{ color: "#fff !important", fontSize: { xs: 20, sm: 24 }, fontWeight: 800, lineHeight: 1.2, mb: 0.4 }}>
@@ -382,7 +385,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: classic ? { xs: "minmax(0, 1fr)", md: "minmax(200px, 245px) minmax(0, 1fr)" } : {
+          gridTemplateColumns: classic ? { xs: "minmax(0, 1fr)", md: "minmax(200px, 260px) minmax(0, 1fr)" } : {
             xs: "minmax(0, 1fr)",
             md: "minmax(0, 1fr) minmax(290px, 0.95fr)",
             lg: "minmax(145px, 175px) minmax(0, 1fr) minmax(320px, 1fr)",
@@ -438,7 +441,29 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               )}
             </Stack>
           )}
-          {!refreshingStock && products.length > 0 && (classic ? <><Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.5 }}><Box><Typography component="h2" sx={{ fontWeight: 900, fontSize: 22 }}>Productos</Typography><Typography variant="body2" color="text.secondary">{Number(meta?.total ?? products.length).toLocaleString("es-MX")} encontrados</Typography></Box><Button onClick={refreshStock} aria-label="Actualizar stock" sx={{ minWidth: 40 }}><RefreshRoundedIcon /></Button></Stack><Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2,minmax(0,1fr))", sm: "repeat(2,minmax(0,1fr))", lg: "repeat(3,minmax(0,1fr))" }, gap: 1.5 }}>{products.map(product => <ProductCard key={product.id} classic product={product} cart={cart} onAdd={handleAdd} getQuantityInCart={getQuantityInCart} getAvailableStock={getAvailableStock} getProductImage={getProductImage} />)}</Box></> : <ProductsGrid
+          {!refreshingStock && products.length > 0 && (classic ? (
+            <>
+              <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} sx={{ mb: 1.25 }}>
+                <Box>
+                  <Typography component="h2" sx={{ fontWeight: 900, fontSize: 22 }}>Productos</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {Number(meta?.total ?? products.length).toLocaleString("es-MX")} encontrados
+                  </Typography>
+                </Box>
+                <Stack direction="row" alignItems="center" spacing={0.5} minWidth={0}>
+                  <Chip size="small" variant="outlined" sx={{ fontWeight: 800, minWidth: 0 }}
+                    label={selectedCategoryId == null ? "Todas las categorías" : categories.find(item => String(item.id) === String(selectedCategoryId))?.name ?? "Categoría seleccionada"} />
+                  <IconButton onClick={refreshStock} aria-label="Actualizar stock" size="small"><RefreshRoundedIcon /></IconButton>
+                </Stack>
+              </Stack>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: 2 }}>
+                {products.map(product => (
+                  <ProductCard key={product.id} classic product={product} cart={cart} onAdd={handleAdd}
+                    getQuantityInCart={getQuantityInCart} getAvailableStock={getAvailableStock} getProductImage={getProductImage} />
+                ))}
+              </Box>
+            </>
+          ) : <ProductsGrid
               products={products}
               cart={cart}
               onAdd={handleAdd}
@@ -559,7 +584,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
 
           {/* Drawer carrito */}
           <Drawer
-            anchor="bottom"
+            anchor={classic && isMdUp ? "right" : "bottom"}
             open={mobileCartOpen}
             onClose={() => setCartOpen(false)}
             disableScrollLock
@@ -571,7 +596,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               sx: {
                 height: "100svh",
                 maxHeight: "100svh",
-                width: "100%",
+                width: classic && isMdUp ? 416 : "100%",
                 borderTopLeftRadius: 0,
                 borderTopRightRadius: 0,
                 background: "#fff",
@@ -594,8 +619,8 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
                 position: "sticky",
                 top: 0,
                 zIndex: 10,
-                background: "#1c1f24",
-                color: "#fff",
+                background: classic ? "#fff" : "#1c1f24",
+                color: classic ? "#111" : "#fff",
                 flexShrink: 0,
               }}
             >
@@ -607,14 +632,14 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
                 <Typography
                   sx={{
                     fontSize: 12,
-                    color: "#d1d5db",
+                    color: classic ? "text.secondary" : "#d1d5db",
                   }}
                 >
                   {cartCount} producto(s)
                 </Typography>
               </Box>
 
-              <IconButton aria-label="Cerrar carrito" onClick={() => setCartOpen(false)} sx={{ color: "#fff" }}>
+              <IconButton aria-label="Cerrar carrito" onClick={() => setCartOpen(false)} sx={{ color: classic ? "text.secondary" : "#fff" }}>
                 <CloseRoundedIcon />
               </IconButton>
             </Box>

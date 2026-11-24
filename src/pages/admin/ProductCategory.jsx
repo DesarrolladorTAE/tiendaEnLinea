@@ -4,13 +4,9 @@ import axiosClient from "../../config/axiosClient";
 import {
   Box,
   Button,
-  Card,
-  CardContent,
-  Container,
   IconButton,
   List,
   ListItem,
-  ListItemText,
   TextField,
   Typography,
   Snackbar,
@@ -21,9 +17,12 @@ import {
   DialogActions,
   CircularProgress,
   Stack,
-  Divider,
   FormControl,
+  FormControlLabel,
+  FormLabel,
   InputLabel,
+  Radio,
+  RadioGroup,
   Select,
   MenuItem,
   Chip,
@@ -34,17 +33,13 @@ import {
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
-import ClearIcon from "@mui/icons-material/Clear";
 import HelpOutlineIcon from "@mui/icons-material/HelpOutline";
 import FolderIcon from "@mui/icons-material/Folder";
 import SubdirectoryArrowRightIcon from "@mui/icons-material/SubdirectoryArrowRight";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import CloseIcon from "@mui/icons-material/Close";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 
-import { useTheme } from "@mui/material/styles";
-import useMediaQuery from "@mui/material/useMediaQuery";
 import { useNavigate } from "react-router-dom";
+import { adminSectionDialog, adminSectionHeader, adminSectionPanel, adminSectionPrimaryAction, adminSectionScope, adminSectionTitle } from "../../components/admin/AdminSectionOption";
 
 // ✅ Hook de gating (el que ya hiciste)
 import useCategoriaPadreGate from "../../hooks/useCategoriaPadreGate";
@@ -56,7 +51,7 @@ const Category = () => {
   const navigate = useNavigate();
 
   // ✅ Gate por plan
-  const { planId, isPlanSoloSueltas, reasonHierarchy, openPlanesModal } =
+  const { isPlanSoloSueltas, reasonHierarchy, openPlanesModal } =
     useCategoriaPadreGate();
 
   // ✅ Sucursal activa
@@ -67,9 +62,6 @@ const Category = () => {
   const [parentsTree, setParentsTree] = useState([]); // tree (padres con hijas)
   const [flat, setFlat] = useState([]); // flat (todas)
   const [loading, setLoading] = useState(false);
-
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   // UI
   const [helpOpen, setHelpOpen] = useState(false);
@@ -87,6 +79,7 @@ const Category = () => {
   // Modal Form
   const [formOpen, setFormOpen] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [categoryType, setCategoryType] = useState("independent");
 
   // Form
   const [form, setForm] = useState({
@@ -131,7 +124,7 @@ const Category = () => {
       setFlat(fCats);
     } catch (error) {
       console.error(error);
-      showSnackbar("❌ Error al cargar categorías", "error");
+      showSnackbar("Error al cargar categorías", "error");
     } finally {
       setLoading(false);
     }
@@ -160,19 +153,19 @@ const Category = () => {
       .sort((a, b) => String(a.name).localeCompare(String(b.name)));
   }, [flat, parentIdsWithChildren]);
 
-  const totalPadres = parentsTree.length;
-  const totalHijas = useMemo(
+  const groupedCount = parentsTree.length;
+  const subcategoryCount = useMemo(
     () => parentsTree.reduce((acc, p) => acc + (p.children?.length ?? 0), 0),
     [parentsTree]
   );
-  const totalSueltas = singles.length;
 
-  const modo = useMemo(() => {
-    if (form.parent_id === "") return "SUELTA";
-    return "HIJA";
-  }, [form.parent_id]);
-
-  const resetForm = () => setForm({ name: "", parent_id: "", editingId: null });
+  const resetForm = () => {
+    setCategoryType("independent");
+    setForm({ name: "", parent_id: "", editingId: null });
+  };
+  const creatingSubcategory = !form.editingId && categoryType === "subcategory";
+  const creatingPrincipal = !form.editingId && categoryType === "principal";
+  const showPrincipalField = Boolean(form.editingId) || creatingSubcategory;
 
   const openCreate = () => {
     if (!activeBranchId) {
@@ -253,7 +246,7 @@ const Category = () => {
   // ===== CRUD =====
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) return;
+    if (formLoading || !form.name.trim() || (creatingSubcategory && form.parent_id === "")) return;
 
     if (!activeBranchId) {
       showSnackbar("Selecciona una sucursal antes de guardar", "warning");
@@ -273,7 +266,7 @@ const Category = () => {
       if (isPlanSoloSueltas && payload.parent_id !== null) {
         showSnackbar(
           reasonHierarchy ||
-            "🔒 Plan Negocio: solo puedes crear categorías sueltas (sin padre y sin hijas).",
+            "El Plan Negocio permite crear categorías independientes.",
           "warning"
         );
         return;
@@ -289,19 +282,28 @@ const Category = () => {
           res?.data?.category ?? res?.data ?? { id: form.editingId, ...payload };
 
         upsertFlat(updated);
-        showSnackbar("✅ Categoría actualizada");
+        showSnackbar("Categoría actualizada");
       } else {
         const res = await axiosClient.post("admin/categories", payload);
         const created = res?.data?.category ?? res?.data;
 
-        if (created?.id) upsertFlat(created);
-        showSnackbar("✅ Categoría creada");
+        if (created?.id) {
+          upsertFlat({ ...payload, ...created });
+          if (creatingPrincipal) {
+            setCategoryType("subcategory");
+            setForm({ name: "", parent_id: Number(created.id), editingId: null });
+            showSnackbar("Categoría creada. Ahora puedes agregar su primera subcategoría.");
+            return;
+          }
+        }
+        showSnackbar("Categoría creada");
       }
 
-      closeForm();
+      setFormOpen(false);
+      resetForm();
     } catch (error) {
       console.error(error);
-      showSnackbar(error?.response?.data?.message ?? "❌ Error al guardar", "error");
+      showSnackbar(error?.response?.data?.message ?? "Error al guardar", "error");
     } finally {
       setFormLoading(false);
     }
@@ -312,7 +314,7 @@ const Category = () => {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteDialog.id) return;
+    if (formLoading || !deleteDialog.id) return;
 
     setFormLoading(true);
     try {
@@ -325,7 +327,7 @@ const Category = () => {
       const hadChildren = flat.some((c) => c.parent_id === id);
 
       setDeleteDialog({ open: false, id: null, name: "" });
-      showSnackbar("🗑️ Categoría eliminada");
+      showSnackbar("Categoría eliminada");
 
       // Si borraste un padre con hijas, el backend puede “soltarlas”.
       if (wasParent && hadChildren) {
@@ -333,563 +335,200 @@ const Category = () => {
       }
     } catch (error) {
       console.error(error);
-      showSnackbar("❌ Error al eliminar", "error");
+      showSnackbar("Error al eliminar", "error");
     } finally {
       setFormLoading(false);
     }
   };
 
+  const renderActions = (category) => (
+    <Stack direction="row" gap={0.5} sx={{ flexShrink: 0 }}>
+      <Tooltip title="Editar">
+        <span><IconButton aria-label={`Editar ${category.name}`} onClick={() => openEdit(category)} disabled={formLoading}>
+          <EditIcon fontSize="small" />
+        </IconButton></span>
+      </Tooltip>
+      <Tooltip title="Eliminar">
+        <span><IconButton aria-label={`Eliminar ${category.name}`} color="error" onClick={() => askDelete(category)} disabled={formLoading}>
+          <DeleteIcon fontSize="small" />
+        </IconButton></span>
+      </Tooltip>
+    </Stack>
+  );
+
+  const renderRow = (category, isSubcategory = false) => (
+    <ListItem key={category.id} disableGutters sx={{ gap: 1, borderBottom: "1px solid", borderColor: "divider", "&:last-child": { borderBottom: 0 } }}>
+      {isSubcategory && <SubdirectoryArrowRightIcon fontSize="small" sx={{ color: "text.secondary", flexShrink: 0 }} />}
+      <Typography fontWeight={700} sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{category.name}</Typography>
+      {renderActions(category)}
+    </ListItem>
+  );
+
+  const closeDelete = () => {
+    if (!formLoading) setDeleteDialog({ open: false, id: null, name: "" });
+  };
+
   return (
-    <Container sx={{ py: 4 }}>
-      {/* HEADER */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: { xs: 2, md: 2.5 },
-          borderRadius: 3,
-          border: (t) => `1px solid ${t.palette.divider}`,
-          mb: 2,
-          background:
-            "linear-gradient(135deg, rgba(12,37,163,0.08), rgba(245,134,52,0.08))",
-        }}
-      >
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          alignItems={{ xs: "center", md: "center" }}
-          textAlign={{ xs: "center", md: "left" }}
-          justifyContent="space-between"
-          gap={2}
-        >
-          <Box>
-            <Typography variant="h5" fontWeight={900}>
-              📁 Categorías
-            </Typography>
-
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              🗂️ Padre = Carpeta. 👶 Hija = Va dentro. 📄 Suelta = No está dentro
-              de nadie.
-            </Typography>
-
-            {/* ✅ Branch visible */}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1, flexWrap: "wrap" }}>
-              <Chip
-                icon={<LocationOnRoundedIcon />}
-                label={
-                  selectedBranch?.name
-                    ? `Sucursal: ${selectedBranch.name}`
-                    : activeBranchId
-                    ? `Sucursal #${activeBranchId}`
-                    : "Sin sucursal"
-                }
-                variant="outlined"
-                sx={{ fontWeight: 800 }}
-              />
-            </Stack>
-
-            {Boolean(planId) && (
-              <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                Plan actual: <b>{planId}</b>{" "}
-                {isPlanSoloSueltas
-                  ? "· Solo SUELTAS ✅ (jerarquía bloqueada 🔒)"
-                  : "· Jerarquía disponible ✅"}
-              </Typography>
-            )}
+    <Box sx={{
+      width: "100%", minWidth: 0, maxWidth: 1500, mx: "auto", pb: 3,
+      "& .MuiButton-root": { minHeight: 44, textTransform: "none", fontWeight: 700, borderRadius: 2.5 },
+      "& .MuiIconButton-root": { minWidth: 44, minHeight: 44 },
+    }}>
+      <Paper elevation={0} sx={adminSectionHeader}>
+        <Stack direction={{ xs: "column", sm: "row" }} gap={2} alignItems={{ sm: "center" }} justifyContent="space-between">
+          <Box sx={{ minWidth: 0 }}>
+            <Typography component="h1" sx={adminSectionTitle}>Categorías</Typography>
+            <Typography sx={{ mt: 1, color: "#c7cbd1" }}>Organiza las categorías de productos de tu sucursal.</Typography>
           </Box>
-
-          <Stack
-            direction="row"
-            gap={1}
-            alignItems="center"
-            justifyContent={{ xs: "center", md: "flex-end" }}
-            flexWrap="wrap"
-          >
-            <Chip icon={<FolderIcon />} label={`Padres: ${totalPadres}`} variant="outlined" />
-            <Chip icon={<SubdirectoryArrowRightIcon />} label={`Hijas: ${totalHijas}`} variant="outlined" />
-            <Chip icon={<LocalOfferIcon />} label={`Sueltas: ${totalSueltas}`} variant="outlined" />
-
-            <Tooltip title="¿Cómo funciona?">
-              <IconButton onClick={() => setHelpOpen(true)}>
-                <HelpOutlineIcon />
-              </IconButton>
-            </Tooltip>
-
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={openCreate}
-              sx={{ borderRadius: 2, textTransform: "none" }}
-              disabled={!activeBranchId}
-            >
-              Nueva categoría
-            </Button>
-
-            {loading && <CircularProgress size={18} />}
-          </Stack>
+          <Chip icon={<LocationOnRoundedIcon />} sx={adminSectionScope}
+            label={selectedBranch?.name || (activeBranchId ? `Sucursal #${activeBranchId}` : "Sin sucursal")} />
         </Stack>
       </Paper>
 
-      {/* CONTENT */}
-      <Stack direction={{ xs: "column", md: "row" }} gap={2} alignItems="flex-start">
-        {/* LEFT */}
-        <Box sx={{ flex: 1, width: "100%" }}>
-          <Typography variant="h6" fontWeight={900} sx={{ mb: 1 }}>
-            🗂️ Padres (con hijas)
-          </Typography>
-
-          {parentsTree.length === 0 ? (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2.5,
-                borderRadius: 3,
-                border: (t) => `1px dashed ${t.palette.divider}`,
-              }}
-            >
-              <Typography fontWeight={900}>No hay padres con hijas todavía 💤</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Crea categorías. Si tu plan permite jerarquía, podrás hacer hijas.
-              </Typography>
-            </Paper>
-          ) : (
-            <Stack gap={2}>
-              {parentsTree.map((p) => (
-                <Card key={p.id} variant="outlined" sx={{ borderRadius: 3, boxShadow: 2, overflow: "hidden" }}>
-                  <Box
-                    sx={{
-                      px: 2,
-                      py: 1.5,
-                      background:
-                        "linear-gradient(135deg, rgba(12,37,163,0.10), rgba(245,134,52,0.10))",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 2,
-                    }}
-                  >
-                    <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
-                      <FolderIcon />
-                      <Typography fontWeight={900}>{p.name}</Typography>
-                      <Chip size="small" label="Padre" variant="outlined" />
-                      <Chip
-                        size="small"
-                        icon={<LocalOfferIcon />}
-                        label={`Hijas: ${p.children?.length ?? 0}`}
-                        variant="outlined"
-                      />
-                    </Stack>
-
-                    <Box>
-                      <Tooltip title="Editar">
-                        <IconButton onClick={() => openEdit(p)} disabled={formLoading} sx={{ mr: 1 }}>
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Eliminar">
-                        <IconButton color="error" onClick={() => askDelete(p)} disabled={formLoading}>
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Box>
-                  </Box>
-
-                  <CardContent sx={{ pt: 1.5 }}>
-                    {p.children?.length ? (
-                      <List dense>
-                        {p.children.map((c) => (
-                          <ListItem
-                            key={c.id}
-                            sx={{
-                              borderRadius: 2,
-                              mb: 0.5,
-                              "&:hover": { bgcolor: "action.hover" },
-                            }}
-                            secondaryAction={
-                              <Box>
-                                <Tooltip title="Editar">
-                                  <IconButton onClick={() => openEdit(c)} sx={{ mr: 1 }} disabled={formLoading}>
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Eliminar">
-                                  <IconButton color="error" onClick={() => askDelete(c)} disabled={formLoading}>
-                                    <DeleteIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            }
-                          >
-                            <ListItemText
-                              primary={
-                                <Stack direction="row" alignItems="center" gap={1}>
-                                  <SubdirectoryArrowRightIcon fontSize="small" />
-                                  <Typography fontWeight={700}>{c.name}</Typography>
-                                  <Chip size="small" label="Hija" variant="outlined" />
-                                </Stack>
-                              }
-                              secondary={`Dentro de: ${p.name}`}
-                            />
-                          </ListItem>
-                        ))}
-                      </List>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">
-                        👶 Sin hijas.
-                      </Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </Stack>
-          )}
-        </Box>
-
-        {/* RIGHT */}
-        <Box sx={{ width: { xs: "100%", md: 380 } }}>
-          <Card variant="outlined" sx={{ borderRadius: 3, boxShadow: 2 }}>
-            <CardContent sx={{ p: 2.5 }}>
-              <Stack direction="row" alignItems="center" justifyContent="space-between">
-                <Typography variant="h6" fontWeight={900}>
-                  📄 Sueltas
-                </Typography>
-                <Chip label={`${singles.length}`} variant="outlined" />
-              </Stack>
-
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Son categorías normales que no están dentro de nadie.
-              </Typography>
-
-              <Divider sx={{ my: 2 }} />
-
-              {singles.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No hay sueltas por ahora.
-                </Typography>
-              ) : (
-                <Box
-                  sx={{
-                    maxHeight: { xs: 260, md: 420 },
-                    overflowY: "auto",
-                    pr: 0.5,
-                    "&::-webkit-scrollbar": { width: 8 },
-                    "&::-webkit-scrollbar-thumb": {
-                      backgroundColor: "rgba(0,0,0,0.25)",
-                      borderRadius: 8,
-                    },
-                    "&::-webkit-scrollbar-track": {
-                      backgroundColor: "rgba(0,0,0,0.06)",
-                      borderRadius: 8,
-                    },
-                  }}
-                >
-                  <List dense sx={{ pr: 1 }}>
-                    {singles.map((c) => (
-                      <ListItem
-                        key={c.id}
-                        sx={{
-                          borderRadius: 2,
-                          mb: 0.5,
-                          "&:hover": { bgcolor: "action.hover" },
-                        }}
-                        secondaryAction={
-                          <Box>
-                            <Tooltip title="Editar">
-                              <IconButton onClick={() => openEdit(c)} sx={{ mr: 1 }} disabled={formLoading}>
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Eliminar">
-                              <IconButton color="error" onClick={() => askDelete(c)} disabled={formLoading}>
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Box>
-                        }
-                      >
-                        <ListItemText
-                          primary={<Typography fontWeight={700}>{c.name}</Typography>}
-                          secondary="📄 Suelta"
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </Box>
-              )}
-
-              <Divider sx={{ my: 2 }} />
-
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={openCreate}
-                fullWidth
-                sx={{ borderRadius: 2, textTransform: "none" }}
-                disabled={!activeBranchId}
-              >
-                Crear nueva
-              </Button>
-            </CardContent>
-          </Card>
-        </Box>
+      <Stack direction={{ xs: "column", sm: "row" }} gap={1.5} alignItems={{ sm: "center" }} justifyContent="space-between" sx={{ mb: 2.5 }}>
+        <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center">
+          <Chip size="small" label={`${groupedCount} principales`} variant="outlined" />
+          <Chip size="small" label={`${subcategoryCount} subcategorías`} variant="outlined" />
+          <Chip size="small" label={`${singles.length} independientes`} variant="outlined" />
+        </Stack>
+        <Stack direction="row" gap={1} alignItems="center">
+          <Tooltip title="Guía de categorías">
+            <IconButton aria-label="Abrir guía de categorías" aria-haspopup="dialog" onClick={() => setHelpOpen(true)}
+              sx={{ bgcolor: "#fff3cd", color: "#684c00", "&:hover": { bgcolor: "#ffe082" } }}>
+              <HelpOutlineIcon />
+            </IconButton>
+          </Tooltip>
+          <Button variant="contained" disableElevation startIcon={<AddIcon />} onClick={openCreate} disabled={!activeBranchId}
+            sx={{ ...adminSectionPrimaryAction, flex: { xs: 1, sm: "none" } }}>Nueva categoría</Button>
+        </Stack>
       </Stack>
 
-      {/* FORM MODAL */}
-      <Dialog
-        open={formOpen}
-        onClose={closeForm}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            width: "100%",
-            maxWidth: 520,
-            m: isMobile ? 2 : "auto",
-          },
-        }}
-      >
-        {isMobile && (
-          <Box
-            sx={{
-              px: 2,
-              py: 1.5,
-              borderBottom: 1,
-              borderColor: "divider",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 2,
-            }}
-          >
-            <Typography fontWeight={900}>
-              {form.editingId ? "✏️ Editar categoría" : "➕ Nueva categoría"}
-            </Typography>
+      {loading ? (
+        <Box role="status" sx={{ py: 5, textAlign: "center" }}>
+          <CircularProgress size={26} aria-label="Cargando categorías" sx={{ color: "#b58a00" }} />
+        </Box>
+      ) : (
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", lg: "minmax(0, 3fr) minmax(0, 2fr)" }, alignItems: "start", gap: 2 }}>
+          <Paper component="section" elevation={0} sx={adminSectionPanel}>
+            <Typography component="h2" variant="h6" fontWeight={800} mb={2}>Categorías principales</Typography>
+            {parentsTree.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">No hay categorías con subcategorías asignadas.</Typography>
+            ) : (
+              <Stack gap={1.5}>
+                {parentsTree.map(category => (
+                  <Paper component="article" key={category.id} variant="outlined" sx={{ borderRadius: 2.5, overflow: "hidden" }}>
+                    <Stack direction="row" alignItems="center" gap={1} sx={{ p: { xs: 1, sm: 1.5 }, bgcolor: "#fff8df", borderBottom: "1px solid #f3e6be" }}>
+                      <FolderIcon fontSize="small" sx={{ color: "#765900", flexShrink: 0 }} />
+                      <Box sx={{ minWidth: 0, flex: 1, overflowWrap: "anywhere" }}>
+                        <Typography component="h3" fontWeight={800}>{category.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">{category.children?.length ?? 0} subcategoría(s)</Typography>
+                      </Box>
+                      {renderActions(category)}
+                    </Stack>
+                    {Boolean(category.children?.length) && (
+                      <List aria-label={`Subcategorías de ${category.name}`} disablePadding sx={{ px: { xs: 1, sm: 1.5 } }}>
+                        {category.children.map(child => renderRow(child, true))}
+                      </List>
+                    )}
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Paper>
+          <Paper component="section" elevation={0} sx={adminSectionPanel}>
+            <Typography component="h2" variant="h6" fontWeight={800} mb={1}>Categorías independientes</Typography>
+            {singles.length ? <List disablePadding>{singles.map(category => renderRow(category))}</List> : (
+              <Typography variant="body2" color="text.secondary">No hay categorías independientes registradas.</Typography>
+            )}
+          </Paper>
+        </Box>
+      )}
 
-            <IconButton onClick={closeForm} disabled={formLoading} size="small">
-              <CloseIcon />
-            </IconButton>
-          </Box>
-        )}
-
-        {!isMobile && (
-          <DialogTitle sx={{ fontWeight: 900 }}>
-            {form.editingId ? "✏️ Editar categoría" : "➕ Nueva categoría"}
-          </DialogTitle>
-        )}
-
+      <Dialog open={formOpen} onClose={closeForm} fullWidth maxWidth="sm" sx={adminSectionDialog} aria-labelledby="category-form-title">
+        <DialogTitle id="category-form-title">{form.editingId ? "Editar categoría" : "Nueva categoría"}</DialogTitle>
         <DialogContent dividers>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            📄 Suelta = no eliges padre. 👶 Hija = eliges un padre.
-          </Typography>
-
           {isPlanSoloSueltas && (
-            <Alert
-              severity="info"
-              sx={{ borderRadius: 2, mb: 2 }}
-              action={
-                <Button
-                  color="inherit"
-                  size="small"
-                  onClick={openPlanesModal}
-                  sx={{ textTransform: "none", fontWeight: 800 }}
-                >
-                  Ver planes
-                </Button>
-              }
-            >
-              <b>Plan {planId || "?"}</b>: solo puedes crear <b>categorías sueltas</b>.
-              No puedes crear hijas ni jerarquía.
+            <Alert severity="info" sx={{ mb: 2 }}>
+              El Plan Negocio permite crear categorías independientes.
+              <Button onClick={openPlanesModal} size="small" sx={{ ml: 1 }}>Ver planes</Button>
             </Alert>
           )}
-
-          <Box component="form" onSubmit={handleSubmit}>
-            <Stack gap={2}>
-              <TextField
-                label="Nombre"
-                variant="filled"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                required
-                disabled={formLoading}
-                placeholder="Ej: Refacciones, Filtros…"
-                fullWidth
-              />
-
-              <FormControl variant="filled" fullWidth disabled={formLoading}>
-                <InputLabel id="parent-label">¿Va dentro de un Padre?</InputLabel>
-
-                <Select
-                  labelId="parent-label"
-                  value={form.parent_id}
-                  onChange={(e) => {
-                    const v = e.target.value;
-
-                    if (isPlanSoloSueltas && v !== "") {
-                      showSnackbar(
-                        reasonHierarchy ||
-                          "🔒 Plan Negocio: solo categorías sueltas (sin padre y sin hijas).",
-                        "warning"
-                      );
-                      return;
-                    }
-
-                    setForm((p) => ({ ...p, parent_id: v }));
-                  }}
-                  MenuProps={{
-                    PaperProps: {
-                      sx: {
-                        maxHeight: 280,
-                        overflowY: "auto",
-                        "&::-webkit-scrollbar": { width: 8 },
-                        "&::-webkit-scrollbar-thumb": {
-                          backgroundColor: "rgba(0,0,0,0.25)",
-                          borderRadius: 8,
-                        },
-                        "&::-webkit-scrollbar-track": {
-                          backgroundColor: "rgba(0,0,0,0.06)",
-                          borderRadius: 8,
-                        },
-                      },
-                    },
-                  }}
-                >
-                  <MenuItem value="">
-                    <em>NO (Se queda suelta) 📄</em>
-                  </MenuItem>
-
-                  {parentOptions
-                    .filter((p) => p.id !== form.editingId)
-                    .map((p) => (
-                      <MenuItem key={p.id} value={p.id} disabled={isPlanSoloSueltas}>
-                        🗂️ {p.name} {isPlanSoloSueltas ? "🔒" : ""}
-                      </MenuItem>
-                    ))}
-                </Select>
+          <Stack component="form" id="admin-category-form" onSubmit={handleSubmit} gap={2} sx={{ pt: 1 }}>
+            {!form.editingId && (
+              <FormControl component="fieldset" disabled={formLoading}>
+                <FormLabel component="legend" id="category-type-label">Tipo de categoría</FormLabel>
+                <RadioGroup aria-labelledby="category-type-label" value={categoryType} onChange={(_, value) => {
+                  setCategoryType(value);
+                  setForm(previous => ({ ...previous, parent_id: "" }));
+                }} sx={{ "& .MuiRadio-root.Mui-checked": { color: "#8a6500" } }}>
+                  <FormControlLabel value="independent" control={<Radio />} label="Categoría independiente" />
+                  <FormControlLabel value="principal" control={<Radio />} label="Categoría principal" disabled={isPlanSoloSueltas} />
+                  <FormControlLabel value="subcategory" control={<Radio />} label="Subcategoría" disabled={isPlanSoloSueltas || !parentOptions.length} />
+                </RadioGroup>
+                <Typography variant="body2" color="text.secondary">
+                  {creatingPrincipal ? "Crea un grupo y agrega su primera subcategoría." : creatingSubcategory
+                    ? "Elige la categoría bajo la que aparecerá." : "Úsala por sí sola."}
+                </Typography>
               </FormControl>
-
-              <Box>
-                {modo === "SUELTA" ? (
-                  <Chip label="📄 Se guardará como suelta" variant="outlined" />
-                ) : (
-                  <Chip
-                    label={
-                      isPlanSoloSueltas
-                        ? "🔒 Hija bloqueada en Plan Negocio"
-                        : "👶 Se guardará como hija"
-                    }
-                    variant="outlined"
-                    color={isPlanSoloSueltas ? "warning" : "default"}
-                  />
-                )}
-              </Box>
-
-              <Stack direction="row" gap={1} sx={{ justifyContent: "flex-end", flexWrap: "wrap" }}>
-                <Button
-                  type="button"
-                  variant="outlined"
-                  startIcon={<ClearIcon />}
-                  onClick={resetForm}
-                  disabled={formLoading}
-                  sx={{ borderRadius: 2, textTransform: "none" }}
-                >
-                  Limpiar
-                </Button>
-
-                <Button
-                  type="submit"
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  disabled={formLoading}
-                  sx={{ borderRadius: 2, textTransform: "none" }}
-                >
-                  {form.editingId ? "Actualizar ✨" : "Guardar ✅"}
-                </Button>
-              </Stack>
-            </Stack>
-          </Box>
-        </DialogContent>
-
-        {!isMobile && (
-          <DialogActions>
-            <Button onClick={closeForm} disabled={formLoading}>
-              Cerrar
-            </Button>
-          </DialogActions>
-        )}
-      </Dialog>
-
-      {/* HELP MODAL */}
-      <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 900 }}>🧠 ¿Cómo funciona esto?</DialogTitle>
-        <DialogContent dividers>
-          <Typography sx={{ mb: 1 }}>Versión para humano sin dolor:</Typography>
-
-          <Stack gap={1.2} sx={{ mt: 1 }}>
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-              <Typography fontWeight={900}>🗂️ Padre</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Categoría que puede tener hijas.
-              </Typography>
-            </Paper>
-
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-              <Typography fontWeight={900}>👶 Hija</Typography>
-              <Typography variant="body2" color="text.secondary">
-                Vive dentro de un padre.
-              </Typography>
-            </Paper>
-
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2 }}>
-              <Typography fontWeight={900}>📄 Suelta</Typography>
-              <Typography variant="body2" color="text.secondary">
-                No vive dentro de nadie.
-              </Typography>
-            </Paper>
+            )}
+            <TextField label="Nombre" value={form.name} onChange={event => setForm(previous => ({ ...previous, name: event.target.value }))}
+              required autoFocus disabled={formLoading} fullWidth />
+            {showPrincipalField && <FormControl fullWidth required={creatingSubcategory} disabled={formLoading || isPlanSoloSueltas}>
+              <InputLabel id="category-parent-label" shrink>Categoría principal</InputLabel>
+              <Select labelId="category-parent-label" label="Categoría principal" value={form.parent_id} displayEmpty notched
+                onChange={event => setForm(previous => ({ ...previous, parent_id: event.target.value }))} MenuProps={{ PaperProps: { sx: { maxHeight: 280 } } }}>
+                <MenuItem value="" disabled={creatingSubcategory}>{creatingSubcategory ? "Selecciona una categoría" : "Ninguna"}</MenuItem>
+                {parentOptions.filter(category => category.id !== form.editingId).map(category => (
+                  <MenuItem key={category.id} value={category.id}>{category.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>}
           </Stack>
-
-          {!isPlanSoloSueltas ? null : (
-            <>
-              <Divider sx={{ my: 2 }} />
-              <Alert
-                severity="warning"
-                sx={{ borderRadius: 2 }}
-                action={
-                  <Button
-                    color="inherit"
-                    size="small"
-                    onClick={openPlanesModal}
-                    sx={{ textTransform: "none", fontWeight: 800 }}
-                  >
-                    Ver planes
-                  </Button>
-                }
-              >
-                Plan {planId || "?"}: solo categorías sueltas. Jerarquía bloqueada.
-              </Alert>
-            </>
-          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setHelpOpen(false)} variant="contained">
-            Entendido ✅
+        <DialogActions disableSpacing>
+          <Button onClick={closeForm} disabled={formLoading}>Cancelar</Button>
+          <Button form="admin-category-form" type="submit" variant="contained" sx={adminSectionPrimaryAction}
+            disabled={formLoading || (creatingSubcategory && form.parent_id === "")}>
+            {formLoading ? "Guardando…" : form.editingId ? "Guardar cambios" : creatingPrincipal ? "Crear y agregar subcategoría"
+              : creatingSubcategory ? "Crear subcategoría" : "Crear categoría"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* DELETE DIALOG */}
-      <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, id: null, name: "" })}>
-        <DialogTitle sx={{ fontWeight: 900 }}>🗑️ Eliminar</DialogTitle>
-        <DialogContent>
-          Vas a borrar: <b>{deleteDialog.name}</b>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 1 }}>
-            Si borras un padre con hijas, el backend puede “soltarlas” (parent_id = null). En ese caso refrescamos una vez.
-          </Typography>
+      <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} fullWidth maxWidth="sm" sx={adminSectionDialog} aria-labelledby="category-help-title">
+        <DialogTitle id="category-help-title">Guía de categorías</DialogTitle>
+        <DialogContent dividers>
+          <Stack gap={1.5}>
+            {[
+              ["Categoría principal", "Agrupa subcategorías. Por ejemplo, Refacciones puede agrupar Filtros y Frenos."],
+              ["Subcategoría", "Selecciona una categoría principal al crearla o editarla."],
+              ["Categoría independiente", "Selecciona Ninguna si no necesitas agruparla."],
+            ].map(([label, description]) => (
+              <Box key={label}>
+                <Typography fontWeight={800}>{label}</Typography>
+                <Typography variant="body2" color="text.secondary">{description}</Typography>
+              </Box>
+            ))}
+            {isPlanSoloSueltas && <Alert severity="info">El Plan Negocio admite categorías independientes.</Alert>}
+          </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteDialog({ open: false, id: null, name: "" })} disabled={formLoading}>
-            Cancelar
-          </Button>
+        <DialogActions><Button onClick={() => setHelpOpen(false)} variant="contained" sx={adminSectionPrimaryAction}>Entendido</Button></DialogActions>
+      </Dialog>
+
+      <Dialog open={deleteDialog.open} onClose={closeDelete} fullWidth maxWidth="xs" sx={adminSectionDialog} aria-labelledby="category-delete-title">
+        <DialogTitle id="category-delete-title">Eliminar categoría</DialogTitle>
+        <DialogContent dividers>
+          <Typography>¿Quieres eliminar <strong>{deleteDialog.name}</strong>?</Typography>
+          {parentsTree.some(category => category.id === deleteDialog.id && category.children?.length > 0) && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Al eliminar esta categoría, sus subcategorías pueden quedar sin una categoría principal.
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions disableSpacing>
+          <Button onClick={closeDelete} disabled={formLoading}>Cancelar</Button>
           <Button onClick={handleDeleteConfirm} color="error" variant="contained" disabled={formLoading}>
-            Eliminar 🧨
+            {formLoading ? "Eliminando…" : "Eliminar"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -910,7 +549,7 @@ const Category = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </Container>
+    </Box>
   );
 };
 

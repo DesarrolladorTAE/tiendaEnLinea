@@ -68,7 +68,7 @@ const usePosLocationId = () =>
   }, []);
 
 // ==== Componente ====
-export default function NotasInternas() {
+export default function NotasInternas({ classic = false } = {}) {
   const posLocationId = usePosLocationId();
 
   // Filtros
@@ -238,20 +238,21 @@ export default function NotasInternas() {
   return (
     <Box sx={{ minWidth: 0, maxWidth: 1500, mx: "auto" }}>
         {/* Header / Filtros */}
-        <Paper elevation={0} sx={posSectionHeader}>
+        <Paper elevation={0} sx={classic ? { ...posSectionHeader, bgcolor: "#e2edf2", color: "#172033", border: "1px solid #c4d1d7" } : posSectionHeader}>
           <Grid container spacing={2} alignItems="center">
-            <Grid size={{ xs: 12, lg: 4 }}>
+            <Grid size={{ xs: 12, lg: classic ? 12 : 4 }}>
               <Stack direction="row" spacing={1.5} alignItems="center">
-                <Box sx={posSectionIcon}><NoteAltIcon /></Box>
-                <Typography component="h2" sx={posSectionTitle}>Notas internas</Typography>
+                <Box sx={classic ? { ...posSectionIcon, bgcolor: "transparent", color: "info.main" } : posSectionIcon}><NoteAltIcon /></Box>
+                <Typography component="h2" sx={classic ? { ...posSectionTitle, color: "#172033 !important", fontSize: 26 } : posSectionTitle}>Notas internas</Typography>
               </Stack>
             </Grid>
-            <Grid size={{ xs: 12, lg: 8 }}>
+            <Grid size={{ xs: 12, lg: classic ? 12 : 8 }}>
               <Stack
-                direction="column"
+                direction={{ xs: "column", xl: classic ? "row" : "column" }}
+                useFlexGap
+                flexWrap="wrap"
                 spacing={1.2}
-                justifyContent="flex-end"
-                alignItems="stretch"
+                alignItems={{ xs: "stretch", xl: classic ? "center" : "stretch" }}
               >
                 <TextField
                   size="small"
@@ -272,13 +273,13 @@ export default function NotasInternas() {
                       </InputAdornment>
                     ) : null,
                   }}
-                  sx={posHeaderInput}
+                  sx={classic ? { width: { xl: 280 } } : posHeaderInput}
                   inputProps={{ "aria-label": "Buscar nota" }}
                 />
 
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                <Stack direction="row" spacing={1} useFlexGap alignItems="center" flexWrap="wrap">
                   <FilterListIcon sx={{ opacity: 0.7 }} />
-                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                     {STATUS_TABS.map((t) => (
                       <Chip
                         key={t.key}
@@ -288,12 +289,12 @@ export default function NotasInternas() {
                         color={statusFilter === t.key ? "info" : "default"}
                         variant={statusFilter === t.key ? "filled" : "outlined"}
                         aria-pressed={statusFilter === t.key}
-                        sx={{ height: 36, borderRadius: 2, color: statusFilter === t.key ? "#17191c" : "#fff", bgcolor: statusFilter === t.key ? "#ffc107" : "transparent", borderColor: "#69737f", "&:hover": { bgcolor: statusFilter === t.key ? "#ffe082" : "#313844" } }}
+                        sx={classic ? { height: 30, borderRadius: 2 } : { height: 36, borderRadius: 2, color: statusFilter === t.key ? "#17191c" : "#fff", bgcolor: statusFilter === t.key ? "#ffc107" : "transparent", borderColor: "#69737f", "&:hover": { bgcolor: statusFilter === t.key ? "#ffe082" : "#313844" } }}
                       />
                     ))}
                   </Stack>
                   <FormControlLabel
-                    sx={{ m: 0, color: "#e0e5ed", "& .MuiSwitch-switchBase.Mui-checked": { color: "#ffc107" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#ffc107" } }}
+                    sx={classic ? { m: 0 } : { m: 0, color: "#e0e5ed", "& .MuiSwitch-switchBase.Mui-checked": { color: "#ffc107" }, "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": { bgcolor: "#ffc107" } }}
                     control={
                       <Switch
                         checked={onlyStarred}
@@ -317,7 +318,7 @@ export default function NotasInternas() {
                         onClick={load}
                         disabled={loading}
                         startIcon={loading ? <CircularProgress size={16} /> : <RefreshIcon />}
-                        sx={posHeaderOutline}
+                        sx={classic ? { textTransform: "none", fontWeight: 800 } : posHeaderOutline}
                       >
                         {loading ? "Cargando" : "Actualizar"}
                       </Button>
@@ -329,7 +330,7 @@ export default function NotasInternas() {
                       variant="contained"
                       startIcon={<AddIcon />}
                       onClick={onCreate}
-                      sx={posHeaderButton}
+                      sx={classic ? { textTransform: "none", fontWeight: 800 } : posHeaderButton}
                     >
                       Nueva nota
                     </Button>
@@ -339,10 +340,10 @@ export default function NotasInternas() {
             </Grid>
           </Grid>
 
-          <Divider sx={{ mt: 2, borderColor: "#434953" }} />
+          <Divider sx={{ mt: 2, borderColor: classic ? "divider" : "#434953" }} />
 
           <Stack direction="row" spacing={1} alignItems="center" sx={{ pt: 1.5 }}>
-            <Typography variant="body2" sx={{ color: "#c7cbd1 !important" }}>
+            <Typography variant="body2" sx={{ color: classic ? "text.secondary" : "#c7cbd1 !important" }}>
               {visibleRows.length} resultado{visibleRows.length === 1 ? "" : "s"}
             </Typography>
           </Stack>
@@ -373,6 +374,7 @@ export default function NotasInternas() {
                   sx={(t) => ({
                     p: 2,
                     ...posMobileCard,
+                    ...(classic ? { borderTop: "1px solid #dce3ec" } : {}),
                     background:
                       t.palette.mode === "dark"
                         ? alpha(t.palette.background.paper, 0.7)
@@ -390,7 +392,7 @@ export default function NotasInternas() {
                   <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" gap={1.2}>
                     {/* left */}
                     <Stack spacing={0.6}>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Stack direction="row" spacing={1} useFlexGap alignItems="center" flexWrap="wrap">
                         <Typography fontWeight={900} sx={{ letterSpacing: 0.2 }}>
                           {row.titulo || "Sin título"}
                         </Typography>
@@ -403,7 +405,7 @@ export default function NotasInternas() {
                         {row.descripcion}
                       </Typography>
 
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Stack direction="row" spacing={1} useFlexGap alignItems="center" flexWrap="wrap">
                         <Chip
                           size="small"
                           label={ESTATUS.find((e) => e.value === row.estatus)?.label || row.estatus}

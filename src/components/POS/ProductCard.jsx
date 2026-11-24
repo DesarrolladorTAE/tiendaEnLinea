@@ -409,11 +409,11 @@ export default function ProductCard({
 
   return (
     <>
-      {classic ? <Paper variant="outlined" sx={{ p: 1.5, height: "100%", display: "flex", flexDirection: "column", borderRadius: 2.5, borderColor: "#cfe3fa", bgcolor: "#f8fbff" }}>
-        <Box sx={{ height: { xs: 135, sm: 150 }, borderRadius: 2, overflow: "hidden", bgcolor: "#e9eff4", display: "grid", placeItems: "center" }}>{productImg ? <Box component="img" src={productImg} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover" }} onError={event => { event.currentTarget.style.display = "none"; event.currentTarget.nextSibling.style.display = "grid"; }} /> : null}<Box aria-label="Sin imagen" sx={{ display: productImg ? "none" : "grid", placeItems: "center", color: "#98a6b5" }}><Inventory2RoundedIcon sx={{ fontSize: 45 }} /></Box></Box>
-        <Typography sx={{ fontWeight: 900, fontSize: 17, mt: 1, lineHeight: 1.2, overflowWrap: "anywhere", flex: 1 }}>{product.name}</Typography>
+      {classic ? <Paper variant="outlined" sx={{ p: 1.5, height: "100%", display: "flex", flexDirection: "column", borderRadius: 4, borderColor: "#cfe3fa", background: "linear-gradient(#eef5fa, #fff)" }}>
+        <Box sx={{ height: 120, borderRadius: 3, overflow: "hidden", background: "linear-gradient(#e9eff4 45%, #c7cbcc)", display: "grid", placeItems: "center" }}>{productImg ? <Box component="img" src={productImg} alt="" sx={{ width: "100%", height: "100%", objectFit: "cover" }} onError={event => { event.currentTarget.style.display = "none"; event.currentTarget.nextSibling.style.display = "grid"; }} /> : null}<Box aria-label="Sin imagen" sx={{ display: productImg ? "none" : "grid", placeItems: "center", color: "#777f81" }}><Inventory2RoundedIcon sx={{ fontSize: 30 }} /></Box></Box>
+        <Typography sx={{ fontWeight: 900, fontSize: 17, mt: 1, lineHeight: 1.2, overflowWrap: "anywhere", minHeight: "2.4em", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }} title={product.name}>{product.name}</Typography>
         <Typography variant="caption" color="text.secondary" sx={{ mt: 0.75 }}>SKU: {product.sku || "-"}</Typography>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1, mb: 1.5 }}><Typography sx={{ fontWeight: 900, fontSize: 20 }}>${priceFinalProduct}</Typography><Chip size="small" label={`Stock: ${stock ?? "-"}`} sx={{ fontWeight: 800, bgcolor: "#e0f5ed", color: "#155e48" }} /></Stack>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 1, mb: 1.5 }}><Typography sx={{ fontWeight: 900, fontSize: 20 }}>${priceFinalProduct}</Typography><Chip size="small" label={`Físico: ${stock ?? "-"}`} sx={{ fontWeight: 800, bgcolor: "#e0f5ed", color: "#155e48" }} /></Stack>
         <Button variant="contained" startIcon={<ShoppingCartRoundedIcon />} disabled={!hasVariants && (stock === null || pieces >= stock)} onClick={hasVariants ? openDetails : addSimpleOne} aria-label={hasVariants ? `Ver variantes de ${product.name}` : `Agregar ${product.name}`} sx={{ bgcolor: "#1976d2", textTransform: "none", fontWeight: 900, borderRadius: 2, "&:hover": { bgcolor: "#135da5" } }}>{hasVariants ? "Ver variantes" : "Agregar"}</Button>
       </Paper> : <TableRow hover>
         <TableCell sx={{ overflowWrap: "anywhere", color: "text.secondary" }}>
@@ -494,7 +494,7 @@ export default function ProductCard({
                     value={String(w.warehouse_id)}
                     disabled={(Number(w.qty) || 0) <= 0}
                   >
-                    {w.warehouse_name} — Stock: {Number(w.qty) || 0}
+                    {w.warehouse_name} — Físico: {Number(w.qty) || 0}
                     {w.location_bin ? ` — Bin: ${w.location_bin}` : ""}
                   </MenuItem>
                 ))
@@ -506,7 +506,7 @@ export default function ProductCard({
             </TextField>
 
             <Typography sx={{ mt: 1, fontSize: 12, color: "text.secondary" }}>
-              Stock disponible en almacén seleccionado:{" "}
+              Saldo físico en almacén seleccionado:{" "}
               <b>{selectedSimpleWarehouseId ? stockForSimpleWarehouse : "-"}</b>
             </Typography>
           </Paper>
@@ -625,7 +625,7 @@ export default function ProductCard({
                               </Typography>
                             )}
                           </Box>
-                          <Typography variant="caption" sx={{ flexShrink: 0 }}>Stock: {stock ?? "—"}</Typography>
+                          <Typography variant="caption" sx={{ flexShrink: 0 }}>Físico: {stock ?? "—"}</Typography>
                         </ButtonBase>
                       );
                     })
@@ -745,7 +745,7 @@ export default function ProductCard({
                               value={String(w.warehouse_id)}
                               disabled={(Number(w.stock) || 0) <= 0}
                             >
-                              {w.warehouse_name} — Stock: {Number(w.stock) || 0}
+                              {w.warehouse_name} — Físico: {Number(w.stock) || 0}
                               {w.location_bin ? ` — Bin: ${w.location_bin}` : ""}
                             </MenuItem>
                           ))
@@ -757,7 +757,7 @@ export default function ProductCard({
                       </TextField>
 
                       <Typography sx={{ mt: 1, fontSize: 12, color: "text.secondary" }}>
-                        Stock disponible: <b>{selectedWarehouseId ? stockForSelectedWarehouse : "-"}</b>
+                        Saldo físico: <b>{selectedWarehouseId ? stockForSelectedWarehouse : "-"}</b>
                       </Typography>
                     </Paper>
                   )}

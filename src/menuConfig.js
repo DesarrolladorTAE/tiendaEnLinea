@@ -11,6 +11,16 @@ import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
 import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
 import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import AccountCircleRoundedIcon from "@mui/icons-material/AccountCircleRounded";
+import AutoAwesomeRoundedIcon from "@mui/icons-material/AutoAwesomeRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+
+export const storeAdminNavItems = [
+  { path: "/admin/envios", label: "Envíos de productos", description: "Métodos, puntos de entrega y seguimiento", icon: LocalShippingOutlinedIcon },
+  { path: "/admin/micuenta", label: "Mi cuenta", description: "Datos personales, fiscales y seguridad", icon: AccountCircleRoundedIcon },
+  { path: "/admin/membresia", label: "Suscripciones", description: "Consulta y administra tu plan", icon: WorkspacePremiumRoundedIcon },
+  { path: "/admin/complementos", label: "Complementos", description: "Amplía las funciones de tu tienda", icon: AutoAwesomeRoundedIcon },
+];
 
 const adminNavItems = [
   { path: "/admin/products", label: "Productos", icon: Inventory2OutlinedIcon },
@@ -24,7 +34,6 @@ const adminNavItems = [
   { path: "/admin/compra", label: "Entradas de producto", icon: MoveToInboxOutlinedIcon },
   { path: "/admin/ticket", label: "Tickets y comprobantes", icon: ReceiptLongOutlinedIcon },
   { path: "/admin/mi-sitio", label: "Sitio Web", icon: LanguageOutlinedIcon },
-  { path: "/admin/envios", label: "Envíos de productos", icon: LocalShippingOutlinedIcon },
   { path: "/admin/marca-blanca", label: "Marca blanca", icon: PaletteOutlinedIcon },
 ];
 

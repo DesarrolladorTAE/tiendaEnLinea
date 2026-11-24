@@ -1,11 +1,15 @@
-import React from "react";
+import React, { useState } from "react";
+import { ListItemIcon, Menu, MenuItem } from "@mui/material";
+import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import { Link } from "react-router-dom";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import ImageIcon from "@mui/icons-material/AddPhotoAlternateOutlined";
 import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
 import CategoryIcon from "@mui/icons-material/Category";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import { productStock } from "../../utils/productInventory";
+import { tracksBatches } from "../../utils/batchInventory";
 import DirectionsCarIcon from "@mui/icons-material/DirectionsCar";
 import ProductProfitFactorCell from "./ProductProfitFactorCell";
 import "./ProductTable.css";
@@ -22,14 +26,36 @@ const ProductTable = ({
   onOpenVehicles,
   onOpenImages,
   onOpenLabels,
+  onOpenBatches,
 
   categoriesLoading = false,
   onOpenCategories,
 }) => {
+  const [actionMenu, setActionMenu] = useState(null);
+  const selectedProduct = actionMenu && products.find(product => product.id === actionMenu.productId);
+  const actions = selectedProduct ? [
+    { label: "Administrar categorías", icon: CategoryIcon, action: onOpenCategories, disabled: categoriesLoading },
+    { label: "Administrar lotes", icon: Inventory2OutlinedIcon, action: onOpenBatches },
+    { label: "Imprimir etiquetas", icon: LocalPrintshopIcon, action: onOpenLabels },
+    { label: "Agregar imágenes", icon: ImageIcon, action: onOpenImages },
+    { label: "Ver compatibilidades vehiculares", icon: DirectionsCarIcon, action: showVehicleCompatibilities &&
+        ([true, 1, "1"].includes(selectedProduct.has_vehicle_compatibilities) || Number(selectedProduct.vehicle_compatibilities_count) > 0) && onOpenVehicles },
+    { label: "Eliminar producto", icon: DeleteIcon, action: onDelete && (product => onDelete(product.id)), destructive: true },
+  ].filter(item => item.action) : [];
   const columnCount = 7 + (showProfitFactor ? 1 : 0);
   const hasOeNumber = showOeNumber && products.some(product => String(product.oe_number ?? "").trim() !== "");
   const codeStyle = { color: "#fff", fontFamily: "monospace", minWidth: 130, overflowWrap: "anywhere" };
   const renderStock = product => {
+    if (tracksBatches(product)) return (
+      <div className="product-warehouse-stocks">
+        <strong>Vendible: {product.available_qty ?? "Consultar lotes"}</strong>
+        {(Array.isArray(product.warehouse_stocks) ? product.warehouse_stocks : []).filter(row => row.available_qty != null).map(row => (
+          <div key={row.warehouse_id} className="product-warehouse-stock">
+            <span>{row.warehouse_name || `Almacén #${row.warehouse_id}`}</span><strong>{row.available_qty}</strong>
+          </div>
+        ))}
+      </div>
+    );
     const warehouses = Array.isArray(product.warehouse_stocks) ? product.warehouse_stocks.filter(row => Number.isFinite(Number(row.qty)) && Number(row.qty) !== 0) : [];
     const unassignedStock = Number(product.stock);
     const hasUnassignedStock = product.stock != null && Number.isFinite(unassignedStock) && unassignedStock !== 0;
@@ -131,64 +157,18 @@ const ProductTable = ({
 
                 <td data-label="Stock">{renderStock(product)}</td>
 
-                {/* ✅ Categorías compactas */}
-                <td data-label="Categorías" style={{ width: 110 }}>
-                  <div className="d-flex align-items-center justify-content-between gap-2">
-                    {renderCategoryChip(product)}
-
-                    <button
-                      className="btn btn-sm btn-outline-secondary d-flex align-items-center justify-content-center"
-                      onClick={() => onOpenCategories?.(product)}
-                      disabled={categoriesLoading}
-                      title="Administrar categorías"
-                      style={{
-                        width: 40,
-                        height: 40,
-                        padding: 0,
-                      }}
-                    >
-                      <CategoryIcon fontSize="small" />
-                    </button>
-                  </div>
-                </td>
-
+                <td data-label="Categorías" style={{ width: 110 }}>{renderCategoryChip(product)}</td>
                 <td data-label="Acciones" className="text-center product-actions">
                   <div className="product-action-grid">
-                    {showVehicleCompatibilities && (product.has_vehicle_compatibilities === true || product.has_vehicle_compatibilities === 1 || product.has_vehicle_compatibilities === "1" || Number(product.vehicle_compatibilities_count) > 0) && <button type="button" className="btn btn-sm btn-outline-info d-flex align-items-center justify-content-center gap-1" title="Ver compatibilidades vehiculares" aria-label={`Ver compatibilidades de ${product.name}`} onClick={() => onOpenVehicles?.(product)} style={{ minWidth: 40, minHeight: 40 }}><DirectionsCarIcon fontSize="small" /><span>{product.vehicle_compatibilities_count ?? ""}</span></button>}
-                    <Link
-                      to={`edit/${product.id}`}
-                      className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
-                      title="Editar producto"
-                      style={{ minWidth: 40, minHeight: 40 }}
-                    >
-                      <EditIcon fontSize="small" /><span className="product-action-label">Editar</span>
+                    <Link to={`edit/${product.id}`} className="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center"
+                      title="Editar producto" aria-label="Editar producto">
+                      <EditIcon fontSize="small" />
                     </Link>
-
-                    <button
-                      className="btn btn-sm btn-outline-success d-flex align-items-center justify-content-center"
-                      onClick={() => onOpenLabels(product)}
-                      title="Imprimir etiquetas"
-                      style={{ minWidth: 40, minHeight: 40 }}
-                    >
-                      <LocalPrintshopIcon fontSize="small" /><span className="product-action-label">Etiquetas</span>
-                    </button>
-
-                    <button
-                      className="btn btn-sm btn-outline-warning d-flex align-items-center justify-content-center"
-                      onClick={() => onOpenImages(product)}
-                      title="Agregar Imágenes"
-                      style={{ minWidth: 40, minHeight: 40 }}
-                    >
-                      <ImageIcon fontSize="small" /><span className="product-action-label">Imágenes</span>
-                    </button>
-
-                    <button
-                      onClick={() => onDelete(product.id)}
-                      className="btn btn-sm btn-outline-danger d-flex align-items-center justify-content-center"
-                      title="Eliminar"
-                      style={{ minWidth: 40, minHeight: 40 }}
-                    >
-                      <DeleteIcon fontSize="small" /><span className="product-action-label">Eliminar</span>
+                    <button type="button" className="btn btn-sm btn-outline-light d-flex align-items-center justify-content-center"
+                      aria-label={`Más acciones de ${product.name || "producto"}`} aria-haspopup="menu"
+                      aria-expanded={selectedProduct?.id === product.id}
+                      onClick={event => setActionMenu({ productId: product.id, anchor: event.currentTarget })}>
+                      <MoreHorizRoundedIcon fontSize="small" />
                     </button>
                   </div>
                 </td>
@@ -203,6 +183,16 @@ const ProductTable = ({
           )}
         </tbody>
       </table>
+      <Menu anchorEl={actionMenu?.anchor} open={Boolean(selectedProduct) && !loading && !error}
+        onClose={() => setActionMenu(null)} slotProps={{ list: { "aria-label": "Acciones del producto" } }}>
+        {actions.map(({ label, icon: Icon, action, disabled, destructive }) => (
+          <MenuItem key={label} disabled={disabled} sx={{ minHeight: 44, ...(destructive && { color: "error.main" }) }}
+            onClick={() => { setActionMenu(null); action(selectedProduct); }}>
+            <ListItemIcon sx={{ color: "inherit" }}><Icon fontSize="small" /></ListItemIcon>
+            {label}
+          </MenuItem>
+        ))}
+      </Menu>
     </div>
   );
 };

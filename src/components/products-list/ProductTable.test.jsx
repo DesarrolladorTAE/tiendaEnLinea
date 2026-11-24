@@ -1,7 +1,6 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { Simulate } from "react-dom/test-utils";
 import ProductTable from "./ProductTable";
 
 jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), patch: jest.fn() } }));
@@ -40,9 +39,13 @@ test("replaces row numbers with SKU and OE, displays scoped warehouse quantities
     expect(stock.textContent).toContain("Quintana Roo-2");
     expect(stock.textContent).not.toContain("Yucatán");
     expect(host.querySelector('[title="Editar producto"]').getAttribute("href")).toContain("edit/5");
-    for (const [title, callback] of [["Imprimir etiquetas", onOpenLabels], ["Agregar Imágenes", onOpenImages], ["Eliminar", onDelete], ["Administrar categorías", onOpenCategories]]) {
-      act(() => Simulate.click(host.querySelector(`[title="${title}"]`)));
-      expect(callback).toHaveBeenCalledWith(title === "Eliminar" ? 5 : product);
+    const more = host.querySelector('[aria-label="Más acciones de Manguera"]');
+    expect(row.querySelectorAll(".product-action-grid > *")).toHaveLength(2);
+    for (const [label, callback] of [["Imprimir etiquetas", onOpenLabels], ["Agregar imágenes", onOpenImages], ["Eliminar producto", onDelete], ["Administrar categorías", onOpenCategories]]) {
+      act(() => more.click());
+      const action = [...document.querySelectorAll('[role="menuitem"]')].find(item => item.textContent.trim() === label);
+      act(() => action.click());
+      expect(callback).toHaveBeenCalledWith(label === "Eliminar producto" ? 5 : product);
     }
     act(() => root.render(<MemoryRouter><ProductTable products={[{ ...product, oe_number: "  " }]} showOeNumber /></MemoryRouter>));
     expect(host.querySelector("th").textContent).toBe("SKU");
@@ -50,17 +53,20 @@ test("replaces row numbers with SKU and OE, displays scoped warehouse quantities
   } finally { act(() => root.unmount()); host.remove(); }
 });
 
-test("vehicle icon uses list counts and opens details only on click", () => {
+test("vehicle action appears only for products with compatible vehicles", () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   const host = document.createElement("div"), root = createRoot(host), onOpenVehicles = jest.fn();
+  document.body.appendChild(host);
   const product = { id: 42, name: "Faro", has_vehicle_compatibilities: true, vehicle_compatibilities_count: 2 };
   try {
     act(() => root.render(<MemoryRouter><ProductTable products={[product, { id: 43, name: "Sin relaciones" }]} showVehicleCompatibilities onOpenVehicles={onOpenVehicles} /></MemoryRouter>));
     expect(onOpenVehicles).not.toHaveBeenCalled();
-    const icons = host.querySelectorAll('[title="Ver compatibilidades vehiculares"]');
-    expect(icons).toHaveLength(1); expect(icons[0].textContent).toBe("2");
-    act(() => Simulate.click(icons[0])); expect(onOpenVehicles).toHaveBeenCalledWith(product);
-    act(() => root.render(<MemoryRouter><ProductTable products={[product]} /></MemoryRouter>));
-    expect(host.querySelector('[title="Ver compatibilidades vehiculares"]')).toBeNull();
-  } finally { act(() => root.unmount()); }
+    const openMenu = name => act(() => host.querySelector(`[aria-label="Más acciones de ${name}"]`).click());
+    const vehicleAction = () => [...document.querySelectorAll('[role="menuitem"]')].find(item => item.textContent.includes("Ver compatibilidades vehiculares"));
+    openMenu("Sin relaciones");
+    expect(vehicleAction()).toBeUndefined();
+    openMenu("Faro");
+    act(() => vehicleAction().click());
+    expect(onOpenVehicles).toHaveBeenCalledWith(product);
+  } finally { act(() => root.unmount()); host.remove(); }
 });

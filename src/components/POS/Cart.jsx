@@ -93,6 +93,7 @@ export default function CartSidebar({
   setCart,
   posLocationId,
   variant = "desktop",
+  classic = false,
 }) {
   const isMobile = variant === "mobile";
   const shipment = useSaleShipment(posLocationId);
@@ -781,6 +782,20 @@ export default function CartSidebar({
       : {}),
   };
 
+  const togglePendingSale = () => {
+    if (pendingSale) {
+      setPendingSale(false);
+      setPendingHasAdvance(false);
+      setOpenPendingModal(false);
+      setScannerEnabled?.(true);
+    } else {
+      setPendingSale(true);
+      setCreditSale(false);
+      setOpenPendingModal(true);
+      setScannerEnabled?.(false);
+    }
+  };
+
   const inputCommon = {
     onFocus: (e) => {
       setScannerEnabled?.(false);
@@ -799,6 +814,19 @@ export default function CartSidebar({
     <>
       <Box sx={{ containerType: "inline-size" }}>
         <Paper ref={paperRef} variant="outlined" sx={paperSx}>
+          {classic ? (
+            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 1.5, py: 1 }}>
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <ShoppingCartRoundedIcon fontSize="small" />
+                <Typography component="h3" sx={{ fontWeight: 900, fontSize: 21 }}>Carrito</Typography>
+                <Chip size="small" label={`${cart.length} producto(s)`} />
+              </Stack>
+              <Box textAlign="right">
+                <Typography variant="caption" color="text.secondary">Total</Typography>
+                <Typography fontWeight={900}>${amountToPay.toFixed(2)}</Typography>
+              </Box>
+            </Stack>
+          ) : (
           <Box component="nav" aria-label="Pasos de la venta" sx={{ px: { xs: 1, sm: 1.5 }, pt: 1, pb: 1.25, bgcolor: "#1c1f24" }}>
             <Stack direction="row" spacing={0.5}>
               {[{ label: "Orden", Icon: ShoppingCartRoundedIcon }, { label: "Cliente", Icon: PersonOutlineRoundedIcon }, { label: "Pago", Icon: PaymentsRoundedIcon }].map(({ label, Icon }, index) => (
@@ -809,11 +837,21 @@ export default function CartSidebar({
             </Stack>
             <Box role="progressbar" aria-label="Progreso de la venta" aria-valuemin={1} aria-valuemax={3} aria-valuenow={checkoutStep + 1} sx={{ height: 4, mt: 1, bgcolor: "#4a4d51", borderRadius: 2, overflow: "hidden" }}><Box sx={{ width: `${(checkoutStep + 1) / 3 * 100}%`, height: "100%", bgcolor: "#ffba08", transition: "width .2s ease", "@media (prefers-reduced-motion: reduce)": { transition: "none" } }} /></Box>
           </Box>
+          )}
           {cart.length === 0 ? (
             <Typography color="text.secondary" sx={{ p: 2, gridColumn: "1 / -1" }}>Sin artículos</Typography>
           ) : (
             <>
-              {checkoutStep === 0 && <Box component="ul" aria-label="Artículos del carrito" sx={{ listStyle: "none", p: 0, m: 0 }}>
+              {classic && (
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ px: 1.5, py: 1, borderTop: 1, borderBottom: 1, borderColor: "divider" }}>
+                  <Switch checked={pendingSale} onChange={togglePendingSale} disabled={creditSale} inputProps={{ "aria-label": "Venta pendiente" }} />
+                  <Box>
+                    <Typography fontWeight={800}>Venta pendiente</Typography>
+                    <Typography variant="caption" color="text.secondary">Actívalo si el cliente no pagará completo por ahora.</Typography>
+                  </Box>
+                </Stack>
+              )}
+              {(classic || checkoutStep === 0) && <Box component="ul" aria-label="Artículos del carrito" sx={{ listStyle: "none", p: 0, m: 0 }}>
                 {cart.map((item) => {
                   const cartKey = getCartKey(item);
 
@@ -1020,7 +1058,7 @@ export default function CartSidebar({
               </Box>}
 
               <Box component="section" aria-label="Cobro" sx={{
-                minWidth: 0, p: { xs: 1.5, sm: 2 }, bgcolor: "#fffdf7",
+                minWidth: 0, p: { xs: 1.5, sm: 2 }, bgcolor: classic ? "#fff" : "#fffdf7",
                 borderTop: 1, borderColor: "divider",
 
               }}>
@@ -1028,11 +1066,159 @@ export default function CartSidebar({
                 <Typography variant="caption" color="text.secondary" fontWeight={800}>
                   {appliesIsrRetention ? "Total a recibir" : "Total"}
                 </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 900, fontVariantNumeric: "tabular-nums", mb: 1.5 }}>
+                <Typography variant={classic ? "h6" : "h4"} sx={{ fontWeight: 900, fontVariantNumeric: "tabular-nums", mb: 1.5 }}>
                   ${amountToPay.toFixed(2)}
                 </Typography>
 
-                <Box sx={{ display: checkoutStep === 2 ? "block" : "none" }}>
+                <Box sx={{ display: classic || checkoutStep === 1 ? "block" : "none" }}>
+                <Typography sx={{ fontWeight: 900, mb: 1 }}>{classic ? "Cliente de la venta" : "Cliente y tipo de venta"}</Typography>
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }}>
+                  <Button variant="outlined" startIcon={<PersonOutlineRoundedIcon />} onClick={() => { setOpenClientDialog(true); setScannerEnabled?.(false); }} sx={{ flex: 1, minWidth: 0, justifyContent: "flex-start", textTransform: "none", fontWeight: 800, borderRadius: 2, color: "#1c1f24", borderColor: "#d5d5d5", bgcolor: "#fff", "&:hover": { borderColor: "#ffba08", bgcolor: "#fff8e5" } }}>{selectedClient?.nombre_alias || selectedClient?.name || selectedClient?.nombre || (classic ? "Seleccionar cliente" : "Cliente")}</Button>
+                  {!classic && <Tooltip title={pendingSale ? "Quitar venta pendiente" : "Venta pendiente"}><span><IconButton aria-label="Venta pendiente" aria-pressed={pendingSale} color={pendingSale ? "warning" : "default"} disabled={creditSale} onClick={togglePendingSale}><PendingActionsRoundedIcon /></IconButton></span></Tooltip>}
+                </Stack>
+                {selectedClient && <Box sx={{ mt: 1, p: 1.25, border: "1px solid #e7d9ad", borderRadius: 1, bgcolor: "#fffaf0" }}>
+                  <Typography variant="body2" sx={{ fontWeight: 900 }}>{selectedClient.nombre_alias || selectedClient.name || selectedClient.nombre}</Typography>
+                  {selectedClient.telefono && <Typography variant="caption" display="block" color="text.secondary">{selectedClient.telefono}</Typography>}
+                  <Typography variant="caption" display="block" sx={{ mt: 0.5, fontWeight: 800, color: creditSale ? "#795900" : "text.secondary" }}>
+                    {loadingCredit ? "Consultando fiado..." : creditSale ? (isUnlimitedCredit ? "Venta a fiado - sin límite" : `Venta a fiado - disponible: $${availableCredit.toFixed(2)}`) : !hasCreditAccount ? "Sin cuenta de fiado" : !creditActive ? "Fiado desactivado" : isUnlimitedCredit ? "Fiado disponible sin límite" : `Fiado disponible: $${availableCredit.toFixed(2)}`}
+                  </Typography>
+                  {creditSale && <Typography variant="caption" display="block">Saldo anterior: ${currentBalance.toFixed(2)}</Typography>}
+                  {creditSale && creditAccount?.payment_due_date && <Typography variant="caption" display="block">Fecha de pago: {String(creditAccount.payment_due_date).slice(0, 10)}</Typography>}
+                </Box>}
+                {pendingSale && <Chip size="small" color="warning" sx={{ mt: 1 }} label={pendingHasAdvance ? "Pendiente con anticipo" : "Pendiente sin anticipo"} />}
+                  <Box sx={{ my: 2 }}>
+                    {shipment.loading && <Typography role="status">Consultando opciones de envío…</Typography>}
+                    {shipment.error && <Typography color="error">{shipment.error} <Button onClick={shipment.refresh}>Reintentar envíos</Button></Typography>}
+                    <ShipmentFields config={shipment.config} value={shipment.values} onChange={shipment.setValues} disabled={submittingSale} />
+                    {shipment.values.shipping_method_id && !shipment.config?.enabled && <Button disabled={submittingSale} onClick={shipment.reset}>Quitar entrega seleccionada</Button>}
+                  </Box>
+                <IsrRetentionPreview clientId={selectedClient?.id ?? null} totalAmount={total} onChange={handleRetentionChange} />
+                <Dialog open={openClientDialog} onClose={() => { setOpenClientDialog(false); setScannerEnabled?.(true); }} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: { xs: 2, sm: 3 }, m: { xs: 1.5, sm: 4 }, "& .MuiDialogActions-root": { p: 2 }, "& .MuiButton-root": { textTransform: "none", fontWeight: 800 } } }}>
+                  <DialogTitle sx={{ bgcolor: "#1c1f24", color: "#ffba08", fontWeight: 900, borderTop: "4px solid #ffba08" }}>Cliente</DialogTitle>
+                  <DialogContent dividers>
+                  {!loadingClients && clients.length > 0 && (
+                    <SaleClientAssign
+                      clients={clients}
+                      value={selectedClient}
+                      onChange={changeSaleClient}
+                      loading={loadingClients}
+                    />
+                  )}
+
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1}
+                    sx={{ mt: 1 }}
+                  >
+                    <Button
+                      variant="outlined"
+                      startIcon={<PersonAddAlt1RoundedIcon />}
+                      onClick={handleOpenQuickClient}
+                      fullWidth={isMobile}
+                      sx={{
+                        borderRadius: 2,
+                        textTransform: "none",
+                        fontWeight: 800,
+                      }}
+                    >
+                      Crear cliente rápido
+                    </Button>
+
+                    {selectedClient && (
+                      <Button
+                        variant="text"
+                        color="inherit"
+                        onClick={() => changeSaleClient(null)}
+                        fullWidth={isMobile}
+                        sx={{
+                          borderRadius: 2,
+                          textTransform: "none",
+                          fontWeight: 700,
+                        }}
+                      >
+                        Quitar cliente
+                      </Button>
+                    )}
+                  </Stack>
+                {selectedClient && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      p: 1.25,
+                      border: "1px solid",
+                      borderColor: creditSale ? "primary.main" : "divider",
+                      borderRadius: 2,
+                      bgcolor: creditSale ? "rgba(25,118,210,0.06)" : "#fff",
+                    }}
+                  >
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={creditSale}
+                          disabled={loadingCredit || !creditActive}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setCreditSale(checked);
+
+                            if (checked) {
+                              setPendingSale(false);
+                              setPendingHasAdvance(false);
+                              setPendingAdvancePayment(null);
+                              setPendingDueAt(null);
+                              setPendingNote("");
+                            }
+                          }}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography sx={{ fontWeight: 900 }}>
+                            Fiado
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {loadingCredit
+                              ? "Validando cuenta de fiado..."
+                              : !hasCreditAccount
+                                ? "Este cliente no tiene fiado configurado."
+                                : !creditActive
+                                  ? "Fiado desactivado para este cliente."
+                                  : isUnlimitedCredit
+                                    ? "Fiado activo sin límite."
+                                    : `Disponible: $${availableCredit.toFixed(2)}`}
+                          </Typography>
+                        </Box>
+                      }
+                    />
+
+                    {creditSale && (
+                      <Stack spacing={0.7} sx={{ mt: 1 }}>
+                        <Chip
+                          size="small"
+                          color="primary"
+                          sx={{ fontWeight: 800 }}
+                          label={
+                            creditAccount?.payment_due_date
+                              ? `Fecha de pago: ${String(
+                                  creditAccount.payment_due_date,
+                                ).slice(0, 10)}`
+                              : "Sin fecha límite"
+                          }
+                        />
+
+                        <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                          Monto a crédito: ${amountToPay.toFixed(2)}
+                        </Typography>
+                      </Stack>
+                    )}
+                  </Box>
+                )}
+
+                  </DialogContent>
+                  <DialogActions><Button onClick={() => { setOpenClientDialog(false); setScannerEnabled?.(true); }}>Listo</Button></DialogActions>
+                </Dialog>
+
+                </Box>
+                <Box sx={{ display: classic || checkoutStep === 2 ? "block" : "none" }}>
                 {!pendingSale && !creditSale && (
                   <Box sx={{ mb: 1.5, "& .MuiOutlinedInput-root": { bgcolor: "#fff", borderRadius: 1, "& fieldset": { borderColor: "#b9b9b9" }, "&:hover fieldset": { borderColor: "#1c1f24" }, "&.Mui-focused fieldset": { borderColor: "#d49a00" } }, "& .MuiInputLabel-root.Mui-focused": { color: "#775800" } }}>
                     <Typography
@@ -1283,158 +1469,7 @@ export default function CartSidebar({
                 )}
 
                 </Box>
-                <Box sx={{ display: checkoutStep === 1 ? "block" : "none" }}>
-                <Typography sx={{ fontWeight: 900, mb: 1 }}>Cliente y tipo de venta</Typography>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1.5 }}>
-                  <Button variant="outlined" startIcon={<PersonOutlineRoundedIcon />} onClick={() => { setOpenClientDialog(true); setScannerEnabled?.(false); }} sx={{ flex: 1, minWidth: 0, justifyContent: "flex-start", textTransform: "none", fontWeight: 800, borderRadius: 2, color: "#1c1f24", borderColor: "#d5d5d5", bgcolor: "#fff", "&:hover": { borderColor: "#ffba08", bgcolor: "#fff8e5" } }}>{selectedClient?.nombre_alias || selectedClient?.name || selectedClient?.nombre || "Cliente"}</Button>
-                  <Tooltip title={pendingSale ? "Quitar venta pendiente" : "Venta pendiente"}><span><IconButton aria-label="Venta pendiente" aria-pressed={pendingSale} color={pendingSale ? "warning" : "default"} disabled={creditSale} onClick={() => {
-                    if (pendingSale) { setPendingSale(false); setPendingHasAdvance(false); setOpenPendingModal(false); setScannerEnabled?.(true); }
-                    else { setPendingSale(true); setCreditSale(false); setOpenPendingModal(true); setScannerEnabled?.(false); }
-                  }}><PendingActionsRoundedIcon /></IconButton></span></Tooltip>
-                </Stack>
-                {selectedClient && <Box sx={{ mt: 1, p: 1.25, border: "1px solid #e7d9ad", borderRadius: 1, bgcolor: "#fffaf0" }}>
-                  <Typography variant="body2" sx={{ fontWeight: 900 }}>{selectedClient.nombre_alias || selectedClient.name || selectedClient.nombre}</Typography>
-                  {selectedClient.telefono && <Typography variant="caption" display="block" color="text.secondary">{selectedClient.telefono}</Typography>}
-                  <Typography variant="caption" display="block" sx={{ mt: 0.5, fontWeight: 800, color: creditSale ? "#795900" : "text.secondary" }}>
-                    {loadingCredit ? "Consultando fiado..." : creditSale ? (isUnlimitedCredit ? "Venta a fiado - sin límite" : `Venta a fiado - disponible: $${availableCredit.toFixed(2)}`) : !hasCreditAccount ? "Sin cuenta de fiado" : !creditActive ? "Fiado desactivado" : isUnlimitedCredit ? "Fiado disponible sin límite" : `Fiado disponible: $${availableCredit.toFixed(2)}`}
-                  </Typography>
-                  {creditSale && <Typography variant="caption" display="block">Saldo anterior: ${currentBalance.toFixed(2)}</Typography>}
-                  {creditSale && creditAccount?.payment_due_date && <Typography variant="caption" display="block">Fecha de pago: {String(creditAccount.payment_due_date).slice(0, 10)}</Typography>}
-                </Box>}
-                {pendingSale && <Chip size="small" color="warning" sx={{ mt: 1 }} label={pendingHasAdvance ? "Pendiente con anticipo" : "Pendiente sin anticipo"} />}
-                  <Box sx={{ my: 2 }}>
-                    {shipment.loading && <Typography role="status">Consultando opciones de envío…</Typography>}
-                    {shipment.error && <Typography color="error">{shipment.error} <Button onClick={shipment.refresh}>Reintentar envíos</Button></Typography>}
-                    <ShipmentFields config={shipment.config} value={shipment.values} onChange={shipment.setValues} disabled={submittingSale} />
-                    {shipment.values.shipping_method_id && !shipment.config?.enabled && <Button disabled={submittingSale} onClick={shipment.reset}>Quitar entrega seleccionada</Button>}
-                  </Box>
-                <IsrRetentionPreview clientId={selectedClient?.id ?? null} totalAmount={total} onChange={handleRetentionChange} />
-                <Dialog open={openClientDialog} onClose={() => { setOpenClientDialog(false); setScannerEnabled?.(true); }} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: { xs: 2, sm: 3 }, m: { xs: 1.5, sm: 4 }, "& .MuiDialogActions-root": { p: 2 }, "& .MuiButton-root": { textTransform: "none", fontWeight: 800 } } }}>
-                  <DialogTitle sx={{ bgcolor: "#1c1f24", color: "#ffba08", fontWeight: 900, borderTop: "4px solid #ffba08" }}>Cliente</DialogTitle>
-                  <DialogContent dividers>
-                  {!loadingClients && clients.length > 0 && (
-                    <SaleClientAssign
-                      clients={clients}
-                      value={selectedClient}
-                      onChange={changeSaleClient}
-                      loading={loadingClients}
-                    />
-                  )}
-
-                  <Stack
-                    direction={{ xs: "column", sm: "row" }}
-                    spacing={1}
-                    sx={{ mt: 1 }}
-                  >
-                    <Button
-                      variant="outlined"
-                      startIcon={<PersonAddAlt1RoundedIcon />}
-                      onClick={handleOpenQuickClient}
-                      fullWidth={isMobile}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: "none",
-                        fontWeight: 800,
-                      }}
-                    >
-                      Crear cliente rápido
-                    </Button>
-
-                    {selectedClient && (
-                      <Button
-                        variant="text"
-                        color="inherit"
-                        onClick={() => changeSaleClient(null)}
-                        fullWidth={isMobile}
-                        sx={{
-                          borderRadius: 2,
-                          textTransform: "none",
-                          fontWeight: 700,
-                        }}
-                      >
-                        Quitar cliente
-                      </Button>
-                    )}
-                  </Stack>
-                {selectedClient && (
-                  <Box
-                    sx={{
-                      mt: 1.5,
-                      p: 1.25,
-                      border: "1px solid",
-                      borderColor: creditSale ? "primary.main" : "divider",
-                      borderRadius: 2,
-                      bgcolor: creditSale ? "rgba(25,118,210,0.06)" : "#fff",
-                    }}
-                  >
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={creditSale}
-                          disabled={loadingCredit || !creditActive}
-                          onChange={(e) => {
-                            const checked = e.target.checked;
-                            setCreditSale(checked);
-
-                            if (checked) {
-                              setPendingSale(false);
-                              setPendingHasAdvance(false);
-                              setPendingAdvancePayment(null);
-                              setPendingDueAt(null);
-                              setPendingNote("");
-                            }
-                          }}
-                        />
-                      }
-                      label={
-                        <Box>
-                          <Typography sx={{ fontWeight: 900 }}>
-                            Fiado
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {loadingCredit
-                              ? "Validando cuenta de fiado..."
-                              : !hasCreditAccount
-                                ? "Este cliente no tiene fiado configurado."
-                                : !creditActive
-                                  ? "Fiado desactivado para este cliente."
-                                  : isUnlimitedCredit
-                                    ? "Fiado activo sin límite."
-                                    : `Disponible: $${availableCredit.toFixed(2)}`}
-                          </Typography>
-                        </Box>
-                      }
-                    />
-
-                    {creditSale && (
-                      <Stack spacing={0.7} sx={{ mt: 1 }}>
-                        <Chip
-                          size="small"
-                          color="primary"
-                          sx={{ fontWeight: 800 }}
-                          label={
-                            creditAccount?.payment_due_date
-                              ? `Fecha de pago: ${String(
-                                  creditAccount.payment_due_date,
-                                ).slice(0, 10)}`
-                              : "Sin fecha límite"
-                          }
-                        />
-
-                        <Typography variant="body2" sx={{ fontWeight: 800 }}>
-                          Monto a crédito: ${amountToPay.toFixed(2)}
-                        </Typography>
-                      </Stack>
-                    )}
-                  </Box>
-                )}
-
-                  </DialogContent>
-                  <DialogActions><Button onClick={() => { setOpenClientDialog(false); setScannerEnabled?.(true); }}>Listo</Button></DialogActions>
-                </Dialog>
-
-                </Box>
-                <Box sx={{ display: checkoutStep === 2 ? "block" : "none" }}>
+                <Box sx={{ display: classic || checkoutStep === 2 ? "block" : "none" }}>
                 {selectedClient && <Box sx={{ mb: 1.5, p: 1.25, bgcolor: "#fff8e5", border: "1px solid #e7d9ad", borderRadius: 1 }}><Typography variant="body2" fontWeight={900}>{selectedClient.nombre_alias || selectedClient.name || selectedClient.nombre}</Typography>{selectedClient.telefono && <Typography variant="caption" display="block">{selectedClient.telefono}</Typography>}<Typography variant="caption" display="block">{creditSale ? (isUnlimitedCredit ? "Venta a fiado - sin límite" : `Venta a fiado - disponible: ${availableCredit.toFixed(2)}`) : pendingSale ? "Venta pendiente" : "Venta de contado"}</Typography>{creditSale && creditAccount?.payment_due_date && <Typography variant="caption" display="block">Fecha de pago: {String(creditAccount.payment_due_date).slice(0, 10)}</Typography>}</Box>}
                 {pendingSale && pendingHasAdvance && pendingAdvancePayment && (
                   <Box
@@ -1583,10 +1618,10 @@ export default function CartSidebar({
                         : `Cobrar $${amountToPay.toFixed(2)}`}
                 </Button>
                 </Box>
-                <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+                {!classic && <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                   {checkoutStep > 0 && <Button variant="outlined" color="inherit" onClick={() => setCheckoutStep(checkoutStep - 1)} sx={{ flex: 1, borderRadius: 2, textTransform: "none", fontWeight: 800 }}>Anterior</Button>}
                   {checkoutStep < 2 && <Button variant="contained" onClick={() => setCheckoutStep(checkoutStep + 1)} sx={{ flex: 1, bgcolor: "#ffba08", color: "#1c1f24", borderRadius: 2, textTransform: "none", fontWeight: 900, boxShadow: "none", "&:hover": { bgcolor: "#e9a900" } }}>Continuar</Button>}
-                </Stack>
+                </Stack>}
               </Box>
             </>
           )}

@@ -5,6 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axiosClient from "../config/axiosClient";
 import { showSuccess, showError } from "../utils/alerts";
 import { useAdminUi } from "../context/AdminUiContext";
+import { tracksBatches } from "../utils/batchInventory";
 import { inventoryFlag, activeVariant } from "../utils/productInventory";
 import { notifyInventoryChanged } from "../utils/inventoryEvents";
 import { calculateProfitPrice, hasConfiguredProfitFactor, saveProductProfitFactor } from "../utils/productProfitFactor";
@@ -243,6 +244,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
   const [childrenByParent, setChildrenByParent] = useState(new Map());
 
   // control recálculos edición
+  const [batchTrackingEnabled, setBatchTrackingEnabled] = useState(false);
   const [productoCargado, setProductoCargado] = useState(false);
   const [ivaOriginal, setIvaOriginal] = useState(null);
   const [initialPrice, setInitialPrice] = useState(null);
@@ -373,6 +375,16 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
   const fetchProduct = async (productId) => {
     const response = await axiosClient.get(`/admin/productos/${productId}`);
     const product = response.data?.data ?? response.data;
+    let settings = product;
+    if (product.batch_tracking_enabled == null) {
+      try {
+        const { data } = await axiosClient.get(`/admin/products/${productId}/batches`);
+        settings = data.settings ?? product;
+      } catch {
+        // The general product endpoint still validates any inventory changes.
+      }
+    }
+    setBatchTrackingEnabled(tracksBatches(settings));
 
     let offerEnd = "";
     if (product.offerEnd) {
@@ -400,6 +412,8 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
     });
 
     reset({
+      batch_tracking_enabled: tracksBatches(settings),
+      expiration_required: inventoryFlag(settings.expiration_required),
       sku: product.sku || "",
       name: product.name || "",
       price: priceFromApi,
@@ -518,13 +532,28 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
 
       }
       const useWh = inventoryFlag(data.use_warehouse_inventory);
+      const tracking = inventoryFlag(data.batch_tracking_enabled ?? batchTrackingEnabled);
+      const expirationRequired = tracking && inventoryFlag(data.expiration_required);
+      const preserveInventory = Boolean(productId && (tracking || batchTrackingEnabled));
+      const zeroOpeningStock = !productId && tracking;
+      if (zeroOpeningStock) {
+        data = {
+          ...data,
+          stock: 0,
+          variants: (data.variants || []).map(variant => ({
+            ...variant, stock: 0,
+            warehouse_stocks: variant.warehouse_stocks?.map(row => ({ ...row, stock: 0 })),
+          })),
+          warehouse_inventories: (data.warehouse_inventories || []).map(row => ({ ...row, qty: 0 })),
+        };
+      }
 
       const variantsPayloadPreview = normalizeVariantsForBackend(
         data.variants || [],
         useWh,
       );
       const hasVariantsPayload = variantsPayloadPreview.length > 0;
-      if (!useWh) {
+      if (!preserveInventory && !useWh) {
         const stocks = hasVariantsPayload ? data.variants.map(v => v.stock) : [data.stock];
         if (stocks.some(stock => stock === "" || stock == null || !Number.isFinite(Number(stock)) || Number(stock) < 0)) {
           showError("Captura existencias válidas, mayores o iguales a cero, en el producto o en cada variante.");
@@ -533,7 +562,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       }
 
       // ✅ SIN variantes: valida warehouse_product_stocks (qty)
-      if (useWh && !hasVariantsPayload) {
+      if (!preserveInventory && useWh && !hasVariantsPayload) {
         const rows = Array.isArray(data.warehouse_inventories)
           ? data.warehouse_inventories
           : [];
@@ -570,7 +599,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       }
 
       // ✅ CON variantes: valida warehouse_variant_stocks (stock) por variante
-      if (useWh && hasVariantsPayload) {
+      if (!preserveInventory && useWh && hasVariantsPayload) {
         for (let i = 0; i < variantsPayloadPreview.length; i++) {
           const v = variantsPayloadPreview[i];
           const rows = Array.isArray(v.warehouse_stocks)
@@ -613,6 +642,10 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       // FormData
       // ================================
       const formData = new FormData();
+      if ((!productId && tracking) || dirtyFields.batch_tracking_enabled || dirtyFields.expiration_required || tracking !== batchTrackingEnabled) {
+        formData.append("batch_tracking_enabled", tracking ? "1" : "0");
+        formData.append("expiration_required", expirationRequired ? "1" : "0");
+      }
       if (dirtyFields.vehicle_compatibilities) {
         formData.append("vehicle_compatibilities", JSON.stringify(vehicleRowsForPayload(data.vehicle_compatibilities)));
       }
@@ -725,16 +758,16 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       const variantsPayload = variantsPayloadPreview;
       const hasVariantsPayload2 = variantsPayload.length > 0;
 
-      if (!hasVariantsPayload2 && !useWh)
+      if (!preserveInventory && !hasVariantsPayload2 && !useWh)
         formData.append("stock", data.stock?.toString() || "0");
 
-      if (hasVariantsPayload2)
+      if (!preserveInventory && hasVariantsPayload2)
         appendFormData(formData, "variants", variantsPayload);
 
       // multi-warehouse
-      formData.append("use_warehouse_inventory", useWh ? "1" : "0");
+      if (!preserveInventory) formData.append("use_warehouse_inventory", useWh ? "1" : "0");
 
-      if (useWh) {
+      if (!preserveInventory && useWh) {
         const rows = Array.isArray(data.warehouse_inventories)
           ? data.warehouse_inventories
           : [];
@@ -827,6 +860,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       id,
       isEdit,
       hasVariants,
+      batchTrackingEnabled,
       basePriceStr,
       categoriesOptions,
       warehouses,
@@ -837,6 +871,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       id,
       isEdit,
       hasVariants,
+      batchTrackingEnabled,
       basePriceStr,
       categoriesOptions,
       warehouses,

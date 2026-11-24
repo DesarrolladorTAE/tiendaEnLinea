@@ -384,10 +384,11 @@ export default function WorkerDialog({
     >
       <DialogTitle
         sx={{
-          px: 3,
+          px: { xs: 2, sm: 3 },
           py: 2,
-          bgcolor: COLORS.paper,
-          borderBottom: `1px solid ${alpha("#000", 0.08)}`,
+          bgcolor: "#1d2025",
+          color: "#fff",
+          borderBottom: "2px solid #ffc107",
         }}
       >
         <Stack direction="row" spacing={1.5} alignItems="center">
@@ -396,7 +397,7 @@ export default function WorkerDialog({
               width: 42,
               height: 42,
               borderRadius: 2,
-              bgcolor: alpha(COLORS.accent, 0.2),
+              bgcolor: "#ffc107",
               border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
               display: "grid",
               placeItems: "center",
@@ -407,15 +408,15 @@ export default function WorkerDialog({
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography sx={{ fontWeight: 1000, fontSize: 18, lineHeight: 1.1 }}>
+            <Typography sx={{ color: "#fff !important", fontWeight: 800, fontSize: 18, lineHeight: 1.1 }}>
               {form.id ? "Editar trabajador" : "Nuevo trabajador"}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" sx={{ color: "#c7cbd1 !important" }}>
               Registra datos personales, laborales, fiscales y foto de perfil.
             </Typography>
           </Box>
 
-          <IconButton onClick={onClose} disabled={saving}>
+          <IconButton aria-label="Cerrar" onClick={onClose} disabled={saving} sx={{ color: "#fff" }}>
             <CloseRoundedIcon />
           </IconButton>
         </Stack>

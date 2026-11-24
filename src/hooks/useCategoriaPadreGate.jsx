@@ -25,7 +25,7 @@ export default function useCategoriaPadreGate() {
     if (tiendaLoading) return "Cargando tienda...";
     if (!planId) return "No se pudo detectar el plan.";
     if (!isPlanSoloSueltas) return "";
-    return "Plan Negocio: solo puedes crear categorías sueltas (sin padre y sin hijas).";
+    return "El Plan Negocio permite crear categorías independientes.";
   }, [tiendaLoading, planId, isPlanSoloSueltas]);
 
   return {

@@ -21,6 +21,7 @@ import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
 
 import axiosClient from "../config/axiosClientPOS";
 import { showError, showSuccess } from "../utils/alerts";
+import { requireSaleWithoutBatches } from "../utils/batchInventory";
 import { notifyInventoryChanged } from "../utils/inventoryEvents";
 
 export default function ModalCancelarVenta({
@@ -47,6 +48,7 @@ export default function ModalCancelarVenta({
   };
 
   const handleCancelar = async () => {
+    if (loading || !ventaId) return;
     if (!motivo.trim()) {
       showError("Debe ingresar el motivo de la cancelación.");
       return;
@@ -55,6 +57,7 @@ export default function ModalCancelarVenta({
     setLoading(true);
 
     try {
+      await requireSaleWithoutBatches(axiosClient, ventaId);
       await axiosClient.post(`/cancelacion/venta/${ventaId}`, {
         motivo: motivo.trim(),
       });
@@ -66,6 +69,7 @@ export default function ModalCancelarVenta({
     } catch (error) {
       showError(
         error?.response?.data?.message ||
+        error?.message ||
           "Ocurrió un error al procesar la cancelación."
       );
     } finally {

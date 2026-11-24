@@ -144,8 +144,15 @@ export default function RestockHistoryTable({ rows = [], loading = false }) {
     return filteredRows.slice(start, start + perPage);
   }, [filteredRows, page]);
 
+  const columns = "minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, .9fr) minmax(0, .65fr) minmax(0, .8fr) minmax(0, .8fr) minmax(0, .85fr)";
+  const mobileLabel = (label) => (
+    <Typography component="span" variant="caption" color="text.secondary" sx={{ display: { xs: "block", lg: "none" } }}>
+      {label}
+    </Typography>
+  );
+
   return (
-    <Box>
+    <Box sx={{ minWidth: 0 }}>
       <Stack
         direction={{ xs: "column", md: "row" }}
         spacing={1}
@@ -197,11 +204,8 @@ export default function RestockHistoryTable({ rows = [], loading = false }) {
       >
         <Box
           sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              md: "1.4fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr 0.8fr",
-            },
+            display: { xs: "none", lg: "grid" },
+            gridTemplateColumns: columns,
             gap: 1,
             px: 1.5,
             py: 1.2,
@@ -278,7 +282,7 @@ export default function RestockHistoryTable({ rows = [], loading = false }) {
             </Stack>
           </Box>
         ) : (
-          <Box sx={{ maxHeight: 680, overflowY: "auto", pr: 0.5 }}>
+          <Box sx={{ maxHeight: { lg: 680 }, overflowY: { lg: "auto" }, pr: { lg: 0.5 } }}>
             <Stack spacing={0}>
               {paginatedRows.map((entry) => {
                 const subtotal =
@@ -291,11 +295,14 @@ export default function RestockHistoryTable({ rows = [], loading = false }) {
                     sx={{
                       display: "grid",
                       gridTemplateColumns: {
-                        xs: "1fr",
-                        md: "1.4fr 1fr 0.8fr 0.7fr 0.8fr 0.8fr 0.8fr",
+                        xs: "repeat(2, minmax(0, 1fr))",
+                        lg: columns,
                       },
-                      gap: 1,
-                      alignItems: "center",
+                      gap: { xs: 1.5, lg: 1 },
+                      alignItems: { xs: "start", lg: "center" },
+                      overflowWrap: "anywhere",
+                      "& > *": { minWidth: 0 },
+                      "& > :nth-child(-n+2), & > .MuiButton-root": { gridColumn: { xs: "1 / -1", lg: "auto" } },
                       px: 1.5,
                       py: 1.25,
                       borderBottom: `1px solid ${alpha("#000", 0.06)}`,
@@ -325,22 +332,27 @@ export default function RestockHistoryTable({ rows = [], loading = false }) {
                     </Box>
 
                     <Typography variant="body2" color="text.secondary">
+                      {mobileLabel("Descripción")}
                       {getLineDescription(entry)}
                     </Typography>
 
                     <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                      {mobileLabel("Fecha")}
                       {dateMX(getEntryDate(entry))}
                     </Typography>
 
                     <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                      {mobileLabel("Cantidad")}
                       {entry.quantity ?? 0}
                     </Typography>
 
                     <Typography variant="body2">
+                      {mobileLabel("Costo unitario")}
                       {money(entry.unit_price)}
                     </Typography>
 
                     <Typography variant="body2" sx={{ fontWeight: 900 }}>
+                      {mobileLabel("Subtotal")}
                       {money(subtotal)}
                     </Typography>
 
@@ -351,6 +363,7 @@ export default function RestockHistoryTable({ rows = [], loading = false }) {
                       onClick={() => setSelectedEntry(entry)}
                       sx={{
                         borderRadius: 2,
+                        minHeight: { xs: 44, lg: 36 },
                         fontWeight: 800,
                         textTransform: "none",
                       }}
@@ -383,12 +396,14 @@ export default function RestockHistoryTable({ rows = [], loading = false }) {
             <Pagination
               count={totalPages}
               page={page}
+              siblingCount={0}
               onChange={(_, value) => setPage(value)}
               color="primary"
               shape="rounded"
               sx={{
                 display: "flex",
                 justifyContent: { xs: "center", md: "flex-end" },
+                "& .MuiPagination-ul": { rowGap: 0.5 },
                 "& .MuiPaginationItem-root": {
                   borderRadius: 2,
                   fontWeight: 900,

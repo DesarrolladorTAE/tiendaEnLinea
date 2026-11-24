@@ -34,16 +34,19 @@ export default function CategoriesRail({ categories, selectedCategoryId, onSelec
   return (
     <Paper component="section" aria-label="Categorías" variant="outlined" sx={{
       display: "flex", flexDirection: "column", borderRadius: 3, minWidth: 0, overflow: "hidden",
-      bgcolor: "#fff", contain: { lg: "size" },
+      bgcolor: "#fff", contain: classic ? { md: "size" } : { lg: "size" },
     }}>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ flexShrink: 0, px: 1.5, py: 1.25, bgcolor: classic ? "#fff" : "#1d2025", borderTop: classic ? "none" : "3px solid #ffc107" }}>
-        <CategoryOutlinedIcon fontSize="small" sx={{ color: classic ? "#243244" : "#ffc107" }} />
-        <Typography component="h2" sx={{ color: classic ? "#172033 !important" : "#fff !important", fontSize: 14, fontWeight: 800 }}>Categorías</Typography>
+        {!classic && <CategoryOutlinedIcon fontSize="small" sx={{ color: "#ffc107" }} />}
+        <Box>
+          <Typography component="h2" sx={{ color: classic ? "#172033 !important" : "#fff !important", fontSize: 14, fontWeight: 800 }}>Categorías</Typography>
+          {classic && <Typography variant="caption" color="text.secondary" display="block">Filtra por sucursal</Typography>}
+        </Box>
       </Stack>
       {loading ? (
         <Typography role="status" variant="body2" sx={{ px: 1.5, py: 2 }}>Cargando categorías…</Typography>
       ) : (
-        <Box sx={{ display: "flex", flex: 1, minHeight: 0, flexDirection: { xs: "row", lg: "column" }, gap: 0.75, p: 1.25, overflow: "auto" }}>
+        <Box sx={{ display: "flex", flex: 1, minHeight: 0, flexDirection: classic ? { xs: "row", md: "column" } : { xs: "row", lg: "column" }, gap: 0.75, p: 1.25, overflow: "auto" }}>
           {filters.map(({ id, name, depth, parentName }) => {
             const active = String(id) === String(selectedCategoryId);
             return (
@@ -53,11 +56,11 @@ export default function CategoriesRail({ categories, selectedCategoryId, onSelec
                 aria-pressed={active}
                 aria-label={parentName ? `${name}, subcategoría de ${parentName}` : undefined}
                 onClick={() => onSelect(id)}
-                startIcon={id === null ? <GridViewRoundedIcon /> : depth ? <SubdirectoryArrowRightRoundedIcon /> : <FolderOutlinedIcon />}
+                startIcon={classic && !depth ? undefined : id === null ? <GridViewRoundedIcon /> : depth ? <SubdirectoryArrowRightRoundedIcon /> : <FolderOutlinedIcon />}
                 sx={{
                   flexShrink: 0,
                   justifyContent: "flex-start",
-                  minHeight: 44,
+                  minHeight: classic ? 34 : 44,
                   ml: { lg: Math.min(depth, 4) * 2 },
                   px: 1.25,
                   border: "1px solid",

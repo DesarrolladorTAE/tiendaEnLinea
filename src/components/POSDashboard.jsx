@@ -20,6 +20,8 @@ import LogoutIcon from "@mui/icons-material/Logout";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import RocketLaunchRoundedIcon from "@mui/icons-material/RocketLaunchRounded";
 
 import POS from "./POS";
 import HistorialVentas from "./HistorialVentas";
@@ -55,9 +57,54 @@ const sections = [
   { key: "settings", id: "configuracion_pos", title: "Configuración", icon: <SettingsOutlinedIcon /> },
 ];
 
-const classicDescriptions = {
-  caja: "Abre y administra la caja", venta: "Accede al módulo principal de ventas", historial: "Consulta las ventas realizadas", pedidos_web: "Revisa los pedidos de productos de esta caja", ventas_pendientes: "Consulta y cobra ventas pendientes", credito_fiado: "Administra crédito y fiados", clientes: "Consulta y administra clientes", facturas: "Consulta tus facturas", ventas_servicios: "Ventas, reservas y pagos de servicios", reportes_servicios: "Consulta los reportes de servicios", telorecargo: "Recargas, saldo y solicitudes de abono", notas: "Consulta las notas internas", configuracion_pos: "Configura las opciones de la terminal",
+const classicCards = {
+  pedidos_web: { color: "#1e67b9", description: "Revisar comprobantes de pedidos de productos de esta caja" },
+  reportes_servicios: { color: "#107269", description: "Manifiesto de pasajeros y descarga Excel", icon: <ReceiptLongOutlinedIcon /> },
+  ventas_servicios: { color: "#985b00", description: "Ventas, reservas, pasajeros y pagos de tours", icon: <RocketLaunchRoundedIcon /> },
+  venta: { color: "#157b34", description: "Accede al módulo principal de ventas" },
+  telorecargo: { color: "#1764b6", description: "Recargas, saldo compartido y solicitudes de abono" },
+  historial: { color: "#204acd", description: "Consulta todas las ventas realizadas" },
+  ventas_pendientes: { color: "#9c5e05", title: "Ventas Pendientes", description: "Consulta ventas con saldo pendiente" },
+  credito_fiado: { color: "#ad5007", title: "Módulo de crédito", description: "Control de fiados, abonos y saldos pendientes." },
+  notas: { color: "#bd0ea4", title: "Notas Internas", description: "Gestiona notas y recordatorios" },
+  facturas: { color: "#ad5007", description: "Consulta tus facturas" },
+  clientes: { color: "#6037ad", description: "Consulta y administra clientes" },
+  configuracion_pos: { color: "#107269", description: "Configura las opciones de la terminal" },
+  caja: { color: "#2647a5", description: "Abre y administra la caja" },
 };
+
+const classicLink = { borderRadius: 3, textTransform: "none", fontWeight: 800 };
+
+function ClassicMenu({ modules, visibleSections, changeSection }) {
+  if (modules.error) return <Alert severity="error">{modules.error}</Alert>;
+  if (!modules.keys) return <CircularProgress aria-label="Consultando módulos" />;
+  if (!visibleSections.length) return <Alert severity="info">La tienda no tiene módulos visibles para este punto de venta.</Alert>;
+
+  return (
+    <Box component="nav" aria-label="Módulos del punto de venta" sx={{
+      display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" },
+      gap: { xs: 1.5, md: 3 }, pt: { xs: 1, md: 2 },
+    }}>
+      {Object.keys(classicCards).map(id => {
+        const section = visibleSections.find(item => item.id === id);
+        if (!section) return null;
+        const { title, color, description, icon } = classicCards[id];
+        return (
+          <Button key={id} onClick={() => changeSection(id)} sx={{
+            minHeight: { xs: 150, sm: 180, md: 220 }, p: 2, flexDirection: "column", gap: 1,
+            bgcolor: color, color: "#fff", borderRadius: "16px", textTransform: "none",
+            boxShadow: "0 5px 12px #0005", "&:hover": { bgcolor: color, filter: "brightness(.94)" },
+            "& .MuiSvgIcon-root": { fontSize: 36 },
+          }}>
+            {icon ?? section.icon}
+            <Typography component="span" sx={{ color: "inherit !important", fontWeight: 900, fontSize: 19 }}>{title ?? section.title}</Typography>
+            <Typography component="span" sx={{ color: "inherit !important", fontSize: 14, maxWidth: 205, lineHeight: 1.3 }}>{description}</Typography>
+          </Button>
+        );
+      })}
+    </Box>
+  );
+}
 
 const navButton = {
   minHeight: 44,
@@ -134,7 +181,8 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
   const section = visibleSections.find(({ id }) => id === requestedSection)
     ?? visibleSections.find(({ id }) => id === defaultSection)
     ?? visibleSections[0];
-  const sectionId = section?.id;
+  const showClassicMenu = classic && (!requestedSection || (modules.keys && section?.id !== requestedSection));
+  const sectionId = showClassicMenu ? undefined : section?.id;
   const previousSection = useRef(sectionId);
   const sectionHeader = useRef(null);
 
@@ -179,13 +227,25 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
       case "ventas_servicios":
         return <ToursPage mode="pos" posLocationId={posLocationId} posBranchId={posBranchId} />;
       case "historial":
-        return <HistorialVentas posLocationId={posLocationId} />;
+        return <HistorialVentas posLocationId={posLocationId} classicNavigation={classic && (
+          <Stack direction="row" useFlexGap flexWrap="wrap" gap={1}>
+            <Button variant="contained" startIcon={<DashboardRoundedIcon />} onClick={goToClassicMenu}
+              sx={{ ...classicLink, minHeight: 46, bgcolor: "grey.900", "&:hover": { bgcolor: "grey.800" } }}>
+              Regresar al panel
+            </Button>
+            {[["venta", "Ventas"], ["ventas_pendientes", "Pendientes"], ["credito_fiado", "Crédito"], ["facturas", "Facturas"]].map(([id, label]) => {
+              const item = visibleSections.find(section => section.id === id);
+              return item && <Button key={id} variant="outlined" startIcon={item.icon} onClick={() => changeSection(id)}
+                sx={{ ...classicLink, minHeight: 46 }}>{label}</Button>;
+            })}
+          </Stack>
+        )} />;
       case "ventas_pendientes":
-        return <PendingSalesPOS posLocationId={posLocationId} />;
+        return <PendingSalesPOS classic={classic} posLocationId={posLocationId} />;
       case "credito_fiado":
-        return <CreditoFiadoPOS posLocationId={posLocationId} />;
+        return <CreditoFiadoPOS classic={classic} posLocationId={posLocationId} />;
       case "notas":
-        return <NotasInternas />;
+        return <NotasInternas classic={classic} />;
       case "configuracion_pos":
         return <PosLocationPrintSettings posLocationId={posLocationId} />;
       case "facturas":
@@ -209,10 +269,18 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
   const failedDownloads = cash.downloads?.failed;
 
   return (
-    <Box sx={{ minHeight: "100dvh", minWidth: 0, bgcolor: "#f5f6f8" }}>
+    <Box sx={{ minHeight: "100dvh", minWidth: 0, bgcolor: classic ? "#f3f3f3" : "#f5f6f8" }}>
       <Box ref={sectionHeader} component="header" sx={{ bgcolor: classic ? "#f3f3f3" : "#1d2025", color: classic ? "#111" : "#fff", borderTop: classic ? "none" : "3px solid #ffc107", boxShadow: classic ? "none" : "0 4px 16px rgba(23,25,28,.14)" }}>
         <Box sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, sm: 3, lg: 4 } }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1.5} sx={{ py: { xs: 1.25, sm: 1.75 }, borderBottom: classic ? "none" : "1px solid #373a41" }}>
+            {classic ? (
+              <Stack direction="row" spacing={1.25} alignItems="center" minWidth={0}>
+                <PointOfSaleOutlinedIcon fontSize="small" />
+                <Typography component="h1" sx={{ color: "#000 !important", fontSize: { xs: 20, md: 32 }, fontWeight: 700, lineHeight: 1.25 }}>
+                  Punto de Venta: {posName || "Terminal POS"}
+                </Typography>
+              </Stack>
+            ) : (
             <Stack direction="row" spacing={1.25} alignItems="center" minWidth={0}>
               <Box sx={{ width: 44, height: 44, flexShrink: 0, borderRadius: 2, display: { xs: "none", sm: "grid" }, placeItems: "center", bgcolor: classic ? "transparent" : "#ffc107", color: "#17191c" }}><PointOfSaleOutlinedIcon /></Box>
               <Box minWidth={0}>
@@ -220,10 +288,14 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
                 <Typography variant="h6" noWrap sx={{ color: classic ? "#111 !important" : "#fff !important", fontWeight: 800, lineHeight: 1.25 }}>{posName || "Terminal POS"}</Typography>
               </Box>
             </Stack>
+            )}
             <Stack direction="row" gap={0.75} alignItems="center" flexShrink={0}>
-              {cashLabel && modules.keys?.includes("cash") && <Chip size="small" label={cashLabel} sx={{ display: { xs: "none", md: "inline-flex" }, bgcolor: activeSession ? "#174434" : "#363a43", color: activeSession ? "#bcf0d8" : "#e2e4e8" }} />}
+              {!classic && cashLabel && modules.keys?.includes("cash") && <Chip size="small" label={cashLabel} sx={{ display: { xs: "none", md: "inline-flex" }, bgcolor: activeSession ? "#174434" : "#363a43", color: activeSession ? "#bcf0d8" : "#e2e4e8" }} />}
               <Button onClick={refreshMenu} disabled={modules.refreshing} aria-label="Actualizar menú" title="Actualizar menú" sx={{ ...navButton, color: classic ? "#333" : navButton.color, minWidth: 44, "&.Mui-disabled": { color: "#aeb7c2" } }}><RefreshRoundedIcon fontSize="small" /></Button>
-              <Button onClick={signOut} aria-label="Cerrar sesión" sx={{ ...navButton, color: classic ? "#c62828" : navButton.color, minWidth: 44 }}><LogoutIcon fontSize="small" /><Box component="span" sx={{ display: { xs: "none", sm: "inline" }, ml: 0.75 }}>Salir</Box></Button>
+              {classic ? <Button variant="outlined" color="error" onClick={signOut} aria-label="Cerrar sesión"
+                startIcon={<LogoutIcon fontSize="small" />} sx={{ minWidth: 40, "& .MuiButton-startIcon": { mx: { xs: 0, sm: undefined } } }}>
+                <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>Cerrar sesión</Box>
+              </Button> : <Button onClick={signOut} aria-label="Cerrar sesión" sx={{ ...navButton, color: classic ? "#c62828" : navButton.color, minWidth: 44 }}><LogoutIcon fontSize="small" /><Box component="span" sx={{ display: { xs: "none", sm: "inline" }, ml: 0.75 }}>Salir</Box></Button>}
             </Stack>
           </Stack>
           {!classic && <Box component="nav" aria-label="Secciones del punto de venta" sx={{
@@ -259,14 +331,33 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
         </Box>
       </Box>
 
-      <Box component="section" aria-labelledby="pos-section-title" sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, sm: 3, lg: 4 }, py: { xs: 2, md: 3 }, minWidth: 0 }}>
+      <Box component="section" aria-labelledby={showClassicMenu ? undefined : "pos-section-title"} sx={{ maxWidth: 1600, mx: "auto", px: { xs: 1.5, sm: 3, lg: 4 }, py: classic ? 2 : { xs: 2, md: 3 }, minWidth: 0 }}>
         {refreshError && <Alert severity="warning" sx={{ mb: 2 }}>{refreshError}</Alert>}
-        {classic && requestedSection && <Box sx={{ p: 1.25, mb: 2, bgcolor: "#fff", border: "1px solid #e0e0e0", borderRadius: 2, display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 1 }}>
-          {visibleSections.filter(item => ["historial", "facturas"].includes(item.id) && item.id !== sectionId).map(item => <Button key={item.id} variant="contained" startIcon={item.icon} onClick={() => changeSection(item.id)} sx={{ minWidth: 140, bgcolor: item.id === "historial" ? "#fb9900" : "#ef4248", textTransform: "none", fontWeight: 800 }}>{item.title}</Button>)}
-          <Button variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={goToClassicMenu} sx={{ minWidth: 140, textTransform: "none", fontWeight: 800 }}>Menú principal</Button>
-        </Box>}
-        {classic && !requestedSection ? <Box component="section" aria-label="Módulos del punto de venta"><Typography component="h1" sx={{ fontSize: { xs: 22, sm: 28 }, fontWeight: 900, mb: 2 }}>Punto de venta: {posName || "Terminal POS"}</Typography>{modules.error ? <Alert severity="error">{modules.error}</Alert> : !modules.keys ? <CircularProgress aria-label="Consultando módulos" /> : visibleSections.length === 0 ? <Alert severity="info">La tienda no tiene módulos visibles para este punto de venta.</Alert> : <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(3, minmax(0, 1fr))" }, gap: { xs: 1.5, sm: 2 } }}>{visibleSections.map(({ id, title, icon }, index) => <Button key={id} onClick={() => changeSection(id)} sx={{ minHeight: { xs: 120, sm: 175 }, p: 2, display: "flex", flexDirection: "column", gap: 1, bgcolor: ["#1662b6", "#137368", "#9b5e00", "#157638", "#214bc9", "#a0440d"][index % 6], color: "#fff", borderRadius: 2.5, textTransform: "none", boxShadow: "0 6px 14px #0002", "&:hover": { filter: "brightness(.9)" }, "& .MuiSvgIcon-root": { fontSize: 36 } }}>{icon}<Typography component="span" sx={{ color: "#fff !important", fontWeight: 900, fontSize: 18 }}>{title}</Typography><Typography component="span" sx={{ color: "#fff !important", fontSize: 13, maxWidth: 240, lineHeight: 1.3 }}>{classicDescriptions[id]}</Typography></Button>)}</Box>}</Box> : null}
-        {(!classic || requestedSection) && <><Typography id="pos-section-title" component="h1" className={sectionId === "caja" ? undefined : "visually-hidden"} sx={{ color: "#1d2025", fontSize: { xs: 23, md: 29 }, fontWeight: 800, mb: 2, letterSpacing: "-.02em" }}>{section?.title ?? "Módulos del punto de venta"}</Typography>
+        {showClassicMenu && <ClassicMenu modules={modules} visibleSections={visibleSections} changeSection={changeSection} />}
+        {classic && sectionId === "venta" && (
+          <Box component="nav" aria-label="Accesos de venta" sx={{
+            p: 2, mb: 2, bgcolor: "#fff", border: "1px solid #ddd", borderRadius: 3,
+            boxShadow: "0 12px 28px #0001", display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 1,
+          }}>
+            {["historial", "facturas"].map(id => {
+              const item = visibleSections.find(section => section.id === id);
+              const color = id === "historial" ? "#f59e0b" : "#ef4248";
+              return item && <Button key={id} variant="contained" startIcon={item.icon}
+                onClick={() => changeSection(id)} sx={{ ...classicLink, minWidth: 160, bgcolor: color, "&:hover": { bgcolor: color, filter: "brightness(.94)" } }}>{item.title}</Button>;
+            })}
+            <Button variant="outlined" startIcon={<DashboardRoundedIcon />} onClick={goToClassicMenu}
+              sx={{ ...classicLink, minWidth: 160 }}>Panel</Button>
+          </Box>
+        )}
+        {classic && sectionId && !["venta", "historial"].includes(sectionId) && (
+          <Button variant="outlined" color={sectionId === "ventas_pendientes" ? "primary" : "success"}
+            startIcon={sectionId === "ventas_pendientes" ? <ArrowBackRoundedIcon /> : <DashboardRoundedIcon />}
+            onClick={goToClassicMenu} sx={{ ...classicLink, mb: 2 }}>
+            {sectionId === "ventas_pendientes" ? "Volver al panel" : "Regresar al Panel"}
+          </Button>
+        )}
+        {!showClassicMenu && <>
+        <Typography id="pos-section-title" component={classic ? "h2" : "h1"} className={sectionId === "caja" ? undefined : "visually-hidden"} sx={{ color: "#1d2025", fontSize: { xs: 23, md: 29 }, fontWeight: 800, mb: 2, letterSpacing: "-.02em" }}>{section?.title ?? "Módulos del punto de venta"}</Typography>
         {cash.downloads?.pending && <Alert severity="info" sx={{ mb: 2 }}>Preparando el PDF y Excel del inventario inicial…</Alert>}
         {Boolean(failedDownloads?.length) && (
           <Alert severity="warning" sx={{ mb: 2 }} action={<Button color="inherit" onClick={() => cash.downloadOpening(cash.downloads.sessionId, failedDownloads)}>Reintentar</Button>}>

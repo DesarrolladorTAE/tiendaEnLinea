@@ -51,6 +51,18 @@ test("variant totals never populate or send the parent stock", async () => {
   expect(form.has("stock")).toBe(false);
   expect(form.get("variants[0][stock]")).toBe("5");
 });
+
+test("creates a tracked product with exact expiry enabled and zero stock in its warehouse", async () => {
+  await act(async () => latest.actions.onSubmit({
+    ...draft, batch_tracking_enabled: true, expiration_required: true,
+    use_warehouse_inventory: true, warehouse_inventories: [{ warehouse_id: 2, qty: 9 }],
+  }));
+  const [url, payload] = client.post.mock.calls[0];
+  expect(url).toBe("/cargar/productos");
+  expect(payload.get("batch_tracking_enabled")).toBe("1");
+  expect(payload.get("expiration_required")).toBe("1");
+  expect(payload.get("warehouse_inventories[0][qty]")).toBe("0");
+});
 test("warehouse variants use the warehouse detail without requiring a matching variant total", async () => {
   const data = { ...draft, stock: 0, use_warehouse_inventory: true, warehouse_inventories: [{ warehouse_id: 2 }], variants: [{ id: 11, name: "Variante", stock: 0, warehouse_stocks: [{ warehouse_id: 2, stock: 8 }] }] };
   await act(async () => latest.actions.onSubmit(data));

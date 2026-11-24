@@ -343,8 +343,8 @@ export default function StockEntryForm() {
             <ReceiptLongRounded color={isSalida ? "error" : "inherit"} />
           </Box>
 
-          <Box sx={{ flex: 1, minWidth: 240 }}>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
+          <Box sx={{ flex: "1 1 160px", minWidth: 0, overflowWrap: "anywhere" }}>
+            <Stack direction="row" gap={1} flexWrap="wrap" sx={{ "& .MuiChip-root": { maxWidth: "100%" } }}>
               <Typography sx={{ fontWeight: 900 }}>
                 {entry.product?.name || "Producto"}
               </Typography>
@@ -398,16 +398,18 @@ export default function StockEntryForm() {
       sx={{
         bgcolor: "#fff",
         minHeight: "100vh",
-        py: 3,
+        py: { xs: 2, md: 3 },
+        minWidth: 0,
       }}
     >
-      <Container maxWidth="xl">
+      <Container maxWidth="xl" sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
         <Stack spacing={1.5} sx={{ mb: 2.25 }}>
           <Stack direction="row" spacing={1.2} alignItems="center">
             <Box
               sx={{
                 width: 44,
                 height: 44,
+                flexShrink: 0,
                 borderRadius: 2,
                 bgcolor: alpha(COLORS.accent, 0.22),
                 border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
@@ -418,10 +420,11 @@ export default function StockEntryForm() {
               <Inventory2Rounded sx={{ color: COLORS.black }} />
             </Box>
 
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
               <Typography
-                variant="h5"
+                variant="h5" component="h1"
                 sx={{
+                  fontSize: { xs: 20, sm: 24 },
                   fontWeight: 900,
                   color: COLORS.black,
                 }}
@@ -441,6 +444,7 @@ export default function StockEntryForm() {
             <Tooltip title="Cambiar sucursal">
               <IconButton
                 onClick={() => navigate("/admin/sucursales")}
+                aria-label="Cambiar sucursal"
                 sx={{
                   borderRadius: 2,
                   border: `1px solid ${alpha("#000", 0.08)}`,
@@ -451,7 +455,7 @@ export default function StockEntryForm() {
             </Tooltip>
           </Stack>
 
-          <Stack direction={{ xs: "column", md: "row" }} spacing={1}>
+          <Stack direction={{ xs: "column", sm: "row" }} useFlexGap flexWrap="wrap" gap={1.25} sx={{ "& .MuiButton-root": { minHeight: 44 } }}>
             <Button
               onClick={() => setRestockOpen(true)}
               variant="contained"
@@ -518,11 +522,11 @@ export default function StockEntryForm() {
         </Stack>
 
         <Stack
-          direction={{ xs: "column", lg: "row" }}
+          direction={{ xs: "column", xl: "row" }}
           spacing={2}
           alignItems="flex-start"
         >
-          <Stack spacing={2} sx={{ flex: 1, width: "100%" }}>
+          <Stack spacing={2} sx={{ flex: 1, width: "100%", minWidth: 0 }}>
             <Card
               elevation={0}
               sx={{

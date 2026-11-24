@@ -428,7 +428,8 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
           showError("⚠️ " + mensajes);
           return;
         }
-        showError("❌ Error al cobrar. Revisa productos o stock.");
+        showError(err?.response?.status === 422 && resp?.message
+          ? resp.message : "No se pudo cobrar. Revisa los productos y las existencias.");
       } finally {
         checkoutBusy.current = false;
       }

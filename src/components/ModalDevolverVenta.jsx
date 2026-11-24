@@ -23,6 +23,7 @@ import AssignmentReturnRoundedIcon from "@mui/icons-material/AssignmentReturnRou
 import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 
 import axiosClient from "../config/axiosClientPOS";
+import { requireSaleWithoutBatches } from "../utils/batchInventory";
 import { notifyInventoryChanged } from "../utils/inventoryEvents";
 import { showError, showSuccess } from "../utils/alerts";
 
@@ -73,6 +74,7 @@ export default function ModalDevolucionExtendido({
   };
 
   const handleSubmit = async () => {
+    if (loading || !ventaId) return;
     if (!motivo.trim()) {
       showError("Debe ingresar el motivo del reembolso.");
       return;
@@ -92,6 +94,7 @@ export default function ModalDevolucionExtendido({
         accion: "reembolso",
       }));
 
+      await requireSaleWithoutBatches(axiosClient, ventaId);
       await axiosClient.post(`/devoluciones/${ventaId}/reembolso-total`, {
         motivo: motivo.trim(),
         items,
@@ -105,6 +108,7 @@ export default function ModalDevolucionExtendido({
       const msg =
         error?.response?.data?.details ||
         error?.response?.data?.message ||
+        error?.message ||
         "Error al registrar el reembolso total.";
 
       showError(msg);

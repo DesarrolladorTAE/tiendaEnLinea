@@ -24,8 +24,12 @@ export default function HistorialPOSFilters({
   onApply,
   onClear,
   loading,
+  classic = false,
 }) {
-  const fieldSx = {
+  const fieldSx = classic ? {
+    minWidth: 0,
+    "& .MuiOutlinedInput-root": { borderRadius: 3, bgcolor: "#fff" },
+  } : {
     minWidth: 0,
     colorScheme: "dark",
     "& .MuiOutlinedInput-root": {
@@ -46,7 +50,10 @@ export default function HistorialPOSFilters({
   };
 
   return (
-    <Box component="section" aria-labelledby="pos-history-filter-title" sx={{ pt: 2, borderTop: "1px solid #434953" }}>
+    <Box component="section" aria-labelledby="pos-history-filter-title" sx={classic ? {
+      p: 2.5, border: "1px solid", borderColor: "divider", borderRadius: 5,
+      background: "linear-gradient(135deg, #eee, #fff)", boxShadow: "0 18px 45px #0001",
+    } : { pt: 2, borderTop: "1px solid #434953" }}>
       <Stack spacing={2}>
         <Stack
           direction={{ xs: "column", md: "row" }}
@@ -62,23 +69,24 @@ export default function HistorialPOSFilters({
                 borderRadius: 3,
                 display: "grid",
                 placeItems: "center",
-                bgcolor: "#3d3520",
-                color: "#ffd454",
+                bgcolor: classic ? "#e3eef9" : "#3d3520",
+                color: classic ? "primary.main" : "#ffd454",
               }}
             >
               <FilterAltRoundedIcon />
             </Box>
 
             <Box>
-              <Typography id="pos-history-filter-title" component="h3" sx={{ color: "#fff !important", fontWeight: 800, fontSize: 16 }}>
+              <Typography id="pos-history-filter-title" component="h3" sx={{ color: classic ? "text.primary" : "#fff !important", fontWeight: 800, fontSize: classic ? 19 : 16 }}>
                 Filtros de consulta
               </Typography>
+              {classic && <Typography variant="body2" color="text.secondary">Filtra movimientos por fecha y método de pago.</Typography>}
             </Box>
           </Stack>
 
         </Stack>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1.5 }}>
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", lg: classic ? "repeat(3, minmax(0, 170px)) minmax(0, 210px) minmax(0, 1fr)" : "repeat(4, minmax(0, 1fr))" }, gap: 1.5 }}>
           <TextField
             select
             size="small"
@@ -137,7 +145,7 @@ export default function HistorialPOSFilters({
             direction={{ xs: "column", sm: "row" }}
             spacing={1}
             sx={{
-              gridColumn: "1 / -1",
+              gridColumn: { xs: "1 / -1", lg: classic ? "auto" : "1 / -1" },
               justifySelf: { sm: "end" },
             }}
           >
@@ -154,9 +162,9 @@ export default function HistorialPOSFilters({
                 minHeight: 42,
                 px: 2.5,
                 "&.Mui-disabled": { bgcolor: "#555044", color: "#eee5cd" },
-                bgcolor: "#ffc107",
-                color: "#17191c",
-                "&:hover": { bgcolor: "#ffe082" },
+                bgcolor: classic ? "primary.main" : "#ffc107",
+                color: classic ? "#fff" : "#17191c",
+                "&:hover": { bgcolor: classic ? "primary.dark" : "#ffe082" },
               }}
             >
               {loading ? "Cargando..." : "Aplicar"}
@@ -175,7 +183,7 @@ export default function HistorialPOSFilters({
                 fontWeight: 900,
                 minHeight: 42,
                 px: 2.5,
-                color: "#fff",
+                color: classic ? "text.primary" : "#fff",
                 borderColor: "#65707d",
                 "&:hover": { borderColor: "#ffc107" },
                 "&.Mui-disabled": { color: "#adb6c2", borderColor: "#555e69" },

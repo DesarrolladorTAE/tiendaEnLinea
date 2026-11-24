@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Container,
   Typography,
   Stack,
   Button,
@@ -13,15 +12,18 @@ import {
   InputAdornment,
   Skeleton,
   Chip,
-  Tooltip,
   Alert,
-  Grow,
   useMediaQuery,
-  Grid,
-  Collapse,
   MenuItem,
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  ListItemIcon,
+  Menu,
 } from "@mui/material";
-import { useTheme, alpha, keyframes } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
@@ -36,7 +38,9 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import LoginRoundedIcon from "@mui/icons-material/LoginRounded";
+import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
+import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
@@ -46,7 +50,6 @@ import useLimitePOS from "../../hooks/useLimitePOS";
 import { useAdminUi } from "../../context/AdminUiContext";
 
 import {
-  showConfirm,
   showSuccess,
   alertFromAxiosError,
 } from "../../utils/alerts";
@@ -56,16 +59,19 @@ import AdminCashDialog from "../../components/cash/AdminCashDialog";
 import POSModulesDialog from "../../components/adminpos/POSModulesDialog";
 import PointOfSaleOutlinedIcon from "@mui/icons-material/PointOfSaleOutlined";
 
-const COLORS = {
-  accent: "#f9b233",
-  black: "#000000",
-  danger: "#e94e1b",
+import { adminSectionDialog, adminSectionHeader, adminSectionPanel, adminSectionPrimaryAction, adminSectionScope, adminSectionTitle } from "../../components/admin/AdminSectionOption";
+
+const terminalsGrid = {
+  display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(3, minmax(0, 1fr))" },
+  gap: 2,
 };
 
-const floatIn = keyframes`
-  from { transform: translateY(8px); opacity: 0; }
-  to   { transform: translateY(0px); opacity: 1; }
-`;
+const outlinedAction = {
+  color: "#30343b", borderColor: "#d6d7da",
+  "&:hover": { borderColor: "#d5a000", bgcolor: "#fff8df" },
+};
+
+const interfaceLabel = (value) => value === "clasico" ? "Clásico · tarjetas" : "Actual · navegación superior";
 
 const generarCodigo = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -73,7 +79,7 @@ const generarCodigo = () =>
 /**
  * ✅ Copiar a portapapeles (robusto)
  */
-const copyToClipboard = async (text) => {
+const copyToClipboard = async (text, trigger) => {
   if (!text) return false;
 
   try {
@@ -87,8 +93,8 @@ const copyToClipboard = async (text) => {
     }
   } catch (_) {}
 
+  const ta = document.createElement("textarea");
   try {
-    const ta = document.createElement("textarea");
     ta.value = text;
     ta.setAttribute("readonly", "");
     ta.style.position = "fixed";
@@ -96,16 +102,18 @@ const copyToClipboard = async (text) => {
     ta.style.left = "-1000px";
     ta.style.opacity = "0";
 
-    document.body.appendChild(ta);
+    const container = trigger?.closest('[role="dialog"]') ?? document.body;
+    container.appendChild(ta);
     ta.focus();
     ta.select();
     ta.setSelectionRange(0, ta.value.length);
 
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
+    return document.execCommand("copy");
   } catch (_) {
     return false;
+  } finally {
+    ta.remove();
+    trigger?.focus();
   }
 };
 
@@ -126,6 +134,7 @@ const buildAccessMessage = ({ branchName, posCode, accessCode }) => {
 export default function POS() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -157,10 +166,18 @@ export default function POS() {
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState("");
 
-  const [visibles, setVisibles] = useState({});
-  const [editando, setEditando] = useState({});
-  const [openEdit, setOpenEdit] = useState({});
-  const [savingInterface, setSavingInterface] = useState({});
+  const [editor, setEditor] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [accessPos, setAccessPos] = useState(null);
+  const [accessStatus, setAccessStatus] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [terminalMenu, setTerminalMenu] = useState(null);
+
+  useEffect(() => {
+    if (!isDesktop) setTerminalMenu(null);
+  }, [isDesktop]);
+  const [pinVisible, setPinVisible] = useState(false);
 
   // ✅ almacenes para selector
   const [warehouses, setWarehouses] = useState([]);
@@ -183,8 +200,7 @@ export default function POS() {
     return rows.filter((p) => {
       const name = (p?.name || "").toLowerCase();
       const code = (p?.code || "").toLowerCase();
-      const access = (p?.access_code || "").toLowerCase();
-      return name.includes(s) || code.includes(s) || access.includes(s);
+      return name.includes(s) || code.includes(s);
     });
   }, [rows, q]);
 
@@ -297,189 +313,119 @@ export default function POS() {
     navigate("/admin/prueba/pos", { state: { pos, branchName: activeBranch?.name } });
   };
 
-  const toggleVisibilidad = (id) => {
-    setVisibles((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
-
-  const actualizarCampo = (id, campo, valor) => {
-    setRows((ps) => ps.map((p) => (p.id === id ? { ...p, [campo]: valor } : p)));
-    setEditando((e) => ({ ...e, [id]: true }));
-  };
-
-  const handleGenerate = async (id) => {
-    const nuevo = generarCodigo();
-    setRows((ps) => ps.map((p) => (p.id === id ? { ...p, access_code: nuevo } : p)));
-    setEditando((e) => ({ ...e, [id]: true }));
-    await showSuccess("Código de acceso generado (recuerda guardar)");
-  };
-
-  const handleCopyAccess = async (pos) => {
-    const accessCode = pos?.access_code || "";
-    if (!accessCode) {
-      return alertFromAxiosError(
-        { response: { data: { message: "Este POS no tiene contraseña." } } },
-        "Este POS no tiene contraseña.",
-      );
-    }
-
-    const msg = buildAccessMessage({
+  const handleCopyAccess = async (pos, trigger) => {
+    if (!pos.access_code) return;
+    const copied = await copyToClipboard(buildAccessMessage({
       branchName: activeBranch?.name || "Sucursal",
-      posCode: pos?.code || "POS",
-      accessCode,
+      posCode: pos.code || "POS",
+      accessCode: pos.access_code,
+    }), trigger);
+    setAccessStatus(copied ? { severity: "success", message: "Accesos copiados." }
+      : { severity: "error", message: "No se pudieron copiar los accesos." });
+  };
+
+  const openEditor = (pos = null) => {
+    if (!activeBranch?.id || (!pos && rows.length >= (Number(limite) || 10))) return;
+    setSaveError("");
+    setDeleteConfirm(false);
+    setPinVisible(false);
+    setEditor({
+      original: pos,
+      name: pos?.name ?? "",
+      access_code: pos ? String(pos.access_code ?? "") : generarCodigo(),
+      interface_design: pos?.interface_design === "clasico" ? "clasico" : "actual",
     });
-
-    const ok = await copyToClipboard(msg);
-    if (!ok) {
-      return alertFromAxiosError(
-        {
-          response: {
-            data: {
-              message:
-                "No se pudo copiar al portapapeles. Intenta en HTTPS o en otro navegador.",
-            },
-          },
-        },
-        "No se pudo copiar al portapapeles.",
-      );
-    }
-
-    await showSuccess("Accesos copiados al portapapeles");
   };
 
-  const agregarPunto = async () => {
-    const limiteNum = Number(limite) || 10;
-    const reales = rows.filter((p) => !String(p.id).startsWith("new-")).length;
-
-    if (reales >= limiteNum) {
-      return alertFromAxiosError(
-        { response: { data: { message: `Solo se permiten hasta ${limiteNum} puntos de venta.` } } },
-        `Solo se permiten hasta ${limiteNum} puntos de venta.`,
-      );
-    }
-
-    const tempId = `new-${Date.now()}`;
-    setRows((ps) => [
-      ...ps,
-      {
-        id: tempId,
-        branch_id: activeBranch?.id,
-        name: "",
-        interface_design: "actual",
-        code: "",
-        access_code: generarCodigo(),
-
-        // ✅ defaults visuales en frontend
-        show_unassigned_products: true,
-        warehouse_ids: [],
-        warehouses_count: 0,
-        warehouses: [],
-      },
-    ]);
-
-    setEditando((e) => ({ ...e, [tempId]: true }));
-    setVisibles((v) => ({ ...v, [tempId]: true }));
-    setOpenEdit((o) => ({ ...o, [tempId]: true }));
-
-    await showSuccess("Nuevo POS agregado (completa el nombre y guarda)");
+  const setEditorField = (field, value) => {
+    setSaveError("");
+    setEditor(previous => ({ ...previous, [field]: value }));
   };
 
-  const guardarCambios = async (id) => {
-    const punto = rows.find((p) => p.id === id);
-    if (!punto) return;
-
-    if (!punto?.name?.trim()) {
-      return alertFromAxiosError(
-        { response: { data: { message: "El nombre es obligatorio." } } },
-        "El nombre es obligatorio.",
-      );
+  const saveTerminal = async (event) => {
+    event.preventDefault();
+    if (saving || !editor || !activeBranch?.id || !editor.name.trim()) return;
+    const { original, access_code, interface_design } = editor;
+    const name = editor.name.trim();
+    const pinChanged = !original || access_code !== String(original.access_code ?? "");
+    if (pinChanged && !/^\d{6}$/.test(access_code)) {
+      setSaveError("El PIN debe tener seis dígitos.");
+      return;
     }
 
+    setSaving(true);
+    setSaveError("");
     try {
-      if (String(id).startsWith("new-")) {
-        try {
-          const { data } = await axiosClient.post(`/branches/${activeBranch.id}/pos`, {
-            name: punto.name,
-            access_code: punto.access_code,
-            interface_design: punto.interface_design === "clasico" ? "clasico" : "actual",
-          });
-          const saved = data?.pos ?? data?.data ?? data;
-          setRows((ps) => ps.map((x) => (x.id === id ? saved : x)));
-        } catch (err) {
-          const status = err?.response?.status;
-          if (status === 404) {
-            const { data } = await axiosClient.post(`/store/pos`, {
-              branch_id: activeBranch.id,
-              name: punto.name,
-              access_code: punto.access_code,
-              interface_design: punto.interface_design === "clasico" ? "clasico" : "actual",
-            });
-            const saved = data?.pos ?? data?.data ?? data;
-            setRows((ps) => ps.map((x) => (x.id === id ? saved : x)));
-          } else {
-            throw err;
-          }
+      if (original) {
+        const changes = {};
+        if (name !== original.name || pinChanged) {
+          changes.branch_id = activeBranch.id;
+          changes.name = name;
+          if (pinChanged) changes.access_code = access_code;
         }
-
-        await showSuccess("POS creado correctamente");
+        if (interface_design !== (original.interface_design ?? "actual")) changes.interface_design = interface_design;
+        if (Object.keys(changes).length) {
+          const { data } = await axiosClient.put(`/pos/${original.id}`, changes);
+          const updated = data?.pos ?? data?.data;
+          setRows(previous => previous.map(row => row.id === original.id ? { ...row, ...changes, ...updated } : row));
+        }
       } else {
-        await axiosClient.put(`/pos/${id}`, {
-          branch_id: activeBranch.id,
-          name: punto.name,
-          access_code: punto.access_code,
-        });
-        await showSuccess("POS actualizado correctamente");
+        const payload = { name, access_code, interface_design };
+        let response;
+        try {
+          response = await axiosClient.post(`/branches/${activeBranch.id}/pos`, payload);
+        } catch (error) {
+          if (error?.response?.status !== 404) throw error;
+          response = await axiosClient.post("/store/pos", { ...payload, branch_id: activeBranch.id });
+        }
+        const saved = response.data?.pos ?? response.data?.data ?? response.data;
+        if (saved?.id) setRows(previous => [...previous, { ...payload, branch_id: activeBranch.id, ...saved }]);
+        else await fetchPOS({ silent: true });
       }
-
-      setEditando((e) => ({ ...e, [id]: false }));
-      setOpenEdit((o) => ({ ...o, [id]: false }));
-      fetchPOS({ silent: true });
-    } catch (err) {
-      alertFromAxiosError(err, "Error al guardar POS");
+      setEditor(null);
+      await showSuccess(original ? "Punto de venta actualizado" : "Punto de venta creado");
+    } catch (error) {
+      setSaveError(error?.response?.data?.message || "No se pudo guardar el punto de venta.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const updateInterfaceDesign = async (pos, value) => {
-    if (String(pos.id).startsWith("new-")) { actualizarCampo(pos.id, "interface_design", value); return; }
-    setSavingInterface(previous => ({ ...previous, [pos.id]: true }));
-    try {
-      const { data } = await axiosClient.put(`/pos/${pos.id}`, { interface_design: value });
-      const next = data?.pos?.interface_design === "clasico" ? "clasico" : "actual";
-      setRows(previous => previous.map(row => row.id === pos.id ? { ...row, interface_design: next } : row));
-      await showSuccess("Interfaz actualizada");
-    } catch (error) { alertFromAxiosError(error, "No se pudo cambiar la interfaz"); }
-    finally { setSavingInterface(previous => ({ ...previous, [pos.id]: false })); }
+  const openAccess = (pos) => {
+    setPinVisible(false);
+    setAccessStatus(null);
+    setAccessPos(pos);
   };
 
   const eliminarPunto = async (id) => {
-    const ok = await showConfirm(
-      "¿Estás seguro de eliminar este punto de venta?\n\nSe perderá la información relacionada (ventas, historial, cortes y cualquier registro asociado). Esta acción no se puede deshacer.",
-      "Sí, eliminar definitivamente",
-    );
-    if (!ok) return;
-
-    if (!String(id).startsWith("new-")) {
-      try {
-        await axiosClient.delete(`/pos/${id}`);
-      } catch (err) {
-        return alertFromAxiosError(err, "No se pudo eliminar el POS");
-      }
+    if (saving) return;
+    setSaving(true);
+    setSaveError("");
+    try {
+      await axiosClient.delete(`/pos/${id}`);
+      setEditor(null);
+      setRows(previous => previous.filter(pos => pos.id !== id));
+      await showSuccess("Punto de venta eliminado");
+    } catch (error) {
+      setSaveError(error?.response?.data?.message || "No se pudo eliminar el punto de venta.");
+    } finally {
+      setSaving(false);
     }
+  };
 
-    setRows((ps) => ps.filter((p) => p.id !== id));
-    await showSuccess("POS eliminado");
-    fetchPOS({ silent: true });
+  const closeEditor = () => {
+    if (saving) return;
+    if (deleteConfirm) {
+      setDeleteConfirm(false);
+      setSaveError("");
+    } else {
+      setEditor(null);
+    }
   };
 
   // ---------------- Asignaciones (modal) ----------------
 
   const openAssignDialog = (pos) => {
-    if (!pos || String(pos.id).startsWith("new-")) {
-      return alertFromAxiosError(
-        { response: { data: { message: "Primero guarda el POS para poder asignar almacenes." } } },
-        "Primero guarda el POS para poder asignar almacenes.",
-      );
-    }
-
     setAssignPos(pos);
     setAssignWarehouseIds(Array.isArray(pos?.warehouse_ids) ? pos.warehouse_ids.map(Number) : []);
     setAssignShowUnassigned(!!pos?.show_unassigned_products);
@@ -528,520 +474,224 @@ export default function POS() {
     }
   };
 
-  const header = (
-    <Stack
-      direction={isMobile ? "column" : "row"}
-      alignItems={isMobile ? "flex-start" : "center"}
-      justifyContent="space-between"
-      spacing={2}
-      sx={{ mb: 2 }}
-    >
-      <Stack spacing={0.6} sx={{ width: "100%" }}>
-        <Stack direction="row" spacing={1.2} alignItems="center">
-          <Box
-            sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 2,
-              bgcolor: alpha(COLORS.accent, 0.22),
-              border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-              display: "grid",
-              placeItems: "center",
-              flexShrink: 0,
-            }}
-          >
-            <StorefrontRoundedIcon sx={{ color: COLORS.black }} />
-          </Box>
-
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" sx={{ fontWeight: 900, color: COLORS.black }}>
-              Puntos de venta (POS)
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {activeBranch?.name
-                ? `Sucursal: ${activeBranch.name}`
-                : activeBranch?.id
-                  ? `Sucursal #${activeBranch.id}`
-                  : "Selecciona una sucursal"}
-            </Typography>
-          </Box>
-
-          <Tooltip title="Cambiar sucursal">
-            <IconButton
-              onClick={() => navigate("/admin/sucursales")}
-              sx={{
-                borderRadius: 2,
-                border: `1px solid ${alpha("#000", 0.08)}`,
-              }}
-            >
-              <ArrowBackRoundedIcon />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-
-        <Stack
-          direction={{ xs: "column", md: "row" }}
-          spacing={1}
-          alignItems="center"
-          sx={{ width: "100%", mt: 1 }}
-        >
-          <TextField
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar (nombre, código, access code)…"
-            size="small"
-            fullWidth
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "#fff",
-                borderRadius: 2,
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchRoundedIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <Stack
-            direction={{ xs: "column", sm: "row" }}
-            spacing={1}
-            sx={{ width: { xs: "100%", md: "auto" }, flexShrink: 0 }}
-          >
-            <Button
-              onClick={() => fetchPOS({ silent: false })}
-              variant="outlined"
-              startIcon={<RefreshRoundedIcon />}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 900,
-                minWidth: isMobile ? "100%" : 160,
-                borderColor: alpha("#000", 0.15),
-                color: COLORS.black,
-              }}
-            >
-              Recargar
-            </Button>
-
-            <Button
-              onClick={agregarPunto}
-              variant="contained"
-              startIcon={<AddRoundedIcon />}
-              sx={{
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 900,
-                bgcolor: COLORS.black,
-                "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
-                minWidth: isMobile ? "100%" : 190,
-              }}
-            >
-              Nuevo POS
-            </Button>
-          </Stack>
-        </Stack>
-      </Stack>
-    </Stack>
+  const canCreate = Boolean(activeBranch?.id) && !loading && rows.length < (Number(limite) || 10);
+  const togglePin = (
+    <InputAdornment position="end">
+      <IconButton aria-label={pinVisible ? "Ocultar PIN" : "Mostrar PIN"} onClick={() => setPinVisible(value => !value)} edge="end">
+        {pinVisible ? <VisibilityOffRoundedIcon /> : <VisibilityRoundedIcon />}
+      </IconButton>
+    </InputAdornment>
   );
 
   return (
-    <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: 3 }}>
-      <Container maxWidth="lg">
-        {header}
+    <Box sx={{
+      width: "100%", maxWidth: 1500, minWidth: 0, mx: "auto", pb: 3,
+      "& .MuiButton-root": { minHeight: 44, textTransform: "none", fontWeight: 700, borderRadius: 2.5 },
+      "& .MuiIconButton-root": { minWidth: 44, minHeight: 44 },
+      "& .MuiTypography-root": { overflowWrap: "anywhere" },
+    }}>
+      <Paper elevation={0} sx={adminSectionHeader}>
+        <Stack direction={{ xs: "column", sm: "row" }} gap={2} alignItems={{ sm: "center" }} justifyContent="space-between">
+          <Box sx={{ minWidth: 0 }}>
+            <Typography component="h1" sx={adminSectionTitle}>Puntos de venta</Typography>
+            <Typography sx={{ mt: 1, color: "#c7cbd1" }}>Administra tus terminales, accesos y módulos por sucursal.</Typography>
+          </Box>
+          <Chip icon={<LocationOnRoundedIcon />} sx={adminSectionScope}
+            label={activeBranch?.name || (activeBranch?.id ? `Sucursal #${activeBranch.id}` : "Sin sucursal")} />
+        </Stack>
+      </Paper>
 
-        <Card
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha("#000", 0.08)}`,
-            overflow: "hidden",
-          }}
-        >
-          <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1, flexWrap: "wrap" }}>
-              <Chip
-                icon={<StorefrontRoundedIcon />}
-                label={loading ? "Cargando…" : `${filtered.length} POS`}
-                sx={{
-                  fontWeight: 900,
-                  bgcolor: alpha(COLORS.accent, 0.22),
-                  border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-                }}
-              />
-
-              {activeBranch?.id ? (
-                <Chip
-                  icon={<LocationOnRoundedIcon />}
-                  label={activeBranch?.name ? activeBranch.name : `Sucursal #${activeBranch.id}`}
-                  variant="outlined"
-                  sx={{ fontWeight: 700 }}
-                />
-              ) : null}
-
-              <Chip label={`Límite: ${limite}`} variant="outlined" sx={{ fontWeight: 800 }} />
+      {!activeBranch?.id ? (
+        <Paper elevation={0} sx={adminSectionPanel}>
+          <Alert severity="info" sx={{ mb: 2 }}>Selecciona una sucursal para ver sus puntos de venta.</Alert>
+          <Button variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={() => navigate("/admin/sucursales")} sx={outlinedAction}>
+            Ir a mis sucursales
+          </Button>
+        </Paper>
+      ) : (
+        <>
+          <Paper elevation={0} sx={{ ...adminSectionPanel, mb: 2.5 }}>
+            <Stack gap={1.5}>
+              <Stack direction={{ xs: "column", md: "row" }} gap={1.25}>
+                <TextField size="small" fullWidth label="Buscar punto de venta" placeholder="Nombre o código" value={q}
+                  onChange={event => setQ(event.target.value)}
+                  slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchRoundedIcon /></InputAdornment> } }} />
+                <Stack direction={{ xs: "column", sm: "row" }} gap={1} sx={{ flexShrink: 0 }}>
+                  <Button variant="outlined" startIcon={<RefreshRoundedIcon />} onClick={() => fetchPOS({ silent: false })} disabled={loading} sx={outlinedAction}>Recargar</Button>
+                  <Button variant="contained" disableElevation startIcon={<AddRoundedIcon />} onClick={() => openEditor()}
+                    disabled={!canCreate} sx={adminSectionPrimaryAction}>Nuevo POS</Button>
+                </Stack>
+              </Stack>
+              <Stack direction="row" gap={1} flexWrap="wrap">
+                <Chip icon={<StorefrontRoundedIcon />} label={`${rows.length} punto(s) de venta`} size="small" variant="outlined" />
+                <Chip label={`Límite: ${Number(limite) || 10}`} size="small" variant="outlined" />
+              </Stack>
             </Stack>
+          </Paper>
 
-            <Divider sx={{ my: 1.5 }} />
+          {loading ? (
+            <Box role="status" aria-label="Cargando puntos de venta" sx={terminalsGrid}>
+              {[1, 2, 3].map(item => <Skeleton key={item} variant="rounded" sx={{ height: { xs: 230, md: 205 } }} />)}
+            </Box>
+          ) : filtered.length === 0 ? (
+            <Paper elevation={0} sx={{ ...adminSectionPanel, textAlign: "center" }}>
+              <Typography component="h2" variant="h6" fontWeight={800}>
+                {q.trim() ? "No se encontraron puntos de venta" : "No hay puntos de venta registrados"}
+              </Typography>
+              {!q.trim() && <Typography variant="body2" color="text.secondary">Crea una terminal para empezar a operar en esta sucursal.</Typography>}
+            </Paper>
+          ) : (
+            <Box sx={terminalsGrid}>
+              {filtered.map(pos => {
+                const warehouseCount = pos.warehouses_count ?? pos.warehouse_ids?.length ?? 0;
+                const warehouseNames = Array.isArray(pos.warehouses) ? pos.warehouses.map(item => item.name).filter(Boolean).join(", ") : "";
+                return (
+                  <Card component="article" key={pos.id} variant="outlined" sx={{
+                    borderRadius: 3, minWidth: 0, display: "flex",
+                    ...(isDesktop && { borderTop: "3px solid #ffc107", boxShadow: "0 4px 14px #17191c0a" }),
+                  }}>
+                    <CardContent sx={{ p: 2, width: "100%", minWidth: 0, display: "flex", flexDirection: "column", gap: 1.5 }}>
+                      <Stack gap={1.5} sx={{ minWidth: 0 }}>
+                        <Stack direction="row" gap={1.25} alignItems="center">
+                          <Box sx={{ display: "grid", placeItems: "center", width: 42, height: 42, flexShrink: 0, borderRadius: 2, bgcolor: "#fff3cd", color: "#684c00" }}>
+                            <PointOfSaleOutlinedIcon />
+                          </Box>
+                          <Box sx={{ minWidth: 0, flex: 1 }}>
+                            <Typography component="h2" fontWeight={800}>{pos.name?.trim() || "POS sin nombre"}</Typography>
+                            <Typography variant="body2" color="text.secondary">{interfaceLabel(pos.interface_design)}</Typography>
+                          </Box>
+                          {isDesktop ? (
+                            <IconButton aria-label={`Acciones de ${pos.name || "POS"}`} aria-haspopup="menu"
+                              aria-expanded={terminalMenu?.pos.id === pos.id}
+                              onClick={event => setTerminalMenu({ pos, anchor: event.currentTarget })}
+                              sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2.5 }}>
+                              <MoreHorizRoundedIcon />
+                            </IconButton>
+                          ) : (
+                            <IconButton aria-label={`Editar ${pos.name || "POS"}`} onClick={() => openEditor(pos)}>
+                              <EditRoundedIcon fontSize="small" />
+                            </IconButton>
+                          )}
+                        </Stack>
+                        <Stack direction="row" gap={1} flexWrap="wrap">
+                          <Chip size="small" variant="outlined" icon={<BadgeOutlinedIcon />} label={pos.code || "Sin código"} sx={{ maxWidth: "100%" }} />
+                          <Chip size="small" variant="outlined" icon={<WarehouseRoundedIcon />} label={`${warehouseCount} almacén(es)`} />
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary">
+                          {warehouseNames || "Sin almacenes asignados"} · Inventario sin almacén {pos.show_unassigned_products ? "incluido" : "excluido"}
+                        </Typography>
+                      </Stack>
+                      <Divider sx={{ mt: "auto" }} />
+                      <Box sx={{ display: "grid", gridTemplateColumns: isDesktop ? "minmax(0, 1fr)" : "repeat(auto-fit, minmax(min(100%, 132px), 1fr))", gap: 1 }}>
+                        <Button variant="contained" disableElevation startIcon={<LoginRoundedIcon />} onClick={() => iniciarSesionPOS(pos)} sx={adminSectionPrimaryAction}>Iniciar sesión</Button>
+                        {!isDesktop && <>
+                          <Button variant="outlined" startIcon={<VpnKeyRoundedIcon />} onClick={() => openAccess(pos)} sx={outlinedAction}>Accesos</Button>
+                          <Button variant="outlined" startIcon={<WarehouseRoundedIcon />} onClick={() => openAssignDialog(pos)} sx={outlinedAction}>Asignar almacenes</Button>
+                          <Button variant="outlined" startIcon={<TuneRoundedIcon />} onClick={() => setModulesPos(pos)} sx={outlinedAction}>Módulos de este POS</Button>
+                          {visibleCashIds?.has(String(pos.id)) && <Button variant="outlined" startIcon={<PointOfSaleOutlinedIcon />} onClick={() => setCashPos(pos)} sx={outlinedAction}>Caja</Button>}
+                        </>}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </Box>
+          )}
+        </>
+      )}
 
-            {!activeBranch?.id ? (
-              <Alert
-                severity="info"
-                sx={{
-                  borderRadius: 2,
-                  bgcolor: alpha("#000", 0.03),
-                  border: `1px solid ${alpha("#000", 0.08)}`,
-                }}
-              >
-                Primero selecciona una sucursal para ver sus puntos de venta.
-              </Alert>
-            ) : loading ? (
-              <Grid container spacing={1.2}>
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <Grid key={i} item xs={6} sm={6} md={4} lg={3}>
-                    <Card
-                      elevation={0}
-                      sx={{
-                        borderRadius: 2.5,
-                        border: `1px solid ${alpha("#000", 0.08)}`,
-                        overflow: "hidden",
-                      }}
-                    >
-                      <CardContent sx={{ p: 1.5 }}>
-                        <Skeleton variant="rounded" width={42} height={42} />
-                        <Skeleton sx={{ mt: 1 }} width="70%" />
-                        <Skeleton width="55%" />
-                        <Skeleton sx={{ mt: 1 }} variant="rounded" width="100%" height={36} />
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : filtered.length === 0 ? (
-              <Box sx={{ py: 6, textAlign: "center" }}>
-                <Typography variant="h6" sx={{ fontWeight: 900, color: COLORS.black }}>
-                  No hay puntos de venta
-                </Typography>
-                <Typography color="text.secondary" sx={{ mt: 0.5 }}>
-                  Crea tu primer POS para operar ventas por sucursal.
-                </Typography>
+      <Menu anchorEl={terminalMenu?.anchor} open={Boolean(terminalMenu)} onClose={() => setTerminalMenu(null)}
+        slotProps={{ list: { "aria-label": "Acciones del punto de venta" } }}>
+        {terminalMenu && [
+          { label: "Editar", Icon: EditRoundedIcon, action: openEditor },
+          { label: "Accesos", Icon: VpnKeyRoundedIcon, action: openAccess },
+          { label: "Asignar almacenes", Icon: WarehouseRoundedIcon, action: openAssignDialog },
+          { label: "Módulos de este POS", Icon: TuneRoundedIcon, action: setModulesPos },
+          ...(visibleCashIds?.has(String(terminalMenu.pos.id)) ? [{ label: "Caja", Icon: PointOfSaleOutlinedIcon, action: setCashPos }] : []),
+        ].map(({ label, Icon, action }) => (
+          <MenuItem key={label} onClick={() => {
+            setTerminalMenu(null);
+            action(terminalMenu.pos);
+          }}>
+            <ListItemIcon><Icon fontSize="small" /></ListItemIcon>{label}
+          </MenuItem>
+        ))}
+      </Menu>
 
-                <Button
-                  onClick={agregarPunto}
-                  variant="contained"
-                  startIcon={<AddRoundedIcon />}
-                  sx={{
-                    mt: 2,
-                    borderRadius: 2,
-                    textTransform: "none",
-                    fontWeight: 900,
-                    bgcolor: COLORS.black,
-                    "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
-                  }}
-                >
-                  Crear POS
+      {editor && (
+        <Dialog open onClose={closeEditor} fullWidth maxWidth="sm" sx={adminSectionDialog} aria-labelledby="pos-editor-title">
+          <DialogTitle id="pos-editor-title">{deleteConfirm ? "Eliminar punto de venta" : editor.original ? "Editar punto de venta" : "Nuevo punto de venta"}</DialogTitle>
+          <DialogContent dividers>
+            {deleteConfirm ? (
+              <Stack gap={1.5}>
+                {saveError && <Alert severity="error">{saveError}</Alert>}
+                <Typography>¿Eliminar <strong>{editor.original.name}</strong>?</Typography>
+                <Alert severity="warning">Se perderán las ventas, el historial, los cortes y otros registros asociados. Esta acción es definitiva.</Alert>
+              </Stack>
+            ) : <Stack component="form" id="pos-editor-form" onSubmit={saveTerminal} gap={2} sx={{ pt: 0.5 }}>
+              {saveError && <Alert severity="error">{saveError}</Alert>}
+              <TextField label="Nombre del punto de venta" required autoFocus fullWidth disabled={saving} value={editor.name}
+                onChange={event => setEditorField("name", event.target.value)}
+                slotProps={{ input: { startAdornment: <InputAdornment position="start"><StorefrontRoundedIcon /></InputAdornment> } }} />
+              <Stack direction={{ xs: "column", sm: "row" }} gap={1.25} alignItems={{ sm: "center" }}>
+                <TextField label="PIN de acceso" fullWidth disabled={saving} value={editor.access_code} type={pinVisible ? "text" : "password"}
+                  onChange={event => setEditorField("access_code", event.target.value)} autoComplete="new-password"
+                  slotProps={{
+                    htmlInput: { inputMode: "numeric", maxLength: 6 },
+                    input: { startAdornment: <InputAdornment position="start"><VpnKeyRoundedIcon /></InputAdornment>, endAdornment: togglePin },
+                  }} />
+                <Button variant="outlined" startIcon={<RefreshRoundedIcon />} disabled={saving}
+                  onClick={() => { setEditorField("access_code", generarCodigo()); setPinVisible(true); }} sx={{ ...outlinedAction, flexShrink: 0 }}>
+                  Generar PIN
                 </Button>
-              </Box>
-            ) : (
-              <Grid container spacing={1.2}>
-                {filtered.map((pos, idx) => {
-                  const isNew = String(pos.id).startsWith("new-");
-                  const isEditing = !!editando[pos.id];
-                  const isVisible = !!visibles[pos.id];
-                  const isOpen = !!openEdit[pos.id];
-
-                  const whCount =
-                    typeof pos?.warehouses_count === "number"
-                      ? pos.warehouses_count
-                      : Array.isArray(pos?.warehouse_ids)
-                        ? pos.warehouse_ids.length
-                        : 0;
-
-                  const whNames =
-                    Array.isArray(pos?.warehouses) && pos.warehouses.length > 0
-                      ? pos.warehouses.map((w) => w.name).join(", ")
-                      : "";
-
-                  return (
-                    <Grid key={pos.id} item xs={6} sm={6} md={4} lg={3}>
-                      <Grow in timeout={180 + idx * 35}>
-                        <Card
-                          elevation={0}
-                          sx={{
-                            height: "100%",
-                            borderRadius: 3,
-                            border: `1px solid ${alpha("#000", 0.1)}`,
-                            backgroundColor: "#fff",
-                            overflow: "hidden",
-                            transition:
-                              "transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease",
-                            "&:hover": {
-                              transform: "translateY(-3px)",
-                              boxShadow: `0 12px 30px ${alpha("#000", 0.12)}`,
-                              borderColor: alpha(COLORS.accent, 0.55),
-                            },
-                            animation: `${floatIn} 250ms ease`,
-                          }}
-                        >
-                          <CardContent sx={{ p: 2 }}>
-                            <Stack spacing={1.2}>
-                              <Stack direction="row" spacing={1} alignItems="center">
-                                <Typography
-                                  sx={{
-                                    fontWeight: 900,
-                                    color: COLORS.black,
-                                    fontSize: 18,
-                                    flex: 1,
-                                  }}
-                                  noWrap
-                                >
-                                  {pos?.name?.trim() ? pos.name : "POS sin nombre"}
-                                </Typography>
-
-                                <Tooltip title={isOpen ? "Cerrar" : "Editar"}>
-                                  <IconButton
-                                    onClick={() =>
-                                      setOpenEdit((o) => ({ ...o, [pos.id]: !o[pos.id] }))
-                                    }
-                                    sx={{ borderRadius: 2 }}
-                                  >
-                                    {isOpen ? <CloseRoundedIcon /> : <EditRoundedIcon />}
-                                  </IconButton>
-                                </Tooltip>
-                              </Stack>
-
-                              <Typography variant="body2" color="text.secondary" sx={{ mt: -0.3 }}>
-                                <b>Usuario:</b> {pos?.code || "—"}
-                              </Typography>
-
-                              {/* ✅ Chips de asignación */}
-                              <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                                <Chip
-                                  size="small"
-                                  icon={<WarehouseRoundedIcon />}
-                                  label={`Almacenes: ${whCount}`}
-                                  variant="outlined"
-                                  sx={{ fontWeight: 800 }}
-                                />
-
-                                <Chip
-                                  size="small"
-                                  label={`Sin almacén: ${
-                                    pos?.show_unassigned_products ? "ON" : "OFF"
-                                  }`}
-                                  sx={{
-                                    fontWeight: 900,
-                                    bgcolor: pos?.show_unassigned_products
-                                      ? alpha("#2e7d32", 0.12)
-                                      : alpha(COLORS.danger, 0.1),
-                                    border: `1px solid ${
-                                      pos?.show_unassigned_products
-                                        ? alpha("#2e7d32", 0.28)
-                                        : alpha(COLORS.danger, 0.25)
-                                    }`,
-                                  }}
-                                />
-                              </Stack>
-
-                              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.25 }}>
-                                <b>Asignados:</b>{" "}
-                                {whNames ? whNames : "ninguno"}
-                              </Typography>
-
-                              <Button
-                                onClick={() => openAssignDialog(pos)}
-                                variant="outlined"
-                                startIcon={<WarehouseRoundedIcon />}
-                                sx={{
-                                  borderRadius: 2,
-                                  textTransform: "none",
-                                  fontWeight: 900,
-                                  borderColor: alpha("#000", 0.18),
-                                  color: COLORS.black,
-                                  "&:hover": {
-                                    bgcolor: alpha(COLORS.accent, 0.1),
-                                  },
-                                }}
-                              >
-                                Asignar almacenes
-                              </Button>
-
-                              <TextField
-                                size="small"
-                                label="Contraseña"
-                                value={pos?.access_code ?? ""}
-                                type={isVisible ? "text" : "password"}
-                                fullWidth
-                                sx={{
-                                  "& .MuiOutlinedInput-root": {
-                                    borderRadius: 2,
-                                    backgroundColor: "#fff",
-                                  },
-                                }}
-                                InputProps={{
-                                  endAdornment: (
-                                    <InputAdornment position="end">
-                                      <Tooltip title={isVisible ? "Ocultar" : "Mostrar"}>
-                                        <IconButton
-                                          onClick={() => toggleVisibilidad(pos.id)}
-                                          size="small"
-                                        >
-                                          {isVisible ? (
-                                            <VisibilityOffRoundedIcon />
-                                          ) : (
-                                            <VisibilityRoundedIcon />
-                                          )}
-                                        </IconButton>
-                                      </Tooltip>
-                                    </InputAdornment>
-                                  ),
-                                }}
-                              />
-
-                              <Button
-                                onClick={() => handleCopyAccess(pos)}
-                                variant="outlined"
-                                startIcon={<ContentCopyRoundedIcon />}
-                                sx={{
-                                  borderRadius: 2,
-                                  textTransform: "none",
-                                  fontWeight: 900,
-                                  borderColor: alpha("#000", 0.18),
-                                  color: COLORS.black,
-                                  "&:hover": {
-                                    bgcolor: alpha(COLORS.accent, 0.1),
-                                  },
-                                }}
-                              >
-                                Copiar accesos
-                              </Button>
-
-                              {!isNew && (
-                                <>
-                                  {visibleCashIds?.has(String(pos.id)) && <Button variant="outlined" startIcon={<PointOfSaleOutlinedIcon />} onClick={() => setCashPos(pos)}>Caja</Button>}
-                                  <Button variant="outlined" startIcon={<TuneRoundedIcon />} onClick={() => setModulesPos(pos)}>Módulos de este POS</Button>
-                                </>
-                              )}
-                              <Button
-                                onClick={() => iniciarSesionPOS(pos)}
-                                variant="contained"
-                                disabled={isNew || isEditing}
-                                sx={{
-                                  borderRadius: 2,
-                                  textTransform: "none",
-                                  fontWeight: 900,
-                                  bgcolor: "#2e7d32",
-                                  "&:hover": { bgcolor: alpha("#2e7d32", 0.9) },
-                                }}
-                              >
-                                Iniciar sesión
-                              </Button>
-
-                              <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
-                                <Button
-                                  onClick={() => eliminarPunto(pos.id)}
-                                  variant="outlined"
-                                  startIcon={<DeleteOutlineRoundedIcon />}
-                                  sx={{
-                                    flex: 1,
-                                    borderRadius: 2,
-                                    textTransform: "none",
-                                    fontWeight: 900,
-                                    borderColor: alpha(COLORS.danger, 0.35),
-                                    color: COLORS.danger,
-                                    "&:hover": {
-                                      bgcolor: alpha(COLORS.danger, 0.08),
-                                    },
-                                  }}
-                                >
-                                  Eliminar
-                                </Button>
-                              </Stack>
-
-                              <TextField select size="small" fullWidth disabled={!!savingInterface[pos.id]} label="Interfaz del punto de venta" value={pos?.interface_design === "clasico" ? "clasico" : "actual"} onChange={event => updateInterfaceDesign(pos, event.target.value)} helperText={isNew ? "Se guardará al crear el POS" : "Se guarda al seleccionar"}>
-                                <MenuItem value="actual">Actual - navegación superior</MenuItem>
-                                <MenuItem value="clasico">Clásico - tarjetas</MenuItem>
-                              </TextField>
-
-                              {/* Panel de edición real */}
-                              <Collapse in={isOpen} timeout={200}>
-                                <Divider sx={{ my: 1.2 }} />
-
-                                <Stack spacing={1}>
-                                  <TextField
-                                    size="small"
-                                    label="Editar nombre"
-                                    value={pos?.name ?? ""}
-                                    onChange={(e) =>
-                                      actualizarCampo(pos.id, "name", e.target.value)
-                                    }
-                                    fullWidth
-                                    sx={{
-                                      "& .MuiOutlinedInput-root": {
-                                        borderRadius: 2,
-                                        backgroundColor: "#fff",
-                                      },
-                                    }}
-                                  />
-
-                                  <Stack direction="row" spacing={1}>
-                                    <Button
-                                      onClick={() => handleGenerate(pos.id)}
-                                      variant="outlined"
-                                      startIcon={<VpnKeyRoundedIcon />}
-                                      sx={{
-                                        flex: 1,
-                                        borderRadius: 2,
-                                        textTransform: "none",
-                                        fontWeight: 900,
-                                        borderColor: alpha("#000", 0.18),
-                                        color: COLORS.black,
-                                      }}
-                                    >
-                                      Generar
-                                    </Button>
-
-                                    <Button
-                                      onClick={() => guardarCambios(pos.id)}
-                                      variant="contained"
-                                      startIcon={<SaveRoundedIcon />}
-                                      disabled={!isEditing || !pos?.name?.trim()}
-                                      sx={{
-                                        flex: 1,
-                                        borderRadius: 2,
-                                        textTransform: "none",
-                                        fontWeight: 900,
-                                        bgcolor: COLORS.black,
-                                        "&:hover": {
-                                          bgcolor: alpha(COLORS.black, 0.85),
-                                        },
-                                      }}
-                                    >
-                                      Guardar
-                                    </Button>
-                                  </Stack>
-
-                                  <Typography variant="caption" color="text.secondary">
-                                    {isNew
-                                      ? "Al guardar se crea el POS en la sucursal."
-                                      : "Recuerda guardar si cambiaste el access code."}
-                                  </Typography>
-                                </Stack>
-                              </Collapse>
-                            </Stack>
-                          </CardContent>
-                        </Card>
-                      </Grow>
-                    </Grid>
-                  );
-                })}
-              </Grid>
+              </Stack>
+              <TextField select fullWidth disabled={saving} label="Interfaz del punto de venta" value={editor.interface_design}
+                onChange={event => setEditorField("interface_design", event.target.value)}>
+                <MenuItem value="actual">Actual - navegación superior</MenuItem>
+                <MenuItem value="clasico">Clásico - tarjetas</MenuItem>
+              </TextField>
+            </Stack>}
+          </DialogContent>
+          <DialogActions disableSpacing>
+            {!deleteConfirm && editor.original && (
+              <Button color="error" startIcon={<DeleteOutlineRoundedIcon />} disabled={saving} sx={{ mr: "auto" }}
+                onClick={() => { setSaveError(""); setDeleteConfirm(true); }}>Eliminar</Button>
             )}
-          </CardContent>
-        </Card>
+            <Button onClick={closeEditor} disabled={saving}>Cancelar</Button>
+            {deleteConfirm ? (
+              <Button variant="contained" color="error" onClick={() => eliminarPunto(editor.original.id)} disabled={saving}>
+                {saving ? "Eliminando…" : "Eliminar definitivamente"}
+              </Button>
+            ) : (
+              <Button type="submit" form="pos-editor-form" variant="contained" startIcon={<SaveRoundedIcon />}
+                disabled={saving || !editor.name.trim()} sx={adminSectionPrimaryAction}>
+                {saving ? "Guardando…" : editor.original ? "Guardar cambios" : "Crear punto de venta"}
+              </Button>
+            )}
+          </DialogActions>
+        </Dialog>
+      )}
+
+      {accessPos && (
+        <Dialog open onClose={() => setAccessPos(null)} fullWidth maxWidth="xs" sx={adminSectionDialog} aria-labelledby="pos-access-title">
+          <DialogTitle id="pos-access-title">Accesos del punto de venta</DialogTitle>
+          <DialogContent dividers>
+            <Stack gap={2} sx={{ pt: 0.5 }}>
+              {accessStatus && <Alert severity={accessStatus.severity}>{accessStatus.message}</Alert>}
+              <Typography fontWeight={800}>{accessPos.name || "Punto de venta"}</Typography>
+              <TextField label="Código POS" value={accessPos.code || ""} fullWidth
+                slotProps={{ input: { readOnly: true, startAdornment: <InputAdornment position="start"><BadgeOutlinedIcon /></InputAdornment> } }} />
+              <TextField label="PIN de acceso" value={accessPos.access_code || ""} fullWidth type={pinVisible ? "text" : "password"}
+                slotProps={{ input: { readOnly: true, startAdornment: <InputAdornment position="start"><VpnKeyRoundedIcon /></InputAdornment>, endAdornment: togglePin } }} />
+            </Stack>
+          </DialogContent>
+          <DialogActions disableSpacing>
+            <Button onClick={() => setAccessPos(null)}>Cerrar</Button>
+            <Button variant="contained" startIcon={<ContentCopyRoundedIcon />} onClick={event => handleCopyAccess(accessPos, event.currentTarget)}
+              disabled={!accessPos.access_code} sx={adminSectionPrimaryAction}>Copiar accesos</Button>
+          </DialogActions>
+        </Dialog>
+      )}
 
         {/* ✅ Modal de asignación */}
         {cashPos && visibleCashIds?.has(String(cashPos.id)) && <AdminCashDialog key={cashPos.id} pos={cashPos} onClose={() => setCashPos(null)} />}
@@ -1059,7 +709,6 @@ export default function POS() {
           loading={assignLoading}
           onSave={saveAssignments}
         />
-      </Container>
     </Box>
   );
 }

@@ -1,4 +1,9 @@
 import React from "react";
+import { IconButton, InputAdornment, TextField } from "@mui/material";
+import PersonOutlineRoundedIcon from "@mui/icons-material/PersonOutlineRounded";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 
 const LoginForm = ({
   loginData,
@@ -16,44 +21,47 @@ const LoginForm = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate autoComplete="off">
-      <input
-        type="text"
-        className="form-control mb-3"
-        placeholder="Correo electrónico o número de teléfono"
-        style={{ height: "45px" }}
+    <form onSubmit={handleSubmit} noValidate>
+      <TextField
+        className="auth-credential"
+        label="Correo electrónico o número de teléfono"
+        autoComplete="username"
         value={loginData.login}
         onChange={(e) => setLoginData({ ...loginData, login: e.target.value })}
         required
+        fullWidth
+        slotProps={{
+          input: { startAdornment: <InputAdornment position="start"><PersonOutlineRoundedIcon /></InputAdornment> },
+        }}
       />
 
-      <div className="form-group mb-4 d-flex gap-3">
-        <input
-          type={showPassword ? "text" : "password"}
-          className="form-control"
-          placeholder="Contraseña"
-          value={loginData.password}
-          onChange={(e) =>
-            setLoginData({ ...loginData, password: e.target.value })
-          }
-          required
-        />
-        <button
-          type="button" // 👈 importante: no submit
-          onClick={togglePassword}
-          aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-          title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-          style={{
-            fontSize: "22px",
-            cursor: "pointer",
-            userSelect: "none",
-            border: "1px solid #ccc",
-            borderRadius: "12%",
-          }}
-        >
-          {showPassword ? "🙈" : "👁️"}
-        </button>
-      </div>
+      <TextField
+        className="auth-credential"
+        type={showPassword ? "text" : "password"}
+        label="Contraseña"
+        autoComplete="current-password"
+        value={loginData.password}
+        onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
+        required
+        fullWidth
+        slotProps={{
+          input: {
+            startAdornment: <InputAdornment position="start"><LockOutlinedIcon /></InputAdornment>,
+            endAdornment: (
+              <InputAdornment position="end">
+                <IconButton
+                  type="button"
+                  onClick={togglePassword}
+                  aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  edge="end"
+                >
+                  {showPassword ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
+                </IconButton>
+              </InputAdornment>
+            ),
+          },
+        }}
+      />
 
       <div className="button-box">
         <button

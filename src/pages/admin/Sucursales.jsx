@@ -7,6 +7,7 @@ import {
   Stack,
   Button,
   IconButton,
+  Drawer,
   Card,
   CardContent,
   Divider,
@@ -31,8 +32,9 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
-import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 
 import { useNavigate } from "react-router-dom";
 
@@ -45,6 +47,7 @@ import BranchFormModal from "../../components/branches/BranchFormModal";
 import BranchDetailsModal from "../../components/branches/BranchDetailsModal";
 
 import StoreHubNav from "../../components/admin/StoreHubNav";
+import Sidebar from "./Sidebar";
 
 const COLORS = {
   accent: "#f9b233",
@@ -73,6 +76,7 @@ const getBranchLimit = (planId) => {
 export default function Sucursales() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isDesktop = useMediaQuery(theme.breakpoints.up("md"));
   const navigate = useNavigate();
 
   const { tienda, tiendaLoading, openPlanesModal } = useTienda();
@@ -84,6 +88,12 @@ export default function Sucursales() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState("");
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const closeAdminMenu = () => setAdminMenuOpen(false);
+
+  useEffect(() => {
+    if (isDesktop) setAdminMenuOpen(false);
+  }, [isDesktop]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -192,11 +202,15 @@ export default function Sucursales() {
 
   const header = (
     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2} sx={{ mb: 3, px: { xs: 2, sm: 2.5 }, py: 1.5, borderRadius: 3, background: "rgba(255,255,255,.88)", border: "1px solid rgba(233,78,27,.1)", boxShadow: "0 10px 30px rgba(78,42,11,.07)", backdropFilter: "blur(10px)" }}>
-      <Stack direction="row" spacing={1.5} alignItems="center">
-        <Box component="img" src="/assets/logo1.png" alt="Logo" sx={{ width: { xs: 48, sm: 58 }, height: { xs: 48, sm: 58 }, objectFit: "contain", borderRadius: 1 }} />
+      <Stack direction="row" spacing={1.5} alignItems="center" minWidth={0}>
+        <IconButton aria-label="Abrir menú de administración" aria-expanded={adminMenuOpen && !isDesktop}
+          onClick={() => setAdminMenuOpen(true)} sx={{ display: { xs: "inline-flex", md: "none" }, width: 44, height: 44, flexShrink: 0, color: "#202020" }}>
+          <MenuRoundedIcon />
+        </IconButton>
+        <Box component="img" src="/assets/logo1.png" alt="Logo" sx={{ display: { xs: "none", md: "block" }, width: 58, height: 58, objectFit: "contain", borderRadius: 1 }} />
 
         <Box>
-          <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 950, color: "#202020", letterSpacing: "-.025em", lineHeight: 1.1 }}>
+          <Typography variant={isMobile ? "h6" : "h5"} sx={{ fontWeight: 950, color: "#202020", letterSpacing: "-.025em", lineHeight: 1.1, overflowWrap: "anywhere" }}>
             Hola{tienda?.name ? `, ${tienda.name}` : ""}
           </Typography>
           <Typography variant="body2" sx={{ color: "#71717a", mt: 0.25, display: { xs: "none", sm: "block" } }}>
@@ -251,16 +265,12 @@ export default function Sucursales() {
       <Container maxWidth="lg">
         {header}
         <Grid container spacing={{ xs: 2.5, md: 3 }} alignItems="flex-start">
-          <Grid size={{ xs: 12, md: 3.25 }}>
-            <Box sx={{ position: { md: "sticky" }, top: { md: 24 }, p: { xs: 2, md: 2.25 }, borderRadius: 3, bgcolor: "rgba(255,255,255,.7)", border: "1px solid rgba(32,32,32,.07)" }}><StoreHubNav /></Box>
-          </Grid>
           <Grid size={{ xs: 12, md: 8.75 }}>
             {planBanner}
 
             <Stack direction={{ xs: "column", lg: "row" }} justifyContent="space-between" alignItems={{ lg: "flex-end" }} spacing={2} mb={2}>
               <Box><Typography variant="h5" sx={{ fontWeight: 900, color: "#202020" }}>Tus sucursales</Typography><Typography variant="body2" sx={{ color: "#71717a" }}>Selecciona una para administrar sus productos, servicios y operación.</Typography></Box>
               <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ width: { xs: "100%", lg: "auto" } }}>
-                <Button onClick={() => navigate("/admin/pedidos-web")} variant="outlined" startIcon={<ReceiptLongRoundedIcon />} sx={{ borderRadius: 2, textTransform: "none", fontWeight: 850, borderColor: alpha(COLORS.black, .2), color: COLORS.black }}>Pedidos web y comprobantes</Button>
                 <Button onClick={handleOpenCreate} disabled={!canCreate} variant="contained" startIcon={<AddRoundedIcon />} sx={{ borderRadius: 2, textTransform: "none", fontWeight: 850, bgcolor: COLORS.black, "&:hover": { bgcolor: alpha(COLORS.black, .84) } }}>Nueva sucursal</Button>
               </Stack>
             </Stack>
@@ -454,7 +464,24 @@ export default function Sucursales() {
           </CardContent>
         </Card>
           </Grid>
+          <Grid size={{ md: 3.25 }} sx={{ display: { xs: "none", md: "block" }, order: -1 }}>
+            <Box sx={{ position: { md: "sticky" }, top: { md: 24 }, p: { xs: 2, md: 2.25 }, borderRadius: 3, bgcolor: "rgba(255,255,255,.7)", border: "1px solid rgba(32,32,32,.07)" }}><StoreHubNav /></Box>
+          </Grid>
         </Grid>
+
+        <Drawer open={adminMenuOpen && !isDesktop} onClose={closeAdminMenu}
+          slotProps={{ paper: {
+            role: "dialog",
+            "aria-modal": true,
+            "aria-label": "Menú de administración",
+            sx: { width: "min(280px, calc(100% - 32px))", bgcolor: "#1a1a1a" },
+          } }}>
+          <IconButton aria-label="Cerrar menú de administración" onClick={closeAdminMenu}
+            sx={{ position: "absolute", top: 6, right: 6, color: "#fff", width: 44, height: 44, zIndex: 1 }}>
+            <CloseRoundedIcon />
+          </IconButton>
+          <Sidebar storeOnly onNavigate={closeAdminMenu} />
+        </Drawer>
 
         <BranchFormModal
           open={createOpen}

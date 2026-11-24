@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Box, Button, ButtonBase, Chip, CircularProgress, createTheme, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, MenuItem, Paper, Stack, Switch, TextField, ThemeProvider, Typography, useTheme } from "@mui/material";
+import { Alert, Box, Button, Chip, CircularProgress, createTheme, Dialog, DialogActions, DialogContent, DialogTitle, Divider, FormControlLabel, MenuItem, Paper, Stack, Switch, TextField, ThemeProvider, Typography, useTheme } from "@mui/material";
 import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
@@ -9,13 +9,13 @@ import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import { useAdminUi } from "../../context/AdminUiContext";
 import useReglaTaeconta from "../../hooks/useReglaTaeconta";
 import { DOCUMENT_TYPES, DOCUMENT_CHANNELS, defaultConfig, documentSettingsService, logoUrl, readConfig, validateConfig, validateLogo } from "../../services/admin/salesDocumentSettings";
+import AdminSectionOption, { adminSectionHeader, adminSectionPanel as panel, adminSectionScope, adminSectionTitle } from "../admin/AdminSectionOption";
 import DocumentDraftPreview from "./DocumentDraftPreview";
 import ModalPDFPreview from "./ModalPDFPreview";
 import PosDocumentDelivery from "./PosDocumentDelivery";
 import LogoChannelPicker from "./LogoChannelPicker";
 
 const icons = [ReceiptLongOutlinedIcon, DescriptionOutlinedIcon, ArticleOutlinedIcon];
-const panel = { p: { xs: 2, sm: 3 }, border: "1px solid", borderColor: "divider", borderRadius: 3, minWidth: 0 };
 const grid = { display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", sm: "repeat(2,minmax(0,1fr))" }, gap: 2 };
 
 export default function SalesDocumentDesigner(props) {
@@ -160,10 +160,10 @@ function BranchDocumentDesigner({ branch, onSuccess, onClose }) {
   const canPreview = !waiting && !loadError && !dirty && !locked && !!previewEndpoint && selection.channel === "pdf";
 
   return <Box sx={{ width: "100%", minWidth: 0, maxWidth: 1500, mx: "auto", pb: 3, "& .MuiOutlinedInput-root": { borderRadius: 2.5 }, "& .MuiButton-root": { textTransform: "none", minHeight: 44 }, "& .MuiFormControl-root": { minWidth: 0 }, "& .MuiTypography-root": { overflowWrap: "anywhere" } }}>
-    <Paper elevation={0} sx={{ ...panel, mb: 2.5, bgcolor: "#1d2025", color: "#fff", borderColor: "#30343b", borderTop: "3px solid #ffc107" }}>
+    <Paper elevation={0} sx={adminSectionHeader}>
       <Stack direction={{ xs: "column", sm: "row" }} gap={2} alignItems={{ sm: "center" }} justifyContent="space-between">
-        <Box sx={{ minWidth: 0 }}><Typography component="h1" sx={{ color: "#fff !important", fontSize: { xs: 25, md: 32 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.035em", overflowWrap: "anywhere" }}>Tickets y comprobantes</Typography><Typography sx={{ mt: 1, color: "#c7cbd1" }}>Diseña tus formatos y define cómo los recibe tu cliente.</Typography></Box>
-        <Chip icon={<ReceiptLongOutlinedIcon />} label={scopeLabel} sx={{ maxWidth: "100%", alignSelf: { xs: "flex-start", sm: "center" }, bgcolor: "#303238", color: "#fff", "& .MuiChip-icon": { color: "#ffc107" }, "& .MuiChip-label": { overflow: "hidden", textOverflow: "ellipsis" } }} />
+        <Box sx={{ minWidth: 0 }}><Typography component="h1" sx={adminSectionTitle}>Tickets y comprobantes</Typography><Typography sx={{ mt: 1, color: "#c7cbd1" }}>Diseña tus formatos y define cómo los recibe tu cliente.</Typography></Box>
+        <Chip icon={<ReceiptLongOutlinedIcon />} label={scopeLabel} sx={adminSectionScope} />
       </Stack>
       <Box component="section" aria-label="Cómo funciona" sx={{ mt: 3, pt: 2, borderTop: "1px solid #3a3d42" }}>
         <Typography component="h2" sx={{ fontSize: 12, fontWeight: 700, letterSpacing: 1, color: "#ffc107", mb: 1.5 }}>CÓMO FUNCIONA</Typography>
@@ -180,7 +180,11 @@ function BranchDocumentDesigner({ branch, onSuccess, onClose }) {
     </Box>
     {tab === "delivery" ? <PosDocumentDelivery branchId={selection.branchId} onDirtyChange={setDeliveryDirty} onBusyChange={setDeliveryBusy} /> : <>
       <Box role="group" aria-label="Tipo de documento" sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0,1fr)", md: "repeat(3,minmax(0,1fr))" }, gap: 1.5, mb: 2.5 }}>
-        {DOCUMENT_TYPES.map((item, index) => { const Icon = icons[index], active = selection.type === item.value; return <ButtonBase key={item.value} disabled={locked || loading} aria-pressed={active} onClick={() => item.value !== selection.type && changeView({ selection: { ...selection, type: item.value } })} sx={{ textAlign: "left", justifyContent: "flex-start", gap: 1.5, p: 2, border: "1px solid", borderColor: active ? "#ffc107" : "divider", borderRadius: 2.5, boxShadow: active ? "inset 0 0 0 1px #ffc107" : "none", bgcolor: theme => active ? theme.palette.mode === "dark" ? "#2b281d" : "#fffbee" : "background.paper", "&.Mui-focusVisible": { outline: "3px solid #ffc107", outlineOffset: 2 } }}><Box sx={{ width: 42, height: 42, display: "grid", placeItems: "center", borderRadius: 2, flexShrink: 0, bgcolor: active ? "#ffc107" : "action.hover", color: active ? "#17191c" : "text.secondary" }}><Icon fontSize="small" /></Box><Box><Typography fontWeight={800}>{item.label}</Typography><Typography variant="body2" color="text.secondary">{item.description}</Typography></Box></ButtonBase>; })}
+        {DOCUMENT_TYPES.map((item, index) => (
+          <AdminSectionOption key={item.value} icon={icons[index]} label={item.label} description={item.description}
+            active={selection.type === item.value} disabled={locked || loading}
+            onClick={() => item.value !== selection.type && changeView({ selection: { type: item.value } })} />
+        ))}
       </Box>
       <Box sx={{ ...grid, alignItems: "start", gridTemplateColumns: { xs: "minmax(0,1fr)", lg: "minmax(0,1.35fr) minmax(300px,1fr)" } }}>
         <Paper component="form" onSubmit={save} noValidate elevation={0} sx={panel}>

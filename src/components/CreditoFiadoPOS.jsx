@@ -37,7 +37,7 @@ import { posHeaderButton, posHeaderChip, posHeaderInput, posMobileCard, posSecti
 
 const money = (v) => `$${Number(v || 0).toFixed(2)}`;
 
-export default function CreditoFiadoPOS({ posLocationId }) {
+export default function CreditoFiadoPOS({ posLocationId, classic = false }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -152,17 +152,17 @@ export default function CreditoFiadoPOS({ posLocationId }) {
 
   return (
     <Box sx={{ minWidth: 0, maxWidth: 1500, mx: "auto" }}>
-      <Paper elevation={0} sx={posSectionHeader}>
+      <Paper elevation={0} sx={classic ? { ...posSectionHeader, bgcolor: "#fff", color: "text.primary", border: "1px solid", borderColor: "divider", boxShadow: 1 } : posSectionHeader}>
         <Stack
           direction={{ xs: "column", md: "row" }}
           justifyContent="space-between"
           spacing={2}
         >
           <Stack direction="row" spacing={1.5} alignItems="center" minWidth={0}>
-            <Box sx={posSectionIcon}><CreditScoreIcon /></Box>
+            <Box sx={classic ? { ...posSectionIcon, bgcolor: "transparent", color: "warning.dark" } : posSectionIcon}><CreditScoreIcon /></Box>
             <Box>
-              <Typography component="h2" sx={posSectionTitle}>Créditos y fiados</Typography>
-              <Typography variant="body2" sx={{ color: "#c7cbd1 !important", mt: 0.5 }}>Consulta saldos, historial y abonos.</Typography>
+              <Typography component="h2" sx={classic ? { ...posSectionTitle, color: "#262d36 !important", fontSize: { xs: 23, md: 28 } } : posSectionTitle}>{classic ? "Clientes con Crédito activo" : "Créditos y fiados"}</Typography>
+              <Typography variant="body2" sx={{ color: classic ? "text.secondary" : "#c7cbd1 !important", mt: 0.5 }}>Consulta saldos, historial y abonos.</Typography>
             </Box>
           </Stack>
 
@@ -172,7 +172,7 @@ export default function CreditoFiadoPOS({ posLocationId }) {
             placeholder="Buscar cliente o teléfono"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            sx={{ ...posHeaderInput, minWidth: 0, flex: 1 }}
+            sx={{ ...(!classic && posHeaderInput), minWidth: 0, flex: 1 }}
             inputProps={{ "aria-label": "Buscar cliente o teléfono" }}
             InputProps={{
               startAdornment: (
@@ -182,23 +182,23 @@ export default function CreditoFiadoPOS({ posLocationId }) {
               ),
             }}
           />
-          <Button variant="contained" startIcon={loading ? <CircularProgress color="inherit" size={16} /> : <RefreshIcon />}
-            onClick={() => loadAccounts(page)} disabled={loading} sx={posHeaderButton}>Actualizar</Button>
+          <Button variant={classic ? "outlined" : "contained"} startIcon={loading ? <CircularProgress color="inherit" size={16} /> : <RefreshIcon />}
+            onClick={() => loadAccounts(page)} disabled={loading} sx={classic ? { textTransform: "none", fontWeight: 800 } : posHeaderButton}>Actualizar</Button>
           </Stack>
         </Stack>
 
-        <Stack direction="row" gap={1} useFlexGap flexWrap="wrap" sx={{ mt: 2, pt: 2, borderTop: "1px solid #434953" }}>
+        <Stack direction="row" gap={1} useFlexGap flexWrap="wrap" sx={{ mt: 2, pt: classic ? 0 : 2, borderTop: classic ? "none" : "1px solid #434953" }}>
           <Chip
             label={`Créditos activos: ${summary?.total_active ?? meta.total}`}
-            sx={posHeaderChip}
+            variant={classic ? "outlined" : "filled"} color={classic ? "warning" : "default"} sx={classic ? undefined : posHeaderChip}
           />
           <Chip
             label={`Con deuda: ${summary?.total_with_debt ?? 0}`}
-            sx={{ ...posHeaderChip, bgcolor: "#472c30", color: "#ffb4ab" }}
+            variant={classic ? "outlined" : "filled"} color={classic ? "error" : "default"} sx={classic ? undefined : { ...posHeaderChip, bgcolor: "#472c30", color: "#ffb4ab" }}
           />
           <Chip
             label={`Saldo total: ${money(summary?.total_balance)}`}
-            sx={{ ...posHeaderChip, bgcolor: "#293c4b", color: "#c6e5ff" }}
+            variant={classic ? "outlined" : "filled"} color={classic ? "primary" : "default"} sx={classic ? undefined : { ...posHeaderChip, bgcolor: "#293c4b", color: "#c6e5ff" }}
           />
         </Stack>
       </Paper>
@@ -244,6 +244,7 @@ export default function CreditoFiadoPOS({ posLocationId }) {
                         variant="outlined"
                         sx={{
                           ...posMobileCard,
+                          ...(classic ? { borderTop: "1px solid #dce3ec" } : {}),
                           p: 1.8,
                           borderColor: hasDebt ? "#fed7aa" : "divider",
                           bgcolor: hasDebt ? "#fff7ed" : "background.paper",
@@ -330,7 +331,7 @@ export default function CreditoFiadoPOS({ posLocationId }) {
               <TableContainer>
                 <Table>
                   <TableHead>
-                    <TableRow sx={posTableHeader}>
+                    <TableRow sx={classic ? { "& th": { bgcolor: "#f5f7f9", fontWeight: 800 } } : posTableHeader}>
                       <TableCell>Cliente</TableCell>
                       <TableCell>Teléfono</TableCell>
                       <TableCell>Saldo</TableCell>

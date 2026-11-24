@@ -26,7 +26,7 @@ import ModalCancelarVenta from "./ModalCancelarVenta";
 import ModalDevolverVenta from "./ModalDevolverVenta";
 import ModalClienteVenta from "./ModalClienteVenta";
 
-export default function HistorialPOSPage({ posLocationId: terminalId }) {
+export default function HistorialPOSPage({ posLocationId: terminalId, classicNavigation }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -72,11 +72,30 @@ export default function HistorialPOSPage({ posLocationId: terminalId }) {
     setDetallesId(id);
   };
 
+  const filters = (
+    <HistorialPOSFilters classic={Boolean(classicNavigation)}
+      modoConsulta={modoConsulta}
+      setModoConsulta={setModoConsulta}
+      fechaInicio={fechaInicio}
+      setFechaInicio={setFechaInicio}
+      fechaFin={fechaFin}
+      setFechaFin={setFechaFin}
+      tipoPago={tipoPago}
+      setTipoPago={setTipoPago}
+      onApply={handleFiltrar}
+      onClear={limpiarFiltros}
+      loading={loading}
+    />
+  );
+
   return (
     <Stack spacing={{ xs: 2, sm: 3 }} sx={{ minWidth: 0 }}>
       <Paper
         elevation={0}
-        sx={{
+        sx={classicNavigation ? {
+          p: { xs: 2, sm: 3 }, borderRadius: 5, border: "1px solid", borderColor: "divider",
+          background: "linear-gradient(135deg, #eee, #fff)", boxShadow: "0 18px 45px #0001",
+        } : {
           p: { xs: 2, sm: 3 },
           borderRadius: { xs: 3, sm: 4 },
           bgcolor: "#1d2025",
@@ -85,7 +104,15 @@ export default function HistorialPOSPage({ posLocationId: terminalId }) {
           boxShadow: "0 10px 22px rgba(23,25,28,.14)",
         }}
       >
-        <Stack spacing={2.5}>
+        {classicNavigation ? (
+          <Stack direction={{ xs: "column", lg: "row" }} alignItems={{ lg: "center" }} justifyContent="space-between" gap={2}>
+            <Box>
+              <Typography component="h2" sx={{ fontWeight: 900, fontSize: { xs: 26, md: 36 } }}>Historial de Ventas</Typography>
+              <Typography color="text.secondary">Movimientos, pagos, créditos, facturas, cancelaciones y devoluciones.</Typography>
+            </Box>
+            {classicNavigation}
+          </Stack>
+        ) : <Stack spacing={2.5}>
           <Stack direction="row" alignItems="center" spacing={1.5} minWidth={0}>
             <Box sx={{ display: "grid", placeItems: "center", width: 44, height: 44, flexShrink: 0, borderRadius: 2, bgcolor: "#ffc107", color: "#17191c" }}>
               <HistoryOutlinedIcon />
@@ -94,21 +121,10 @@ export default function HistorialPOSPage({ posLocationId: terminalId }) {
               Historial de ventas
             </Typography>
           </Stack>
-          <HistorialPOSFilters
-            modoConsulta={modoConsulta}
-            setModoConsulta={setModoConsulta}
-            fechaInicio={fechaInicio}
-            setFechaInicio={setFechaInicio}
-            fechaFin={fechaFin}
-            setFechaFin={setFechaFin}
-            tipoPago={tipoPago}
-            setTipoPago={setTipoPago}
-            onApply={handleFiltrar}
-            onClear={limpiarFiltros}
-            loading={loading}
-          />
-        </Stack>
+          {filters}
+        </Stack>}
       </Paper>
+      {classicNavigation && filters}
 
       <HistorialPOSResumen
         summary={summary}
@@ -136,7 +152,7 @@ export default function HistorialPOSPage({ posLocationId: terminalId }) {
             }}
           />
           <Button type="submit" variant="contained" startIcon={<SearchRoundedIcon />} disabled={!posLocationId}
-            sx={{ bgcolor: "#ffc107", color: "#17191c", minHeight: 44, borderRadius: 2, fontWeight: 800, textTransform: "none", "&:hover": { bgcolor: "#ffe082" } }}>
+            sx={{ bgcolor: classicNavigation ? "primary.main" : "#ffc107", color: classicNavigation ? "#fff" : "#17191c", minHeight: 44, borderRadius: 2, fontWeight: 800, textTransform: "none", "&:hover": { bgcolor: classicNavigation ? "primary.dark" : "#ffe082" } }}>
             Buscar folio
           </Button>
         </Box>

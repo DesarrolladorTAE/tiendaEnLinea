@@ -71,9 +71,9 @@ export function validateInventoryItems(items, products) {
     const key = inventoryKey(item);
     const total = (totals.get(key) || 0) + qty;
     totals.set(key, total);
-    const available = productStock(product, { variantId: item.variant_id, warehouseId: item.warehouse_id, activeOnly: true });
-    if (available === null) return "No se pudo consultar el detalle de existencias. Actualiza el catálogo.";
-    if (total > available + 0.0000001) return `Stock insuficiente para ${product.name || "el producto"} en la variante y almacén seleccionados. Disponible: ${available}.`;
+    const physicalStock = productStock(product, { variantId: item.variant_id, warehouseId: item.warehouse_id, activeOnly: true });
+    if (physicalStock === null) return "No se pudo consultar el detalle de existencias. Actualiza el catálogo.";
+    if (total > physicalStock + 0.0000001) return `Stock insuficiente para ${product.name || "el producto"} en la variante y almacén seleccionados. Saldo físico: ${physicalStock}.`;
   }
   return null;
 }

@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import client from "../../config/axiosClient";
 import POS from "./POS";
 
-jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn() } }));
+jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn(), post: jest.fn() } }));
 jest.mock("../../utils/alerts", () => ({ showSuccess: jest.fn().mockResolvedValue(), showConfirm: jest.fn(), alertFromAxiosError: jest.fn() }));
 jest.mock("../../hooks/useLimitePOS", () => () => ({ limitePermitido: 10 }));
 jest.mock("../../context/AdminUiContext", () => {
@@ -56,10 +56,83 @@ test("changes only the interface preference of the selected POS", async () => {
   const host = document.createElement("div"), root = createRoot(host); document.body.appendChild(host);
   try {
     await act(async () => root.render(<MemoryRouter><POS /></MemoryRouter>));
-    const select = host.querySelector('[role="combobox"]');
+    act(() => host.querySelector('[aria-label="Editar Terminal Uno"]').click());
+    const select = document.querySelector('[role="dialog"] [role="combobox"]');
     await act(async () => { select.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 })); });
     const option = [...document.querySelectorAll('[role="option"]')].find(item => item.textContent.includes("Clásico"));
     await act(async () => option.click());
+    expect(client.put).not.toHaveBeenCalled();
+    await act(async () => document.querySelector('[form="pos-editor-form"]').click());
     expect(client.put).toHaveBeenCalledWith("/pos/10", { interface_design: "clasico" });
   } finally { act(() => root.unmount()); host.remove(); }
+});
+
+test("creates a POS from a modal and shows its access PIN only on demand", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  client.get.mockResolvedValue({ data: { list: [] } });
+  client.post.mockResolvedValue({ data: { pos: { id: 30, name: "Mostrador", code: "POS30" } } });
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  const button = (label) => [...host.querySelectorAll("button")].find(item => item.textContent === label);
+  try {
+    await act(async () => root.render(<MemoryRouter><POS /></MemoryRouter>));
+    act(() => button("Nuevo POS").click());
+    expect(host.textContent).not.toContain("POS sin nombre");
+    const form = document.getElementById("pos-editor-form");
+    const name = form.querySelector('input[type="text"]');
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(name, "Mostrador");
+      name.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => document.querySelector('[form="pos-editor-form"]').click());
+    const payload = client.post.mock.calls[0][1];
+    expect(client.post).toHaveBeenCalledWith("/branches/1/pos", {
+      name: "Mostrador", access_code: expect.stringMatching(/^\d{6}$/), interface_design: "actual",
+    });
+    act(() => button("Accesos").click());
+    const pin = document.querySelector('[role="dialog"] input[type="password"]');
+    expect(pin.value).toBe(payload.access_code);
+    act(() => document.querySelector('[aria-label="Mostrar PIN"]').click());
+    expect(pin.type).toBe("text");
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+    client.post.mockReset();
+    client.get.mockReset();
+  }
+});
+
+test("uses a compact terminal card on desktop and opens the selected row's access modal", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  const originalMatchMedia = window.matchMedia;
+  window.matchMedia = query => ({
+    matches: query.includes("min-width:900px"), media: query,
+    addEventListener: jest.fn(), removeEventListener: jest.fn(),
+    addListener: jest.fn(), removeListener: jest.fn(),
+  });
+  client.get.mockImplementation(async url => ({ data: {
+    list: url === "/branches/1/pos" ? [{ id: 10, name: "Terminal Uno", code: "POS10" }] : [],
+  } }));
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><POS /></MemoryRouter>,
+    ));
+    const card = host.querySelector("article");
+    expect(card.textContent).toContain("POS10");
+    expect([...card.querySelectorAll("button")].map(button => button.getAttribute("aria-label") || button.textContent))
+      .toEqual(["Acciones de Terminal Uno", "Iniciar sesión"]);
+    act(() => host.querySelector('[aria-label="Acciones de Terminal Uno"]').click());
+    const accessItem = [...document.querySelectorAll('[role="menuitem"]')].find(item => item.textContent === "Accesos");
+    act(() => accessItem.click());
+    expect(document.querySelector('[role="dialog"] input').value).toBe("POS10");
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+    window.matchMedia = originalMatchMedia;
+    client.get.mockReset();
+  }
 });

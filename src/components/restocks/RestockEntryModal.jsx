@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
@@ -39,7 +40,9 @@ import axiosClient from "../../config/axiosClient";
 import { toast } from "react-hot-toast";
 import { useDebounce } from "../../hooks/useDebounce";
 import { notifyInventoryChanged } from "../../utils/inventoryEvents";
-import { hasProductVariants, usesWarehouses } from "../../utils/productInventory";
+import { hasProductVariants, inventoryFlag, usesWarehouses } from "../../utils/productInventory";
+import BatchIdentityFields from "../admin/BatchIdentityFields";
+import { batchError, batchExpiryLabel, batchIdentity, decimalQuantity, tracksBatches } from "../../utils/batchInventory";
 
 const COLORS = {
   accent: "#f9b233",
@@ -320,6 +323,7 @@ export default function RestockEntryModal({
             movement?.warehouse_id || movement?.warehouse?.id || "",
           unit_price: Number(movement?.unit_price || 0),
           quantity: Number(movement?.quantity || 0),
+          batchReceipts: Array.isArray(movement?.batch_receipts) ? movement.batch_receipts : [],
           notes:
             movement?.line_notes ||
             movement?.description ||
@@ -338,6 +342,31 @@ export default function RestockEntryModal({
     setLines((prev) =>
       prev.map((line) => (line.id === id ? { ...line, ...updates } : line))
     );
+  };
+
+  const selectProduct = async (lineId, product) => {
+    const needsSettings = product && (product.batch_tracking_enabled == null ||
+      (tracksBatches(product) && product.expiration_required == null));
+    const selection = {};
+    updateLine(lineId, {
+      product: product || null, variant: null, product_variant_id: "", variation_size_id: "",
+      warehouse_id: "", unit_price: Number(product?.purchase_cost || 0), batch: {},
+      batchStatus: needsSettings ? "loading" : "", batchSelection: selection,
+    });
+    if (!needsSettings) return;
+    const finish = changes => setLines(previous => previous.map(line => line.id === lineId && line.batchSelection === selection ? { ...line, ...changes } : line));
+    try {
+      const { data } = await axiosClient.get(`/admin/productos/${product.id}`);
+      const detail = data.data ?? data;
+      if (detail.batch_tracking_enabled == null) throw new Error("No se recibió la configuración de lotes.");
+      finish({ product: {
+        ...product,
+        batch_tracking_enabled: detail.batch_tracking_enabled,
+        expiration_required: detail.expiration_required,
+      }, batchStatus: "" });
+    } catch (error) {
+      finish({ batchStatus: "error", batchError: batchError(error) });
+    }
   };
 
   const addLine = () => setLines((prev) => [...prev, EMPTY_LINE()]);
@@ -418,15 +447,37 @@ export default function RestockEntryModal({
   };
 
   const handleSubmit = async () => {
-    if (isReadOnly) return;
+    if (isReadOnly || loading) return;
 
     if (!branchId) {
       toast.error("Seleccione una sucursal.");
       return;
     }
 
+    const batchData = new Map();
     for (const line of lines) {
-      if (!line.product?.id || Number(line.quantity) <= 0) continue;
+      if (!line.product?.id) continue;
+      if (line.batchStatus) {
+        toast.error("Confirma la configuración de lotes de cada producto seleccionado.");
+        return;
+      }
+      if (tracksBatches(line.product)) {
+        try {
+          if (isSalida) throw new Error("Registra las salidas de productos con lotes desde Ajustar saldo en Productos.");
+          const identity = batchIdentity({
+            expiry_precision: "unknown",
+            ...line.batch,
+            ...(inventoryFlag(line.product.expiration_required) && { expiry_precision: "day" }),
+          }, { optionalNumber: true });
+          const precision = hasProductVariants(line.product) || lineRequiresWarehouse(line) ? 3 : 2;
+          const quantity = decimalQuantity(line.quantity, precision, 0.01);
+          if (!quantity) throw new Error(`Ingresa una cantidad desde 0.01 con hasta ${precision} decimales.`);
+          batchData.set(line.id, { ...identity, quantity });
+        } catch (error) {
+          toast.error(`${line.product.name}: ${error.message}`);
+          return;
+        }
+      } else if (Number(line.quantity) <= 0) continue;
       if (hasProductVariants(line.product) && !(line.product_variant_id || line.variant?.id)) {
         toast.error(`Selecciona la variante de "${line.product.name}".`);
         return;
@@ -450,6 +501,7 @@ export default function RestockEntryModal({
         unit_price: Number(line.unit_price || 0),
         quantity: Number(line.quantity || 0),
         notes: line.notes || "",
+        batch: batchData.get(line.id),
       }));
 
     if (cleanItems.length === 0) {
@@ -475,17 +527,18 @@ export default function RestockEntryModal({
 
     cleanItems.forEach((item, index) => {
       formData.append(`items[${index}][product_id]`, item.product_id);
-      formData.append(
-        `items[${index}][product_variant_id]`,
-        item.product_variant_id
-      );
-      formData.append(
-        `items[${index}][variation_size_id]`,
-        item.variation_size_id
-      );
-      formData.append(`items[${index}][warehouse_id]`, item.warehouse_id);
+      if (!item.batch || item.product_variant_id) {
+        formData.append(`items[${index}][product_variant_id]`, item.product_variant_id);
+      }
+      if (!item.batch) formData.append(`items[${index}][variation_size_id]`, item.variation_size_id);
+      if (!item.batch || item.warehouse_id) formData.append(`items[${index}][warehouse_id]`, item.warehouse_id);
       formData.append(`items[${index}][unit_price]`, item.unit_price);
-      formData.append(`items[${index}][quantity]`, item.quantity);
+      formData.append(`items[${index}][quantity]`, item.batch?.quantity ?? item.quantity);
+      if (item.batch) {
+        Object.entries(item.batch).forEach(([key, value]) => {
+          if (key !== "quantity" && value != null) formData.append(`items[${index}][${key}]`, value);
+        });
+      }
       formData.append(`items[${index}][notes]`, item.notes);
     });
 
@@ -732,7 +785,7 @@ export default function RestockEntryModal({
                   startIcon={<UploadFileRoundedIcon />}
                   sx={{
                     ...sxBtnOutlined,
-                    minWidth: 170,
+                    minWidth: { xs: 0, md: 170 },
                     justifyContent: "flex-start",
                   }}
                   disabled={loading}
@@ -752,7 +805,7 @@ export default function RestockEntryModal({
                   startIcon={<UploadFileRoundedIcon />}
                   sx={{
                     ...sxBtnOutlined,
-                    minWidth: 170,
+                    minWidth: { xs: 0, md: 170 },
                     justifyContent: "flex-start",
                   }}
                   disabled={loading}
@@ -898,16 +951,7 @@ export default function RestockEntryModal({
                         <Stack direction={{ xs: "column", lg: "row" }} spacing={1.2}>
                           <Autocomplete
                             value={line.product}
-                            onChange={(_, product) => {
-                              updateLine(line.id, {
-                                product: product || null,
-                                variant: null,
-                                product_variant_id: "",
-                                variation_size_id: "",
-                                warehouse_id: "",
-                                unit_price: Number(product?.purchase_cost || 0),
-                              });
-                            }}
+                            onChange={(_, product) => selectProduct(line.id, product)}
                             onInputChange={(_, inputValue) => {
                               setProductSearch(inputValue);
                             }}
@@ -1053,10 +1097,10 @@ export default function RestockEntryModal({
                             value={line.quantity}
                             onChange={(e) =>
                               updateLine(line.id, {
-                                quantity: Number(e.target.value || 0),
+                                quantity: e.target.value,
                               })
                             }
-                            inputProps={{ min: 0.01, step: "0.01" }}
+                            inputProps={{ min: 0.01, step: tracksBatches(line.product) && (hasProductVariants(line.product) || lineRequiresWarehouse(line)) ? "0.001" : "0.01" }}
                             disabled={isReadOnly}
                             fullWidth
                             sx={fieldSx}
@@ -1071,6 +1115,19 @@ export default function RestockEntryModal({
                           />
                         </Stack>
 
+                        {!isReadOnly && line.batchStatus === "loading" && <Alert severity="info">Consultando configuración de lotes…</Alert>}
+                        {!isReadOnly && line.batchStatus === "error" && <Alert severity="error"
+                          action={<Button color="inherit" onClick={() => selectProduct(line.id, line.product)}>Reintentar</Button>}>{line.batchError}</Alert>}
+                        {!isReadOnly && tracksBatches(line.product) && (isSalida
+                          ? <Alert severity="warning">Registra la salida desde Ajustar saldo en Productos.</Alert>
+                          : <BatchIdentityFields value={{ expiry_precision: "unknown", ...line.batch }} disabled={loading} optionalNumber
+                            exactOnly={inventoryFlag(line.product.expiration_required)}
+                            onChange={changes => updateLine(line.id, { batch: { ...line.batch, ...changes } })} />)}
+                        {isReadOnly && line.batchReceipts?.map((receipt, index) => (
+                          <Typography key={receipt.id ?? index} variant="body2">
+                            Lote {receipt.batch?.batch_number || receipt.batch_id} · Cantidad {receipt.quantity} · Caducidad {batchExpiryLabel(receipt.batch ?? {})}
+                          </Typography>
+                        ))}
                         <TextField
                           label="Descripción de la partida"
                           placeholder={
@@ -1137,11 +1194,14 @@ export default function RestockEntryModal({
       </DialogContent>
 
       <DialogActions
+        disableSpacing
         sx={{
           p: 2,
           bgcolor: COLORS.paper,
           borderTop: `1px solid ${alpha("#000", 0.08)}`,
           gap: 1,
+          flexDirection: { xs: "column", sm: "row" },
+          "& .MuiButton-root": { width: { xs: "100%", sm: "auto" }, minHeight: 44 },
         }}
       >
         <Button
@@ -1154,7 +1214,7 @@ export default function RestockEntryModal({
           {isReadOnly ? "Cerrar" : "Cancelar"}
         </Button>
 
-        <Box sx={{ flex: 1 }} />
+        <Box sx={{ flex: 1, display: { xs: "none", sm: "block" } }} />
 
         {!isReadOnly && (
           <Button
@@ -1170,7 +1230,7 @@ export default function RestockEntryModal({
             }
             sx={{
               ...sxBtnBlack,
-              minWidth: 220,
+              minWidth: { xs: 0, sm: 220 },
             }}
           >
             {loading

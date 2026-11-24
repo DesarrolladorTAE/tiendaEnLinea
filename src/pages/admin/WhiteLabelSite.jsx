@@ -36,6 +36,8 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import axiosClient from "../../config/axiosClient";
 import { useAdminUi } from "../../context/AdminUiContext";
 import { useTienda } from "../../context/TiendaContext";
+import { hasPremiumCatalog, WHITE_LABEL_ADVANCED_PLAN, WHITE_LABEL_DEMO_PLAN } from "../../utils/whiteLabelAccess";
+import { storePlanId } from "../../utils/storePlan";
 import {
   showConfirm,
   showSuccess,
@@ -57,10 +59,6 @@ const PLAN_NAMES = {
   3: "Plan Profesional",
   4: "Plan Avanzado",
 };
-
-const PLAN_DEMO_ID = 1;
-const PLAN_AVANZADO_ID = 4;
-const WHITE_LABEL_COMPLEMENT_ID = 3;
 
 const copyToClipboard = async (text) => {
   if (!text) return false;
@@ -112,14 +110,7 @@ export default function WhiteLabelSite() {
   const [misComplementos, setMisComplementos] = useState([]);
   const [loadingComplementos, setLoadingComplementos] = useState(true);
 
-  const planId = useMemo(() => {
-    return Number(
-      tienda?.plan_id ||
-        tienda?.subscription?.plan_id ||
-        tienda?.store_plan?.plan_id ||
-        0
-    );
-  }, [tienda]);
+  const planId = storePlanId(tienda);
 
   const nombrePlanActual = useMemo(() => {
     return PLAN_NAMES[planId] || "Sin plan asignado";
@@ -156,26 +147,8 @@ export default function WhiteLabelSite() {
     };
   }, []);
 
-  const hasWhiteLabelComplement = useMemo(() => {
-    return misComplementos.some((item) => {
-      const complementoId = Number(
-        item?.complemento_id ||
-          item?.id ||
-          item?.complemento?.id ||
-          item?.complemento?.complemento_id ||
-          0
-      );
-
-      return complementoId === WHITE_LABEL_COMPLEMENT_ID;
-    });
-  }, [misComplementos]);
-
-  const canUseWhiteLabel = useMemo(() => {
-    return (
-      planId === PLAN_DEMO_ID ||
-      (planId === PLAN_AVANZADO_ID && hasWhiteLabelComplement)
-    );
-  }, [planId, hasWhiteLabelComplement]);
+  const canUseWhiteLabel = planId === WHITE_LABEL_DEMO_PLAN ||
+    (planId === WHITE_LABEL_ADVANCED_PLAN && hasPremiumCatalog(misComplementos));
 
   const handleRequestUpgrade = useCallback(async () => {
     const ok = await showConfirm(

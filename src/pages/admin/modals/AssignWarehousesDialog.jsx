@@ -16,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 import { alpha } from "@mui/material/styles";
+import { adminSectionDialog, adminSectionPrimaryAction } from "../../../components/admin/AdminSectionOption";
 
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
@@ -47,10 +48,12 @@ export default function AssignWarehousesDialog({
   return (
     <Dialog
       open={!!open}
-      onClose={onClose}
+      onClose={loading ? undefined : onClose}
       fullWidth
       maxWidth="sm"
       fullScreen={!!isMobile}
+      aria-labelledby="pos-warehouses-title"
+      sx={{ ...adminSectionDialog, "& .MuiDialog-paperFullScreen": { m: 0, borderRadius: 0 } }}
       PaperProps={{
         sx: {
           borderRadius: isMobile ? 0 : 3,
@@ -59,7 +62,7 @@ export default function AssignWarehousesDialog({
         },
       }}
     >
-      <DialogTitle
+      <DialogTitle id="pos-warehouses-title"
         sx={{
           fontWeight: 900,
           display: "flex",
@@ -75,7 +78,7 @@ export default function AssignWarehousesDialog({
               width: 38,
               height: 38,
               borderRadius: 2,
-              bgcolor: alpha(COLORS.accent, 0.22),
+              bgcolor: "#ffc107",
               border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
               display: "grid",
               placeItems: "center",
@@ -86,21 +89,21 @@ export default function AssignWarehousesDialog({
           </Box>
 
           <Box>
-            <Typography sx={{ fontWeight: 900, lineHeight: 1.1 }}>
+            <Typography sx={{ color: "#fff !important", fontWeight: 800, lineHeight: 1.1 }}>
               Asignación de almacenes
             </Typography>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: "#c7cbd1 !important" }}>
               {pos?.name ? pos.name : "POS"}
             </Typography>
           </Box>
         </Stack>
 
-        <IconButton onClick={onClose} sx={{ borderRadius: 2 }}>
+        <IconButton aria-label="Cerrar" onClick={onClose} disabled={loading} sx={{ borderRadius: 2, color: "#fff" }}>
           <CloseRoundedIcon />
         </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 1.5 }}>
+      <DialogContent dividers>
         <Stack spacing={1.2}>
           <Alert
             severity="info"
@@ -184,6 +187,7 @@ export default function AssignWarehousesDialog({
       <DialogActions sx={{ p: 2 }}>
         <Button
           onClick={onClose}
+          disabled={loading}
           variant="outlined"
           sx={{
             borderRadius: 2,
@@ -201,13 +205,7 @@ export default function AssignWarehousesDialog({
           variant="contained"
           disabled={!!loading}
           startIcon={<SaveRoundedIcon />}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-            fontWeight: 900,
-            bgcolor: COLORS.black,
-            "&:hover": { bgcolor: alpha(COLORS.black, 0.85) },
-          }}
+          sx={adminSectionPrimaryAction}
         >
           Guardar
         </Button>

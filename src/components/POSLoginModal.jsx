@@ -4,6 +4,10 @@ import { Alert, Box, IconButton, InputAdornment, TextField } from "@mui/material
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import PointOfSaleOutlinedIcon from "@mui/icons-material/PointOfSaleOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import CompanyCertificate from "./login/CompanyCertificate";
+import LoginBanner, { useLoginBanner } from "./login/LoginBanner";
 import axios from "../config/axiosClient";
 import "../pages/other/LoginRegister.motion.css";
 
@@ -13,6 +17,7 @@ export default function POSLoginModal({ onLoginSuccess, fromAdmin }) {
   const [showPin, setShowPin] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const banner = useLoginBanner();
 
   const handleLogin = async (event) => {
     event.preventDefault();
@@ -41,44 +46,65 @@ export default function POSLoginModal({ onLoginSuccess, fromAdmin }) {
     <section className="auth-neo is-login" aria-labelledby="pos-login-title">
       <div className="fx fx-blob b1" aria-hidden="true" />
       <div className="fx fx-blob b2" aria-hidden="true" />
-      <Box className="auth-panel no-media" sx={{ width: "min(100%, 510px)", minHeight: "0 !important" }}>
-        <div className="col-form">
-          <Link to={fromAdmin ? "/admin/pos" : "/login-register"} className="auth-home-link">
-            <ArrowBackRoundedIcon aria-hidden="true" />
-            {fromAdmin ? "Puntos de venta" : "Acceso de administración"}
-          </Link>
-          <Box component="img" src="/assets/logoc.png" alt="Mi Tienda en Línea MX" className="auth-logo" sx={{ width: "min(70%, 230px)", height: "auto", mx: "auto", mb: 3 }} />
-          <h1 id="pos-login-title" className="auth-heading">Acceso a punto de venta</h1>
-          <p className="auth-sub">Ingresa el código y el PIN de tu terminal.</p>
-          <form onSubmit={handleLogin}>
-            <TextField label="Código POS" value={code} onChange={(event) => setCode(event.target.value)} autoComplete="username" required disabled={busy} fullWidth />
-            <TextField
-              label="PIN de acceso"
-              value={accessCode}
-              onChange={(event) => setAccessCode(event.target.value)}
-              type={showPin ? "text" : "password"}
-              autoComplete="current-password"
-              required
-              disabled={busy}
-              fullWidth
-              slotProps={{
-                htmlInput: { maxLength: 6, inputMode: "numeric" },
-                input: { endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton type="button" aria-label={showPin ? "Ocultar PIN" : "Mostrar PIN"} onClick={() => setShowPin(!showPin)} edge="end">
-                      {showPin ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ) },
-              }}
-            />
-            {error && <Alert severity="error">{error}</Alert>}
-            <button type="submit" className="btn btn-primary fw-bold" disabled={busy}>
-              {busy ? "Ingresando…" : "Iniciar sesión"}
-            </button>
-          </form>
-        </div>
-      </Box>
+      <div className="container">
+        <Box className={`auth-panel grid-login img-left${banner.current ? "" : " no-media"}`} sx={{ minHeight: "0 !important" }}>
+          <LoginBanner {...banner} />
+          <div className="col-form">
+            <Link to={fromAdmin ? "/admin/pos" : "/login-register"} className="auth-home-link">
+              <ArrowBackRoundedIcon aria-hidden="true" />
+              {fromAdmin ? "Puntos de venta" : "Acceso de administración"}
+            </Link>
+            <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center", gap: 2, mb: 3 }}>
+              <Box component="img" src="/assets/logoc.png" alt="Mi Tienda en Línea MX" className="auth-logo"
+                sx={{ width: { xs: "min(75%, 200px)", sm: "min(60%, 230px)" }, height: "auto" }} />
+              <CompanyCertificate />
+            </Box>
+            <h1 id="pos-login-title" className="auth-heading">Acceso a punto de venta</h1>
+            <p className="auth-sub">Ingresa el código y el PIN de tu terminal.</p>
+            <form onSubmit={handleLogin}>
+              <TextField
+                className="auth-credential"
+                label="Código POS"
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                autoComplete="username"
+                required
+                disabled={busy}
+                fullWidth
+                slotProps={{ input: { startAdornment: <InputAdornment position="start"><PointOfSaleOutlinedIcon /></InputAdornment> } }}
+              />
+              <TextField
+                className="auth-credential"
+                label="PIN de acceso"
+                value={accessCode}
+                onChange={(event) => setAccessCode(event.target.value)}
+                type={showPin ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                disabled={busy}
+                fullWidth
+                slotProps={{
+                  htmlInput: { maxLength: 6, inputMode: "numeric" },
+                  input: {
+                    startAdornment: <InputAdornment position="start"><LockOutlinedIcon /></InputAdornment>,
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton type="button" aria-label={showPin ? "Ocultar PIN" : "Mostrar PIN"} onClick={() => setShowPin(!showPin)} edge="end">
+                          {showPin ? <VisibilityOffOutlinedIcon /> : <VisibilityOutlinedIcon />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+              {error && <Alert severity="error">{error}</Alert>}
+              <button type="submit" className="btn btn-primary fw-bold" disabled={busy}>
+                {busy ? "Ingresando…" : "Iniciar sesión"}
+              </button>
+            </form>
+          </div>
+        </Box>
+      </div>
     </section>
   );
 }

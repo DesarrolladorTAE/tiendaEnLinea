@@ -185,13 +185,15 @@ export default function LowStockProductsPanel({
     <Card
       elevation={0}
       sx={{
-        width: { xs: "100%", lg: 430 },
+        width: { xs: "100%", xl: 390 },
+        minWidth: 0,
+        flexShrink: 0,
         borderRadius: 4,
         border: `1px solid ${alpha("#000", 0.08)}`,
         bgcolor: "#fff",
         overflow: "hidden",
-        position: { lg: "sticky" },
-        top: { lg: 16 },
+        position: { xl: "sticky" },
+        top: { xl: 16 },
       }}
     >
       <Box
@@ -219,7 +221,7 @@ export default function LowStockProductsPanel({
 
       <CardContent sx={{ p: 2 }}>
         <Stack spacing={1.4}>
-          <Stack direction="row" spacing={1}>
+          <Stack direction={{ xs: "column", sm: "row" }} gap={1.25} sx={{ "& .MuiButton-root": { minHeight: 44 } }}>
             <TextField
               label="Mínimo"
               type="number"
@@ -248,7 +250,7 @@ export default function LowStockProductsPanel({
             </Button>
           </Stack>
 
-          <Stack direction="row" spacing={1}>
+          <Stack direction={{ xs: "column", sm: "row" }} gap={1.25} sx={{ "& .MuiButton-root": { minHeight: 44 } }}>
             <Button
               fullWidth
               variant="outlined"
@@ -325,7 +327,7 @@ export default function LowStockProductsPanel({
                     }}
                   >
                     <Stack direction="row" spacing={1.2} alignItems="center">
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Box sx={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>
                         <Typography sx={{ fontWeight: 900 }} noWrap>
                           {item.name}
                         </Typography>

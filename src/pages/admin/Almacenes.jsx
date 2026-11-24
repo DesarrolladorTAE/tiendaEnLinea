@@ -1,10 +1,10 @@
+import AdminSectionOption, { adminSectionHeader, adminSectionPanel, adminSectionScope, adminSectionTitle } from "../../components/admin/AdminSectionOption";
 import InventoryTransfers from "../../components/warehouses/InventoryTransfers";
-import BranchWarehousesDialog from "../../components/warehouses/BranchWarehousesDialog";
-import { warehouseStyles } from "../../components/warehouses/warehouseStyles";
+import { warehouseDialogStyles, warehouseStyles } from "../../components/warehouses/warehouseStyles";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Box,
-  Container,
+  Paper,
   Typography,
   Stack,
   Button,
@@ -19,12 +19,17 @@ import {
   Tooltip,
   Alert,
   Grow,
-  useMediaQuery,
   Collapse,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
-import { useTheme, alpha, keyframes } from "@mui/material/styles";
+import { alpha, keyframes } from "@mui/material/styles";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import SwapHorizRoundedIcon from "@mui/icons-material/SwapHorizRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import WarehouseRoundedIcon from "@mui/icons-material/WarehouseRounded";
@@ -36,6 +41,7 @@ import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import PointOfSaleRoundedIcon from "@mui/icons-material/PointOfSaleRounded";
 import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import ExpandLessRoundedIcon from "@mui/icons-material/ExpandLessRounded";
+import LightbulbOutlinedIcon from "@mui/icons-material/LightbulbOutlined";
 
 import axiosClient from "../../config/axiosClient";
 import { showConfirm, showSuccess, alertFromAxiosError } from "../../utils/alerts";
@@ -43,6 +49,12 @@ import { useAdminUi } from "../../context/AdminUiContext";
 
 import WarehouseFormModal from "../../components/warehouses/WarehouseFormModal";
 import WarehouseAssignPosModal from "../../components/warehouses/WarehouseAssignPosModal";
+
+const warehouseSections = [
+  { id: "warehouses", label: "Mis almacenes", description: "Administra almacenes y puntos de venta.", icon: WarehouseRoundedIcon },
+  { id: "transfers", label: "Traspasos entre sucursales", description: "Envía y recibe mercancía entre sucursales.", icon: LocalShippingOutlinedIcon },
+  { id: "warehouse-transfers", label: "Traspasos entre almacenes", description: "Mueve existencias dentro de esta sucursal.", icon: SwapHorizRoundedIcon },
+];
 
 const COLORS = {
   accent: "#ffc107",
@@ -71,8 +83,6 @@ const buildAddress = (w) => {
 const safeArr = (v) => (Array.isArray(v) ? v : []);
 
 export default function Warehouses() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -102,7 +112,7 @@ export default function Warehouses() {
   }, [activeBranch?.id, navigate]);
 
   const [section, setSection] = useState("warehouses");
-  const [branchBrowser, setBranchBrowser] = useState(false);
+  const [tipOpen, setTipOpen] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
@@ -219,29 +229,34 @@ export default function Warehouses() {
   };
 
   return (
-    <Box sx={{ ...warehouseStyles, bgcolor: "#f5f5f5", minHeight: "100vh", py: { xs: 1, md: 3 } }}>
-      <Container maxWidth="lg">
-        <Box sx={{ bgcolor: "#17191c", borderRadius: 3, p: { xs: 2, md: 3 }, mb: 2.5 }}>
+    <Box sx={{ ...warehouseStyles, width: "100%", maxWidth: 1500, mx: "auto", pb: 3 }}>
+        <Paper elevation={0} sx={adminSectionHeader}>
           <Stack direction={{ xs: "column", sm: "row" }} gap={2} alignItems={{ sm: "center" }} justifyContent="space-between">
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0 }}><Box sx={{ bgcolor: "#ffc107", p: 1.25, borderRadius: 2, display: "flex" }}><WarehouseRoundedIcon /></Box><Box sx={{ minWidth: 0 }}><Typography component="h1" sx={{ color: "#fff !important", fontSize: { xs: 25, md: 32 }, fontWeight: 800, lineHeight: 1.2, letterSpacing: "-.035em" }}>Almacenes y traspasos</Typography><Typography sx={{ color: "#c7cbd1 !important", mt: 1, fontSize: 14 }}>{activeBranch?.name || `Sucursal #${activeBranch?.id}`} - Organiza tus existencias y conecta tus sucursales.</Typography></Box></Stack>
-            <Button variant="contained" onClick={() => setBranchBrowser(true)} sx={{ flexShrink: 0 }}>Consultar sucursales</Button>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography component="h1" sx={adminSectionTitle}>Almacenes y traspasos</Typography>
+              <Typography sx={{ mt: 1, color: "#c7cbd1" }}>Administra existencias, almacenes y traspasos.</Typography>
+            </Box>
+            <Chip icon={<WarehouseRoundedIcon />} sx={adminSectionScope}
+              label={activeBranch?.name || (activeBranch?.id ? `Sucursal #${activeBranch.id}` : "Sin sucursal seleccionada")} />
           </Stack>
+        </Paper>
+        <Box role="group" aria-label="Secciones de almacenes" sx={{
+          display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", md: "repeat(3, minmax(0, 1fr))" }, gap: 1.5, mb: 2.5,
+        }}>
+          {warehouseSections.map(({ id, ...option }) => (
+            <AdminSectionOption key={id} {...option} active={section === id} onClick={() => setSection(id)} />
+          ))}
         </Box>
-        <Stack direction="row" flexWrap="wrap" gap={1} mb={2.5} role="group" aria-label="Secciones de almacenes">
-          <Button variant={section === "warehouses" ? "contained" : "outlined"} aria-pressed={section === "warehouses"} onClick={() => setSection("warehouses")}>Mis almacenes</Button>
-          <Button variant={section === "transfers" ? "contained" : "outlined"} aria-pressed={section === "transfers"} onClick={() => setSection("transfers")}>Traspasos entre sucursales</Button>
-          <Button variant={section === "warehouse-transfers" ? "contained" : "outlined"} aria-pressed={section === "warehouse-transfers"} onClick={() => setSection("warehouse-transfers")}>Traspasos entre almacenes</Button>
-        </Stack>
         {section !== "warehouses" ? activeBranch?.id && <InventoryTransfers key={`${activeBranch.id}-${section}`} branch={activeBranch} internal={section === "warehouse-transfers"} onChanged={fetchWarehouses} /> : <>
         <Stack spacing={1.5} sx={{ mb: 2.25 }}>
           {/* =======================
               2) ACCIONES
              ======================= */}
           <Stack
-            direction={isMobile ? "column" : "row"}
+            direction={{ xs: "column", md: "row" }}
             spacing={1}
             alignItems="stretch"
-            sx={{ width: "100%" }}
+            sx={{ width: "100%", "& .MuiButton-root": { minHeight: 44 } }}
           >
             <TextField
               value={q}
@@ -264,7 +279,7 @@ export default function Warehouses() {
               }}
             />
 
-            <Stack direction={isMobile ? "column" : "row"} spacing={1} alignItems="stretch">
+            <Stack direction={{ xs: "column", md: "row" }} spacing={1} alignItems="stretch">
               <Button
                 onClick={goInventoryGlobal}
                 variant="outlined"
@@ -287,10 +302,7 @@ export default function Warehouses() {
                   borderRadius: 2,
                   textTransform: "none",
                   fontWeight: 900,
-                  bgcolor: COLORS.accent,
-                  color: "#17191c",
-                  "&:hover": { bgcolor: "#e0a800" },
-                  minWidth: isMobile ? "100%" : 190,
+                  minWidth: { xs: 0, md: 190 },
                 }}
               >
                 Nuevo almacén
@@ -304,22 +316,18 @@ export default function Warehouses() {
            ======================= */}
         <Card
           elevation={0}
-          sx={{
-            borderRadius: 3,
-            border: `1px solid ${alpha("#000", 0.08)}`,
-            overflow: "hidden",
-          }}
+          sx={{ ...adminSectionPanel, p: 0, overflow: "hidden" }}
         >
           <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
             {/* Resumen */}
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
+            <Stack direction="row" gap={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
               <Chip
                 icon={<WarehouseRoundedIcon />}
                 label={loading ? "Cargando…" : `${filtered.length} almacén(es)`}
                 sx={{
                   fontWeight: 900,
-                  bgcolor: alpha(COLORS.accent, 0.22),
-                  border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
+                  bgcolor: alpha(COLORS.accent, 0.13),
+                  border: `1px solid ${alpha(COLORS.accent, 0.28)}`,
                 }}
               />
 
@@ -332,11 +340,17 @@ export default function Warehouses() {
                 />
               ) : null}
 
-              <Chip
-                label="Tip: Asigna puntos de venta para que el POS use el inventario del almacén"
-                variant="outlined"
-                sx={{ fontWeight: 700, bgcolor: alpha("#000", 0.02) }}
-              />
+              <Tooltip title="Ver tip sobre almacenes">
+                <IconButton
+                  aria-label="Ver tip sobre almacenes"
+                  aria-haspopup="dialog"
+                  onClick={() => setTipOpen(true)}
+                  sx={{ ml: "auto", width: 44, height: 44, bgcolor: "#fff3cd", color: "#684c00",
+                    border: "1px solid #ffe082", "&:hover": { bgcolor: "#ffe082" } }}
+                >
+                  <LightbulbOutlinedIcon />
+                </IconButton>
+              </Tooltip>
             </Stack>
 
             <Divider sx={{ my: 1.5 }} />
@@ -435,8 +449,8 @@ export default function Warehouses() {
                               width: 52,
                               height: 52,
                               borderRadius: 2,
-                              bgcolor: alpha(COLORS.accent, 0.22),
-                              border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
+                              bgcolor: alpha(COLORS.accent, 0.13),
+                              border: `1px solid ${alpha(COLORS.accent, 0.28)}`,
                               display: "grid",
                               placeItems: "center",
                               flexShrink: 0,
@@ -445,10 +459,10 @@ export default function Warehouses() {
                             <WarehouseRoundedIcon sx={{ color: COLORS.black }} />
                           </Box>
 
-                          <Box sx={{ flex: 1, minWidth: { xs: 0, sm: 200 } }}>
+                          <Box sx={{ flex: 1, minWidth: { xs: 0, sm: 200 }, overflowWrap: "anywhere" }}>
                             {/* Título + chips */}
-                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                              <Typography sx={{ fontWeight: 900, color: COLORS.black }}>
+                            <Stack direction="row" gap={0.75} alignItems="center" flexWrap="wrap" sx={{ "& .MuiChip-root": { maxWidth: "100%" } }}>
+                              <Typography sx={{ fontWeight: 900, color: COLORS.black, width: { xs: "100%", sm: "auto" } }}>
                                 {w?.name || "Almacén sin nombre"}
                               </Typography>
 
@@ -456,7 +470,7 @@ export default function Warehouses() {
                                 <Chip
                                   size="small"
                                   label="Default"
-                                  sx={{ fontWeight: 900, bgcolor: alpha(COLORS.accent, 0.25) }}
+                                  sx={{ fontWeight: 900, bgcolor: alpha(COLORS.accent, 0.16) }}
                                 />
                               ) : null}
 
@@ -521,7 +535,7 @@ export default function Warehouses() {
                                   Puntos de venta asignados:
                                 </Typography>
 
-                                <Stack direction="row" spacing={0.75} flexWrap="wrap" sx={{ mt: 0.75 }}>
+                                <Stack direction="row" gap={0.75} flexWrap="wrap" sx={{ mt: 0.75, "& .MuiChip-root": { maxWidth: "100%" } }}>
                                   {pos.map((p) => (
                                     <Chip
                                       key={p.id}
@@ -540,7 +554,7 @@ export default function Warehouses() {
                           </Box>
 
                           {/* ✅ acciones */}
-                          <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center" sx={{ ml: { xs: 0, sm: "auto" }, width: { xs: "100%", sm: "auto" } }}>
+                          <Stack direction="row" gap={1} flexWrap="wrap" alignItems="center" sx={{ ml: { xs: 0, sm: "auto" }, width: { xs: "100%", sm: "auto" }, pt: { xs: 1.5, sm: 0 }, borderTop: { xs: "1px solid #e5e7eb", sm: "none" }, "& .MuiIconButton-root": { minWidth: 44, minHeight: 44 } }}>
                             {/* Expandir POS */}
                             <Tooltip title={isOpen ? "Ocultar POS" : "Ver POS asignados"}>
                               <IconButton
@@ -624,7 +638,6 @@ export default function Warehouses() {
         </Card>
 
         </>}
-        {branchBrowser && activeBranch?.id && <BranchWarehousesDialog currentBranch={activeBranch} onClose={() => setBranchBrowser(false)} onSelect={branch => { setSelectedBranch(branch); setBranchBrowser(false); navigate(`/admin/almacenes?branch_id=${branch.id}`, { replace: true, state: { branch } }); }} />}
         {/* Modales */}
         <WarehouseFormModal
           open={createOpen}
@@ -660,7 +673,19 @@ export default function Warehouses() {
             fetchWarehouses();
           }}
         />
-      </Container>
+        <Dialog open={tipOpen} onClose={() => setTipOpen(false)} fullWidth maxWidth="xs"
+          aria-labelledby="warehouse-tip-title" aria-describedby="warehouse-tip-description" sx={warehouseDialogStyles}>
+          <DialogTitle id="warehouse-tip-title">Asignar puntos de venta</DialogTitle>
+          <DialogContent>
+            <Typography id="warehouse-tip-description">
+              Asigna puntos de venta a un almacén para que el POS use su inventario. Abre la opción
+              «Asignar puntos de venta» desde la tarjeta del almacén.
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button autoFocus onClick={() => setTipOpen(false)} variant="contained">Entendido</Button>
+          </DialogActions>
+        </Dialog>
     </Box>
   );
 }

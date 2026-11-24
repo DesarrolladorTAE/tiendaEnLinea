@@ -186,8 +186,9 @@ export default function ReporteTrabajadoresDialog({
         sx={{
           px: { xs: 2, md: 2.5 },
           py: { xs: 1.75, md: 2 },
-          borderBottom: `1px solid ${alpha("#000", 0.08)}`,
-          bgcolor: "#fff",
+          borderBottom: "2px solid #ffc107",
+          bgcolor: "#1d2025",
+          color: "#fff",
         }}
       >
         <Stack
@@ -202,7 +203,7 @@ export default function ReporteTrabajadoresDialog({
                 width: 44,
                 height: 44,
                 borderRadius: 2.5,
-                bgcolor: alpha(COLORS.accent, 0.22),
+                bgcolor: "#ffc107",
                 border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
                 display: "grid",
                 placeItems: "center",
@@ -217,7 +218,7 @@ export default function ReporteTrabajadoresDialog({
                 variant="h6"
                 sx={{
                   fontWeight: 900,
-                  color: COLORS.black,
+                  color: "#fff !important",
                   lineHeight: 1.1,
                 }}
               >
@@ -226,8 +227,7 @@ export default function ReporteTrabajadoresDialog({
 
               <Typography
                 variant="body2"
-                color="text.secondary"
-                sx={{ mt: 0.3 }}
+                sx={{ mt: 0.3, color: "#c7cbd1 !important" }}
               >
                 Filtra por fechas, trabajador y punto de venta.
               </Typography>
@@ -235,11 +235,11 @@ export default function ReporteTrabajadoresDialog({
           </Stack>
 
           <IconButton
+            aria-label="Cerrar reporte"
             onClick={onClose}
             sx={{
-              border: `1px solid ${alpha("#000", 0.08)}`,
-              bgcolor: "#fff",
-              "&:hover": { bgcolor: alpha("#000", 0.03) },
+              color: "#fff",
+              "&:hover": { bgcolor: "#30343b" },
             }}
           >
             <CloseRoundedIcon />

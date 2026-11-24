@@ -9,6 +9,7 @@ export default function InventoryDiscountSection({
   watch,
   setValue,
   hasVariants,
+  batchTrackingEnabled = false,
   control,
   isEdit = false,
 }) {
@@ -17,7 +18,10 @@ export default function InventoryDiscountSection({
 
   return (
     <div className="row">
-      {!detailInventory && (
+      {batchTrackingEnabled && <div className="col-12 mb-3">
+        <div className="alert alert-info mb-0">Las existencias de este producto se administran desde Lotes y Entradas de producto.</div>
+      </div>}
+      {!batchTrackingEnabled && !detailInventory && (
         <div className="col-md-4 mb-3">
           <label className="form-label">Stock</label>
 
@@ -45,7 +49,7 @@ export default function InventoryDiscountSection({
 
         </div>
       )}
-      {detailInventory && <div className="col-12 mb-3"><div className="alert alert-info mb-0">Las existencias se administran en {watch("use_warehouse_inventory") ? "el detalle por almacén" : "cada variante"}. El stock global no se utiliza.</div></div>}
+      {!batchTrackingEnabled && detailInventory && <div className="col-12 mb-3"><div className="alert alert-info mb-0">Las existencias se administran en {watch("use_warehouse_inventory") ? "el detalle por almacén" : "cada variante"}. El stock global no se utiliza.</div></div>}
 
       <SatFields
         register={register}

@@ -1,23 +1,23 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
+  Paper,
   Chip,
-  Container,
   Divider,
   Stack,
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { useTheme } from "@mui/material/styles";
+
+import { Link } from "react-router-dom";
+import AdminSectionOption, { adminSectionHeader, adminSectionPanel, adminSectionScope, adminSectionTitle } from "../../components/admin/AdminSectionOption";
 
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
-import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
 import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
@@ -27,18 +27,12 @@ import { useAdminUi } from "../../context/AdminUiContext";
 import { useTienda } from "../../context/TiendaContext";
 
 import { useAreasWorkers } from "../../hooks/useAreasWorkers";
-import RestrictionAlert from "../../components/areas-workers/RestrictionAlert";
+import { canAccessWorkers, storePlanId } from "../../utils/storePlan";
 import AreasDialog from "../../components/areas-workers/AreasDialog";
 import WorkerDialog from "../../components/areas-workers/WorkerDialog";
 import WorkersTable from "../../components/areas-workers/WorkersTable";
 import WorkersMobileCards from "../../components/areas-workers/WorkersMobileCards";
 import ReporteTrabajadoresDialog from "../../components/reportes/ReporteTrabajadoresDialog";
-
-const COLORS = {
-  accent: "#f9b233",
-  black: "#000000",
-  danger: "#e94e1b",
-};
 
 const PLAN_NAMES = {
   1: "Plan Demo",
@@ -47,33 +41,35 @@ const PLAN_NAMES = {
   4: "Plan Avanzado",
 };
 
-const ALLOWED_PLAN_IDS = [3, 4];
-
-const sxBtnOutlined = {
-  borderRadius: 2.5,
-  textTransform: "none",
-  fontWeight: 900,
-  borderColor: alpha("#000", 0.14),
-  color: COLORS.black,
-  bgcolor: "#fff",
-  "&:hover": { bgcolor: alpha("#000", 0.03) },
+const outlinedAction = {
+  borderColor: "#d6d7da", color: "#30343b",
+  "&:hover": { borderColor: "#d5a000", bgcolor: "#fff8df" },
 };
 
-const sxBtnBlack = {
-  borderRadius: 2.5,
-  textTransform: "none",
-  fontWeight: 900,
-  bgcolor: COLORS.black,
-  color: "#fff",
-  "&:hover": { bgcolor: alpha(COLORS.black, 0.86) },
+const primaryAction = {
+  bgcolor: "#ffc107", color: "#17191c",
+  "&:hover": { bgcolor: "#e0a800" },
 };
 
 export default function AreasWorkersPage() {
+  const { tienda, tiendaLoading } = useTienda();
+  const planId = storePlanId(tienda);
+  if (tiendaLoading) return <Typography role="status">Consultando el plan de la tienda…</Typography>;
+  if (!canAccessWorkers(planId)) {
+    return (
+      <Alert severity="warning">
+        Trabajadores está disponible en los planes Demo, Profesional y Avanzado.
+      </Alert>
+    );
+  }
+  return <WorkersWorkspace nombrePlanActual={PLAN_NAMES[planId]} />;
+}
+
+function WorkersWorkspace({ nombrePlanActual }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
 
   const { selectedBranch } = useAdminUi();
-  const { tienda, tiendaLoading } = useTienda();
 
   const branchId = selectedBranch?.id ? Number(selectedBranch.id) : null;
 
@@ -94,26 +90,6 @@ export default function AreasWorkersPage() {
   const [reportLoading, setReportLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
   const [reportError, setReportError] = useState("");
-
-  const planId = useMemo(() => {
-    return Number(
-      tienda?.plan_id ||
-        tienda?.subscription?.plan_id ||
-        tienda?.store_plan?.plan_id ||
-        0
-    );
-  }, [tienda]);
-
-  const nombrePlanActual = useMemo(() => {
-    if (planId === 2) return "Plan Negocio";
-    if (planId === 3) return "Plan Profesional";
-    if (planId === 4) return "Plan Avanzado";
-    return PLAN_NAMES[planId] || "Sin plan asignado";
-  }, [planId]);
-
-  const canManage = useMemo(() => {
-    return ALLOWED_PLAN_IDS.includes(planId);
-  }, [planId]);
 
   const {
     loadingAreas,
@@ -141,7 +117,7 @@ export default function AreasWorkersPage() {
     handleSavedAreaFromDialog,
   } = useAreasWorkers({
     branchId,
-    canManage,
+    canManage: true,
   });
 
   const buildReportParams = () => ({
@@ -266,324 +242,165 @@ export default function AreasWorkersPage() {
   };
 
   return (
-    <Box sx={{ bgcolor: "#fff", minHeight: "100vh", py: { xs: 2, md: 3 } }}>
-      <Container maxWidth="xl">
-        <Card
-          elevation={0}
-          sx={{
-            mb: 2,
-            borderRadius: 4,
-            border: `1px solid ${alpha("#000", 0.08)}`,
-            overflow: "hidden",
-            boxShadow: `0 12px 34px ${alpha("#000", 0.04)}`,
-          }}
-        >
-          <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-            <Stack
-              direction={isMobile ? "column" : "row"}
-              alignItems={isMobile ? "flex-start" : "center"}
-              justifyContent="space-between"
-              spacing={2}
-            >
-              <Stack spacing={1.2} sx={{ width: "100%" }}>
-                <Stack direction="row" spacing={1.2} alignItems="center">
-                  <Box
-                    sx={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: 2.5,
-                      bgcolor: alpha(COLORS.accent, 0.22),
-                      border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-                      display: "grid",
-                      placeItems: "center",
-                      flexShrink: 0,
-                    }}
-                  >
-                    <GroupsRoundedIcon sx={{ color: COLORS.black }} />
-                  </Box>
+    <Box sx={{
+      width: "100%", minWidth: 0, maxWidth: 1500, mx: "auto", pb: 3,
+      "& .MuiButton-root": { textTransform: "none", fontWeight: 700, minHeight: 44, borderRadius: 2.5 },
+      "& .MuiTypography-root": { overflowWrap: "anywhere" },
+    }}>
+      <Paper elevation={0} sx={adminSectionHeader}>
+        <Stack direction={{ xs: "column", sm: "row" }} gap={2} justifyContent="space-between" alignItems={{ sm: "center" }}>
+          <Box sx={{ minWidth: 0 }}>
+            <Typography component="h1" sx={adminSectionTitle}>Áreas y trabajadores</Typography>
+            <Typography sx={{ mt: 1, color: "#c7cbd1" }}>
+              Administra personal, horarios, datos fiscales y asignaciones por punto de venta.
+            </Typography>
+          </Box>
+          <Chip icon={<GroupsRoundedIcon />} sx={adminSectionScope}
+            label={branchId ? selectedBranch?.name || `Sucursal #${branchId}` : "Sin sucursal"} />
+        </Stack>
+        <Stack direction="row" flexWrap="wrap" alignItems="center" gap={1}
+          sx={{ mt: 2, pt: 2, borderTop: "1px solid #3a3d42" }}>
+          <Chip label={nombrePlanActual} size="small" sx={adminSectionScope} />
+          <Chip label={`${areas.length} área(s)`} size="small" sx={adminSectionScope} />
+          <Chip label={`${workers.length} trabajador(es)`} size="small" sx={adminSectionScope} />
+        </Stack>
+      </Paper>
 
-                  <Box sx={{ flex: 1 }}>
-                    <Typography
-                      variant="h5"
-                      sx={{
-                        fontWeight: 900,
-                        color: COLORS.black,
-                        lineHeight: 1.1,
-                      }}
-                    >
-                      Áreas y Trabajadores
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Administra personal, horarios, datos fiscales y asignación
-                      por punto de venta.
-                    </Typography>
-                  </Box>
-
-                  <Button
-                    startIcon={<ArrowBackRoundedIcon />}
-                    variant="outlined"
-                    sx={sxBtnOutlined}
-                  >
-                    Volver
+      {!branchId ? (
+        <Paper elevation={0} sx={adminSectionPanel}>
+          <Alert severity="info" sx={{ mb: 2 }}>Selecciona una sucursal para administrar áreas y trabajadores.</Alert>
+          <Button component={Link} to="/admin/sucursales" variant="outlined" startIcon={<ArrowBackRoundedIcon />} sx={outlinedAction}>
+            Ir a mis sucursales
+          </Button>
+        </Paper>
+      ) : (
+        <>
+          <Box role="group" aria-label="Acciones de trabajadores" sx={{
+            display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" },
+            gap: 1.5, mb: 2.5,
+          }}>
+            <AdminSectionOption icon={ApartmentRoundedIcon} label="Administrar áreas"
+              description="Organiza las áreas y sus puntos de venta." opensDialog onClick={() => {
+                fetchAreas();
+                fetchPosLocations();
+                setOpenAreasDialog(true);
+              }} />
+            <AdminSectionOption icon={AssessmentRoundedIcon} label="Reporte de trabajadores"
+              description="Consulta y exporta las ventas por trabajador." opensDialog onClick={() => setOpenReporteDialog(true)} />
+          </Box>
+          <Paper elevation={0} sx={adminSectionPanel}>
+            <Stack spacing={2}>
+              <Stack direction={{ xs: "column", md: "row" }} gap={1.5} justifyContent="space-between" alignItems={{ md: "center" }}>
+                <Typography component="h2" variant="h6" fontWeight={800}>Trabajadores</Typography>
+                <Stack direction={{ xs: "column", sm: "row" }} gap={1}>
+                  <Button onClick={fetchWorkers} variant="outlined" startIcon={<RefreshRoundedIcon />} sx={outlinedAction}>Recargar</Button>
+                  <Button onClick={() => { setEditingWorker(null); setOpenWorkerDialog(true); }}
+                    variant="contained" disableElevation startIcon={<AddRoundedIcon />} sx={primaryAction}>
+                    Crear trabajador
                   </Button>
                 </Stack>
-
-                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-                  <Chip
-                    label={
-                      branchId
-                        ? `Sucursal: ${selectedBranch?.name || `#${branchId}`}`
-                        : "Sin sucursal"
-                    }
-                    variant="outlined"
-                    sx={{ fontWeight: 900, borderColor: alpha("#000", 0.15) }}
-                  />
-
-                  <Chip
-                    label={`Plan actual: ${nombrePlanActual}`}
-                    variant="outlined"
-                    sx={{ fontWeight: 900, borderColor: alpha("#000", 0.15) }}
-                  />
-
-                  <Chip
-                    label={`${areas.length} área(s)`}
-                    sx={{
-                      fontWeight: 900,
-                      bgcolor: alpha(COLORS.accent, 0.22),
-                      border: `1px solid ${alpha(COLORS.accent, 0.35)}`,
-                    }}
-                  />
-
-                  <Chip
-                    label={`${workers.length} trabajador(es)`}
-                    sx={{
-                      fontWeight: 900,
-                      bgcolor: alpha("#000", 0.04),
-                      border: `1px solid ${alpha("#000", 0.08)}`,
-                    }}
-                  />
-
-                  {!canManage ? (
-                    <Chip
-                      icon={<LockRoundedIcon />}
-                      label="Acceso restringido"
-                      variant="outlined"
-                      sx={{
-                        fontWeight: 900,
-                        borderColor: alpha(COLORS.danger, 0.25),
-                        color: COLORS.danger,
-                      }}
-                    />
-                  ) : null}
-                </Stack>
-
-                {!tiendaLoading && !canManage ? (
-                  <RestrictionAlert nombrePlanActual={nombrePlanActual} />
-                ) : null}
               </Stack>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        {!branchId ? (
-          <Alert
-            severity="info"
-            sx={{
-              borderRadius: 2.5,
-              bgcolor: alpha("#000", 0.03),
-              border: `1px solid ${alpha("#000", 0.08)}`,
-            }}
-          >
-            Primero selecciona una sucursal para administrar áreas y
-            trabajadores.
-          </Alert>
-        ) : (
-          <Card
-            elevation={0}
-            sx={{
-              borderRadius: 4,
-              border: `1px solid ${alpha("#000", 0.08)}`,
-              overflow: "hidden",
-              boxShadow: `0 12px 34px ${alpha("#000", 0.04)}`,
-            }}
-          >
-            <CardContent sx={{ p: { xs: 1.5, md: 2.5 } }}>
-              <Stack spacing={1.5}>
-                {!canManage ? (
-                  <RestrictionAlert nombrePlanActual={nombrePlanActual} />
-                ) : null}
-
-                <Card
-                  elevation={0}
-                  sx={{
-                    borderRadius: 3,
-                    border: `1px solid ${alpha("#000", 0.07)}`,
-                    bgcolor: alpha("#000", 0.012),
+              <Divider />
+              {isMobile ? (
+                <WorkersMobileCards
+                  workers={workers}
+                  loading={loadingWorkers}
+                  canManage
+                  workerSearch={workerSearch}
+                  setWorkerSearch={setWorkerSearch}
+                  filterPosLocation={filterPosLocation}
+                  setFilterPosLocation={setFilterPosLocation}
+                  filterAreaId={filterAreaId}
+                  setFilterAreaId={setFilterAreaId}
+                  posLocations={posLocations}
+                  areas={areas}
+                  onEdit={(row) => {
+                    setEditingWorker(row);
+                    setOpenWorkerDialog(true);
                   }}
-                >
-                  <CardContent sx={{ p: 2 }}>
-                    <Stack
-                      direction={{ xs: "column", md: "row" }}
-                      spacing={1}
-                      alignItems={{ xs: "stretch", md: "center" }}
-                      justifyContent="space-between"
-                    >
-                      <Stack
-                        direction={{ xs: "column", md: "row" }}
-                        spacing={1}
-                        sx={{ flex: 1 }}
-                      >
-                        <Button
-                          onClick={fetchWorkers}
-                          variant="outlined"
-                          startIcon={<RefreshRoundedIcon />}
-                          sx={sxBtnOutlined}
-                        >
-                          Recargar
-                        </Button>
+                  onDelete={handleDeleteWorker}
+                  onToggleStatus={handleToggleWorker}
+                />
+              ) : (
+                <WorkersTable
+                  workers={workers}
+                  loading={loadingWorkers}
+                  canManage
+                  workerSearch={workerSearch}
+                  setWorkerSearch={setWorkerSearch}
+                  filterPosLocation={filterPosLocation}
+                  setFilterPosLocation={setFilterPosLocation}
+                  filterAreaId={filterAreaId}
+                  setFilterAreaId={setFilterAreaId}
+                  posLocations={posLocations}
+                  areas={areas}
+                  onEdit={(row) => {
+                    setEditingWorker(row);
+                    setOpenWorkerDialog(true);
+                  }}
+                  onDelete={handleDeleteWorker}
+                  onToggleStatus={handleToggleWorker}
+                />
+              )}
+            </Stack>
+          </Paper>
+        </>
+      )}
 
-                        <Button
-                          onClick={() => {
-                            fetchAreas();
-                            fetchPosLocations();
-                            setOpenAreasDialog(true);
-                          }}
-                          variant="outlined"
-                          startIcon={<ApartmentRoundedIcon />}
-                          sx={sxBtnOutlined}
-                        >
-                          Administrar áreas
-                        </Button>
+      <AreasDialog
+        open={openAreasDialog}
+        onClose={() => setOpenAreasDialog(false)}
+        canManage
+        nombrePlanActual={nombrePlanActual}
+        branchId={branchId}
+        areas={areas}
+        posLocations={posLocations}
+        loadingAreas={loadingAreas}
+        loadingPosLocations={loadingPosLocations}
+        areaSearch={areaSearch}
+        setAreaSearch={setAreaSearch}
+        filterPosLocation={filterPosLocation}
+        setFilterPosLocation={setFilterPosLocation}
+        onRefresh={() => {
+          fetchAreas();
+          fetchPosLocations();
+        }}
+        onSaved={handleSavedAreaFromDialog}
+        onDelete={handleDeleteArea}
+        onToggleStatus={handleToggleArea}
+      />
 
-                        <Button
-                          onClick={() => setOpenReporteDialog(true)}
-                          variant="outlined"
-                          startIcon={<AssessmentRoundedIcon />}
-                          sx={sxBtnOutlined}
-                        >
-                          Reporte trabajadores
-                        </Button>
-                      </Stack>
+      <WorkerDialog
+        open={openWorkerDialog}
+        onClose={() => {
+          setOpenWorkerDialog(false);
+          setEditingWorker(null);
+        }}
+        canManage
+        nombrePlanActual={nombrePlanActual}
+        branchId={branchId}
+        row={editingWorker}
+        areas={areas}
+        posLocations={posLocations}
+        onSaved={handleSavedWorker}
+      />
 
-                      <Button
-                        onClick={() => {
-                          setEditingWorker(null);
-                          setOpenWorkerDialog(true);
-                        }}
-                        variant="contained"
-                        startIcon={<AddRoundedIcon />}
-                        sx={sxBtnBlack}
-                        disabled={!canManage}
-                      >
-                        Crear trabajador
-                      </Button>
-                    </Stack>
-                  </CardContent>
-                </Card>
-
-                <Divider />
-
-                {isMobile ? (
-                  <WorkersMobileCards
-                    workers={workers}
-                    loading={loadingWorkers}
-                    canManage={canManage}
-                    workerSearch={workerSearch}
-                    setWorkerSearch={setWorkerSearch}
-                    filterPosLocation={filterPosLocation}
-                    setFilterPosLocation={setFilterPosLocation}
-                    filterAreaId={filterAreaId}
-                    setFilterAreaId={setFilterAreaId}
-                    posLocations={posLocations}
-                    areas={areas}
-                    onEdit={(row) => {
-                      setEditingWorker(row);
-                      setOpenWorkerDialog(true);
-                    }}
-                    onDelete={handleDeleteWorker}
-                    onToggleStatus={handleToggleWorker}
-                  />
-                ) : (
-                  <WorkersTable
-                    workers={workers}
-                    loading={loadingWorkers}
-                    canManage={canManage}
-                    workerSearch={workerSearch}
-                    setWorkerSearch={setWorkerSearch}
-                    filterPosLocation={filterPosLocation}
-                    setFilterPosLocation={setFilterPosLocation}
-                    filterAreaId={filterAreaId}
-                    setFilterAreaId={setFilterAreaId}
-                    posLocations={posLocations}
-                    areas={areas}
-                    onEdit={(row) => {
-                      setEditingWorker(row);
-                      setOpenWorkerDialog(true);
-                    }}
-                    onDelete={handleDeleteWorker}
-                    onToggleStatus={handleToggleWorker}
-                  />
-                )}
-              </Stack>
-            </CardContent>
-          </Card>
-        )}
-
-        <AreasDialog
-          open={openAreasDialog}
-          onClose={() => setOpenAreasDialog(false)}
-          canManage={canManage}
-          nombrePlanActual={nombrePlanActual}
-          branchId={branchId}
-          areas={areas}
-          posLocations={posLocations}
-          loadingAreas={loadingAreas}
-          loadingPosLocations={loadingPosLocations}
-          areaSearch={areaSearch}
-          setAreaSearch={setAreaSearch}
-          filterPosLocation={filterPosLocation}
-          setFilterPosLocation={setFilterPosLocation}
-          onRefresh={() => {
-            fetchAreas();
-            fetchPosLocations();
-          }}
-          onSaved={handleSavedAreaFromDialog}
-          onDelete={handleDeleteArea}
-          onToggleStatus={handleToggleArea}
-        />
-
-        <WorkerDialog
-          open={openWorkerDialog}
-          onClose={() => {
-            setOpenWorkerDialog(false);
-            setEditingWorker(null);
-          }}
-          canManage={canManage}
-          nombrePlanActual={nombrePlanActual}
-          branchId={branchId}
-          row={editingWorker}
-          areas={areas}
-          posLocations={posLocations}
-          onSaved={handleSavedWorker}
-        />
-
-        <ReporteTrabajadoresDialog
-          open={openReporteDialog}
-          onClose={() => setOpenReporteDialog(false)}
-          branchId={branchId}
-          workers={workers}
-          posLocations={posLocations}
-          filters={reportFilters}
-          setFilters={setReportFilters}
-          onBuscar={handleBuscarReporte}
-          onLimpiar={handleLimpiarReporte}
-          onExportPdf={handleExportPdf}
-          onExportExcel={handleExportExcel}
-          loading={reportLoading}
-          reporteData={reportData}
-          reporteError={reportError}
-        />
-      </Container>
+      <ReporteTrabajadoresDialog
+        open={openReporteDialog}
+        onClose={() => setOpenReporteDialog(false)}
+        branchId={branchId}
+        workers={workers}
+        posLocations={posLocations}
+        filters={reportFilters}
+        setFilters={setReportFilters}
+        onBuscar={handleBuscarReporte}
+        onLimpiar={handleLimpiarReporte}
+        onExportPdf={handleExportPdf}
+        onExportExcel={handleExportExcel}
+        loading={reportLoading}
+        reporteData={reportData}
+        reporteError={reportError}
+      />
     </Box>
   );
 }
