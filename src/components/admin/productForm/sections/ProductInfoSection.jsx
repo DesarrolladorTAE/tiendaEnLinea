@@ -15,15 +15,60 @@ export default function ProductInfoSection({
   isEdit = false,
 }) {
   const hasWarehouses = inventoryFlag(watch("use_warehouse_inventory"));
+  const oeEnabled = watch("oe_enabled");
+  const sku = watch("sku");
   return (
     <div className="row">
       <ProductField
-        label="Código"
+        label="SKU"
         name="sku"
         register={register}
         errors={errors}
-        validation={{ required: "El codigo es obligatorio" }}
-      />
+        validation={{ required: "El SKU es obligatorio." }}
+      >
+        <div className="border border-secondary rounded px-2 py-1 mt-2 small">
+          <label className="form-check mb-0 d-flex align-items-center gap-2">
+            <input
+              type="checkbox"
+              className="form-check-input mt-0"
+              {...register("oe_enabled", {
+                onChange: (event) => {
+                  if (!event.target.checked) {
+                    setValue("oe_number", "", { shouldDirty: true, shouldValidate: true });
+                  }
+                },
+              })}
+            />
+            <span className="form-check-label">Número OE (opcional)</span>
+          </label>
+          {oeEnabled && (
+            <div className="mt-2">
+              <input
+                type="text"
+                aria-label="Número OE"
+                aria-invalid={!!errors?.oe_number}
+                aria-describedby={errors?.oe_number ? "oe-number-error" : undefined}
+                className={`form-control form-control-sm bg-secondary text-light border-secondary${errors?.oe_number ? " is-invalid" : ""}`}
+                maxLength={255}
+                {...register("oe_number", {
+                  maxLength: { value: 255, message: "El número OE admite hasta 255 caracteres." },
+                })}
+              />
+              {errors?.oe_number && (
+                <small id="oe-number-error" className="text-danger d-block">{errors.oe_number.message}</small>
+              )}
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-light mt-2"
+                disabled={!sku?.trim() || sku.length > 255}
+                onClick={() => setValue("oe_number", sku, { shouldDirty: true, shouldValidate: true })}
+              >
+                Usar el mismo SKU
+              </button>
+            </div>
+          )}
+        </div>
+      </ProductField>
 
       <ProductField
         label="Nombre"

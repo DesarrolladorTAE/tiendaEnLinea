@@ -85,7 +85,9 @@ const LoginRegister = () => {
       const msg =
         err.response?.data?.message ||
         err.response?.data?.error ||
-        "Credenciales inválidas";
+        (err.code === "MTELMX_API_NOT_CONFIGURED" ? err.message :
+          err.response?.status === 401 ? "Credenciales inválidas" :
+          err.response ? "No se pudo iniciar sesión." : "No se pudo conectar con la API.");
       await showError(msg);
     } finally {
       setLoading(false);

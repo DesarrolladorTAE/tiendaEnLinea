@@ -1,11 +1,11 @@
+import { apiBase, isProductionApiBuild } from "../config/apiEnvironment";
+
 export const SUPPORT_ERROR_STORAGE_KEY =
   "LAST_SUPPORT_HTTP_ERROR";
 
 export const SUPPORT_ERROR_EVENT =
   "support:http-error";
 
-const SUPPORT_INCIDENT_URL =
-  "https://mitiendaenlineamx.com.mx/api/the-business-ticket/incidents";
 
 const normalizeScalar = (
   value,
@@ -146,8 +146,9 @@ export const reportSupportIncident = async ({
   };
 
   try {
+    if (!isProductionApiBuild) return null;
     const response = await fetch(
-      SUPPORT_INCIDENT_URL,
+      `${apiBase}the-business-ticket/incidents`,
       {
         method: "POST",
         headers: {

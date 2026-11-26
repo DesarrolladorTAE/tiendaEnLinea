@@ -1,12 +1,12 @@
 import axios from "axios";
+import { apiBase, requireIsolatedApi } from "./apiEnvironment";
 
 import {
   reportSupportIncident,
 } from "../utils/supportIncidentReporter";
 
 const axiosClient = axios.create({
-  baseURL:
-    "https://mitiendaenlineamx.com.mx/api/",
+  baseURL: apiBase,
   headers: {
     Accept: "application/json",
   },
@@ -14,6 +14,7 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
   (config) => {
+    requireIsolatedApi(config);
     const token =
       localStorage.getItem("AUTH_TOKEN");
 

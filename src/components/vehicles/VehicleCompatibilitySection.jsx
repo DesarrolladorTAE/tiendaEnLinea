@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTienda } from "../../context/TiendaContext";
 import useBranchCatalogSettings from "../../hooks/useBranchCatalogSettings";
+import { vehicleCatalogAccess } from "../../utils/branchCatalogAccess";
 import AccordionSection from "../admin/productForm/AccordionSection";
 import axiosClient from "../../config/axiosClient";
 
@@ -22,13 +23,12 @@ function VehicleRow({ row, index, branchId, brands, update, remove }) {
     </div><button className="btn btn-outline-danger btn-sm mt-3" type="button" onClick={remove}>Quitar vehículo {index + 1}</button>
   </div>;
 }
-export default function VehicleCompatibilitySection({ branchId, watch, setValue, isEdit }) {
+export default function VehicleCompatibilitySection({ branchId, watch, setValue, isEdit, hasError }) {
   const { tienda } = useTienda();
-  const allowed = Number(tienda?.id) === 566;
-  const { settings, loading, error, retry } = useBranchCatalogSettings(branchId, allowed);
+  const { settings, loading, error, retry } = useBranchCatalogSettings(branchId);
   const rows = watch("vehicle_compatibilities");
   const [brands, setBrands] = useState([]);
-  const canEdit = Boolean(settings?.vehicle_feature_available && settings?.vehicle_compatibilities_enabled);
+  const { write: canEdit } = vehicleCatalogAccess(settings, tienda?.id);
   useEffect(() => {
     setBrands([]);
     if (!canEdit) return;
@@ -36,11 +36,10 @@ export default function VehicleCompatibilitySection({ branchId, watch, setValue,
     axiosClient.get("/vehicle-brands", { params: { branch_id: branchId }, signal: controller.signal }).then(({ data }) => { if (!controller.signal.aborted) setBrands(data.data || []); }).catch(() => {});
     return () => controller.abort();
   }, [canEdit, branchId]);
-  if (!allowed) return null;
   if (error) return <div className="alert alert-warning">{error} <button type="button" className="btn btn-sm btn-outline-dark" onClick={retry}>Reintentar</button></div>;
   if (loading || !canEdit) return null;
   const change = value => setValue("vehicle_compatibilities", value, { shouldDirty: true });
-  return <AccordionSection title="🚘 Vehículos (opcional)">
+  return <AccordionSection title="🚘 Vehículos (opcional)" hasError={hasError}>
     <p>Registra los vehículos compatibles. Puedes elegir una marca o modelo existente o escribir uno nuevo. Un año vacío deja ese extremo sin límite.</p>
     <datalist id="vehicle-brand-options">{brands.map(b => <option key={b.id} value={b.name} />)}</datalist>
     {isEdit && !Array.isArray(rows) ? <div className="alert alert-warning">Las compatibilidades todavía no están disponibles. Vuelve a cargar el producto antes de editarlas.</div> : <>

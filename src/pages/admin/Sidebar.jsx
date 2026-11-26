@@ -3,12 +3,20 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.min.css";
 import adminNavItems, { storeAdminNavItems } from "../../menuConfig";
 import ArrowBackRoundedIcon from "@mui/icons-material/ArrowBackRounded";
+import useVehicleRecordsAccess from "../../hooks/useVehicleRecordsAccess";
+import useDynamicFormsAccess from "../../hooks/useDynamicFormsAccess";
+import { formLink, formsPath } from "../../services/admin/dynamicForms";
+import { vehicleRecordsPath, vehicleRecordsUrl } from "../../services/admin/vehicleRecords";
 
 const Sidebar = ({ onNavigate, storeOnly = false, showWhiteLabel = false, showWorkers = false }) => {
   const location = useLocation();
   const navigate = useNavigate();
+  const vehicleAccess = useVehicleRecordsAccess(!storeOnly);
+  const formsAccess = useDynamicFormsAccess(!storeOnly);
+  const operationLinks = ["/admin/services/agenda", "/admin/services/orders"];
   const isActive = (path) => path === "/admin/services"
     ? location.pathname.startsWith(path) || /^\/admin\/branches\/\d+\/tours(?:\/|$)/.test(location.pathname)
+    : path === operationLinks[0] ? ["/admin/services/agenda", "/admin/services/bookings"].some((prefix) => location.pathname.startsWith(prefix))
     : path === "/admin/reportes" ? location.pathname.startsWith(path)
     : location.pathname.startsWith(path);
 
@@ -17,7 +25,9 @@ const Sidebar = ({ onNavigate, storeOnly = false, showWhiteLabel = false, showWo
       {items.map((item) => (
         <li className="nav-item mb-2" key={item.path}>
           <Link
-            to={item.path}
+            to={item.path === vehicleRecordsPath ? vehicleRecordsUrl(vehicleAccess.branch.id) :
+              item.path === formsPath ? formLink(formsPath, formsAccess.branch.id) :
+              operationLinks.includes(item.path) && vehicleAccess.branch?.id ? formLink(item.path, vehicleAccess.branch.id) : item.path}
             onClick={onNavigate}
             aria-current={isActive(item.path) ? "page" : undefined}
             className={`nav-link ${
@@ -112,6 +122,8 @@ const Sidebar = ({ onNavigate, storeOnly = false, showWhiteLabel = false, showWo
             </section>
           ) : renderLinks(adminNavItems.filter(item =>
             (item.path !== "/admin/marca-blanca" || showWhiteLabel) &&
+            (item.path !== vehicleRecordsPath || vehicleAccess.canRead) &&
+            (item.path !== formsPath || formsAccess.read) &&
             (item.path !== "/admin/trabajadores-areas" || showWorkers),
           ))}
         </div>

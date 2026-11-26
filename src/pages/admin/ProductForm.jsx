@@ -1,11 +1,12 @@
 // src/pages/admin/ProductForm.jsx
-import React from "react";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import "bootstrap/dist/css/bootstrap.min.css";
 
 import VehicleCompatibilitySection from "../../components/vehicles/VehicleCompatibilitySection";
 import useLimiteProductos from "../../hooks/useLimiteProductos";
 import useProductFormLogic from "../../hooks/useProductFormLogic";
+import { showError } from "../../utils/alerts";
 
 import AccordionSection from "../../components/admin/productForm/AccordionSection";
 
@@ -19,7 +20,11 @@ import CategoriesSection from "../../components/admin/productForm/sections/Categ
 import VariantsSection from "../../components/admin/productForm/sections/VariantsSection";
 import LocationsProductSection from "../../components/admin/productForm/sections/LocationsProductSection";
 
+const fieldGroup = (name) => name.split(/[.\[]/, 1)[0];
+
 export default function ProductForm() {
+  const [nativeErrorFields, setNativeErrorFields] = useState([]);
+  const [saveErrorFields, setSaveErrorFields] = useState([]);
   const {
     register,
     control,
@@ -31,6 +36,8 @@ export default function ProductForm() {
   } = useForm({
     defaultValues: {
       sku: "",
+      oe_enabled: false,
+      oe_number: "",
       name: "",
       price: "",
       price_mode: "manual",
@@ -83,7 +90,46 @@ export default function ProductForm() {
     watch,
     setValue,
     dirtyFields,
+    onFieldErrors: setSaveErrorFields,
   });
+
+  const invalidFields = new Set([
+    ...Object.keys(errors),
+    ...nativeErrorFields.map(fieldGroup),
+    ...saveErrorFields.map(fieldGroup),
+  ]);
+  const hasError = (...fields) => fields.some((field) => invalidFields.has(field));
+
+  function showNativeValidationError(event) {
+    event.preventDefault();
+    const invalid = Array.from(event.currentTarget.elements).filter(
+      (field) => field.willValidate && !field.validity.valid,
+    );
+    if (event.target === invalid[0]) {
+      setNativeErrorFields(invalid.map((field) => field.name).filter(Boolean));
+      const label = event.target.labels?.[0]?.textContent?.trim();
+      const message = event.target.validationMessage;
+      showError(label ? `${label}. ${message}` : message);
+    }
+  }
+
+  function clearCorrectedIndicators(event) {
+    const { name, validity } = event.target;
+    if (!name) return;
+    if (validity?.valid && nativeErrorFields.includes(name)) {
+      setNativeErrorFields((fields) => fields.filter((field) => field !== name));
+    }
+    const group = fieldGroup(name);
+    if (saveErrorFields.includes(name) || saveErrorFields.includes(group)) {
+      setSaveErrorFields((fields) => fields.filter((field) => field !== name && field !== group));
+    }
+  }
+
+  function submit(event) {
+    setNativeErrorFields([]);
+    setSaveErrorFields([]);
+    return handleSubmit(actions.onSubmit, actions.onInvalid)(event);
+  }
 
   if (!ui.id && cargando)
     return <p className="text-center text-muted">Cargando datos...</p>;
@@ -113,10 +159,10 @@ export default function ProductForm() {
         </h2>
 
         <div className="accordion mt-4" id="productFormAccordion">
-          <form onSubmit={handleSubmit(actions.onSubmit)}>
+          <form onSubmit={submit} onInvalid={showNativeValidationError} onChange={clearCorrectedIndicators}>
             <fieldset disabled={isSubmitting} style={{ minWidth: 0 }}>
             {/* 1) Información del producto */}
-            <AccordionSection title="🛒 Información del Producto" defaultOpen>
+            <AccordionSection title="🛒 Información del Producto" defaultOpen hasError={hasError("sku", "oe_number", "name", "price", "iva", "base_price", "costo_compra", "purchase_cost", "profit_factor")}>
               <ProductInfoSection
                 register={register}
                 errors={errors}
@@ -129,7 +175,7 @@ export default function ProductForm() {
             </AccordionSection>
 
             {/* 2) Inventario y Descuento */}
-            <AccordionSection title="📦 Inventario y Descuento">
+            <AccordionSection title="📦 Inventario y Descuento" hasError={hasError("stock", "discount", "offerEnd", "batch_tracking_enabled", "expiration_required", "unidad_medida_id", "unidad_medida_texto", "clave_producto_servicio", "clave_producto_sat", "clave_unidad", "clave_unidad_sat")}>
               <div className="mb-3">
                 <label className="form-check">
                   <input type="checkbox" className="form-check-input" {...register("batch_tracking_enabled")} />
@@ -161,7 +207,7 @@ export default function ProductForm() {
             </AccordionSection>
 
             {/* 3) Variantes */}
-            {!ui.batchTrackingEnabled && !(ui.id && watch("batch_tracking_enabled")) && <AccordionSection title="🧩 Variantes">
+            {!ui.batchTrackingEnabled && !(ui.id && watch("batch_tracking_enabled")) && <AccordionSection title="🧩 Variantes" hasError={hasError("variants")}>
               <VariantsSection
                 control={control}
                 register={register}
@@ -172,7 +218,7 @@ export default function ProductForm() {
             </AccordionSection>}
 
             {/* 4) Multi-almacenes (WAREHOUSES) */}
-            {!ui.batchTrackingEnabled && !(ui.id && watch("batch_tracking_enabled")) && <AccordionSection title="🏬 Multi-almacenes (Almacenes)">
+            {!ui.batchTrackingEnabled && !(ui.id && watch("batch_tracking_enabled")) && <AccordionSection title="🏬 Multi-almacenes (Almacenes)" hasError={hasError("warehouse_inventories", "use_warehouse_inventory")}>
               <LocationsProductSection
                 control={control}
                 register={register}
@@ -182,10 +228,10 @@ export default function ProductForm() {
               />
             </AccordionSection>}
 
-            <VehicleCompatibilitySection branchId={ui.branchId} watch={watch} setValue={setValue} isEdit={!!ui.id} />
+            <VehicleCompatibilitySection branchId={ui.branchId} watch={watch} setValue={setValue} isEdit={!!ui.id} hasError={hasError("vehicle_compatibilities")} />
 
             {/* 5) Sitio web */}
-            <AccordionSection title="🌐 Sitio Web">
+            <AccordionSection title="🌐 Sitio Web" hasError={hasError("rating", "new", "visible")}>
               <WebSection
                 register={register}
                 errors={errors}
@@ -195,12 +241,12 @@ export default function ProductForm() {
             </AccordionSection>
 
             {/* 6) Descripciones */}
-            <AccordionSection title="📑 Descripciones">
+            <AccordionSection title="📑 Descripciones" hasError={hasError("shortDescription", "fullDescription")}>
               <DescriptionsSection register={register} errors={errors} />
             </AccordionSection>
 
             {/* 7) Imágenes */}
-            <AccordionSection title="🖼️ Imágenes del Producto">
+            <AccordionSection title="🖼️ Imágenes del Producto" hasError={hasError("images")}>
               <ImagesSection
                 id={ui.id}
                 imageFiles={ui.imageFiles}
@@ -209,7 +255,7 @@ export default function ProductForm() {
             </AccordionSection>
 
             {/* 8) Categorías */}
-            <AccordionSection title="✅ Categorías">
+            <AccordionSection title="✅ Categorías" hasError={hasError("category", "categories")}>
               <CategoriesSection
                 control={control}
                 categoriesOptions={ui.categoriesOptions}

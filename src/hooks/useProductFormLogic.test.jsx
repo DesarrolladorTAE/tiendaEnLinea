@@ -1,8 +1,11 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
+import { Simulate } from "react-dom/test-utils";
 import { useForm } from "react-hook-form";
 import useProductFormLogic from "./useProductFormLogic";
 import InventoryDiscountSection from "../components/admin/productForm/sections/InventoryDiscountSection";
+import ProductInfoSection from "../components/admin/productForm/sections/ProductInfoSection";
+import AccordionSection from "../components/admin/productForm/AccordionSection";
 import client from "../config/axiosClient";
 import { showError } from "../utils/alerts";
 
@@ -12,7 +15,7 @@ jest.mock("../config/axiosClient", () => ({ __esModule: true, default: { get: je
 jest.mock("../utils/alerts", () => ({ showError: jest.fn(), showSuccess: jest.fn() }));
 jest.mock("../utils/inventoryEvents", () => ({ notifyInventoryChanged: jest.fn() }));
 jest.mock("../components/admin/productForm/SatFields", () => () => null);
-jest.mock("../components/admin/ProductField", () => () => null);
+jest.mock("../components/admin/ProductField", () => ({ name, children }) => <div data-field={name}>{children}</div>);
 let root, host, latest;
 const draft = { name: "Producto", sku: "SKU", stock: 7, price: 100, iva: "0.16", variants: [], use_warehouse_inventory: false, warehouse_inventories: [] };
 function Harness() {
@@ -85,10 +88,67 @@ test("switching to warehouse inventory removes the hidden global-stock validatio
   expect(valid).toHaveBeenCalled();
 });
 
+test("shows a SweetAlert error for form validation before calling the API", async () => {
+  await act(async () => latest.form.setValue("stock", ""));
+  await act(async () => latest.form.handleSubmit(latest.actions.onSubmit, latest.actions.onInvalid)());
+  expect(showError).toHaveBeenCalledWith("El stock es obligatorio");
+  expect(client.post).not.toHaveBeenCalled();
+});
+
+test("marks a collapsed section with errors and clears the indicator when corrected", async () => {
+  const indicator = () => host.querySelector('[aria-label="Contiene campos con error"], svg title');
+  await act(async () => root.render(<AccordionSection title="Descripciones" hasError />));
+  expect(indicator()).not.toBeNull();
+  await act(async () => host.querySelector("button").click());
+  expect(indicator()).toBeNull();
+  await act(async () => host.querySelector("button").click());
+  expect(indicator()).not.toBeNull();
+  await act(async () => root.render(<AccordionSection title="Descripciones" hasError={false} />));
+  expect(indicator()).toBeNull();
+});
+
+test("shows the API validation message in a SweetAlert error when saving fails", async () => {
+  const message = "El número OE admite hasta 255 caracteres.";
+  client.post.mockRejectedValueOnce({ response: { status: 422, data: { errors: { oe_number: [message] } } } });
+  const log = jest.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    await act(async () => latest.actions.onSubmit({ ...draft, oe_number: "0".repeat(256) }));
+    expect(showError).toHaveBeenCalledWith(message);
+  } finally {
+    log.mockRestore();
+  }
+});
 
 test("omits untouched compatibilities from a normal save", async () => {
   await act(async () => latest.actions.onSubmit({ ...draft, vehicle_compatibilities: [{ vehicle_brand: "Nissan", vehicle_model: "Versa" }] }));
   expect(client.post.mock.calls[0][1].has("vehicle_compatibilities")).toBe(false);
+});
+
+test("reveals the optional OE, copies the SKU as text, and clears OE when unchecked", async () => {
+  function OeHarness() {
+    const form = useForm({ defaultValues: { ...draft, sku: "00012345", oe_enabled: false, oe_number: "" } });
+    return <ProductInfoSection {...form} errors={form.formState.errors} />;
+  }
+  await act(async () => root.render(<OeHarness />));
+  const checkbox = host.querySelector('[name="oe_enabled"]');
+  expect(checkbox.closest('[data-field="sku"]')).not.toBeNull();
+  expect(host.querySelector('[name="oe_number"]')).toBeNull();
+  await act(async () => { checkbox.checked = true; Simulate.change(checkbox); });
+  const button = [...host.querySelectorAll("button")].find(element => element.textContent === "Usar el mismo SKU");
+  await act(async () => button.click());
+  expect(host.querySelector('[name="oe_number"]').value).toBe("00012345");
+  await act(async () => { checkbox.checked = false; Simulate.change(checkbox); });
+  expect(host.querySelector('[name="oe_number"]')).toBeNull();
+  await act(async () => { checkbox.checked = true; Simulate.change(checkbox); });
+  expect(host.querySelector('[name="oe_number"]').value).toBe("");
+});
+
+test("sends an OE with leading zeros in the warehouse product payload", async () => {
+  await act(async () => latest.actions.onSubmit({
+    ...draft, oe_number: "00012345", use_warehouse_inventory: true,
+    warehouse_inventories: [{ warehouse_id: 2, qty: 9 }],
+  }));
+  expect(client.post.mock.calls[0][1].get("oe_number")).toBe("00012345");
 });
 test("sends changed compatibilities as JSON with open years and no foreign IDs", async () => {
   const rows = [{ id: 10, vehicle_brand: "Nissan", vehicle_model: "Versa", year_from: "2020", year_to: "" }];

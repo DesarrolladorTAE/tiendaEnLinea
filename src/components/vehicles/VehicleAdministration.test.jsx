@@ -34,6 +34,18 @@ test("hides settings from other stores", () => {
   useTienda.mockReturnValue({ tienda: { id: 329 } });
   act(() => root.render(<BranchVehicleSettings branchId={565} />)); expect(host.textContent).toBe("");
 });
+test("opens catalog settings for an authorized branch even when compatibility writes are disabled", () => {
+  useTienda.mockReturnValue({ tienda: { id: 329 } });
+  useBranchCatalogSettings.mockReturnValue({ settings: {
+    vehicle_compatibilities_enabled: false, capabilities: {
+      scope: { actor: "store" }, vehicle_catalog: { available: true, enabled: true, visible: true, authorization: { read: true, write: false } },
+    },
+  } });
+  act(() => root.render(<BranchVehicleSettings branchId={565} />));
+  expect(host.textContent).toContain("Permitir administrar compatibilidades");
+  act(() => root.render(<VehicleCompatibilitySection branchId={565} watch={() => []} setValue={jest.fn()} />));
+  expect(host.textContent).toBe("");
+});
 test("shows optional editor only when both branch flags permit administration", async () => {
   useBranchCatalogSettings.mockReturnValue({ settings: { vehicle_feature_available: true, vehicle_compatibilities_enabled: false }, loading: false });
   await act(async () => root.render(<VehicleCompatibilitySection branchId={565} watch={() => []} setValue={jest.fn()} />));

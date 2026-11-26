@@ -11,6 +11,8 @@ import { normalizeImportResult } from "./importResult.mjs";
 import ImportResultSummary from "./ImportResultSummary";
 import AdvancedProductsModal from "./AdvancedProductsModal";
 import VehicleImportPanel from "./VehicleImportPanel";
+import useBranchCatalogSettings from "../../hooks/useBranchCatalogSettings";
+import { vehicleCatalogAccess } from "../../utils/branchCatalogAccess";
 import { useTienda } from "../../context/TiendaContext";
 
 const OPTIONS = [
@@ -23,7 +25,8 @@ const OPTIONS = [
 export default function ImportProductsModal({ open, onClose, branch, onImported }) {
   const { tienda } = useTienda();
   const canImportExcel = Number(tienda?.id) === 329;
-  const canImportVehicles = Number(tienda?.id) === 566;
+  const { settings } = useBranchCatalogSettings(branch?.id, open);
+  const { read: canImportVehicles } = vehicleCatalogAccess(settings, tienda?.id);
   const options = OPTIONS.filter(option => (option.id !== "excel" || canImportExcel) && (option.id !== "autoparts" || canImportVehicles));
   const [mode, setMode] = useState("normal");
   const [file, setFile] = useState(null);
@@ -139,7 +142,7 @@ export default function ImportProductsModal({ open, onClose, branch, onImported 
         </Stack>
       </DialogTitle>
       <DialogContent sx={{ p: 3 }}>
-        {canImportVehicles && (mode === "autoparts") ? <VehicleImportPanel key={`${tienda.id}-${branch?.id}-${mode}`} mode={mode} branch={branch} onImported={onImported} onBusy={setBusy} /> : <>
+        {canImportVehicles && (mode === "autoparts") ? <VehicleImportPanel key={`${tienda?.id}-${branch?.id}-${mode}`} mode={mode} branch={branch} onImported={onImported} onBusy={setBusy} /> : <>
         {busy ? (
           <Box sx={{ py: 3, textAlign: "center" }} aria-busy="true">
             <Typography sx={{ fontSize: 22, fontWeight: 800 }}>

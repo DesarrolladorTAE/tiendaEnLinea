@@ -7,6 +7,7 @@ import { useTheme } from "@mui/material/styles";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 
 export const RESOURCE_TYPES = [
   ["employee", "Empleado"],
@@ -21,12 +22,13 @@ export const RESOURCE_TYPES = [
 export const resourceTypeLabel = (type) =>
   RESOURCE_TYPES.find(([value]) => value === type)?.[1] || type || "Otro";
 
-export default function ResourceList({ resources, onView, onEdit, onDelete }) {
+export default function ResourceList({ resources, onView, onEdit, onDelete, onSchedule }) {
   const theme = useTheme();
   const mobile = useMediaQuery(theme.breakpoints.down("sm"));
   const actions = (resource) => <Stack direction="row" justifyContent="flex-end">
     <Tooltip title="Ver"><IconButton onClick={() => onView(resource)}><VisibilityRoundedIcon /></IconButton></Tooltip>
     <Tooltip title="Editar"><IconButton color="primary" onClick={() => onEdit(resource)}><EditRoundedIcon /></IconButton></Tooltip>
+    {onSchedule && <Tooltip title="Horario semanal"><IconButton aria-label={`Horario semanal de ${resource.name}`} onClick={() => onSchedule(resource)}><CalendarMonthRoundedIcon /></IconButton></Tooltip>}
     {resource.is_active && <Tooltip title="Desactivar"><IconButton color="error" onClick={() => onDelete(resource)}><DeleteOutlineRoundedIcon /></IconButton></Tooltip>}
   </Stack>;
 

@@ -8,6 +8,7 @@ import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import ImageNotSupportedRoundedIcon from "@mui/icons-material/ImageNotSupportedRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
 
 const money = (value) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(Number(value || 0));
 const imageOf = (service) => service?.primary_image?.image_url || service?.primaryImage?.image_url || service?.images?.[0]?.image_url;
@@ -22,17 +23,19 @@ const typeLabels = {
   digital: "Digital",
 };
 
-function Actions({ service, onView, onEdit, onDelete }) {
+function Actions({ service, onView, onEdit, onDelete, onSchedule }) {
   return (
     <Stack direction="row" justifyContent="flex-end">
       <Tooltip title="Ver"><IconButton onClick={() => onView(service)}><VisibilityRoundedIcon /></IconButton></Tooltip>
       <Tooltip title="Editar"><IconButton color="primary" onClick={() => onEdit(service)}><EditRoundedIcon /></IconButton></Tooltip>
+      {onSchedule && service.requires_booking && service.service_type !== "tour" &&
+        <Tooltip title="Configurar agenda"><IconButton aria-label={`Configurar agenda de ${service.name}`} onClick={() => onSchedule(service)}><CalendarMonthRoundedIcon /></IconButton></Tooltip>}
       <Tooltip title="Eliminar"><IconButton color="error" onClick={() => onDelete(service)}><DeleteOutlineRoundedIcon /></IconButton></Tooltip>
     </Stack>
   );
 }
 
-export default function ServiceList({ services, onView, onEdit, onDelete }) {
+export default function ServiceList({ services, onView, onEdit, onDelete, onSchedule }) {
   const theme = useTheme();
   const mobile = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -55,7 +58,7 @@ export default function ServiceList({ services, onView, onEdit, onDelete }) {
                   </Stack>
                 </Box>
               </Stack>
-              <Actions service={service} onView={onView} onEdit={onEdit} onDelete={onDelete} />
+              <Actions service={service} onView={onView} onEdit={onEdit} onDelete={onDelete} onSchedule={onSchedule} />
             </CardContent>
           </Card>
         ))}
@@ -77,7 +80,7 @@ export default function ServiceList({ services, onView, onEdit, onDelete }) {
               <TableCell sx={{ fontWeight: 800 }}>{money(service.base_price)}</TableCell>
               <TableCell>{service.duration_minutes ? `${service.duration_minutes} min` : "—"}</TableCell>
               <TableCell><Chip size="small" label={service.is_active ? "Activo" : "Inactivo"} color={service.is_active ? "success" : "default"} /></TableCell>
-              <TableCell align="right"><Actions service={service} onView={onView} onEdit={onEdit} onDelete={onDelete} /></TableCell>
+              <TableCell align="right"><Actions service={service} onView={onView} onEdit={onEdit} onDelete={onDelete} onSchedule={onSchedule} /></TableCell>
             </TableRow>
           ))}
         </TableBody>

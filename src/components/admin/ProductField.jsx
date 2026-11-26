@@ -1,6 +1,6 @@
 import React from "react";
 
-const ProductField = ({ label, type = "text", name, register, validation = {}, errors, readOnly = false, helperText }) => {
+const ProductField = ({ label, type = "text", name, register, validation = {}, errors, readOnly = false, helperText, children }) => {
   const step = name === "price" ? "0.01" : undefined;
   const isRequired = !!validation.required;
 
@@ -26,6 +26,7 @@ const ProductField = ({ label, type = "text", name, register, validation = {}, e
       {errors?.[name] && (
         <small className="text-danger">{errors[name].message}</small>
       )}
+      {children}
     </div>
   );
 };

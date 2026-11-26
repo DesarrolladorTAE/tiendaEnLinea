@@ -4,6 +4,7 @@ import Accordion from "@mui/material/Accordion";
 import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
 
@@ -11,6 +12,7 @@ export default function AccordionSection({
   title,
   icon,
   defaultOpen = false,
+  hasError = false,
   children,
 }) {
   const [expanded, setExpanded] = React.useState(defaultOpen);
@@ -45,6 +47,13 @@ export default function AccordionSection({
           >
             {title}
           </Typography>
+          {hasError && !expanded && (
+            <ErrorOutlineIcon
+              fontSize="small"
+              sx={{ color: "#ff9b9b" }}
+              titleAccess="Contiene campos con error"
+            />
+          )}
         </Box>
       </AccordionSummary>
 

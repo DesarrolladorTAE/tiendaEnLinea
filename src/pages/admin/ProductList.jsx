@@ -18,6 +18,8 @@ import useLimiteProductos from "../../hooks/useLimiteProductos";
 import useProductSearchPreference from "../../hooks/useProductSearchPreference";
 import ProductSearchBar from "../../components/products-list/ProductSearchBar";
 import VehicleDetailsDialog from "../../components/vehicles/VehicleDetailsDialog";
+import useBranchCatalogSettings from "../../hooks/useBranchCatalogSettings";
+import { vehicleCatalogAccess } from "../../utils/branchCatalogAccess";
 import ProductTable from "../../components/products-list/ProductTable";
 import ProductBatchesDialog from "../../components/admin/ProductBatchesDialog";
 import BatchExpirationsDialog from "../../components/admin/BatchExpirationsDialog";
@@ -124,6 +126,8 @@ const ProductList = () => {
     if (branchIdFromUrl) return { id: Number(branchIdFromUrl) };
     return null;
   }, [branchFromNav, selectedBranch, branchIdFromUrl]);
+  const { settings: catalogSettings } = useBranchCatalogSettings(activeBranch?.id);
+  const { read: canViewVehicleCompatibilities } = vehicleCatalogAccess(catalogSettings, tienda?.id);
 
   const { puedeCrear, cargando, totalProductos, limitePermitido, actualizarLimite, errorLimite } =
     useLimiteProductos(activeBranch?.id ?? null);
@@ -433,7 +437,7 @@ const ProductList = () => {
           </Box>
         </div>
 
-        {vehicleProduct && Number(tienda?.id) === 566 && <VehicleDetailsDialog key={`${activeBranch?.id}-${vehicleProduct.id}`} product={vehicleProduct} branchId={activeBranch?.id} onClose={() => setVehicleProduct(null)} />}
+        {vehicleProduct && canViewVehicleCompatibilities && vehicleProduct.branchId === activeBranch?.id && <VehicleDetailsDialog key={`${activeBranch?.id}-${vehicleProduct.product.id}`} product={vehicleProduct.product} branchId={activeBranch?.id} onClose={() => setVehicleProduct(null)} />}
         <ProductSearchBar
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -489,8 +493,8 @@ const ProductList = () => {
 
         <ProductTable
           onOpenBatches={activeBranch?.id ? product => setBatchProduct({ product, branchId: activeBranch.id }) : undefined}
-          showVehicleCompatibilities={Number(tienda?.id) === 566}
-          onOpenVehicles={setVehicleProduct}
+          showVehicleCompatibilities={canViewVehicleCompatibilities}
+          onOpenVehicles={(product) => setVehicleProduct({ product, branchId: activeBranch?.id })}
           products={products}
           loading={loadingProducts}
           error={error}

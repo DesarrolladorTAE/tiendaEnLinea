@@ -10,6 +10,18 @@ import { inventoryFlag, activeVariant } from "../utils/productInventory";
 import { notifyInventoryChanged } from "../utils/inventoryEvents";
 import { calculateProfitPrice, hasConfiguredProfitFactor, saveProductProfitFactor } from "../utils/productProfitFactor";
 
+function validationMessages(errors) {
+  return Object.entries(errors).flatMap(([key, error]) => {
+    if (key === "ref" || !error || typeof error !== "object") return [];
+    return typeof error.message === "string" ? [error.message] : validationMessages(error);
+  });
+}
+
+function onInvalid(errors) {
+  const messages = [...new Set(validationMessages(errors))];
+  return showError(messages.join("\n") || "Revisa los campos marcados antes de guardar el producto.");
+}
+
 /**
  * ✅ Helper: agrega a FormData usando notación bracket
  * appendFormData(fd, "variants", [{ stock: 2, attributes: [{name:"Color", value:"Rojo"}] }])
@@ -229,7 +241,7 @@ function deriveWarehouseInventoriesFromVariants(product) {
   return Array.from(ids).map((wid) => ({ warehouse_id: wid }));
 }
 
-export default function useProductFormLogic({ reset, watch, setValue, dirtyFields = {} }) {
+export default function useProductFormLogic({ reset, watch, setValue, dirtyFields = {}, onFieldErrors }) {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
@@ -415,6 +427,8 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       batch_tracking_enabled: tracksBatches(settings),
       expiration_required: inventoryFlag(settings.expiration_required),
       sku: product.sku || "",
+      oe_enabled: Boolean(product.oe_number),
+      oe_number: product.oe_number ?? "",
       name: product.name || "",
       price: priceFromApi,
       price_mode: hasConfiguredProfitFactor(product) ? "factor" : "manual",
@@ -514,6 +528,10 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
     let factorApplied = false;
     const productId = id || createdProductId.current;
     const byFactor = data.price_mode === "factor";
+    const rejectField = (field, message) => {
+      onFieldErrors?.([field]);
+      showError(message);
+    };
     const confirmFactor = async targetId => {
       const product = await saveProductProfitFactor(axiosClient, targetId, data.profit_factor);
       factorApplied = true;
@@ -556,7 +574,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       if (!preserveInventory && !useWh) {
         const stocks = hasVariantsPayload ? data.variants.map(v => v.stock) : [data.stock];
         if (stocks.some(stock => stock === "" || stock == null || !Number.isFinite(Number(stock)) || Number(stock) < 0)) {
-          showError("Captura existencias válidas, mayores o iguales a cero, en el producto o en cada variante.");
+          rejectField(hasVariantsPayload ? "variants" : "stock", "Captura existencias válidas, mayores o iguales a cero, en el producto o en cada variante.");
           return;
         }
       }
@@ -570,18 +588,18 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
         const ids = rows.map((r) => String(r?.warehouse_id || "").trim());
 
         if (!rows.length) {
-          showError(
+          rejectField("warehouse_inventories",
             "❌ Inventario por almacenes activo: agrega al menos un almacén.",
           );
           return;
         }
         if (ids.some((x) => !x)) {
-          showError("❌ Hay filas sin almacén seleccionado.");
+          rejectField("warehouse_inventories", "❌ Hay filas sin almacén seleccionado.");
           return;
         }
         const dup = ids.find((x, i) => ids.indexOf(x) !== i);
         if (dup) {
-          showError("❌ No puedes repetir el mismo almacén.");
+          rejectField("warehouse_inventories", "❌ No puedes repetir el mismo almacén.");
           return;
         }
 
@@ -592,7 +610,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
           return !Number.isFinite(n) || n < 0;
         });
         if (invalidQty) {
-          showError("❌ Hay cantidades inválidas (deben ser números >= 0).");
+          rejectField("warehouse_inventories", "❌ Hay cantidades inválidas (deben ser números >= 0).");
           return;
         }
 
@@ -607,7 +625,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
             : [];
 
           if (!rows.length) {
-            showError(
+            rejectField("variants",
               `❌ La variante #${i + 1} no tiene inventario por almacén.`,
             );
             return;
@@ -615,12 +633,12 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
 
           const ids = rows.map((r) => String(r?.warehouse_id || "").trim());
           if (ids.some((x) => !x)) {
-            showError(`❌ Variante #${i + 1}: hay filas sin almacén.`);
+            rejectField("variants", `❌ Variante #${i + 1}: hay filas sin almacén.`);
             return;
           }
           const dup = ids.find((x, idx) => ids.indexOf(x) !== idx);
           if (dup) {
-            showError(`❌ Variante #${i + 1}: almacén repetido (${dup}).`);
+            rejectField("variants", `❌ Variante #${i + 1}: almacén repetido (${dup}).`);
             return;
           }
 
@@ -631,7 +649,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
             return !Number.isFinite(n) || n < 0;
           });
           if (invalidStock) {
-            showError(`❌ Variante #${i + 1}: stocks inválidos (>= 0).`);
+            rejectField("variants", `❌ Variante #${i + 1}: stocks inválidos (>= 0).`);
             return;
           }
 
@@ -653,6 +671,9 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       if (branchId) formData.append("branch_id", String(branchId));
 
       formData.append("sku", data.sku);
+      if (dirtyFields.oe_number || (!productId && data.oe_number)) {
+        formData.append("oe_number", data.oe_number ?? "");
+      }
       formData.append("name", data.name);
       formData.append("price", data.price?.toString() || "0");
       formData.append("discount", data.discount?.toString() || "0");
@@ -846,6 +867,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       if (generalSaved && byFactor && !factorApplied && !error.response && (error.code === "ERR_NETWORK" || error.message === "Network Error")) {
         showError("El producto se guardó, pero no se pudo confirmar el factor por un error de conexión. Revisa la configuración CORS del servidor para PATCH y vuelve a abrir el producto antes de reintentar.");
       } else if (error.response?.data?.errors) {
+        onFieldErrors?.(Object.keys(error.response.data.errors));
         showError(
           `${prefix}${Object.values(error.response.data.errors).flat().join("\n")}`,
         );
@@ -885,6 +907,7 @@ export default function useProductFormLogic({ reset, watch, setValue, dirtyField
       setImageFiles,
       handleRecalculateBase,
       onSubmit,
+      onInvalid,
     }),
     [handleRecalculateBase, onSubmit],
   );

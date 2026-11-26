@@ -4,6 +4,7 @@ import { FiDownload, FiUploadCloud } from "react-icons/fi";
 import { saveAs } from "file-saver";
 import axiosClient from "../../config/axiosClient";
 import useBranchCatalogSettings from "../../hooks/useBranchCatalogSettings";
+import { vehicleCatalogAccess } from "../../utils/branchCatalogAccess";
 import { useTienda } from "../../context/TiendaContext";
 import ImportFileDropZone from "../common/ImportFileDropZone";
 import ImportResultSummary from "./ImportResultSummary";
@@ -19,9 +20,8 @@ export default function VehicleImportPanel({ mode, branch, onImported, onBusy })
   const [result, setResult] = useState(null);
   const input = useRef(null);
   const locked = useRef(false);
-  const allowed = Number(tienda?.id) === 566;
-  const { settings, loading: settingsLoading, error: settingsError, retry: retrySettings } = useBranchCatalogSettings(branch?.id, allowed);
-  const canWrite = Boolean(settings?.vehicle_feature_available && settings?.vehicle_compatibilities_enabled);
+  const { settings, loading: settingsLoading, error: settingsError, retry: retrySettings } = useBranchCatalogSettings(branch?.id);
+  const { read: allowed, write: canWrite } = vehicleCatalogAccess(settings, tienda?.id);
   const color = compatibility ? "#0f766e" : "#6d28d9";
   const selectFile = (files) => {
     setNotice(""); setResult(null); setFile(null);
@@ -64,12 +64,13 @@ export default function VehicleImportPanel({ mode, branch, onImported, onBusy })
       try { await onImported?.(); } catch { setNotice("La importación terminó, pero no se pudo actualizar la tabla. Recarga el catálogo."); }
     });
   };
-  if (!allowed) return null;
+  if (!allowed) {
+    if (settingsLoading) return <Typography role="status">Consultando permisos de la sucursal…</Typography>;
+    return settingsError ? <Alert severity="error">{settingsError}<Button onClick={retrySettings}>Reintentar</Button></Alert> : null;
+  }
   return <Stack spacing={2} sx={{ pt: 2 }}>
     <Typography sx={{ fontWeight: 800, fontSize: 20 }}>{compatibility ? "Compatibilidades vehiculares" : "Productos y vehículos"}</Typography>
     <Typography variant="body2">Sucursal de destino: <strong>{branch?.name || `#${branch?.id || "—"}`}</strong></Typography>
-    {settingsLoading && <Typography role="status">Consultando permisos de la sucursal…</Typography>}
-    {settingsError && <Alert severity="error">{settingsError}<Button onClick={retrySettings}>Reintentar</Button></Alert>}
     {settings && !canWrite && <Alert severity="info">La administración vehicular está deshabilitada para esta sucursal. Puedes habilitarla en la configuración del catálogo de tu sitio web.</Alert>}
     {!branch?.id && <Alert severity="warning">Selecciona una sucursal para continuar.</Alert>}
     <Box sx={{ p: 2, borderRadius: 3, bgcolor: compatibility ? "#f0fdfa" : "#f5f3ff" }}>

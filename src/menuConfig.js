@@ -1,4 +1,5 @@
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import HandymanOutlinedIcon from "@mui/icons-material/HandymanOutlined";
 import WarehouseOutlinedIcon from "@mui/icons-material/WarehouseOutlined";
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
@@ -25,6 +26,10 @@ export const storeAdminNavItems = [
 const adminNavItems = [
   { path: "/admin/products", label: "Productos", icon: Inventory2OutlinedIcon },
   { path: "/admin/services", label: "Servicios", icon: HandymanOutlinedIcon },
+  { path: "/admin/services/agenda", label: "Agenda y citas", icon: CalendarMonthOutlinedIcon },
+  { path: "/admin/services/orders", label: "Órdenes de servicio", icon: ReceiptLongOutlinedIcon },
+  { path: "/admin/services/vehicles", label: "Expedientes vehiculares", icon: BadgeOutlinedIcon },
+  { path: "/admin/services/forms", label: "Formularios e inspecciones", icon: ReceiptLongOutlinedIcon },
   { path: "/admin/Almacenes", label: "Almacenes", icon: WarehouseOutlinedIcon },
   { path: "/admin/trabajadores-areas", label: "Trabajadores", icon: BadgeOutlinedIcon },
   { path: "/admin/categorias", label: "Categorías", icon: CategoryOutlinedIcon },

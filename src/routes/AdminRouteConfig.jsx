@@ -10,9 +10,12 @@ const TourBookingDetailPage = lazy(() => import("../pages/tours/TourBookingDetai
 const TourDeparturesPage = lazy(() => import("../pages/tours/TourDeparturesPage.jsx"));
 const TourReportsPage = lazy(() => import("../pages/tours/TourReportsPage.jsx"));
 const ToursPage = lazy(() => import("../pages/tours/ToursPage.jsx"));
+const ServiceOperationsPage = lazy(() => import("../pages/admin/ServiceOperationsPage.jsx"));
 const ServiceListPage = lazy(() => import("../pages/admin/ServiceListPage.jsx"));
 const ServiceFormPage = lazy(() => import("../pages/admin/ServiceFormPage.jsx"));
 const ResourceListPage = lazy(() => import("../pages/admin/ResourceListPage.jsx"));
+const VehicleRecordsPage = lazy(() => import("../pages/admin/VehicleRecordsPage.jsx"));
+const DynamicFormsPage = lazy(() => import("../pages/admin/DynamicFormsPage.jsx"));
 const AdminTelorecargo = lazy(() => import("../modules/telorecargo/AdminTelorecargo.jsx"));
 const SitioWeb = lazy(() => import("../pages/admin/SitioWeb.jsx"));
 const ShippingSettings = lazy(() => import("../pages/admin/ShippingSettings.jsx"));
@@ -63,9 +66,26 @@ export const adminRouteConfig = [
   { path: "branches/:branchId/tours/:serviceId/departures/:departureId/bookings/:bookingId", element: <TourBookingDetailPage /> },
 
   { path: "services", element: <ServiceListPage /> },
+  { path: "services/agenda", element: <ServiceOperationsPage mode="agenda" /> },
+  { path: "services/bookings", element: <ServiceOperationsPage mode="bookings" /> },
+  { path: "services/bookings/:bookingId", element: <ServiceOperationsPage mode="bookings" /> },
+  { path: "services/orders", element: <ServiceOperationsPage mode="orders" /> },
+  { path: "services/orders/:orderId", element: <ServiceOperationsPage mode="orders" /> },
   { path: "services/new", element: <ServiceFormPage /> },
   { path: "services/edit/:id", element: <ServiceFormPage /> },
   { path: "services/resources", element: <ResourceListPage /> },
+  { path: "services/forms", element: <DynamicFormsPage /> },
+  { path: "services/forms/new", element: <DynamicFormsPage mode="new" /> },
+  { path: "services/forms/:templateId", element: <DynamicFormsPage /> },
+  { path: "services/forms/:templateId/edit", element: <DynamicFormsPage mode="edit" /> },
+  { path: "services/orders/:orderId/forms", element: <DynamicFormsPage /> },
+  { path: "services/orders/:orderId/forms/:submissionId", element: <DynamicFormsPage /> },
+  { path: "services/vehicles", element: <VehicleRecordsPage /> },
+  { path: "services/vehicles/new", element: <VehicleRecordsPage mode="new" /> },
+  { path: "services/vehicles/resolve", element: <VehicleRecordsPage mode="resolve" /> },
+  { path: "services/vehicles/:vehicleId/edit", element: <VehicleRecordsPage mode="edit" /> },
+  { path: "services/vehicles/:vehicleId", element: <VehicleRecordsPage /> },
+  { path: "services/vehicles/client/:customerId", element: <VehicleRecordsPage /> },
 
   { path: "categorias", element: <Categorias /> },
   { path: "mi-sitio", element: <SitioWeb /> },

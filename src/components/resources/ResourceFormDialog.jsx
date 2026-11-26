@@ -7,7 +7,7 @@ import { RESOURCE_TYPES } from "./ResourceList";
 
 const EMPTY = {
   resource_code: "", type: "employee", name: "", description: "", capacity: 1,
-  user_id: "", is_active: true, config: {},
+  is_active: true, config: {},
 };
 
 const CONFIG_FIELDS = {
@@ -24,7 +24,7 @@ export default function ResourceFormDialog({ open, resource, saving, apiErrors =
 
   useEffect(() => {
     if (!open) return;
-    setForm({ ...EMPTY, ...(resource || {}), user_id: resource?.user_id ?? "", config: resource?.config || {} });
+    setForm({ ...EMPTY, ...Object.fromEntries(Object.keys(EMPTY).map((key) => [key, resource?.[key] ?? EMPTY[key]])) });
     setErrors({});
   }, [open, resource]);
 
@@ -36,6 +36,8 @@ export default function ResourceFormDialog({ open, resource, saving, apiErrors =
     event.preventDefault();
     const next = {};
     if (!String(form.name).trim()) next.name = "El nombre es obligatorio.";
+    else if (form.name.trim().length > 191) next.name = "El nombre admite hasta 191 caracteres.";
+    if (form.resource_code.trim().length > 100) next.resource_code = "El código admite hasta 100 caracteres.";
     if (!form.type) next.type = "Selecciona un tipo.";
     if (!Number.isInteger(Number(form.capacity)) || Number(form.capacity) < 1) next.capacity = "La capacidad debe ser un entero mayor a cero.";
     setErrors(next);
@@ -46,7 +48,6 @@ export default function ResourceFormDialog({ open, resource, saving, apiErrors =
       resource_code: form.resource_code.trim() || null,
       description: form.description.trim() || null,
       capacity: Number(form.capacity),
-      user_id: form.type === "employee" && form.user_id !== "" ? Number(form.user_id) : null,
       config: Object.keys(form.config || {}).length ? form.config : null,
       is_active: !!form.is_active,
     });
@@ -63,7 +64,7 @@ export default function ResourceFormDialog({ open, resource, saving, apiErrors =
           <Grid size={{ xs: 12, md: 4 }}><TextField label="Código" value={form.resource_code} onChange={setField("resource_code")} error={!!fieldError("resource_code")} helperText={fieldError("resource_code")} fullWidth /></Grid>
           <Grid size={{ xs: 12, md: 6 }}><TextField select label="Tipo" value={form.type} onChange={setField("type")} error={!!fieldError("type")} helperText={fieldError("type")} required fullWidth>{RESOURCE_TYPES.map(([value, label]) => <MenuItem key={value} value={value}>{label}</MenuItem>)}</TextField></Grid>
           <Grid size={{ xs: 12, md: 6 }}><TextField label="Capacidad" type="number" inputProps={{ min: 1, step: 1 }} value={form.capacity} onChange={setField("capacity")} error={!!fieldError("capacity")} helperText={fieldError("capacity")} fullWidth /></Grid>
-          {form.type === "employee" && <Grid size={{ xs: 12 }}><TextField label="ID del usuario/trabajador" type="number" value={form.user_id} onChange={setField("user_id")} error={!!fieldError("user_id")} helperText={fieldError("user_id") || "Opcional. Vincula este recurso con un usuario existente."} fullWidth /></Grid>}
+          {form.type === "employee" && resource?.user_id != null && <Grid size={{ xs: 12 }}><Alert severity="info">Usuario vinculado en el registro: #{resource.user_id}.</Alert></Grid>}
           <Grid size={{ xs: 12 }}><TextField label="Descripción" value={form.description} onChange={setField("description")} multiline minRows={3} error={!!fieldError("description")} helperText={fieldError("description")} fullWidth /></Grid>
           {(CONFIG_FIELDS[form.type] || []).map(([key, label]) => <Grid key={key} size={{ xs: 12, sm: 6 }}><TextField label={label} value={form.config?.[key] || ""} onChange={setConfig(key)} fullWidth /></Grid>)}
           <Grid size={{ xs: 12 }}><FormControlLabel control={<Switch checked={!!form.is_active} onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))} />} label="Recurso activo" /></Grid>

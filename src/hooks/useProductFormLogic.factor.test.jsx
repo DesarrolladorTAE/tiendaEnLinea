@@ -75,6 +75,18 @@ test.each([["", null], ["0", "0"]])("manual edit sends optional purchase cost %j
   expect(client.post.mock.calls[0][1].get("purchase_cost")).toBe(expected);
 });
 
+test.each(["00056789", ""])("loads and updates a stored OE as %j", async oeNumber => {
+  changes = { oe_number: true };
+  client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") ? { ...product, oe_number: "00012345" } : [] }));
+  await act(async () => root.render(<Harness />));
+  expect(latest.form.getValues("oe_enabled")).toBe(true);
+  expect(latest.form.getValues("oe_number")).toBe("00012345");
+  await act(async () => latest.actions.onSubmit({ ...latest.form.getValues(), oe_number: oeNumber }));
+  const [url, payload] = client.post.mock.calls[0];
+  expect(url).toBe("/admin/productos/8");
+  expect(payload.get("oe_number")).toBe(oeNumber);
+});
+
 test("changing the purchase cost reapplies the stored factor after saving", async () => {
   client.get.mockImplementation(url => Promise.resolve({ data: url.startsWith("/admin/productos/") ? { ...product, profit_factor: "45.0000" } : [] }));
   changes = { costo_compra: true };
