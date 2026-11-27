@@ -4,7 +4,7 @@ import { FiDownload, FiUploadCloud } from "react-icons/fi";
 import { saveAs } from "file-saver";
 import axiosClient from "../../config/axiosClient";
 import useBranchCatalogSettings from "../../hooks/useBranchCatalogSettings";
-import { vehicleCatalogAccess } from "../../utils/branchCatalogAccess";
+import { hasBranchAction, vehicleCatalogAccess } from "../../utils/branchCatalogAccess";
 import { useTienda } from "../../context/TiendaContext";
 import ImportFileDropZone from "../common/ImportFileDropZone";
 import ImportResultSummary from "./ImportResultSummary";
@@ -22,6 +22,7 @@ export default function VehicleImportPanel({ mode, branch, onImported, onBusy })
   const locked = useRef(false);
   const { settings, loading: settingsLoading, error: settingsError, retry: retrySettings } = useBranchCatalogSettings(branch?.id);
   const { read: allowed, write: canWrite } = vehicleCatalogAccess(settings, tienda?.id);
+  const canExportV2 = hasBranchAction(settings, "vehicle_catalog", "write");
   const color = compatibility ? "#0f766e" : "#6d28d9";
   const selectFile = (files) => {
     setNotice(""); setResult(null); setFile(null);
@@ -43,10 +44,10 @@ export default function VehicleImportPanel({ mode, branch, onImported, onBusy })
       if (data && !(data instanceof Blob)) setResult({ ...normalizeImportResult(data, true, compatibility ? "compatibilidades" : "productos"), date: new Date().toISOString(), mode, filename: file?.name || "", branch: branch?.name || String(branch?.id), entity: compatibility ? "compatibilidades" : "productos" });
     } finally { locked.current = false; setBusy(false); onBusy(false); }
   };
-  const download = (exporting = false) => run(async () => {
+  const download = (exporting = false, extended = false) => run(async () => {
     const url = exporting ? "/vehicle-compatibilities/export" : compatibility ? "/vehicle-compatibilities/import/template" : "/products/import-with-vehicles/template";
-    const { data } = await axiosClient.get(url, { responseType: "blob", params: exporting ? { branch_id: branch.id } : undefined });
-    saveAs(data, exporting ? "compatibilidades.xlsx" : compatibility ? "plantilla-compatibilidades.xlsx" : "plantilla-productos-vehiculos.xlsx");
+    const { data } = await axiosClient.get(url, { responseType: "blob", params: exporting ? { branch_id: branch.id, ...(extended ? { include_classification: 1 } : {}) } : undefined });
+    saveAs(data, exporting ? (extended ? "compatibilidades-v2.xlsx" : "compatibilidades.xlsx") : compatibility ? "plantilla-compatibilidades.xlsx" : "plantilla-productos-vehiculos.xlsx");
   });
   const submit = () => {
     if (!file || !canWrite) return;
@@ -80,8 +81,10 @@ export default function VehicleImportPanel({ mode, branch, onImported, onBusy })
       <Typography variant="body2" sx={{ mt: 1 }}>Reemplaza los ejemplos por tus datos y consulta la hoja Instrucciones antes de importar.</Typography>
       <Button disabled={busy || !branch?.id} onClick={() => download()} startIcon={<FiDownload />} sx={{ color, textTransform: "none" }}>Descargar plantilla Excel</Button>
       {compatibility && <Button disabled={busy || !branch?.id} onClick={() => download(true)} startIcon={<FiDownload />} sx={{ color, textTransform: "none" }}>Exportar compatibilidades de esta sucursal</Button>}
+      {compatibility && canExportV2 && <Button disabled={busy || !branch?.id} onClick={() => download(true, true)} startIcon={<FiDownload />}>Exportar V2 con clasificación y marca comercial</Button>}
     </Box>
     {compatibility && <>
+      <Typography variant="body2">El formato V2 agrega Universal vehicular (1/0) y Marca comercial de la refacción. Guarda el SKU como texto. Deja vacíos los años para usar extremos abiertos y omite las celdas de clasificación que quieras conservar.</Typography>
       <TextField select label="Modo de importación" value={strategy} disabled={busy} onChange={e => { setStrategy(e.target.value); setResult(null); }}>
         <MenuItem value="upsert">Agregar y omitir relaciones idénticas</MenuItem>
         <MenuItem value="replace">Reemplazar compatibilidades de los SKU incluidos</MenuItem>

@@ -19,6 +19,7 @@ const order = { id: 77, branch_id: 12, order_code: "SO-DEMO", service_id: 8, sta
   form_requirements_snapshot: [{ template_id: 7, required: true, version: 2, name: "Inspección de recepción" }] };
 const mount = (path, mode) => act(async () => root.render(<MemoryRouter initialEntries={[path]} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
   <Routes>
+    <Route path="/admin/services/bookings/:bookingId" element={<ServiceOperationsPage mode={mode} />} />
     <Route path="/admin/services/bookings" element={<ServiceOperationsPage mode={mode} />} />
     <Route path="/admin/services/orders/:orderId" element={<ServiceOperationsPage mode={mode} />} />
   </Routes>
@@ -158,4 +159,67 @@ test("cita vehicular bloquea el guardado sin expediente y conserva observaciones
     if (original) Object.defineProperty(globalThis, "crypto", original);
     else delete globalThis.crypto;
   }
+});
+
+const booking = { id: 21, branch_id: 12, booking_code: "BK-DEMO", service_id: 8, resource_id: 6,
+  booking_date: "2026-12-02", start_time: "09:00:00", end_time: "10:00:00", status: "confirmed" };
+function bookingApi() {
+  client.get.mockImplementation(async (url) => {
+    if (url.endsWith("/availability")) return { data: { data: { timezone: "America/Mexico_City",
+      slots: [{ start_time: "10:00", end_time: "11:00" }] } } };
+    if (url.endsWith("/resources")) return { data: { resources: [{ id: 7, name: "Técnico alterno", is_active: true, pivot: { is_active: true } }] } };
+    return { data: { data: booking } };
+  });
+}
+const modalForm = () => document.querySelector('[role="dialog"] form');
+const menuChoice = async (index, label) => {
+  const choice = modalForm().querySelectorAll('div[role="combobox"]')[index];
+  await act(async () => Simulate.mouseDown(choice, { button: 0 }));
+  await act(async () => [...document.querySelectorAll('[role="option"]')].find((item) => item.textContent.includes(label)).click());
+};
+
+test("reprograma solo después de confirmar, reintenta un 422 sin alterar la cita y cambia el recurso", async () => {
+  bookingApi();
+  client.post.mockRejectedValueOnce({ response: { status: 422, data: { errors: { start_time: ["Horario agotado."] } } } });
+  let finish;
+  client.post.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+  await mount("/admin/services/bookings/21", "bookings");
+  await press("Reprogramar cita");
+  await menuChoice(0, "Técnico alterno");
+  expect(client.get.mock.calls.filter(([url]) => url.endsWith("/availability")).at(-1)[1].params)
+    .toEqual({ date: "2026-12-02", resource_id: "7" });
+  await menuChoice(1, "09:00");
+  await act(async () => Simulate.submit(modalForm()));
+  expect(modalForm().textContent).toContain("Horario agotado.");
+  expect(host.textContent).toContain("09:00:00");
+  await menuChoice(1, "10:00");
+  await act(async () => { Simulate.submit(modalForm()); Simulate.submit(modalForm()); });
+  expect(client.post).toHaveBeenCalledTimes(2);
+  expect(client.post).toHaveBeenLastCalledWith("/branches/12/bookings/21/reschedule",
+    { booking_date: "2026-12-02", start_time: "10:00", resource_id: 7 }, expect.any(Object));
+  expect(host.textContent).toContain("09:00:00");
+  client.get.mockResolvedValue({ data: { data: { ...booking, start_time: "10:00:00", resource_id: 7 } } });
+  await act(async () => finish({ data: { data: { ...booking, start_time: "10:00:00" } } }));
+  expect(modalForm()).toBeNull();
+  expect(host.textContent).not.toContain("09:00:00");
+});
+
+test("cancelación requiere motivo y conserva la cita cancelada en el detalle", async () => {
+  bookingApi();
+  await mount("/admin/services/bookings/21", "bookings");
+  await press("Cancelar cita");
+  const form = modalForm();
+  const reason = form.querySelector("textarea");
+  expect(form.querySelector('[type="submit"]').disabled).toBe(true);
+  await act(async () => Simulate.submit(form));
+  expect(client.post).not.toHaveBeenCalled();
+  await act(async () => { reason.value = "Petición del cliente"; Simulate.change(reason); });
+  const cancelled = { ...booking, status: "cancelled" };
+  client.post.mockResolvedValue({ data: { data: cancelled } });
+  client.get.mockResolvedValue({ data: { data: cancelled } });
+  await press("Confirmar cancelación");
+  expect(client.post).toHaveBeenCalledWith("/branches/12/bookings/21/cancel", { reason: "Petición del cliente" }, expect.any(Object));
+  expect(host.textContent).toContain("BK-DEMO");
+  expect(host.textContent).toContain("Cancelado");
+  expect(host.textContent).not.toContain("Reprogramar cita");
 });

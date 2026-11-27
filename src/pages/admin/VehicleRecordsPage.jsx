@@ -1,10 +1,11 @@
+import { usePOSOperations } from "../../context/POSOperationsContext";
 import React, { useEffect, useState } from "react";
 import { Alert, Box, Button, Card, CircularProgress, Grid, MenuItem, Pagination, Stack, Tab, Tabs, Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography, useMediaQuery } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ModalPDFPreview from "../../components/tickets/ModalPDFPreview";
 import useVehicleRecordsAccess from "../../hooks/useVehicleRecordsAccess";
-import { integerRange, readVehicle, readVehiclePage, validVehicleId, vehicleDocumentPath, vehicleRecords, vehicleRecordsUrl } from "../../services/admin/vehicleRecords";
+import { integerRange, readVehicle, readVehiclePage, validVehicleId, vehicleDocumentPath, vehicleRecords as adminVehicleRecords, vehicleRecordsUrl as adminVehicleRecordsUrl } from "../../services/admin/vehicleRecords";
 import VehicleRecordForm, { VehicleCatalogChoices, VehicleChoice, useVehicleCustomers, useVehicleMutation, useVehicleRequest } from "../../components/vehicles/VehicleRecordFields";
 import VehicleRecordHistory, { mileageLabel } from "../../components/vehicles/VehicleRecordHistory";
 import { useVehicleQrRotation, VehicleQrResolver } from "../../components/vehicles/VehicleQrActions";
@@ -31,6 +32,12 @@ const stateLabel = (value) => value === true ? "Activo" : value === false ? "Ina
 export default function VehicleRecordsPage({ mode = "view" }) {
   const { vehicleId, customerId } = useParams();
   const access = useVehicleRecordsAccess();
+  return <VehicleRecordsView mode={mode} access={access} vehicleId={vehicleId} customerId={customerId} />;
+}
+
+export function VehicleRecordsView({ mode = "view", access, vehicleId, customerId }) {
+  const pos = usePOSOperations();
+  const vehicleRecordsUrl = pos?.vehicleRecordsUrl ?? adminVehicleRecordsUrl;
   const branchId = access.branch?.id;
   const contextKey = `${access.storeId}:${branchId}`;
   const navigate = useNavigate();
@@ -40,7 +47,7 @@ export default function VehicleRecordsPage({ mode = "view" }) {
         <Box><Typography variant="h4" fontWeight={800}>Expedientes vehiculares</Typography>
           {branchId && <Typography color="text.secondary">Sucursal de operación: {access.branch.name || `#${branchId}`}</Typography>}
         </Box>
-        <Button component={Link} to={branchId ? `/admin/services?branch_id=${branchId}` : "/admin/sucursales"}>Volver a {branchId ? "servicios" : "sucursales"}</Button>
+        {!pos && <Button component={Link} to={branchId ? `/admin/services?branch_id=${branchId}` : "/admin/sucursales"}>Volver a {branchId ? "servicios" : "sucursales"}</Button>}
       </Stack>
     </Card>
     {!branchId ? <Alert severity="info">Selecciona una sucursal para comprobar el acceso.</Alert> :
@@ -54,7 +61,7 @@ export default function VehicleRecordsPage({ mode = "view" }) {
       mode === "new" ? <Card variant="outlined" sx={{ p: 2 }}>
         <VehicleRecordForm key={contextKey} canReadCatalog={access.canReadCatalog}
           onCancel={() => navigate(vehicleRecordsUrl(branchId))} onSaved={(id) => navigate(vehicleRecordsUrl(branchId, `/${id}`), { replace: true })} />
-      </Card> : mode === "resolve" ? <Card variant="outlined" sx={{ p: 2 }}><VehicleQrResolver key={contextKey} branchId={branchId} /></Card> :
+      </Card> : mode === "resolve" && !pos ? <Card variant="outlined" sx={{ p: 2 }}><VehicleQrResolver key={contextKey} branchId={branchId} /></Card> :
       vehicleId ? validVehicleId(vehicleId) ?
         <VehicleDetail key={`${contextKey}:${vehicleId}:${mode}`} branchId={branchId} id={vehicleId} access={access} editing={mode === "edit"} /> :
         <Alert severity="error">Identificador de expediente inválido.</Alert> :
@@ -64,6 +71,9 @@ export default function VehicleRecordsPage({ mode = "view" }) {
 }
 
 function VehicleList({ branchId, customerId, access }) {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
+  const vehicleRecordsUrl = pos?.vehicleRecordsUrl ?? adminVehicleRecordsUrl;
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState({});
   const [showFilters, setShowFilters] = useState(false);
@@ -80,7 +90,7 @@ function VehicleList({ branchId, customerId, access }) {
     <Stack spacing={2}>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
         {access.canWrite && access.canReadCatalog && <Button component={Link} variant="contained" to={vehicleRecordsUrl(branchId, "/new")}>Registrar vehículo</Button>}
-        <Button component={Link} variant="outlined" to={vehicleRecordsUrl(branchId, "/resolve")}>Resolver código QR</Button>
+        {!pos && <Button component={Link} variant="outlined" to={vehicleRecordsUrl(branchId, "/resolve")}>Resolver código QR</Button>}
         {!customerId && <Button aria-expanded={showFilters} onClick={() => setShowFilters(!showFilters)}>{showFilters ? "Ocultar filtros" : "Mostrar filtros"}</Button>}
       </Stack>
       {!customerId && showFilters && <VehicleFilters initial={filters} canReadCatalog={access.canReadCatalog} onApply={(values) => { setFilters(values); setPage(1); }} />}
@@ -146,6 +156,9 @@ function VehicleFilters({ initial, canReadCatalog, onApply }) {
 }
 
 function VehicleDetail({ branchId, id, access, editing }) {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
+  const vehicleRecordsUrl = pos?.vehicleRecordsUrl ?? adminVehicleRecordsUrl;
   const [tab, setTab] = useState("general");
   const [notice, setNotice] = useState(null);
   const [updatedStatus, setUpdatedStatus] = useState(null);
@@ -192,12 +205,14 @@ function VehicleDetail({ branchId, id, access, editing }) {
         </Grid>
       </Grid>}
       {tab === "history" && <VehicleRecordHistory id={id} branchId={branchId} />}
-      {tab === "identification" && <VehicleIdentification branchId={branchId} id={id} canRotate={access.canWrite} />}
+      {tab === "identification" && <VehicleIdentification branchId={branchId} id={id} canRotate={!pos && access.canWrite} />}
     </Stack>
   </Card>;
 }
 
 function VehicleIdentification({ branchId, id, canRotate }) {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
   const [pdfOpen, setPdfOpen] = useState(false);
   const [size, setSize] = useState({ width_mm: "50", height_mm: "35" });
   const [pdfPath, setPdfPath] = useState("");
@@ -238,7 +253,7 @@ function VehicleIdentification({ branchId, id, canRotate }) {
       const customSize = Number(size.width_mm) !== 50 || Number(size.height_mm) !== 35 ? size : undefined;
       setSizeError(""); setPdfPath(vehicleDocumentPath(branchId, id, "label.pdf", customSize)); setPdfOpen(true);
     }}>Ver y descargar etiqueta PDF</Button>
-    {pdfOpen && <ModalPDFPreview open privateDocument onClose={() => setPdfOpen(false)} endpoint={pdfPath}
+    {pdfOpen && <ModalPDFPreview open privateDocument httpClient={pos?.client} onClose={() => setPdfOpen(false)} endpoint={pdfPath}
       nombreArchivo={`etiqueta-vehiculo-${id}.pdf`} title="Etiqueta vehicular" />}
   </Stack>;
 }

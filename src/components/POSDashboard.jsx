@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import {
   Alert, Box, Button, Chip, CircularProgress, Stack, Typography,
 } from "@mui/material";
@@ -34,7 +34,15 @@ import CreditoFiadoPOS from "./CreditoFiadoPOS";
 import PosCashPage from "./cash/PosCashPage";
 import useCashStatus from "../hooks/POS/useCashStatus";
 import useVisiblePOSModules from "../hooks/POS/useVisiblePOSModules";
+import { posControlledEnabled, posServicesEnabled } from "../utils/posServices";
+import { readSaleRecovery } from "../utils/posSaleRecovery";
 import { cashAlreadyCutMessage, cashBlockMessage } from "../utils/cashControl";
+
+const POSServiceWorkspace = React.lazy(() => import("./POS/POSServiceWorkspace"));
+const operationalSections = [
+  { key: "service_sales", id: "servicios", title: "Servicios", icon: <ConfirmationNumberOutlinedIcon /> },
+  { key: "vehicle_records", id: "expedientes", title: "Expedientes vehiculares", icon: <ReceiptLongOutlinedIcon /> },
+];
 
 const POSTelorecargo = lazy(() => import("../modules/telorecargo/POSTelorecargo.jsx"));
 const TourReportsPage = lazy(() => import("../pages/tours/TourReportsPage"));
@@ -58,6 +66,8 @@ const sections = [
 ];
 
 const classicCards = {
+  servicios: { color: "#107269", description: "Agenda, recepción, órdenes e historial" },
+  expedientes: { color: "#1e67b9", description: "Vehículos e historial de atención" },
   pedidos_web: { color: "#1e67b9", description: "Revisar comprobantes de pedidos de productos de esta caja" },
   reportes_servicios: { color: "#107269", description: "Manifiesto de pasajeros y descarga Excel", icon: <ReceiptLongOutlinedIcon /> },
   ventas_servicios: { color: "#985b00", description: "Ventas, reservas, pasajeros y pagos de tours", icon: <RocketLaunchRoundedIcon /> },
@@ -166,10 +176,23 @@ function SalesCashGate({ cash, posName }) {
   );
 }
 
-export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, posBranchId, interfaceDesign = "actual", onRefreshInterface }) {
+export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, posBranchId, session, interfaceDesign = "actual", onRefreshInterface }) {
   const location = useLocation();
   const [params, setParams] = useSearchParams();
   const [cart, setCart] = useState([]);
+  const checkoutInProgress = useRef(false);
+  const [checkoutPending, setCheckoutPending] = useState(false);
+  const [recoveryReceipt, setRecoveryReceipt] = useState(false);
+  const startCheckout = () => {
+    if (checkoutInProgress.current) return false;
+    checkoutInProgress.current = true;
+    setCheckoutPending(true);
+    return true;
+  };
+  const finishCheckout = () => {
+    checkoutInProgress.current = false;
+    setCheckoutPending(false);
+  };
   const [refreshError, setRefreshError] = useState("");
   const classic = interfaceDesign === "clasico";
   const modules = useVisiblePOSModules(posLocationId);
@@ -177,11 +200,18 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
   const activeSession = cash.status?.session;
   const requestedSection = params.get("seccion");
   const defaultSection = cash.status?.cash_control_enabled === false ? "venta" : "caja";
-  const visibleSections = (modules.keys ?? []).map((key) => sections.find((item) => item.key === key)).filter(Boolean);
+  const operational = posServicesEnabled && !posDesdeAdmin && Boolean(session);
+  const authorizedKeys = modules.authorizedKeys ?? [];
+  const orderAuthorized = authorizedKeys.includes("service_sales") && modules.operationalKeys?.includes("service_sales");
+  const availableSections = operational ? [...sections,
+    ...operationalSections.filter(({ key }) => key === "vehicle_records" ? authorizedKeys.includes(key) : orderAuthorized)] : sections;
+  const visibleSections = (modules.keys ?? []).flatMap((key) => availableSections.filter((item) => item.key === key));
+  const deniedOperational = operationalSections.some(({ id }) => id === requestedSection) &&
+    (!operational || (modules.keys && !visibleSections.some(({ id }) => id === requestedSection)));
   const section = visibleSections.find(({ id }) => id === requestedSection)
     ?? visibleSections.find(({ id }) => id === defaultSection)
     ?? visibleSections[0];
-  const showClassicMenu = classic && (!requestedSection || (modules.keys && section?.id !== requestedSection));
+  const showClassicMenu = classic && !deniedOperational && (!requestedSection || (modules.keys && section?.id !== requestedSection));
   const sectionId = showClassicMenu ? undefined : section?.id;
   const previousSection = useRef(sectionId);
   const sectionHeader = useRef(null);
@@ -190,6 +220,7 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
     if (requestedSection === id) return;
     setParams((previous) => {
       const query = new URLSearchParams(previous);
+      ["vista", "id", "cliente", "captura", "history"].forEach((key) => query.delete(key));
       query.set("seccion", id);
       return query;
     }, { state: location.state });
@@ -198,6 +229,7 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
   useEffect(() => {
     if (previousSection.current === sectionId) return;
     previousSection.current = sectionId;
+    setRecoveryReceipt(false);
     sectionHeader.current?.scrollIntoView?.({ block: "start" });
   }, [sectionId]);
 
@@ -215,7 +247,17 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
   };
 
   const renderSection = () => {
+    if (deniedOperational) return <Alert severity="warning">Este módulo operativo no está disponible en la terminal.</Alert>;
+    if (operationalSections.some(({ id }) => id === requestedSection) && !modules.keys) {
+      return modules.error ? <Alert severity="error">{modules.error}</Alert> : <CircularProgress aria-label="Consultando módulos" />;
+    }
     switch (sectionId) {
+      case "servicios":
+      case "expedientes":
+        return <React.Suspense fallback={<CircularProgress aria-label="Cargando servicios" />}>
+          <POSServiceWorkspace section={sectionId} posId={posLocationId} branchId={posBranchId}
+            session={session} moduleKeys={authorizedKeys} />
+        </React.Suspense>;
       case "caja":
         return <PosCashPage cash={cash} posId={posLocationId} />;
       case "pedidos_web":
@@ -253,10 +295,20 @@ export default function POSDashboard({ posName, posDesdeAdmin, posLocationId, po
       case "clientes":
         return <ClientesPOS />;
       case "venta":
-        if (!cash.canSell) {
+        if (!cash.canSell && !(posControlledEnabled && (recoveryReceipt || readSaleRecovery(posLocationId)))) {
           return <SalesCashGate cash={cash} posName={posName} />;
         }
-        return <POS cash={cash} cart={cart} setCart={setCart} posName={posName} branchId={posBranchId} branchName={location.state?.branchName} classic={classic} />;
+        return <>
+          {operational && /^\?seccion=servicios&vista=orders&id=\d+$/.test(location.state?.returnToOrder?.slice(location.pathname.length) ?? "") &&
+            location.state.returnToOrder.startsWith(location.pathname + "?") &&
+            <Button component={Link} to={location.state.returnToOrder}>Volver a la orden de servicio</Button>}
+          <POS cash={cash} cart={cart} setCart={setCart} posName={posName} branchId={posBranchId} modules={authorizedKeys}
+            operationalServices={operational && orderAuthorized} orderAuthorized={orderAuthorized}
+            idempotencyEnabled={modules.idempotencyEnabled} serviceOrderId={location.state?.serviceOrderId}
+            checkoutPending={checkoutPending} startCheckout={startCheckout} finishCheckout={finishCheckout}
+            onRecoveryReceipt={setRecoveryReceipt}
+            onDetachOrder={() => setParams(params, { replace: true, state: null })} branchName={location.state?.branchName} classic={classic} />
+        </>;
       default:
         if (modules.error) return <Alert severity="error">{modules.error}</Alert>;
         if (!modules.keys) return <CircularProgress size={24} aria-label="Consultando módulos" />;

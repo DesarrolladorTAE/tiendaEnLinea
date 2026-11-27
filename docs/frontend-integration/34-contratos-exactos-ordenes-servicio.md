@@ -1,7 +1,5 @@
 # 34. Contratos exactos: órdenes de servicio
 
-> Evidencia de fase 5 pendiente de cotejo con la revisión operativa de Laravel. Este anexo conserva el contrato reportado en la entrega previa. Consulta [fuente y certeza](README.md#fuente-y-certeza).
-
 Rutas bajo `auth:sanctum`, prefijo `/branches/{branchId}`. Controlador `ServiceOrderController`; scopes `ServiceOperationScope` y `TourScope`; pruebas Feature `ServiceOperationsTest`.
 
 ## Listado, resumen, detalle

@@ -3,6 +3,7 @@ import { documentPhone } from "../utils/saleDocument";
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import axiosClient from "../config/axiosClientPOS";
 import {
+  Alert,
   Box,
   Typography,
   Button,
@@ -19,6 +20,11 @@ import {
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 
+import VehicleProductSearch from "./POS/VehicleProductSearch";
+import usePOSOrderLink from "../hooks/POS/usePOSOrderLink";
+import { posVehicleEnabled } from "../utils/posVehicle";
+import { posControlledEnabled } from "../utils/posServices";
+import { lockSaleRecovery, readSaleRecovery, recoverPOSSale, reserveSaleRecovery, updateSaleRecovery } from "../utils/posSaleRecovery";
 import ProductsGrid from "./POS/ProductsGrid";
 import ProductCard from "./POS/ProductCard";
 import Cart from "./POS/Cart";
@@ -33,7 +39,8 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { showError, showSuccess } from "../utils/alerts";
 
-export default function POS({ cash, cart, setCart, posName, branchId, branchName, classic = false }) {
+export default function POS({ cash, cart, setCart, posName, branchId, branchName, modules, operationalServices, orderAuthorized, idempotencyEnabled, serviceOrderId, onDetachOrder,
+  checkoutPending, startCheckout, finishCheckout, onRecoveryReceipt, classic = false }) {
   const theme = useTheme();
   const isMdUp = useMediaQuery(theme.breakpoints.up("md"));
 
@@ -100,7 +107,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     setSelectedVariation,
     setSelectedSize,
 
-    handleAdd,
+    handleAdd: addToCart,
     handleRemove,
     handleCheckout,
     refetchProducts,
@@ -206,6 +213,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
   };
 
   const handleCloseTicket = () => {
+    if (ticketData?.recovered) onRecoveryReceipt?.(false);
     setShowTicket(false);
     setTicketData(null);
 
@@ -221,9 +229,107 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     }
   };
 
+  const [, refreshRecovery] = useState(0);
+  const [recoveryMessage, setRecoveryMessage] = useState("");
+  const recovery = posControlledEnabled ? readSaleRecovery(posLocationId) : null;
+  const handleAdd = (...args) => {
+    if (!posControlledEnabled || !readSaleRecovery(posLocationId)) return addToCart(...args);
+  };
+  useEffect(() => {
+    if (!posControlledEnabled) return undefined;
+    const refresh = () => refreshRecovery((value) => value + 1);
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, []);
+  const orderEnabled = Boolean(orderAuthorized && (posVehicleEnabled || operationalServices || recovery?.orderId));
+  const orderId = orderEnabled ? recovery?.orderId ?? serviceOrderId : undefined;
+  const orderFlow = usePOSOrderLink(posVehicleEnabled || orderEnabled, posLocationId, branchId, modules, orderId, {
+    specialistEnabled: posVehicleEnabled, orderEnabled,
+  });
+  const order = orderFlow.order.data;
+  const [vehicleMode, setVehicleMode] = useState(false);
+  const uncertainKey = posLocationId ? `pos-sale-uncertain:${posLocationId}` : null;
+  const [uncertainTerminal, setUncertainTerminal] = useState(null);
+  const uncertain = Boolean(uncertainKey && (uncertainTerminal === uncertainKey || sessionStorage.getItem(uncertainKey)));
+  const setUncertain = (value) => {
+    setUncertainTerminal(value ? uncertainKey : null);
+    try {
+      if (uncertainKey && value) sessionStorage.setItem(uncertainKey, "1");
+      else if (uncertainKey) sessionStorage.removeItem(uncertainKey);
+    } catch { /* Keep the in-memory lock. */ }
+  };
+  const specialist = Boolean(orderFlow.terminal && orderFlow.catalog.data);
+  const searchVehicle = specialist && vehicleMode;
+  const [scannedSku, setScannedSku] = useState("");
+  const linkState = orderFlow.link?.state;
+  const orderBlocked = Boolean(orderId && (!order || order.sale_id || (linkState && (linkState !== "linked" || orderFlow.link.reference.order === Number(orderId)))));
+  const settleRecovery = (reference, conflict) => {
+    if (!reference) return;
+    try {
+      updateSaleRecovery(posLocationId, reference, conflict);
+      if (conflict) setRecoveryMessage("El servidor detectó otro contenido para esta clave. Solicita revisión antes de continuar.");
+    } catch {
+      setRecoveryMessage("No se pudo actualizar el registro local de recuperación. Revisa el estado de la venta.");
+    }
+    refreshRecovery((value) => value + 1);
+  };
+  const recoverSale = async () => {
+    if (!recovery?.key || recovery.conflict || checkoutPending || (startCheckout && !startCheckout())) return;
+    const token = localStorage.getItem("POS_TOKEN");
+    setRecoveryMessage("");
+    try {
+      const result = await recoverPOSSale(axiosClient, posLocationId, recovery);
+      if (token !== localStorage.getItem("POS_TOKEN")) return;
+      const { sale } = result;
+      setTicketData({ ...sale, document_settings: result.document_settings ?? sale.document_settings,
+        document_action: result.document_action ?? sale.document_action, receiptPosName: posName, recovered: true });
+      setShowTicket(true);
+      onRecoveryReceipt?.(true);
+      setCart([]);
+      if (recovery.orderId && (!order || Number(order.id) !== Number(recovery.orderId) || !orderFlow.terminal)) {
+        setRecoveryMessage(`Venta #${sale.id} recuperada. Falta verificar la orden para continuar con la vinculación.`);
+        return;
+      }
+      if (recovery.orderId) orderFlow.confirmed(sale);
+      settleRecovery(recovery);
+      void refetchProducts({ nextPage: 1 });
+    } catch (error) {
+      const status = error.response?.status;
+      setRecoveryMessage(status === 404
+        ? "La venta aún no está confirmada para esta terminal. Consulta de nuevo o solicita revisión antes de cobrar."
+        : [401, 403].includes(status) ? "Inicia sesión con la misma terminal para recuperar la venta."
+        : "No se pudo verificar la venta. El cobro sigue bloqueado.");
+    } finally {
+      finishCheckout?.();
+    }
+  };
   const onCheckout = async (payload, receiptContext) => {
+    if (orderBlocked || uncertain || recovery) return;
+    if (order && Number(payload.client_id) !== Number(order.customer_id)) {
+      showError("Selecciona en el carrito el cliente de la orden antes de cobrar."); return;
+    }
     const receiptItems = cart.map(item => ({ ...item }));
-    const sale = await handleCheckout(payload);
+    if (startCheckout && !startCheckout()) return;
+    const token = localStorage.getItem("POS_TOKEN");
+    let sale;
+    try {
+      sale = await handleCheckout(payload, {
+        terminal: orderFlow.terminal, confirmed: orderFlow.confirmed,
+        reserve: idempotencyEnabled ? () => lockSaleRecovery(posLocationId, () => {
+          if (!token || token !== localStorage.getItem("POS_TOKEN") ||
+              Number(localStorage.getItem("POS_LOCATION_ID")) !== Number(posLocationId)) {
+            throw new Error("La sesión de la terminal cambió antes del cobro.");
+          }
+          const reference = reserveSaleRecovery(posLocationId, order?.id);
+          refreshRecovery((value) => value + 1);
+          return reference;
+        }) : undefined,
+        settle: settleRecovery,
+        uncertain: () => idempotencyEnabled ? refreshRecovery((value) => value + 1) : setUncertain(true),
+      });
+    } finally {
+      finishCheckout?.();
+    }
     if (!sale) return;
 
     setTicketData(previous => ({ ...previous, receiptItems, receiptPayload: payload, receiptContext, receiptPosName: posName }));
@@ -234,7 +340,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
     setBarcode("");
 
     setPage(1);
-    await refetchProducts({ nextPage: 1, categoryId: null });
+    try { await refetchProducts({ nextPage: 1, categoryId: null }); } catch { /* La venta sigue confirmada. */ }
 
     if (!isMdUp || classic) setCartOpen(true);
 
@@ -259,13 +365,14 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
 
   const handleScan = (e) => {
     const tag = document.activeElement?.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    if ((tag === "INPUT" && document.activeElement !== inputRef.current) || tag === "TEXTAREA") return;
 
     if (e.key === "Enter") {
       const code = barcode.trim();
-      const product = products.find((p) => p.sku === code);
-
-      if (product) handleAdd(product);
+      if (searchVehicle) { setScannedSku(code ? { code } : null); setBarcode(""); return; }
+      const matches = products.filter((p) => p.sku === code);
+      if (matches.length === 1) handleAdd(matches[0]);
+      else if (matches.length === 0 && specialist && code) { setSearchField("sku"); setSearch(code); }
       else showError(`❌ Producto no encontrado: ${code}`);
 
       setBarcode("");
@@ -288,13 +395,15 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
 
   const cartContent = showTicket ? (
     <TicketDialog open onClose={handleCloseTicket} sale={ticketData} posLocationId={posLocationId} branchId={branchId} onSend={handleSendTicket} />
+  ) : recovery ? (
+    <Alert severity="info">El carrito sigue reservado mientras se verifica la venta.</Alert>
   ) : (
     <Cart
       cart={cart}
       setCart={setCart}
       onRemove={handleRemove}
       onCheckout={onCheckout}
-      checkoutBlocked={!cash.canSell}
+      checkoutBlocked={!cash.canSell || orderBlocked || uncertain || Boolean(recovery) || checkoutPending}
       setScannerEnabled={setScannerEnabled}
       setModalDescuentoActivo={setModalDescuentoActivo}
       classic={classic}
@@ -310,7 +419,31 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
         bgcolor: classic ? "#fff" : undefined,
       }}
     >
-      {classic ? <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2 }}><TextField fullWidth placeholder="Buscar producto (nombre o SKU)" inputProps={{ "aria-label": "Buscar producto" }} value={search} onChange={event => setSearch(event.target.value)} onFocus={() => setScannerEnabled(false)} onBlur={() => { if (!isTouchDevice) setScannerEnabled(true); }} /></Paper> : <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 1.5, sm: 1.75 }, mb: 1.5, "& .mb-3": { mb: "0 !important" }, "& .MuiOutlinedInput-root": { borderRadius: "6px" }, "& .MuiInputBase-input": { py: 1 } }}>
+      {specialist && <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+        <Button variant={!searchVehicle ? "contained" : "outlined"} onClick={() => { setVehicleMode(false); setScannedSku(""); }}>Tradicional</Button>
+        <Button variant={searchVehicle ? "contained" : "outlined"} onClick={() => setVehicleMode(true)}>Por vehículo</Button>
+      </Stack>}
+      {orderId && <Alert severity={order ? "info" : "warning"} sx={{ mb: 1 }} action={!recovery && <Button onClick={() => {
+          if (!cart.length || window.confirm("Quitar la orden conserva el carrito y desactiva la vinculación para esta venta. ¿Continuar?")) onDetachOrder?.();
+        }}>Quitar orden</Button>}>
+        {order ? `Orden ${order.order_code ?? order.id}. Selecciona el cliente #${order.customer_id} desde el carrito.`
+          : orderFlow.order.loading || orderFlow.identity.loading ? "Validando terminal y orden…" : "La orden no está autorizada o no pudo verificarse con esta terminal."}
+      </Alert>}
+      {uncertain && <Alert severity="warning" sx={{ mb: 1 }} action={<Button onClick={() => {
+        if (window.confirm("Confirma solo después de revisar el historial de la terminal y reconciliar la operación.")) setUncertain(false);
+      }}>Ya revisé el historial</Button>}>Resultado de venta incierto. Revisa el historial de esta terminal antes de volver a cobrar.</Alert>}
+      {recovery && <Alert severity={recovery.conflict || recovery.unavailable ? "error" : "warning"} sx={{ mb: 1 }}
+        action={recovery.key && !recovery.conflict && <Button disabled={checkoutPending} onClick={recoverSale}>Consultar venta</Button>}>
+        {recoveryMessage || (recovery.conflict ? "La clave se usó con otro contenido. Solicita revisión de la operación." :
+          recovery.unavailable ? "El registro local de recuperación no está disponible. Solicita revisión antes de cobrar." :
+          "Hay una venta pendiente de verificar. Consulta su estado antes de volver a cobrar.")}
+      </Alert>}
+      {orderFlow.link && <Alert severity={linkState === "linked" ? "success" : "warning"} sx={{ mb: 1 }} action={<>
+        <Button onClick={() => navigator.clipboard?.writeText(String(orderFlow.link.reference.sale)).catch(() => {})}>Copiar ID</Button>
+        {linkState === "pending" && <Button onClick={() => orderFlow.retry()}>Verificar y reintentar vínculo</Button>}
+        {linkState === "conflict" && <Button onClick={() => orderFlow.retry(true)}>Consultar estado de la orden</Button>}
+      </>}>Venta #{orderFlow.link.reference.sale} registrada · {({ linked: "Vinculada", checking: "Verificando vínculo", pending: "Vinculación pendiente", conflict: "Conflicto de vinculación", denied: "Vinculación sin autorización" })[linkState]}</Alert>}
+      {!searchVehicle && (classic ? <Paper variant="outlined" sx={{ p: 1.5, mb: 2, borderRadius: 2 }}><TextField fullWidth placeholder="Buscar producto (nombre o SKU)" inputProps={{ "aria-label": "Buscar producto" }} value={search} onChange={event => setSearch(event.target.value)} onFocus={() => setScannerEnabled(false)} onBlur={() => { if (!isTouchDevice) setScannerEnabled(true); }} /></Paper> : <Box component="section" aria-labelledby="pos-product-list-title" className="bg-dark text-white shadow rounded" sx={{ p: { xs: 1.5, sm: 1.75 }, mb: 1.5, "& .mb-3": { mb: "0 !important" }, "& .MuiOutlinedInput-root": { borderRadius: "6px" }, "& .MuiInputBase-input": { py: 1 } }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} mb={1}>
           <Box sx={{ minWidth: 0 }}>
             <Typography id="pos-product-list-title" component="h2" sx={{ color: "#fff !important", fontSize: { xs: 20, sm: 24 }, fontWeight: 800, lineHeight: 1.2, mb: 0.4 }}>
@@ -365,7 +498,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
             if (!isTouchDevice) setScannerEnabled(true);
           }}
         />
-      </Box>}
+      </Box>)}
 
       <input
         ref={inputRef}
@@ -400,7 +533,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
           alignItems: "stretch",
         }}
       >
-        <Box sx={{ gridArea: "categories", minWidth: 0, display: "grid" }}>
+        <Box sx={{ gridArea: "categories", minWidth: 0, display: searchVehicle ? "none" : "grid" }}>
           <CategoriesRail
             classic={classic}
             categories={categories}
@@ -414,7 +547,10 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
           gridArea: "products", position: "relative", minWidth: 0,
           minHeight: { xs: refreshingStock || !products.length ? 250 : 0, lg: 360 },
         }}>
-          {!refreshingStock && !products.length && (
+          {searchVehicle && <VehicleProductSearch key={JSON.stringify([orderFlow.terminal.id, orderFlow.terminal.branch_id, order?.id])}
+            terminal={orderFlow.terminal} records={orderFlow.catalog.data.records} order={order} scannedSku={scannedSku} categories={categories}
+            cardProps={{ classic, cart, onAdd: handleAdd, getQuantityInCart, getAvailableStock, getProductImage }} />}
+          {!searchVehicle && !refreshingStock && !products.length && (
             <Stack
               component={Paper}
               variant="outlined"
@@ -441,7 +577,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               )}
             </Stack>
           )}
-          {!refreshingStock && products.length > 0 && (classic ? (
+          {!searchVehicle && !refreshingStock && products.length > 0 && (classic ? (
             <>
               <Stack direction="row" justifyContent="space-between" alignItems="center" gap={1} sx={{ mb: 1.25 }}>
                 <Box>
@@ -471,7 +607,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
               getAvailableStock={getAvailableStock}
               getProductImage={getProductImage}
             />) }
-          {refreshingStock && (
+          {!searchVehicle && refreshingStock && (
             <Stack role="status" alignItems="center" spacing={2} sx={{
               position: "absolute", inset: 0, pt: { xs: 3, sm: 4 }, px: 2,
               border: "1px solid", borderColor: "divider", borderRadius: 3, bgcolor: "#fff",
@@ -493,7 +629,7 @@ export default function POS({ cash, cart, setCart, posName, branchId, branchName
         </Box>
 
         {/* Paginación real (backend) */}
-        {totalPages > 1 && <Paper
+        {!searchVehicle && totalPages > 1 && <Paper
           sx={{
             gridArea: "pagination",
             p: 1.25,

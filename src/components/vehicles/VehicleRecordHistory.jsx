@@ -1,7 +1,8 @@
+import { usePOSOperations } from "../../context/POSOperationsContext";
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { Alert, Button, Card, CircularProgress, FormControlLabel, Pagination, Stack, Switch, TextField, Typography } from "@mui/material";
-import { readVehicleHistory, validVehicleId, vehicleRecords } from "../../services/admin/vehicleRecords";
+import { readVehicleHistory, validVehicleId, vehicleRecords as adminVehicleRecords } from "../../services/admin/vehicleRecords";
 import { useVehicleRequest } from "./VehicleRecordFields";
 import useDynamicFormsAccess from "../../hooks/useDynamicFormsAccess";
 import { formLink, orderFormsPath, positiveId } from "../../services/admin/dynamicForms";
@@ -15,6 +16,8 @@ const formatDate = (value) => {
 };
 
 export default function VehicleRecordHistory({ id, branchId }) {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
   const [draft, setDraft] = useState({ date_from: "", date_to: "", service_id: "", status: "", onlyBranch: false });
   const [filters, setFilters] = useState({});
   const [ordersPage, setOrdersPage] = useState(1);
@@ -22,7 +25,6 @@ export default function VehicleRecordHistory({ id, branchId }) {
   const [error, setError] = useState("");
   const params = { orders_page: ordersPage, bookings_page: bookingsPage, ...filters };
   const request = useVehicleRequest(async (signal) => readVehicleHistory((await vehicleRecords.history(id, params, signal)).data, id), JSON.stringify(params));
-  const formsAccess = useDynamicFormsAccess(Boolean(request.data?.orders.rows.some((order) => order.form_submissions?.length)));
   const submit = (event) => {
     event.preventDefault();
     if (draft.date_from && draft.date_to && draft.date_to < draft.date_from) { setError("La fecha final debe ser igual o posterior a la inicial."); return; }
@@ -42,7 +44,7 @@ export default function VehicleRecordHistory({ id, branchId }) {
         )}
       </Stack>
       <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-        <FormControlLabel label="Solo la sucursal actual" control={<Switch checked={draft.onlyBranch} onChange={(event) => setDraft({ ...draft, onlyBranch: event.target.checked })} />} />
+        {!pos && <FormControlLabel label="Solo la sucursal actual" control={<Switch checked={draft.onlyBranch} onChange={(event) => setDraft({ ...draft, onlyBranch: event.target.checked })} />} />}
         <Button variant="outlined" type="submit">Filtrar historial</Button>
       </Stack>
       {error && <Alert severity="error">{error}</Alert>}
@@ -53,10 +55,22 @@ export default function VehicleRecordHistory({ id, branchId }) {
     </Alert>}
     {request.data && <>
       {!request.data.orders.rows.length && !request.data.bookings.rows.length && <Typography>Sin atenciones en esta consulta.</Typography>}
-      <HistoryGroup title="Órdenes" group={request.data.orders} page={ordersPage} onPage={setOrdersPage} render={(order) => orderDetails(order, formsAccess.read && Number(formsAccess.branch?.id) === Number(branchId))} />
+      {pos ? <OrderHistory group={request.data.orders} page={ordersPage} onPage={setOrdersPage}
+        branchId={branchId} forms={pos.forms} formsUrl={pos.orderFormsUrl} /> :
+        <AdminOrderHistory group={request.data.orders} page={ordersPage} onPage={setOrdersPage} branchId={branchId} />}
       <HistoryGroup title="Citas" group={request.data.bookings} page={bookingsPage} onPage={setBookingsPage} render={bookingDetails} />
     </>}
   </Stack>;
+}
+
+function AdminOrderHistory({ group, ...props }) {
+  const forms = useDynamicFormsAccess(group.rows.some((order) => order.form_submissions?.length));
+  return <OrderHistory group={group} forms={forms} {...props} />;
+}
+
+function OrderHistory({ branchId, forms, formsUrl, ...props }) {
+  const canReadForms = forms.read && Number(forms.branch?.id) === Number(branchId);
+  return <HistoryGroup title="Órdenes" {...props} render={(order) => orderDetails(order, canReadForms, formsUrl, branchId)} />;
 }
 
 function HistoryGroup({ title, group, page, onPage, render }) {
@@ -68,7 +82,7 @@ function HistoryGroup({ title, group, page, onPage, render }) {
   </Stack>;
 }
 
-function orderDetails(order, canReadForms) {
+function orderDetails(order, canReadForms, posFormsUrl, branchId) {
   const snapshot = order.vehicle_snapshot;
   const documentBranch = order.branch?.id ?? order.branch_id;
   return <Stack spacing={0.5}>
@@ -79,10 +93,10 @@ function orderDetails(order, canReadForms) {
     {snapshot ? <Typography>Vehículo al momento de la atención: {[snapshot.brand, snapshot.model, snapshot.year].filter((value) => value != null && value !== "").join(" ") || "No disponible"} · Placas: {snapshot.plates ?? "—"} · VIN: {snapshot.vin ?? "—"}</Typography> :
       <Typography color="text.secondary">Sin snapshot vehicular.</Typography>}
     {order.customer_snapshot?.name && <Typography>Cliente al momento de la atención: {order.customer_snapshot.name}</Typography>}
-    {order.form_submissions?.map((form) => <Stack key={form.id} direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} spacing={1}>
+    {(!posFormsUrl || canReadForms) && order.form_submissions?.map((form) => <Stack key={form.id} direction={{ xs: "column", sm: "row" }} alignItems={{ sm: "center" }} spacing={1}>
       <Typography variant="body2">Formulario {form.folio || `#${form.id}`} · {form.status || "Estado no disponible"}{form.completed_at ? ` · ${formatDate(form.completed_at)}` : ""}</Typography>
-      {canReadForms && [documentBranch, order.id, form.id].every(positiveId) && <Button component={Link}
-        to={formLink(`${orderFormsPath}/${order.id}/forms/${form.id}`, documentBranch) + "&history=1"}>Ver captura histórica</Button>}
+      {canReadForms && (!posFormsUrl || Number(documentBranch) === Number(branchId)) && [documentBranch, order.id, form.id].every(positiveId) && <Button component={Link}
+        to={posFormsUrl ? posFormsUrl(branchId, order.id, form.id, true) : formLink(`${orderFormsPath}/${order.id}/forms/${form.id}`, documentBranch) + "&history=1"}>Ver captura histórica</Button>}
     </Stack>)}
   </Stack>;
 }

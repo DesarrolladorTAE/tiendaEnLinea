@@ -1,0 +1,1 @@
+import{a as t,bA as r}from"./index-n4c3GYPs.js";const s=t.create({baseURL:r,headers:{Accept:"application/json"}});s.interceptors.request.use(e=>{const a=localStorage.getItem("POS_TOKEN");return a&&(e.headers.Authorization=`Bearer ${a}`),e});export{s as a};

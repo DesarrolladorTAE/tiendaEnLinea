@@ -1,7 +1,5 @@
 # 35. Estados y transiciones operativas
 
-> Evidencia de fase 5 pendiente de cotejo con la revisión operativa de Laravel. Este anexo conserva el contrato reportado en la entrega previa. Consulta [fuente y certeza](README.md#fuente-y-certeza).
-
 Fuente: `BookingController`, `ServiceOrderController`, `ServiceOperationScope`, `BookingAvailability`, Feature `ServiceOperationsTest`. Las rutas están bajo Sanctum y scope tenant/branch Store o POS.
 
 ## Citas

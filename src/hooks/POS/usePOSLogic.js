@@ -149,7 +149,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
     cart.find((item) => String(item.cart_key ?? item.id) === String(cartKey))
       ?.quantity || 0;
 
-  const handleAdd = (payload) => {
+  const handleAdd = (payload, resolvedProduct) => {
     const isCartItem =
       payload &&
       (payload.cart_key ||
@@ -163,7 +163,8 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
       const item = payload;
       const key = String(item.cart_key ?? item.id);
       if (!key) return;
-      const product = inventoryCache.current.get(String(item.product_id));
+      const product = Number(resolvedProduct?.id) === Number(item.product_id) ? resolvedProduct : inventoryCache.current.get(String(item.product_id));
+      if (product && resolvedProduct) inventoryCache.current.set(String(product.id), product);
       const selectionError = validateInventoryItems([{ ...item, quantity: 1 }], product ? [product] : []);
       if (selectionError) { showError(selectionError); return; }
 
@@ -316,7 +317,7 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
   };
 
   const handleCheckout = useCallback(
-    async (checkoutPayloadFromCart) => {
+    async (checkoutPayloadFromCart, lifecycle) => {
       if (!cart || cart.length === 0 || checkoutBusy.current) return;
 
       const sourceItems = Array.isArray(checkoutPayloadFromCart?.items)
@@ -387,10 +388,13 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
         credit_due_at: checkoutPayloadFromCart?.credit_due_at ?? null,
       };
 
+      let submitted = false;
+      let confirmedSale;
+      let reference;
       try {
         checkoutBusy.current = true;
         if (checkoutPayloadFromCart?.shipment) payload.shipment = checkoutPayloadFromCart.shipment;
-        const freshProducts = await loadCartInventory(axiosClient, posLocationId, items);
+        const freshProducts = await loadCartInventory(axiosClient, posLocationId, items, lifecycle?.terminal);
         freshProducts.forEach(product => inventoryCache.current.set(String(product.id), product));
         setCart(previous => previous.map(item => {
           const product = freshProducts.find(p => String(p.id) === String(item.product_id));
@@ -403,19 +407,34 @@ export function usePOSLogic({ setTicketData, setShowTicket, cart, setCart, verif
           showError(cashMessage);
           return;
         }
-        const saleResponse = await axiosClient.post("/v2/sales", payload);
+        reference = await lifecycle?.reserve?.();
+        submitted = true;
+        const saleResponse = reference
+          ? await axiosClient.post("/v2/sales", payload, { headers: { "Idempotency-Key": reference.key } })
+          : await axiosClient.post("/v2/sales", payload);
         const { sale, message } = saleResponse.data;
+        if (!sale?.id) { lifecycle?.uncertain?.(); return; }
+        confirmedSale = sale;
+        try { lifecycle?.confirmed?.(sale); } catch { /* The sale is already confirmed. */ }
+        lifecycle?.settle?.(reference);
 
         setCart([]);
-        notifyInventoryChanged();
-        await refetchProducts({ nextPage: 1 });
-
         setTicketData({ ...sale, document_settings: saleResponse.data.document_settings ?? sale.document_settings, document_action: saleResponse.data.document_action ?? sale.document_action, whatsapp: saleResponse.data.whatsapp ?? sale.whatsapp });
         showSuccess(`✅ ${message}`);
         setShowTicket(true);
-
+        notifyInventoryChanged();
+        try { await refetchProducts({ nextPage: 1 }); } catch { /* La venta sigue confirmada. */ }
         return sale;
       } catch (err) {
+        if (confirmedSale) return confirmedSale;
+        if (reference && err?.response?.status === 409) {
+          lifecycle?.settle?.(reference, true);
+          return;
+        }
+        if (submitted && (!err.response || err.response.status >= 500 || err.response.status === 408)) {
+          lifecycle?.uncertain?.(); return;
+        }
+        if (reference && [401, 403, 422].includes(err?.response?.status)) lifecycle?.settle?.(reference);
         const resp = err?.response?.data;
         if (err?.response?.status === 422 && resp?.errors?.cash_session) {
           await refreshCash?.();

@@ -1,4 +1,4 @@
-import axiosClient from "../../config/axiosClient";
+import adminClient from "../../config/axiosClient";
 
 const basePath = (branchId) => `/branches/${branchId}/services`;
 const servicePath = (branchId, serviceId) => `${basePath(branchId)}/${serviceId}`;
@@ -38,7 +38,7 @@ export const buildServiceFormData = (values, updating = false) => {
   return formData;
 };
 
-export const serviceService = {
+export const createServiceService = (axiosClient) => ({
   list(branchId, params = {}, signal) {
     return axiosClient.get(basePath(branchId), { params, signal });
   },
@@ -85,4 +85,6 @@ export const serviceService = {
   listFormTemplates(params, signal) {
     return axiosClient.get("/service-form-templates", { params, signal });
   },
-};
+});
+
+export const serviceService = createServiceService(adminClient);

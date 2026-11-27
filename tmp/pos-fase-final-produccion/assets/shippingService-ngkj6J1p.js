@@ -1,0 +1,1 @@
+import{a as i}from"./index-n4c3GYPs.js";const o="https://mitiendaenlineamx.com.mx/api/".replace(/\/$/,""),t=i.create({baseURL:o,timeout:15e3,headers:{Accept:"application/json"}}),p=(e,n)=>t.get(`/public/shipments/${encodeURIComponent(e)}`,{signal:n}),a=(e,n)=>t.get(`/public/branches/${encodeURIComponent(e)}/shipping-config`,{signal:n});export{a,p as g};

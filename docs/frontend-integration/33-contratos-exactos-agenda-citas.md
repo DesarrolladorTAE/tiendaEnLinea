@@ -1,7 +1,5 @@
 # 33. Contratos exactos: agenda y citas
 
-> Evidencia de fase 5 pendiente de cotejo con la revisión operativa de Laravel. Este anexo conserva el contrato reportado en la entrega previa. Consulta [fuente y certeza](README.md#fuente-y-certeza).
-
 Paths relativos a `/api`. Fuentes: `routes/api.php`, `BookingController`, `BookingAvailabilityController`, `BookingAvailability`, `BookingConfigController`, `ServiceOperationScope`, modelos `Booking`/`BookingConfig`; Feature `tests/Feature/ServiceOperationsTest.php`.
 
 ## Agenda/listado
@@ -57,3 +55,5 @@ Escenarios de request (todos agregan `idempotency_key` único, y `booking_date/s
 ## Evidencia
 
 `ServiceOperationsTest::test_availability_consecutive_conflict_reschedule_cancel_and_idempotency`, `test_exceptions_override_weekly_schedule`, `test_pending_booking_requires_explicit_confirmation`, `test_resource_duration_override_changes_slot_end_without_conflicting_with_following_slot`, `test_reassignment_updates_booking_and_operational_queries_are_scoped`. Los JSON de agenda de este documento son fixtures derivados del serializer; tests Feature verifican campos/estados referidos, no se afirma captura literal de las filas ilustrativas.
+
+Para los contratos detallados de PATCH, reprogramación, cancelación, recurso, zona horaria y sus fixtures, consultar [40](40-contratos-exactos-mutaciones-citas.md), [41](41-contratos-vinculacion-ventas-zona-horaria.md) y [42](42-fixtures-cierre-fase-5.md). La exclusión de la cita al revisar su nuevo horario es interna al servicio; disponibilidad no expone `booking_id` como parámetro.

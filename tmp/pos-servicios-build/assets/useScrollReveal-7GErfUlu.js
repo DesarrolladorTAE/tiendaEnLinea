@@ -1,0 +1,1 @@
+import{r as t}from"./index-1aCWufmw.js";function i(){t.useEffect(()=>{const s={threshold:.1,rootMargin:"0px 0px -50px 0px"},r=new IntersectionObserver(e=>{e.forEach(o=>{o.isIntersecting&&o.target.classList.add("visible")})},s);return document.querySelectorAll(".animate-on-scroll").forEach(e=>r.observe(e)),()=>r.disconnect()},[])}export{i as u};

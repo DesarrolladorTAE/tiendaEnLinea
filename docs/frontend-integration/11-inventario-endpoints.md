@@ -16,7 +16,6 @@ Los paths son relativos a `/api`. El inventario no reemplaza validadores; cita c
 | POST | `.../{orderId}/{start,complete,cancel}` | Sanctum | transición condicionada | ID y motivo si requerido |
 | PATCH | `.../{orderId}/resource` | Sanctum | asignación en branch | body de referencia recurso |
 | POST | `.../{orderId}/sale` | Sanctum | vincular venta autorizada | `{sale_id}` |
-| POST | `.../{orderId}/next-booking` | Sanctum | crear cita desde el contexto de la orden | Ver [contrato de seguimiento](38-capacidades-operativas-seguimiento.md) |
 | GET/POST | `/service-form-templates` | Sanctum | `service_forms`, admin de tienda | schema/atributos validados dinámicamente |
 | GET/PUT/PATCH | `/service-form-templates/{templateId}` | Sanctum | plantilla en tienda | ID; nueva versión al editar |
 | POST | `/service-form-templates/{templateId}/duplicate` | Sanctum | plantilla en tienda | ID |
@@ -34,15 +33,14 @@ Los paths son relativos a `/api`. El inventario no reemplaza validadores; cita c
 | GET | `/vehicles/{vehicleId}/history` | Sanctum | expediente | vehicle ID mismo tenant |
 | PATCH | `/vehicles/{vehicleId}/status` | Sanctum | expediente admin | estado validado |
 | PATCH | `/vehicles/{vehicleId}/service-orders/{orderId}/mileage` | Sanctum | expediente+orden branch | kilometraje validado |
-| GET | `/branches/{branchId}/service-orders/{orderId}/document.pdf` | `RequireServiceDocumentAuth` | documentos de servicios, tienda+branch | order ID; PDF |
-| GET | `/branches/{branchId}/service-orders/{orderId}/thermal` | `RequireServiceDocumentAuth` | documento t?rmico, tienda y sucursal | JSON, `paper_size` opcional 58 u 80 |
+| GET/POST | `/branches/{branchId}/service-orders/{orderId}/document.pdf`, `/thermal` | `RequireServiceDocumentAuth` | documentos de servicios, tienda+branch | order ID; binario/payload |
 | GET | `/branches/{branchId}/vehicles/{vehicleId}/qr.svg` | `RequireServiceDocumentAuth` + scope servicio | expediente/branch; Sanctum | SVG `image/svg+xml`, privado |
 | GET | `/branches/{branchId}/vehicles/{vehicleId}/label.pdf` | `RequireServiceDocumentAuth` + scope servicio | expediente/branch; Sanctum | query width_mm/height_mm, PDF privado |
 | POST | `/branches/{branchId}/vehicles/{vehicleId}/rotate-qr` | middleware mismo + throttle 10/min | Store solamente | body vacío; invalida token anterior |
 | POST | `/branches/{branchId}/vehicles/resolve-qr` | middleware mismo + throttle 30/min | expediente/branch; Sanctum | `{"code":"MTELMX:VEHICLE:V1:<token>"}` |
 | GET | `/vehicle-brands`, `/vehicle-models`, `/vehicle-years`, `/vehicle-part-types` | `api.auth:sanctum`, `store.access` | `vehicle_catalog` y contexto comercial | filtros; modelos requiere marca |
 | GET | `/products/search` | `api.auth:sanctum`, `store.access` | venta POS, tienda/sucursal | filtros tradicionales |
-| GET | `/products/search-by-vehicle` | mismo grupo | catálogo vehicular/POS y almacén autorizado | filtros combinados, page/per_page |
+| GET | `/products/search-by-vehicle` | `api.auth:sanctum`, `store.access` | Store o POS según `VehicleCompatibilityService`/`CheckStoreAccess`; POS own branch/warehouse scope | filtros combinados, page/per_page. Test POS actual quita middleware; recorrido middleware queda por validar. Ver contrato 43. |
 | GET | `/admin/products/{product}/vehicle-compatibilities` | mismo grupo | compatibilidad producto | product ID, filtros branch conforme controller |
 | PATCH | `/admin/products/{product}/automotive-details` | mismo grupo, admin autorizado | clasificar/editar marca | `{is_vehicle_universal?, commercial_brand?}` |
 | POST/GET | `/products/import-with-vehicles[/{template}]` | mismo grupo | importación/exportación admin tienda | multipart file para import; template binario |

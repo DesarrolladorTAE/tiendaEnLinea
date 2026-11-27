@@ -1,4 +1,4 @@
-import client from "../../config/axiosClient";
+import adminClient from "../../config/axiosClient";
 
 export const formsPath = "/admin/services/forms";
 export const orderFormsPath = "/admin/services/orders";
@@ -9,7 +9,7 @@ const config = (signal) => ({ signal, __skipSupportIncident: true });
 export const formLink = (path, branch) => `${path}?branch_id=${encodeURIComponent(branch)}`;
 export const positiveId = (id) => /^\d+$/.test(String(id)) && Number.isSafeInteger(Number(id)) && Number(id) > 0;
 
-export const dynamicForms = {
+export const createDynamicForms = (client) => ({
   list: (params, signal) => client.get(templates, { ...config(signal), params }).then(({ data }) => {
     if (!Array.isArray(data?.data)) throw new Error("Listado de plantillas no reconocido.");
     return data;
@@ -26,7 +26,9 @@ export const dynamicForms = {
   save: (id, formId, answers, signal) => client.patch(submission(id, formId), { answers }, config(signal)).then(({ data }) => data.data),
   complete: (id, formId, signal) => client.post(`${submission(id, formId)}/complete`, undefined, config(signal)).then(({ data }) => data.data),
   cancel: (id, formId, reason, signal) => client.post(`${submission(id, formId)}/cancel`, { reason }, config(signal)).then(({ data }) => data.data),
-};
+});
+
+export const dynamicForms = createDynamicForms(adminClient);
 
 export const formPdfPath = (branch, id, formId) => `/branches/${branch}${submission(id, formId)}/document.pdf`;
 

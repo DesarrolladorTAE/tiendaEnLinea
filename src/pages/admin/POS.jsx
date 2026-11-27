@@ -57,6 +57,8 @@ import {
 import AssignWarehousesDialog from "./modals/AssignWarehousesDialog";
 import AdminCashDialog from "../../components/cash/AdminCashDialog";
 import POSModulesDialog from "../../components/adminpos/POSModulesDialog";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { posServicesEnabled } from "../../utils/posServices";
 import PointOfSaleOutlinedIcon from "@mui/icons-material/PointOfSaleOutlined";
 
 import { adminSectionDialog, adminSectionHeader, adminSectionPanel, adminSectionPrimaryAction, adminSectionScope, adminSectionTitle } from "../../components/admin/AdminSectionOption";
@@ -186,6 +188,7 @@ export default function POS() {
   const [assignOpen, setAssignOpen] = useState(false);
   const [cashPos, setCashPos] = useState(null);
   const [modulesPos, setModulesPos] = useState(null);
+  const [terminalStatus, setTerminalStatus] = useState(null);
   const [modulesRevision, setModulesRevision] = useState(0);
   const [cashVisibility, setCashVisibility] = useState(null);
   const [assignPos, setAssignPos] = useState(null);
@@ -310,7 +313,29 @@ export default function POS() {
   }, [activeBranch?.id, fetchPOS, fetchWarehouses]);
 
   const iniciarSesionPOS = (pos) => {
+    if (posServicesEnabled && pos.is_active === false) return;
     navigate("/admin/prueba/pos", { state: { pos, branchName: activeBranch?.name } });
+  };
+
+  const saveTerminalStatus = async () => {
+    if (!terminalStatus || saving) return;
+    const { pos } = terminalStatus;
+    const is_active = !pos.is_active;
+    setSaving(true);
+    setTerminalStatus({ pos });
+    try {
+      const { data } = await axiosClient.put(`/pos/${pos.id}`, { is_active });
+      if (data?.pos?.is_active !== is_active) {
+        await fetchPOS({ silent: true });
+        throw new Error("Laravel no confirmó el estado solicitado. Revisa el estado actual antes de volver a enviar.");
+      }
+      setRows(previous => previous.map(row => row.id === pos.id ? { ...row, is_active: data.pos.is_active } : row));
+      setTerminalStatus(null);
+    } catch (error) {
+      setTerminalStatus({ pos, error: error.response?.data?.message || error.message || "No se pudo actualizar el estado de la terminal." });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCopyAccess = async (pos, trigger) => {
@@ -576,6 +601,8 @@ export default function POS() {
                         <Stack direction="row" gap={1} flexWrap="wrap">
                           <Chip size="small" variant="outlined" icon={<BadgeOutlinedIcon />} label={pos.code || "Sin código"} sx={{ maxWidth: "100%" }} />
                           <Chip size="small" variant="outlined" icon={<WarehouseRoundedIcon />} label={`${warehouseCount} almacén(es)`} />
+                          {posServicesEnabled && typeof pos.is_active === "boolean" && <Chip size="small"
+                            color={pos.is_active ? "success" : "default"} label={pos.is_active ? "Activa" : "Desactivada"} />}
                         </Stack>
                         <Typography variant="caption" color="text.secondary">
                           {warehouseNames || "Sin almacenes asignados"} · Inventario sin almacén {pos.show_unassigned_products ? "incluido" : "excluido"}
@@ -583,11 +610,16 @@ export default function POS() {
                       </Stack>
                       <Divider sx={{ mt: "auto" }} />
                       <Box sx={{ display: "grid", gridTemplateColumns: isDesktop ? "minmax(0, 1fr)" : "repeat(auto-fit, minmax(min(100%, 132px), 1fr))", gap: 1 }}>
-                        <Button variant="contained" disableElevation startIcon={<LoginRoundedIcon />} onClick={() => iniciarSesionPOS(pos)} sx={adminSectionPrimaryAction}>Iniciar sesión</Button>
+                        <Button variant="contained" disableElevation startIcon={<LoginRoundedIcon />} onClick={() => iniciarSesionPOS(pos)}
+                          disabled={posServicesEnabled && pos.is_active === false} sx={adminSectionPrimaryAction}>Iniciar sesión</Button>
                         {!isDesktop && <>
                           <Button variant="outlined" startIcon={<VpnKeyRoundedIcon />} onClick={() => openAccess(pos)} sx={outlinedAction}>Accesos</Button>
                           <Button variant="outlined" startIcon={<WarehouseRoundedIcon />} onClick={() => openAssignDialog(pos)} sx={outlinedAction}>Asignar almacenes</Button>
                           <Button variant="outlined" startIcon={<TuneRoundedIcon />} onClick={() => setModulesPos(pos)} sx={outlinedAction}>Módulos de este POS</Button>
+                          {posServicesEnabled && typeof pos.is_active === "boolean" &&
+                            <Button variant="outlined" onClick={() => setTerminalStatus({ pos })}>
+                              {pos.is_active ? "Desactivar terminal" : "Activar terminal"}
+                            </Button>}
                           {visibleCashIds?.has(String(pos.id)) && <Button variant="outlined" startIcon={<PointOfSaleOutlinedIcon />} onClick={() => setCashPos(pos)} sx={outlinedAction}>Caja</Button>}
                         </>}
                       </Box>
@@ -607,6 +639,11 @@ export default function POS() {
           { label: "Accesos", Icon: VpnKeyRoundedIcon, action: openAccess },
           { label: "Asignar almacenes", Icon: WarehouseRoundedIcon, action: openAssignDialog },
           { label: "Módulos de este POS", Icon: TuneRoundedIcon, action: setModulesPos },
+          ...(posServicesEnabled && typeof terminalMenu.pos.is_active === "boolean" ? [{
+            label: terminalMenu.pos.is_active ? "Desactivar terminal" : "Activar terminal",
+            Icon: LockOutlinedIcon,
+            action: pos => setTerminalStatus({ pos }),
+          }] : []),
           ...(visibleCashIds?.has(String(terminalMenu.pos.id)) ? [{ label: "Caja", Icon: PointOfSaleOutlinedIcon, action: setCashPos }] : []),
         ].map(({ label, Icon, action }) => (
           <MenuItem key={label} onClick={() => {
@@ -617,6 +654,29 @@ export default function POS() {
           </MenuItem>
         ))}
       </Menu>
+
+      {terminalStatus && <Dialog open fullWidth maxWidth="xs" onClose={saving ? undefined : () => setTerminalStatus(null)}
+        aria-labelledby="terminal-status-title">
+        <DialogTitle id="terminal-status-title">
+          {terminalStatus.pos.is_active ? "Desactivar terminal" : "Activar terminal"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2}>
+            <Typography>{terminalStatus.pos.name}</Typography>
+            <Alert severity={terminalStatus.pos.is_active ? "warning" : "info"}>
+              {terminalStatus.pos.is_active ?
+                "Al desactivar la terminal se revocarán sus sesiones existentes. Después de reactivarla, los operadores deberán iniciar sesión de nuevo." :
+                "Los operadores deberán iniciar sesión de nuevo para usar esta terminal."}
+            </Alert>
+            {terminalStatus.error && <Alert severity="error">{terminalStatus.error}</Alert>}
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={saving} onClick={() => setTerminalStatus(null)}>Cancelar</Button>
+          <Button variant="contained" disabled={saving} onClick={saveTerminalStatus}
+            color={terminalStatus.pos.is_active ? "error" : "primary"}>Confirmar</Button>
+        </DialogActions>
+      </Dialog>}
 
       {editor && (
         <Dialog open onClose={closeEditor} fullWidth maxWidth="sm" sx={adminSectionDialog} aria-labelledby="pos-editor-title">

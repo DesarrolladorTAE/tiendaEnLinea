@@ -1,12 +1,15 @@
+import { usePOSOperations } from "../../context/POSOperationsContext";
 import React, { useRef, useState } from "react";
 import { Alert, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import { QuickCustomerRegistration, VehicleChoice, useVehicleRequest, useVehicleMutation } from "../vehicles/VehicleRecordFields";
-import { serviceService } from "../../services/admin/serviceService";
-import { readVehiclePage, vehicleRecords, vehicleRecordsUrl } from "../../services/admin/vehicleRecords";
-import { operations, operationError } from "../../services/admin/serviceOperations";
+import { serviceService as adminServiceService } from "../../services/admin/serviceService";
+import { readVehiclePage, vehicleRecords as adminVehicleRecords, vehicleRecordsUrl as adminVehicleRecordsUrl } from "../../services/admin/vehicleRecords";
+import { operations as adminOperations, operationError } from "../../services/admin/serviceOperations";
 
 export function useOperationChoices(branch, serviceId, includeServices = true) {
+  const pos = usePOSOperations();
+  const serviceService = pos?.serviceService ?? adminServiceService;
   const services = useVehicleRequest(async (signal) => {
     const rows = [];
     for (let page = 1; ; page += 1) {
@@ -25,7 +28,12 @@ export function useOperationChoices(branch, serviceId, includeServices = true) {
   return { services, resources };
 }
 
-export default function OperationIntake({ branch, mode, origin, access, onSaved, onCancel }) {
+export default function OperationIntake({ branch, mode, origin, access, onSaved, onCancel, onTimezone }) {
+  const pos = usePOSOperations();
+  const operations = pos?.operations ?? adminOperations;
+  const serviceService = pos?.serviceService ?? adminServiceService;
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
+  const vehicleRecordsUrl = pos?.vehicleRecordsUrl ?? adminVehicleRecordsUrl;
   const direct = mode === "direct";
   const [draft, setDraft] = useState({ service_id: String(origin?.service_id ?? ""), customer_id: String(origin?.customer_id ?? ""),
     vehicle_id: String(origin?.vehicle_id ?? ""), resource_id: String(origin?.resource_id ?? ""), date: "", time: "", notes: "" });
@@ -59,6 +67,7 @@ export default function OperationIntake({ branch, mode, origin, access, onSaved,
     const { data } = await serviceService.availability(branch, draft.service_id,
       { date: draft.date, resource_id: draft.resource_id || undefined }, signal);
     if (!Array.isArray(data?.data?.slots)) throw new Error("Respuesta de disponibilidad inválida.");
+    if (!signal.aborted) onTimezone?.(data.data.timezone);
     return data.data;
   }, !direct && draft.date && draft.service_id ? JSON.stringify([branch, draft.service_id, draft.date, draft.resource_id]) : null);
   const set = (key, value) => {
@@ -114,7 +123,8 @@ export default function OperationIntake({ branch, mode, origin, access, onSaved,
           options={vehicles.data?.map((row) => ({ ...row, name: [row.plates, row.vin].filter(Boolean).join(" · ") }))}
           loading={vehicles.loading} disabled={busy || !draft.customer_id} onChange={(value) => set("vehicle_id", value)} />}
       {requirement === "required" && !access.canRead && <Alert severity="warning">Este servicio requiere acceso a expedientes vehiculares.</Alert>}
-      {requirement !== "none" && requirement && access.canWrite && <Button component={Link} to={vehicleRecordsUrl(branch, "/new")} target="_blank" rel="noopener noreferrer">Registrar vehículo</Button>}
+      {requirement !== "none" && requirement && access.canWrite && (!pos || access.canReadCatalog) &&
+        <Button component={Link} to={vehicleRecordsUrl(branch, "/new")} target="_blank" rel="noopener noreferrer">Registrar vehículo</Button>}
       {vehicles.data && <Button onClick={vehicles.retry} disabled={busy}>Actualizar vehículos</Button>}
     </> : <Typography>Cliente {origin.customer_snapshot?.name ?? origin.customer_id} · {origin.service?.name ?? origin.service_id}</Typography>}
     <VehicleChoice label="Recurso" value={draft.resource_id} current={origin?.resource} options={resources.data}

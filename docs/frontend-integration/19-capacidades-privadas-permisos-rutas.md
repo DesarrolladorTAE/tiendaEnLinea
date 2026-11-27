@@ -30,7 +30,7 @@ Ejemplo POS de la misma tienda: `scope.actor="pos"`, `scope.pos_location_id=31`;
 
 Ejemplo de módulo disponible pero deshabilitado por configuración: `{"available":true,"enabled":false,"visible":false,"source":"general",...}`. Si el plan no lo habilita, `available=false`; `visible` permanece false. Un error HTTP (401/403/404/5xx) no es un estado de capacidad: debe tratarse como autenticación, scope/autorización o error de consulta.
 
-El bloque privado `capabilities` incluye expedientes vehiculares (`vehicle_records`) y formularios (`service_forms`) con el alcance y las acciones descritas abajo. `/pos/modules` expone señales de módulo para el contexto POS. `GET /perfil/mi-tienda` ofrece identidad básica y `permissions.can_edit_purchase_cost`. Este último contiene una condición histórica por ID de tienda y se refiere al costo de compra.
+Este recurso no reporta señales de expedientes (`vehicle_records`) ni formularios (`service_forms`). Se consultan en `/pos/modules`. `GET /perfil/mi-tienda` solo devuelve identidad básica y `permissions.can_edit_purchase_cost`; no es API de capacidades y ese permiso contiene una condición histórica por ID de tienda que React no debe copiar.
 
 ## Distinguir estados
 

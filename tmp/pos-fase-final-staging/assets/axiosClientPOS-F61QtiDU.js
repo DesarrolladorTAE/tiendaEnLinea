@@ -1,0 +1,1 @@
+import{a as t,bA as r,bB as s}from"./index-KOZlewp4.js";const o=t.create({baseURL:r,headers:{Accept:"application/json"}});o.interceptors.request.use(e=>{s(e);const a=localStorage.getItem("POS_TOKEN");return a&&(e.headers.Authorization=`Bearer ${a}`),e});export{o as a};

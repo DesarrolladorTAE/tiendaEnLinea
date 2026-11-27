@@ -1,0 +1,1 @@
+import{R as a,p as e}from"./index-KOZlewp4.js";import{P as n}from"./Plans-0PE2XbpD.js";import"./useScrollReveal-CLDwzbj5.js";function s(){return a.createElement("div",{className:"landing-page landing-page--plans"},a.createElement(n,{planes:e}))}export{s as default};

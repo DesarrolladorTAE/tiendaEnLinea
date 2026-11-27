@@ -4,8 +4,16 @@ import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import POSDashboard from "./POSDashboard";
 import posClient from "../config/axiosClientPOS";
 
-jest.mock("./POS", () => ({ __esModule: true, default: ({ cart, setCart }) => (
-  <button onClick={() => setCart([{ id: 1 }])}>Productos en carrito: {cart.length}</button>
+let mockOperational = false;
+let mockControlled = false;
+jest.mock("../utils/posServices", () => ({
+  ...jest.requireActual("../utils/posServices"),
+  get posServicesEnabled() { return mockOperational; },
+  get posControlledEnabled() { return mockControlled; },
+}));
+jest.mock("./POS/POSServiceWorkspace", () => ({ __esModule: true, default: ({ section }) => <div>Operación {section}</div> }));
+jest.mock("./POS", () => ({ __esModule: true, default: ({ cart, setCart, idempotencyEnabled }) => (
+  <button data-idempotency={String(Boolean(idempotencyEnabled))} onClick={() => setCart([{ id: 1 }])}>Productos en carrito: {cart.length}</button>
 ) }));
 jest.mock("./HistorialVentas", () => () => null);
 jest.mock("./ComprasFacturadas", () => () => null);
@@ -36,11 +44,119 @@ function LocationProbe() {
 }
 
 const button = (host, label) => [...host.querySelectorAll("button")].find((item) => item.textContent === label);
-const catalog = (...keys) => ({ data: { data: keys.map((key, sort_order) => ({ key, sort_order, visible: true })) } });
+const catalog = (...keys) => ({ data: { data: keys.map((key, sort_order) => ({
+  key, sort_order, available: true, enabled: true, visible: true, store_enabled: true, source: "pos", operational_enabled: true,
+})) } });
+
+test("mantiene las ventas de servicios heredadas sin dar acceso a la nueva agenda", async () => {
+  mockOperational = true;
+  const response = catalog("sales", "service_sales");
+  response.data.data[1].source = "general";
+  response.data.data[1].operational_enabled = false;
+  posClient.get.mockResolvedValue(response);
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<MemoryRouter initialEntries={["/prueba/pos?seccion=servicios"]}>
+      <POSDashboard posLocationId={7} session={1} />
+    </MemoryRouter>));
+    expect(button(host, "Ventas de servicios")).toBeDefined();
+    expect(button(host, "Servicios")).toBeUndefined();
+    expect(host.textContent).toContain("Este módulo operativo no está disponible");
+  } finally {
+    act(() => root.unmount());
+  }
+});
 
 beforeEach(() => {
+  mockOperational = false;
+  mockControlled = false;
   posClient.get.mockReset();
   posClient.get.mockResolvedValue(catalog("cash", "sales", "history", "web_orders", "pending_sales", "credits", "customers", "invoices", "service_sales", "service_reports", "telorecargo", "internal_notes", "settings"));
+});
+
+test.each(["pilot", "control", "failure"])("resuelve idempotencia independiente para %s con el mismo frontend", async (terminal) => {
+  mockControlled = true;
+  mockCanSell = true;
+  posClient.get.mockImplementation(async (path) => {
+    if (path === "/pos/modules/enabled") return catalog("sales");
+    if (terminal === "failure") throw new Error("Capacidades no disponibles");
+    if (terminal === "control") return catalog("sales");
+    return catalog("sales", "sales_v2_idempotency");
+  });
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<MemoryRouter initialEntries={["/prueba/pos?seccion=venta"]}>
+      <POSDashboard posLocationId={terminal === "pilot" ? 7 : 8} session={1} />
+    </MemoryRouter>));
+    expect(button(host, "Productos en carrito: 0").dataset.idempotency).toBe(String(terminal === "pilot"));
+    expect(button(host, "Servicios")).toBeUndefined();
+    expect(posClient.get).toHaveBeenCalledWith("/pos/modules", { signal: expect.anything() });
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+test("permite abrir recuperación con capacidad retirada y caja cerrada", async () => {
+  mockControlled = true;
+  mockCanSell = false;
+  localStorage.setItem("pos-v2-recovery:7", JSON.stringify({ key: "2bb3f93a-cc52-485c-95c3-fd4e8fcf56ab" }));
+  posClient.get.mockResolvedValue(catalog("sales"));
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<MemoryRouter initialEntries={["/prueba/pos?seccion=venta"]}>
+      <POSDashboard posLocationId={7} session={1} />
+    </MemoryRouter>));
+    expect(button(host, "Productos en carrito: 0").dataset.idempotency).toBe("false");
+  } finally {
+    act(() => root.unmount());
+    localStorage.removeItem("pos-v2-recovery:7");
+    mockCanSell = true;
+  }
+});
+
+test("muestra Servicios y Expedientes como opciones POS y conserva el carrito al volver a Venta", async () => {
+  mockOperational = true;
+  mockCanSell = true;
+  posClient.get.mockResolvedValue(catalog("sales", "service_sales", "vehicle_records"));
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<MemoryRouter initialEntries={["/prueba/pos?seccion=venta"]}>
+      <POSDashboard posLocationId={7} session={1} />
+    </MemoryRouter>));
+    await act(async () => button(host, "Productos en carrito: 0").click());
+    await act(async () => button(host, "Servicios").click());
+    expect(host.textContent).toContain("Operación servicios");
+    await act(async () => button(host, "Expedientes vehiculares").click());
+    expect(host.textContent).toContain("Operación expedientes");
+    await act(async () => button(host, "Venta").click());
+    expect(button(host, "Productos en carrito: 1")).toBeDefined();
+  } finally {
+    act(() => root.unmount());
+  }
+});
+
+test.each([
+  [false, false, ["sales", "service_sales"]],
+  [true, true, ["sales", "service_sales"]],
+  [true, false, ["sales"]],
+])("bloquea acceso directo con gate=%s, admin=%s, módulos=%j", async (gate, posDesdeAdmin, keys) => {
+  mockOperational = gate;
+  posClient.get.mockResolvedValue(catalog(...keys));
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(async () => root.render(<MemoryRouter initialEntries={["/prueba/pos?seccion=servicios"]}>
+      <POSDashboard posLocationId={7} session={1} posDesdeAdmin={posDesdeAdmin} />
+    </MemoryRouter>));
+    expect(host.textContent).toContain("Este módulo operativo no está disponible");
+    expect(host.textContent).not.toContain("Operación servicios");
+  } finally {
+    act(() => root.unmount());
+  }
 });
 
 test("renders only visible modules in API order and refreshes the menu in the same session", async () => {

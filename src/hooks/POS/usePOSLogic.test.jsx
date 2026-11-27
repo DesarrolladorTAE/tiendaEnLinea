@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { usePOSLogic } from "./usePOSLogic";
 import client from "../../config/axiosClientPOS";
 import { showError } from "../../utils/alerts";
+import { readSaleRecovery, recoverPOSSale, reserveSaleRecovery, updateSaleRecovery } from "../../utils/posSaleRecovery";
 
 jest.mock("../../config/axiosClientPOS", () => ({ __esModule: true, default: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("../../utils/alerts", () => ({ showError: jest.fn(), showSuccess: jest.fn() }));
@@ -133,4 +134,101 @@ test("refreshing inventory updates warehouse prices and preserves a manual disco
   client.get.mockImplementation(async (_, config) => ({ data: { products: config.params.per_page === 100 ? [fresh] : [], meta: { last_page: 1 } } }));
   await act(async () => window.dispatchEvent(new Event("products:changed")));
   expect(latest.cart[0]).toMatchObject({ original_price: 140, price_original: 140, price: 126, discount_percent: 10 });
+});
+
+test("confirma el ID antes de actualizar inventario y conserva la venta aunque falle el comprobante", async () => {
+  await act(async () => latest.setCart([line(2)]));
+  const confirmed = jest.fn(() => {
+    client.get.mockRejectedValue(new Error("Falló actualización visual"));
+    ticket.mockImplementationOnce(() => { throw new Error("Falló comprobante"); });
+  });
+  const uncertain = jest.fn();
+  let sale;
+  await act(async () => { sale = await latest.handleCheckout({ items: latest.cart }, { confirmed, uncertain }); });
+  expect(sale).toEqual({ id: 88 });
+  expect(confirmed).toHaveBeenCalledWith({ id: 88 });
+  expect(uncertain).not.toHaveBeenCalled();
+  expect(latest.cart).toHaveLength(0);
+  expect(client.post.mock.calls.filter(([url]) => url === "/v2/sales")).toHaveLength(1);
+});
+
+test("una respuesta perdida marca el cobro incierto y conserva las líneas", async () => {
+  await act(async () => latest.setCart([line(2)]));
+  client.post.mockImplementation(async (url) => {
+    if (url === "/v2/sales") throw new Error("Sin respuesta");
+    return { data: { warehouse_ids: [2, 3] } };
+  });
+  const uncertain = jest.fn(), confirmed = jest.fn();
+  await act(async () => latest.handleCheckout({ items: latest.cart }, { confirmed, uncertain }));
+  expect(uncertain).toHaveBeenCalledTimes(1);
+  expect(confirmed).not.toHaveBeenCalled();
+  expect(latest.cart).toHaveLength(1);
+  expect(client.post.mock.calls.filter(([url]) => url === "/v2/sales")).toHaveLength(1);
+});
+
+test("envía el UUID antes del cobro y recupera la misma venta sin repetir el POST", async () => {
+  const key = "a50cbd21-9951-4c92-961a-26d51f85544e";
+  const original = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  Object.defineProperty(globalThis, "crypto", { value: { randomUUID: () => key }, configurable: true });
+  const sale = { id: 88, pos_location_id: 10, store_id: 3 };
+  try {
+    await act(async () => latest.setCart([line(2)]));
+    client.post.mockImplementation(async url => {
+      if (url === "/v2/sales") throw new Error("Sin respuesta");
+      return { data: { warehouse_ids: [2, 3] } };
+    });
+    const payload = { items: latest.cart, is_credit_sale: true, is_pending_sale: true,
+      payments: [{ method: "td", amount: 200, reference: "FICTICIO-PRIVADO" }] };
+    await act(async () => latest.handleCheckout(payload, { reserve: () => reserveSaleRecovery(10, 77) }));
+    const reference = readSaleRecovery(10);
+    expect(reference).toEqual({ key, orderId: 77 });
+    expect(localStorage.getItem("pos-v2-recovery:10")).not.toContain("FICTICIO-PRIVADO");
+    expect(() => reserveSaleRecovery(10)).toThrow("venta anterior");
+    expect(client.post).toHaveBeenCalledWith("/v2/sales", expect.objectContaining({
+      is_credit_sale: true, is_pending_sale: true,
+      items: [expect.objectContaining({ variant_id: 11, warehouse_id: 2 })],
+    }), { headers: { "Idempotency-Key": key } });
+    client.get.mockRejectedValueOnce({ response: { status: 404 } });
+    await expect(recoverPOSSale(client, 10, reference)).rejects.toMatchObject({ response: { status: 404 } });
+    expect(readSaleRecovery(10)).toEqual(reference);
+    client.get.mockResolvedValueOnce({ data: { sale, replayed: true } });
+    await expect(recoverPOSSale(client, 10, reference)).resolves.toMatchObject({ sale });
+    expect(client.get).toHaveBeenLastCalledWith(`/v2/sales/idempotency/${key}`);
+    expect(client.post.mock.calls.filter(([url]) => url === "/v2/sales")).toHaveLength(1);
+    updateSaleRecovery(10, reference);
+    expect(readSaleRecovery(10)).toBeNull();
+  } finally {
+    if (original) Object.defineProperty(globalThis, "crypto", original);
+    else delete globalThis.crypto;
+  }
+});
+
+test("un 409 conserva el bloqueo y no confirma ni reenvía la venta", async () => {
+  const key = "a50cbd21-9951-4c92-961a-26d51f85544e";
+  localStorage.setItem("pos-v2-recovery:10", JSON.stringify({ key }));
+  const reference = readSaleRecovery(10);
+  client.post.mockImplementation(async url => {
+    if (url === "/v2/sales") throw { response: { status: 409 } };
+    return { data: { warehouse_ids: [2, 3] } };
+  });
+  const confirmed = jest.fn();
+  await act(async () => latest.setCart([line(2)]));
+  await act(async () => latest.handleCheckout({ items: latest.cart }, {
+    reserve: () => reference, settle: (record, conflict) => updateSaleRecovery(10, record, conflict), confirmed,
+  }));
+  expect(readSaleRecovery(10)).toEqual({ key, conflict: true });
+  expect(confirmed).not.toHaveBeenCalled();
+  expect(client.post.mock.calls.filter(([url]) => url === "/v2/sales")).toHaveLength(1);
+});
+
+test("un fallo al refrescar inventario visual conserva el comprobante y el ID confirmado", async () => {
+  await act(async () => latest.setCart([line(2)]));
+  const confirmed = jest.fn(() => client.get.mockRejectedValue(new Error("Falla de actualización visual")));
+  let sale;
+  await act(async () => { sale = await latest.handleCheckout({ items: latest.cart }, { confirmed }); });
+  expect(sale).toEqual({ id: 88 });
+  expect(ticket).toHaveBeenCalledWith(expect.objectContaining({ id: 88 }));
+  expect(showTicket).toHaveBeenCalledWith(true);
+  expect(latest.cart).toHaveLength(0);
+  expect(client.post.mock.calls.filter(([url]) => url === "/v2/sales")).toHaveLength(1);
 });

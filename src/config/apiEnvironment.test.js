@@ -11,6 +11,7 @@ function loadClients(url) {
 afterEach(() => {
   localStorage.clear();
   delete global.__MTELMX_API_URL__;
+  delete global.__MTELMX_PRODUCTION__;
 });
 
 const fakeAdapter = jest.fn();
@@ -52,4 +53,13 @@ test("does not report incidents over the network outside a production build", as
   }
 });
 jest.mock("axios", () => jest.requireActual("../../node_modules/axios/dist/browser/axios.cjs"));
+
+test("uses the configured production base for admin, POS and superadmin", () => {
+  global.__MTELMX_PRODUCTION__ = true;
+  const url = "https://mitiendaenlineamx.com.mx/api/";
+  const { admin, pos } = loadClients(url);
+  const superadmin = require("./axiosSuperadmin").default;
+  expect([admin, pos, superadmin].map(client => client.defaults.baseURL)).toEqual([url, url, url]);
+  expect(() => loadClients("http://127.0.0.1:7820/api/")).toThrow("API de producción");
+});
 

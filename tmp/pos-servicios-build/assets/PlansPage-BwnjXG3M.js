@@ -1,0 +1,1 @@
+import{R as a,p as e}from"./index-1aCWufmw.js";import{P as n}from"./Plans-DVWqok-T.js";import"./useScrollReveal-7GErfUlu.js";function s(){return a.createElement("div",{className:"landing-page landing-page--plans"},a.createElement(n,{planes:e}))}export{s as default};

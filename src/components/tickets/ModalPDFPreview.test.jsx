@@ -39,3 +39,20 @@ test("downloads sale documents through the authenticated download endpoint", asy
   expect(client.get).toHaveBeenLastCalledWith("/sales/2/documents/nota_venta/pdf?download=1", { responseType: "blob" });
   expect(saveAs).toHaveBeenCalledWith(expect.any(Blob), "nota.pdf");
 });
+
+test("el visor financiero rechaza una firma inválida y limpia el contexto ante acceso denegado", async () => {
+  const onAccessDenied = jest.fn();
+  client.get.mockResolvedValueOnce({ data: new Blob(["sin firma"], { type: "application/pdf" }) });
+  const render = (endpoint) => act(async () => root.render(<ModalPDFPreview open privateDocument validateSignature
+    endpoint={endpoint} onAccessDenied={onAccessDenied} />));
+  await render("/reports/admin/weekly/pdf");
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+  expect(document.body.textContent).toContain("no tiene firma PDF");
+  expect(document.querySelector("iframe")).toBeNull();
+  const failure = { response: { status: 403, data: new Blob(['{"message":"Denegado"}'], { type: "application/json" }) } };
+  client.get.mockRejectedValueOnce(failure);
+  await render("/reports/admin/monthly/pdf");
+  await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+  expect(onAccessDenied).toHaveBeenCalledWith(failure);
+  expect(document.querySelector("iframe")).toBeNull();
+});

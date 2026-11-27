@@ -1,7 +1,5 @@
 # 37. Ventas vinculadas, historial y documentos de órdenes
 
-> Evidencia de fase 5 pendiente de cotejo con la revisión operativa de Laravel. Este anexo conserva el contrato reportado en la entrega previa. Consulta [fuente y certeza](README.md#fuente-y-certeza).
-
 Fuentes: `ServiceOrderController`, `ServiceOperationScope`, `ServiceOrderHistory`, `ServiceDocumentController`, `ServiceDocumentData`, rutas y pruebas Feature `ServiceOperationsTest`/`ServiceDocumentsTest`.
 
 ## Vincular venta existente
@@ -11,6 +9,8 @@ Fuentes: `ServiceOrderController`, `ServiceOperationScope`, `ServiceOrderHistory
 ### Búsqueda elegible
 
 Existe `GET /admin/ventas` bajo `api.auth:sanctum` → `SaleController::index2`, Store scope (`auth()->id()`), acepta `fecha_inicio`, `fecha_fin`, `pos_location_id`; solo aplica rango si ambos están presentes; salida JSON lista no paginada con `id,store_id,pos_location_id,total_amount,paid_amount,status,created_at,invoice_id,items_count` y POS. No filtra `client_id`, branch autorizada ni eligibilidad para servicio; puede resultar fuente demasiado amplia. `GET /sales/{sale}` usa api.auth y devuelve venta con items/productos, no contrato de búsqueda elegible. No hay endpoint de búsqueda que garantice venta elegible por order/cliente/branch; UI puede usar el listado autorizado y dejar que POST vinculación valide, pero no mostrarla como elegible hasta tener confirmación. No se debe usar el buscador de venta POS para alterar cobro.
+
+Contrato ampliado de asociación, reglas exactas, respuestas y alternativas de listados POS: [41-contratos-vinculacion-ventas-zona-horaria.md](41-contratos-vinculacion-ventas-zona-horaria.md). El vínculo es escalar: una venta por orden; sin reemplazo/desvinculación. `attachSale` no valida estados comerciales y devuelve la orden sin resumen de venta. No asumir que una venta cancelada/devuelta es una opción válida, aunque el endpoint no la excluya; el backend no confirma esa política. `GET /ventas/{id}` y `GET /sales/{sale}` no se deben usar como detalle cross-tenant sin aislamiento demostrado.
 
 Cancelación/devolución de venta vinculada: `ServiceOrderController` no escucha esos eventos ni desvincula/actualiza order. No asumir cambio de estado de orden o reembolso por el vínculo.
 

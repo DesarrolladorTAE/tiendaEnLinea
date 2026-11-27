@@ -429,7 +429,8 @@ export default function TicketDialog({
 
   if (!open) return null;
 
-  const totalLabel = sale?.receiptPayload?.is_credit_sale ? "Venta a crédito" : sale?.receiptPayload?.is_pending_sale ? "Venta pendiente" : "Venta completada";
+  const totalLabel = sale?.recovered ? "Comprobante de venta recuperada" :
+    sale?.receiptPayload?.is_credit_sale ? "Venta a crédito" : sale?.receiptPayload?.is_pending_sale ? "Venta pendiente" : "Venta completada";
   const actionColor = meta.color || "#ffba08";
 
   return <Box sx={{ bgcolor: "#fffdf7", border: "1px solid #e6e2d8", borderRadius: "0 0 12px 12px", overflow: "hidden" }}>

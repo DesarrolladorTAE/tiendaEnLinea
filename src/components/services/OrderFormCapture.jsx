@@ -1,20 +1,26 @@
+import { usePOSOperations } from "../../context/POSOperationsContext";
 import React, { useEffect, useState } from "react";
 import { Alert, Button, Card, CircularProgress, Grid, Stack, TextField, Typography } from "@mui/material";
 import { Link, useNavigate } from "react-router-dom";
 import DynamicForm from "./DynamicForm";
 import { validateAnswers } from "./formSchema";
 import { FormIssues } from "./FormTemplateEditor";
-import { dynamicForms, formError, formLink, formPdfPath, orderFormsPath, positiveId } from "../../services/admin/dynamicForms";
+import { dynamicForms as adminDynamicForms, formError, formLink, formPdfPath, orderFormsPath, positiveId } from "../../services/admin/dynamicForms";
 import { useVehicleMutation as useMutation, useVehicleRequest as useRequest } from "../vehicles/VehicleRecordFields";
 import { showConfirm } from "../../utils/alerts";
 import ModalPDFPreview from "../tickets/ModalPDFPreview";
 
 export const submissionState = (value) => ({ draft: "Borrador", completed: "Completado", cancelled: "Cancelado" })[value] ?? value ?? "Sin estado";
-export const orderFormsUrl = (branch, order, submissionId, historical = false) => formLink(
+const defaultOrderFormsUrl = (branch, order, submissionId, historical = false) => formLink(
   `${orderFormsPath}/${order}/forms${submissionId ? `/${submissionId}` : ""}`, branch,
 ) + (historical ? "&history=1" : "");
 
+export { defaultOrderFormsUrl as orderFormsUrl };
+
 export function OrderFormList({ branchId, orderId, canCapture }) {
+  const pos = usePOSOperations();
+  const dynamicForms = pos?.dynamicForms ?? adminDynamicForms;
+  const orderFormsUrl = pos?.orderFormsUrl ?? defaultOrderFormsUrl;
   const request = useRequest((signal) => dynamicForms.assignments(orderId, signal), orderId);
   const { busy, run } = useMutation();
   const [issue, setIssue] = useState("");
@@ -58,6 +64,8 @@ export function OrderFormList({ branchId, orderId, canCapture }) {
 }
 
 export default function OrderFormCapture({ branchId, orderId, submissionId, canCapture, historical = false }) {
+  const pos = usePOSOperations();
+  const dynamicForms = pos?.dynamicForms ?? adminDynamicForms;
   const request = useRequest((signal) => dynamicForms.submission(orderId, submissionId, signal), `${orderId}:${submissionId}`);
   if (request.loading) return <CircularProgress aria-label="Cargando captura" />;
   if (request.error) return <Alert severity="error" action={<Button onClick={request.retry}>Reintentar</Button>}>{formError(request.error).text}</Alert>;
@@ -68,6 +76,9 @@ export default function OrderFormCapture({ branchId, orderId, submissionId, canC
 }
 
 function SubmissionEditor({ initial, branchId, orderId, canCapture, historical }) {
+  const pos = usePOSOperations();
+  const dynamicForms = pos?.dynamicForms ?? adminDynamicForms;
+  const orderFormsUrl = pos?.orderFormsUrl ?? defaultOrderFormsUrl;
   const [record, setRecord] = useState(initial);
   const [answers, setAnswers] = useState(() => ({ ...initial.answers }));
   const [issue, setIssue] = useState({});
@@ -78,7 +89,7 @@ function SubmissionEditor({ initial, branchId, orderId, canCapture, historical }
   const dirty = JSON.stringify(answers) !== JSON.stringify({ ...record.answers });
   const draft = record.status === "draft";
   const editable = !historical && canCapture && draft;
-  const cancellable = !historical && canCapture && ["draft", "completed"].includes(record.status);
+  const cancellable = !historical && canCapture && (draft || (!pos && record.status === "completed"));
   const schema = record.schema_snapshot;
   const context = record.context_snapshot;
   const apply = (next) => {
@@ -166,7 +177,7 @@ function SubmissionEditor({ initial, branchId, orderId, canCapture, historical }
     </Alert>}
     <DynamicForm schema={schema} answers={answers} disabled={busy} readOnly={!editable} errors={issue.fields}
       onChange={(id, value) => setAnswers((previous) => ({ ...previous, [id]: value }))} />
-    {pdf && <ModalPDFPreview open privateDocument onClose={() => setPdf(false)} endpoint={formPdfPath(branchId, orderId, initial.id)}
+    {pdf && <ModalPDFPreview open privateDocument httpClient={pos?.client} onClose={() => setPdf(false)} endpoint={formPdfPath(branchId, orderId, initial.id)}
       nombreArchivo={`formulario-${record.folio || record.id}.pdf`} title="Documento de la captura guardada" />}
   </Stack>;
 }

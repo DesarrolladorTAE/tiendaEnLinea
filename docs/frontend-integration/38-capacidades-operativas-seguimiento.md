@@ -1,7 +1,5 @@
 # 38. Capacidades, permisos y próximas visitas
 
-> Evidencia de fase 5 pendiente de cotejo con la revisión operativa de Laravel. Este anexo conserva el contrato reportado en la entrega previa. Consulta [fuente y certeza](README.md#fuente-y-certeza).
-
 ## Autorización operativa
 
 Las rutas de agenda, cita y orden están en `auth:sanctum` y resuelven branch por path. `ServiceOperationScope::branch` delega pertenencia a `TourScope`: Store debe ser dueño de branch; POS debe pertenecer a esa misma tienda y branch; otras identidades User/employee no son admitidas por scope actual. Luego valida tienda activa/acceso, módulo `service_sales` general, feature de plan `ventas-de-servicios` cuando está configurado, y override `service_sales=false` del POS. Configuración (BookingConfig PUT) es Store-only. Los endpoints de operaciones no tienen permisos RBAC individuales como booking.confirm/order.complete. No inventar botón habilitado desde permisos genéricos.
@@ -17,6 +15,8 @@ Las rutas de agenda, cita y orden están en `auth:sanctum` y resuelven branch po
 | Descargar PDF/thermal | `RequireServiceDocumentAuth` + ServiceOperationScope; formulario PDF añade FormFeature; docs 31/37 |
 
 No se encontró capacidad privada separada de agenda que anticipe cada transición (confirm/cancel/order complete) para deshabilitar botones. La configuración privada `GET /admin/branches/{branchId}/catalog-settings` representa vehicle/forms, no service_sales. `/pos/modules` representa available/enabled/visible para módulos, pero la respuesta no sustituye scope/plan efectivo del endpoint. `403` debe presentarse como falta de autorización/feature; branch ajena se oculta 404.
+
+La agenda y reschedule usan la zona global `config('app.timezone')` (actualmente `America/Mexico_City`), sin override de tienda/sucursal ni señal privada previa a availability. Availability devuelve `data.timezone` después de la consulta. Ver propuesta compatible en [41](41-contratos-vinculacion-ventas-zona-horaria.md); no implementada.
 
 ## Próxima visita
 

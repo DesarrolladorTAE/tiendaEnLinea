@@ -1,0 +1,1 @@
+import{a as i}from"./index-KOZlewp4.js";const o="http://127.0.0.1:48033/api/".replace(/\/$/,""),n=i.create({baseURL:o,timeout:15e3,headers:{Accept:"application/json"}}),p=(e,t)=>n.get(`/public/shipments/${encodeURIComponent(e)}`,{signal:t}),s=(e,t)=>n.get(`/public/branches/${encodeURIComponent(e)}/shipping-config`,{signal:t});export{s as a,p as g};

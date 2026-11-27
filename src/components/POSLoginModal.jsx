@@ -9,14 +9,15 @@ import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import CompanyCertificate from "./login/CompanyCertificate";
 import LoginBanner, { useLoginBanner } from "./login/LoginBanner";
 import axios from "../config/axiosClient";
+import { posServicesEnabled } from "../utils/posServices";
 import "../pages/other/LoginRegister.motion.css";
 
-export default function POSLoginModal({ onLoginSuccess, fromAdmin }) {
+export default function POSLoginModal({ onLoginSuccess, fromAdmin, sessionError }) {
   const [code, setCode] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(sessionError ?? "");
   const banner = useLoginBanner();
 
   const handleLogin = async (event) => {
@@ -34,6 +35,10 @@ export default function POSLoginModal({ onLoginSuccess, fromAdmin }) {
       onLoginSuccess(data.pos);
     } catch (err) {
       const status = err.response?.status;
+      if (posServicesEnabled && status === 403 && err.response?.data?.message === "Esta terminal POS está desactivada.") {
+        setError(err.response.data.message);
+        return;
+      }
       setError([401, 403, 422].includes(status)
         ? "Revisa el código POS y el PIN."
         : "No se pudo iniciar sesión. Intenta de nuevo.");

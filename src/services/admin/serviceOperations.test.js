@@ -1,6 +1,6 @@
 import client from "../../config/axiosClient";
 import { dynamicForms } from "./dynamicForms";
-import { operations, bookingActions, orderActions, operationError, readOperationPeriod } from "./serviceOperations";
+import { bookingEditActions, operationDay, operations, bookingActions, orderActions, operationError, readOperationPeriod } from "./serviceOperations";
 
 jest.mock("../../config/axiosClient", () => ({ get: jest.fn(), post: jest.fn(), patch: jest.fn() }));
 const branch = 12;
@@ -94,3 +94,36 @@ test("rechazos preservan mensajes de campo y diferencian acceso y contexto", () 
   expect(bookingActions("cancelled").convert).toBe(false);
 });
 
+
+test("la zona del backend determina la fecha inicial cerca de medianoche", () => {
+  const instant = new Date("2026-11-27T04:00:00Z");
+  expect(operationDay("America/Mexico_City", instant)).toBe("2026-11-26");
+  expect(operationDay("UTC", instant)).toBe("2026-11-27");
+});
+
+test("edición, cancelación y nuevo horario usan el alcance y cuerpos de la cita", async () => {
+  client.post.mockResolvedValue(entity({ id: 21, branch_id: 12 }));
+  client.patch.mockResolvedValue(entity({ id: 21, branch_id: 12 }));
+  const base = "/branches/12/bookings/21";
+  const slot = { booking_date: "2026-12-02", start_time: "10:00" };
+  await operations.editBooking(branch, 21, { notes: null, vehicle_id: 82 }, signal);
+  await operations.reschedule(branch, 21, slot, signal);
+  await operations.reschedule(branch, 21, { ...slot, resource_id: 6 }, signal);
+  await operations.reschedule(branch, 21, { ...slot, resource_id: null }, signal);
+  await operations.cancelBooking(branch, 21, "Solicitud del cliente", signal);
+  expect(client.patch).toHaveBeenCalledWith(base, { notes: null, vehicle_id: 82 }, expect.objectContaining({ signal }));
+  expect(client.post.mock.calls.map(([path, body]) => [path, body])).toEqual([
+    [base + "/reschedule", slot],
+    [base + "/reschedule", { ...slot, resource_id: 6 }],
+    [base + "/reschedule", { ...slot, resource_id: null }],
+    [base + "/cancel", { reason: "Solicitud del cliente" }],
+  ]);
+  expect(bookingEditActions("arrived")).toEqual({ reschedule: false, edit: true, cancel: true });
+  expect(bookingEditActions("completed")).toEqual({ reschedule: false, edit: false, cancel: false });
+});
+
+test("un rechazo de cupo se devuelve al editor sin convertirlo en un éxito", async () => {
+  const error = { response: { status: 422, data: { errors: { start_time: ["Horario agotado."] } } } };
+  client.post.mockRejectedValue(error);
+  await expect(operations.reschedule(branch, 21, { booking_date: "2026-12-02", start_time: "10:00" }, signal)).rejects.toBe(error);
+});

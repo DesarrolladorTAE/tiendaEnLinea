@@ -1,10 +1,14 @@
 import React, { act } from "react";
 import { createRoot } from "react-dom/client";
+import { Simulate } from "react-dom/test-utils";
 import { MemoryRouter } from "react-router-dom";
 import POSLoginModal from "./POSLoginModal";
 import { getLoginBanners } from "../utils/loginBannerCache";
+import client from "../config/axiosClient";
 
-jest.mock("../config/axiosClient", () => ({ __esModule: true, default: {} }));
+jest.mock("../config/axiosClient", () => ({ __esModule: true, default: { post: jest.fn() } }));
+let mockSecurity = false;
+jest.mock("../utils/posServices", () => ({ get posServicesEnabled() { return mockSecurity; } }));
 jest.mock("../utils/loginBannerCache", () => ({ getLoginBanners: jest.fn() }));
 
 let host;
@@ -20,6 +24,8 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount());
   host.remove();
+  mockSecurity = false;
+  localStorage.removeItem("POS_TOKEN");
 });
 
 async function renderLogin(banners) {
@@ -52,6 +58,24 @@ test("keeps the POS form available when there are no announcements", async () =>
   await renderLogin([]);
   expect(host.querySelector(".auth-panel").classList.contains("no-media")).toBe(true);
   expect(host.querySelector('button[type="submit"]').disabled).toBe(false);
+});
+
+test("muestra la razón de desactivación de Laravel y no guarda una sesión", async () => {
+  mockSecurity = true;
+  client.post.mockRejectedValueOnce({ response: { status: 403, data: { message: "Esta terminal POS está desactivada." } } });
+  await renderLogin([]);
+  const change = (selector, value) => {
+    const input = host.querySelector(selector);
+    input.value = value;
+    Simulate.change(input);
+  };
+  await act(async () => {
+    change('input[autocomplete="username"]', "POS-DEMO");
+    change('input[autocomplete="current-password"]', "123456");
+  });
+  await act(async () => Simulate.submit(host.querySelector("form")));
+  expect(host.querySelector('[role="alert"]').textContent).toContain("Esta terminal POS está desactivada.");
+  expect(localStorage.getItem("POS_TOKEN")).toBeNull();
 });
 
 test("opens and closes the company certificate from the POS login", async () => {

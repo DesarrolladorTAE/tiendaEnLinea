@@ -1,0 +1,1 @@
+import{R as e}from"./index-KOZlewp4.js";const a=()=>e.createElement("div",null,e.createElement("h2",null,"Gestión de Tags 🏷️"),e.createElement("p",null,"Próximamente: aquí podrás crear, editar y eliminar etiquetas."));export{a as default};

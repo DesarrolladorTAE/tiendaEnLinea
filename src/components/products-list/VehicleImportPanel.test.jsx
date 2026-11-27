@@ -3,10 +3,11 @@ import { createRoot } from "react-dom/client";
 import { Simulate } from "react-dom/test-utils";
 import VehicleImportPanel from "./VehicleImportPanel";
 import axiosClient from "../../config/axiosClient";
+import useBranchCatalogSettings from "../../hooks/useBranchCatalogSettings";
 import { useTienda } from "../../context/TiendaContext";
 import { saveAs } from "file-saver";
 import { normalizeImportResult } from "./importResult.mjs";
-jest.mock("../../hooks/useBranchCatalogSettings", () => () => ({ settings: { vehicle_feature_available: true, vehicle_compatibilities_enabled: true }, loading: false, error: "" }));
+jest.mock("../../hooks/useBranchCatalogSettings", () => ({ __esModule: true, default: jest.fn() }));
 jest.mock("file-saver", () => ({ saveAs: jest.fn() }));
 jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), post: jest.fn() } }));
 jest.mock("../../context/TiendaContext", () => ({ useTienda: jest.fn() }));
@@ -20,6 +21,7 @@ beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   jest.clearAllMocks();
   useTienda.mockReturnValue({ tienda: { id: 566 } });
+  useBranchCatalogSettings.mockReturnValue({ settings: { vehicle_feature_available: true, vehicle_compatibilities_enabled: true }, loading: false, error: "" });
   host = document.createElement("div"); document.body.appendChild(host); root = createRoot(host);
 });
 afterEach(() => { act(() => root.unmount()); host.remove(); });
@@ -54,4 +56,20 @@ test("rejects combined files over 2 MB and keeps the 20 MB compatibility limit",
 test("hides vehicle imports from other stores", () => {
   useTienda.mockReturnValue({ tienda: { id: 329 } }); render();
   expect(host.textContent).toBe(""); expect(axiosClient.get).not.toHaveBeenCalled();
+});
+
+test("conserva la descarga tradicional y solicita clasificación solo para V2", async () => {
+  const data = new Blob(["excel"]);
+  axiosClient.get.mockResolvedValue({ data });
+  render("vehicles");
+  expect(button("Exportar V2")).toBeUndefined();
+  useBranchCatalogSettings.mockReturnValue({ settings: { capabilities: { scope: { actor: "store" }, vehicle_catalog: { available: true, enabled: true, visible: true, authorization: { read: true, write: true } } } } });
+  render("vehicles");
+  await act(async () => Simulate.click(button("Exportar compatibilidades de esta sucursal")));
+  await act(async () => Simulate.click(button("Exportar V2")));
+  expect(axiosClient.get.mock.calls).toEqual([
+    ["/vehicle-compatibilities/export", { responseType: "blob", params: { branch_id: 7 } }],
+    ["/vehicle-compatibilities/export", { responseType: "blob", params: { branch_id: 7, include_classification: 1 } }],
+  ]);
+  expect(saveAs.mock.calls).toEqual([[data, "compatibilidades.xlsx"], [data, "compatibilidades-v2.xlsx"]]);
 });

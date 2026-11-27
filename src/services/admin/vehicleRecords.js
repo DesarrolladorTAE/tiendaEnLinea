@@ -1,4 +1,4 @@
-import client from "../../config/axiosClient";
+import adminClient from "../../config/axiosClient";
 
 export const validVehicleId = (id) => /^\d+$/.test(String(id)) && Number.isSafeInteger(Number(id)) && Number(id) > 0;
 export const vehicleRecordsPath = "/admin/services/vehicles";
@@ -24,7 +24,7 @@ export const integerRange = (value, min, max) => /^\d+$/.test(String(value)) && 
 export const qrCodePattern = /^MTELMX:VEHICLE:V1:[A-Za-z0-9]{48}$/;
 const privateConfig = { __skipSupportIncident: true };
 
-export const vehicleRecords = {
+export const createVehicleRecords = (client) => ({
   list: (page, signal, filters = {}) => client.get("/vehicles", { params: { page, ...filters }, signal, ...privateConfig }),
   get: (id, signal) => client.get(`/vehicles/${id}`, { signal, __skipSupportIncident: true }),
   forCustomer: (id, page, signal) => client.get(`/clients/${id}/vehicles`, { params: { page }, signal, __skipSupportIncident: true }),
@@ -41,7 +41,9 @@ export const vehicleRecords = {
   qr: (branchId, id, signal) => client.get(vehicleDocumentPath(branchId, id, "qr.svg"), {
     responseType: "blob", signal, __skipSupportIncident: true,
   }),
-};
+});
+
+export const vehicleRecords = createVehicleRecords(adminClient);
 
 export function readVehicleHistory(body, id) {
   const history = body?.data;

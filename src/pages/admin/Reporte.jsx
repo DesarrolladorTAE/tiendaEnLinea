@@ -10,6 +10,7 @@ import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
 
 const items = [
+  { section: "Ventas y finanzas", title: "Reportes financieros", description: "Consulta resultados semanales, mensuales y la distribución administrativa.", icon: AssessmentIcon, color: "#1976d2", route: "/admin/reportes/financieros/semanal" },
   { section: "Ventas y finanzas", title: "Utilidades por sucursal", description: "Visualiza las utilidades por punto de venta.", icon: AssessmentIcon, color: "#16a34a", route: "/admin/reportes/ventas" },
   { section: "Ventas y finanzas", title: "Ventas", description: "Consulta ventas por fecha, sucursal y forma de pago.", icon: ReceiptLongIcon, color: "#2563eb", route: "/admin/reportes/tipo-venta" },
   { section: "Servicios", title: "Tours", description: "Tours: pasajeros, reservaciones, anticipos y saldos.", icon: DirectionsBusRoundedIcon, color: "#9333ea", route: "/admin/reportes/servicios" },

@@ -4,6 +4,11 @@ import { MemoryRouter } from "react-router-dom";
 import client from "../../config/axiosClient";
 import POS from "./POS";
 
+let mockSecurity = false;
+jest.mock("../../utils/posServices", () => ({
+  ...jest.requireActual("../../utils/posServices"),
+  get posServicesEnabled() { return mockSecurity; },
+}));
 jest.mock("../../config/axiosClient", () => ({ __esModule: true, default: { get: jest.fn(), put: jest.fn(), post: jest.fn() } }));
 jest.mock("../../utils/alerts", () => ({ showSuccess: jest.fn().mockResolvedValue(), showConfirm: jest.fn(), alertFromAxiosError: jest.fn() }));
 jest.mock("../../hooks/useLimitePOS", () => () => ({ limitePermitido: 10 }));
@@ -16,6 +21,41 @@ jest.mock("./modals/AssignWarehousesDialog", () => () => null);
 jest.mock("../../components/adminpos/POSModulesDialog", () => ({ onSaved }) => (
   <button onClick={onSaved}>Guardar visibilidad de prueba</button>
 ));
+
+test("confirms deactivation and reactivation with a partial terminal update", async () => {
+  global.IS_REACT_ACT_ENVIRONMENT = true;
+  mockSecurity = true;
+  client.put.mockReset().mockImplementation(async (_, values) => ({ data: { pos: values } }));
+  client.get.mockImplementation(async (url) => ({ data: {
+    data: url === "/branches/1/pos" ? [{ id: 10, name: "Terminal de prueba", is_active: true }] : [],
+  } }));
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  const press = async (label) => act(async () => [...document.body.querySelectorAll("button")]
+    .find((node) => node.textContent === label).click());
+  document.body.appendChild(host);
+  try {
+    await act(async () => root.render(<MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><POS /></MemoryRouter>));
+    await press("Desactivar terminal");
+    expect(document.body.querySelector('[role="dialog"]').textContent).toContain("se revocarán sus sesiones");
+    expect(client.put).not.toHaveBeenCalled();
+    await press("Cancelar");
+    expect(client.put).not.toHaveBeenCalled();
+    await press("Desactivar terminal");
+    await press("Confirmar");
+    expect(client.put).toHaveBeenLastCalledWith("/pos/10", { is_active: false });
+    expect([...host.querySelectorAll("button")].find((item) => item.textContent === "Iniciar sesión").disabled).toBe(true);
+    await press("Activar terminal");
+    expect(document.body.querySelector('[role="dialog"]').textContent).toContain("iniciar sesión de nuevo");
+    await press("Confirmar");
+    expect(client.put).toHaveBeenLastCalledWith("/pos/10", { is_active: true });
+  } finally {
+    act(() => root.unmount());
+    host.remove();
+    mockSecurity = false;
+    client.put.mockReset();
+  }
+});
 
 test("shows Caja only for terminals whose effective modules include it and refreshes after saving", async () => {
   global.IS_REACT_ACT_ENVIRONMENT = true;

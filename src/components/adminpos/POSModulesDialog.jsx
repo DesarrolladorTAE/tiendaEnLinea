@@ -7,6 +7,7 @@ import { useTheme } from "@mui/material/styles";
 import TuneRoundedIcon from "@mui/icons-material/TuneRounded";
 import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import client from "../../config/axiosClient";
+import { posControlledEnabled, posServicesEnabled } from "../../utils/posServices";
 import { posHeaderButton, posMobileCard, posSectionIcon } from "../POS/posSectionStyles";
 
 function readCatalog(response) {
@@ -106,6 +107,9 @@ export default function POSModulesDialog({ pos, onClose, onSaved }) {
             <Box sx={{ display: "grid", gridTemplateColumns: { xs: "minmax(0, 1fr)", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1.25 }}>
               {catalog.map((module) => {
                 const { key, name, available, visible, source } = module;
+                const requiresOverride = (posServicesEnabled && key === "service_sales") ||
+                  (posControlledEnabled && key === "sales_v2_idempotency");
+                const needsStoreActivation = requiresOverride && isSpecific && module.store_enabled !== true;
                 const pendingInheritance = changes[key] === null && source === "pos";
                 const previewVisible = changes[key] === undefined || pendingInheritance ? visible : available && effective(module) === true;
                 const checked = pendingInheritance ? module.enabled : effective(module);
@@ -116,6 +120,14 @@ export default function POSModulesDialog({ pos, onClose, onSaved }) {
                       <Stack spacing={0.75} alignItems="flex-start" minWidth={0}>
                         <Typography fontWeight={800}>{name}</Typography>
                         <Chip size="small" color={available && !pendingInheritance && previewVisible ? "success" : "default"} label={!available ? "No disponible" : pendingInheritance ? "Heredará al guardar" : previewVisible ? "Visible en el POS" : "Oculto en el POS"} />
+                        {needsStoreActivation && <Typography variant="caption" color="text.secondary">
+                          Habilita este módulo en la tienda antes de activarlo en la terminal.
+                        </Typography>}
+                        {requiresOverride && isSpecific && source !== "pos" &&
+                          available && module.store_enabled === true && module.enabled === true && changes[key] === undefined &&
+                          <Button size="small" disabled={saving} onClick={() => updatePreference(key, true)}>
+                            Habilitar en esta terminal
+                          </Button>}
                         {isSpecific && source === "pos" && !pendingInheritance && (
                           <Button size="small" disabled={saving} onClick={() => updatePreference(key, null)} sx={{ p: 0, minHeight: 32, textTransform: "none" }}
                             aria-label={`Heredar ${name} de la tienda`}>Volver a heredar</Button>
@@ -126,7 +138,7 @@ export default function POSModulesDialog({ pos, onClose, onSaved }) {
                       </Stack>
                       <Switch
                         checked={available && checked === true}
-                        disabled={!available || saving || pendingInheritance}
+                        disabled={!available || saving || pendingInheritance || (needsStoreActivation && checked !== true)}
                         slotProps={{ input: { "aria-label": `Habilitar ${name}` } }}
                         onChange={toggle}
                       />

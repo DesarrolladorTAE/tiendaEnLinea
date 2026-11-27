@@ -1,6 +1,7 @@
+import { usePOSOperations } from "../../context/POSOperationsContext";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, Autocomplete, Button, CircularProgress, Grid, Stack, TextField, Typography } from "@mui/material";
-import { integerRange, validVehicleId, vehicleRecords } from "../../services/admin/vehicleRecords";
+import { integerRange, validVehicleId, vehicleRecords as adminVehicleRecords } from "../../services/admin/vehicleRecords";
 
 export function useVehicleRequest(read, key) {
   const [revision, setRevision] = useState(0);
@@ -42,6 +43,8 @@ export function useVehicleMutation() {
 }
 
 export function useVehicleCustomers() {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
   return useVehicleRequest(async (signal) => readChoices(await vehicleRecords.customers(signal)), "customers");
 }
 
@@ -65,6 +68,8 @@ export function VehicleChoice({ label, value, options = [], current, onChange, l
 }
 
 export function VehicleCatalogChoices({ available, brandId, modelId, current, onBrand, onModel, errors = {}, disabled }) {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
   const brands = useVehicleRequest(async (signal) => readChoices(await vehicleRecords.brands(signal)), available ? "brands" : null);
   const models = useVehicleRequest(async (signal) => (await readChoices(await vehicleRecords.models(brandId, signal)))
     .filter((model) => Number(model.vehicle_brand_id) === Number(brandId)), available && validVehicleId(brandId) ? `models:${brandId}` : null);
@@ -119,6 +124,8 @@ export function prepareVehicleWrite(draft, original) {
 }
 
 export default function VehicleRecordForm({ record, canReadCatalog, onCancel, onSaved }) {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
   const [draft, setDraft] = useState(() => vehicleDraft(record));
   const [errors, setErrors] = useState({});
   const [error, setError] = useState("");
@@ -183,7 +190,14 @@ export default function VehicleRecordForm({ record, canReadCatalog, onCancel, on
   </Stack>;
 }
 
-export function QuickCustomerRegistration({ open, setOpen, onCreated, disabled }) {
+export function QuickCustomerRegistration(props) {
+  const pos = usePOSOperations();
+  return !pos || pos.canCreateCustomer ? <CustomerRegistration {...props} /> : null;
+}
+
+function CustomerRegistration({ open, setOpen, onCreated, disabled }) {
+  const pos = usePOSOperations();
+  const vehicleRecords = pos?.vehicleRecords ?? adminVehicleRecords;
   const customerMutation = useVehicleMutation();
   const [newCustomer, setNewCustomer] = useState({ nombre_alias: "", telefono: "" });
   const [customerError, setCustomerError] = useState("");

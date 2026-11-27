@@ -1,7 +1,5 @@
 # 36. Recursos, kilometraje y formularios en órdenes
 
-> Evidencia de fase 5 pendiente de cotejo con la revisión operativa de Laravel. Este anexo conserva el contrato reportado en la entrega previa. Consulta [fuente y certeza](README.md#fuente-y-certeza).
-
 Fuentes: `ServiceOrderController`, `VehicleController::visitMileage`, `ServiceOperationScope`, `BookingAvailability`, `FormFeature`, `ServiceFormSubmissionController`; rutas Laravel y Feature `ServiceOperationsTest`, `ServiceFormsTest`.
 
 ## Asignación/reasignación de recurso a orden

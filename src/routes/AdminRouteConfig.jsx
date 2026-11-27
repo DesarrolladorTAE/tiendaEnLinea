@@ -30,6 +30,7 @@ const Entradas = lazy(() => import("../pages/admin/Entradas.jsx"));
 const Ticket = lazy (()=>  import("../pages/admin/Ticket.jsx"));
 const Membresia = lazy (() => import ("../pages/admin/Membresia.jsx"));
 const MiCuenta = lazy (() => import ("../pages/admin/MiCuenta.jsx"));
+const FinancialReportsPage = lazy(() => import("../pages/admin/FinancialReportsPage.jsx"));
 const Reporte = lazy (() => import ("../pages/admin/Reporte.jsx"));
 const ReporteVentas = lazy(() => import("../components/ventas/ReporteVentas.jsx"));
 const POSHeader  = lazy(() => import("../wrappers/POSWrapper.jsx"));
@@ -101,6 +102,9 @@ export const adminRouteConfig = [
   { path: "micuenta", element: <MiCuenta /> },
   { path: "reportes/servicios", element: <TourReportsPage /> },
   { path: "reportes", element: <Reporte /> },
+  { path: "reportes/financieros/semanal", element: <FinancialReportsPage view="semanal" /> },
+  { path: "reportes/financieros/mensual", element: <FinancialReportsPage view="mensual" /> },
+  { path: "reportes/financieros/distribucion", element: <FinancialReportsPage view="distribucion" /> },
   { path: "reportes/ventas", element: <ReporteVentas /> },
   { path: "prueba/pos", element: <POSHeader /> },
   { path: "reportes/tipo-venta", element: <ReporteTipoVenta /> },

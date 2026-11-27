@@ -1,13 +1,15 @@
 import axios from "axios";
+import { apiBase, requireIsolatedApi } from "./apiEnvironment";
 
 const axiosSuperadmin = axios.create({
-  baseURL: "https://mitiendaenlineamx.com.mx/api/",
+  baseURL: apiBase,
   headers: {
     Accept: "application/json",
   },
 });
 
 axiosSuperadmin.interceptors.request.use((config) => {
+  requireIsolatedApi(config);
   const token = sessionStorage.getItem("SUPERADMIN_TOKEN");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

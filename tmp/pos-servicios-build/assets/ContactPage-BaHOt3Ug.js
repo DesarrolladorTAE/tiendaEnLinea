@@ -1,0 +1,1 @@
+import{R as t}from"./index-1aCWufmw.js";import{C as a}from"./Contact-DJ8ABAVl.js";import"./useScrollReveal-7GErfUlu.js";function r(){return t.createElement("div",{className:"landing-page landing-page--contact"},t.createElement(a,null))}export{r as default};

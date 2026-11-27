@@ -1,15 +1,21 @@
+import { usePOSOperations } from "../../context/POSOperationsContext";
 import React, { useState } from "react";
 import { Accordion, AccordionDetails, AccordionSummary, Alert, Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
+import { posVehicleEnabled } from "../../utils/posVehicle";
 import ModalPDFPreview from "../tickets/ModalPDFPreview";
 import { VehicleChoice } from "../vehicles/VehicleRecordFields";
-import { integerRange, vehicleRecordsUrl } from "../../services/admin/vehicleRecords";
+import { integerRange, vehicleRecordsUrl as adminVehicleRecordsUrl } from "../../services/admin/vehicleRecords";
 import { formPdfPath } from "../../services/admin/dynamicForms";
-import { operations, operationUrl, orderActions, orderPdf, statusLabels } from "../../services/admin/serviceOperations";
+import { operations as adminOperations, operationUrl as adminOperationUrl, orderActions, orderPdf, statusLabels } from "../../services/admin/serviceOperations";
 import { showConfirm } from "../../utils/alerts";
 import OperationIntake, { useOperationChoices } from "./OperationIntake";
 
 export default function OperationOrder({ branch, response, access, forms, busy, mutate, onBooking }) {
+  const pos = usePOSOperations();
+  const operations = pos?.operations ?? adminOperations;
+  const operationUrl = pos?.operationUrl ?? adminOperationUrl;
+  const vehicleRecordsUrl = pos?.vehicleRecordsUrl ?? adminVehicleRecordsUrl;
   const { data: row, forms_progress: progress } = response;
   const id = row.id;
   const status = row.status?.code;
@@ -38,6 +44,7 @@ export default function OperationOrder({ branch, response, access, forms, busy, 
     <AccordionDetails><Stack spacing={2}>{content}</Stack></AccordionDetails></Accordion>;
   return <Stack spacing={2}>
     <Typography variant="h5">{row.order_code}</Typography>
+    {(pos ? pos.canSell : posVehicleEnabled) && !row.sale_id && <Button component={Link} to={pos?.saleUrl ?? "/prueba/pos?seccion=venta"} state={{ serviceOrderId: row.id, ...(pos ? { returnToOrder: operationUrl("orders/" + id, branch) } : {}) }}>Abrir punto de venta</Button>}
     <Typography fontWeight={700}>{statusLabels[status] ?? status}</Typography>
     <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
       {actions.start && <Button variant="contained" disabled={busy} onClick={() => act("start")}>Iniciar atención</Button>}
@@ -81,7 +88,7 @@ export default function OperationOrder({ branch, response, access, forms, busy, 
           onClick={() => act("resource", Number(resource) || null)}>Guardar recurso</Button>
       </>}
     </>)}
-    {section("Formularios e inspecciones", <>
+    {(!pos || forms) && section("Formularios e inspecciones", <>
       {(row.form_requirements_snapshot ?? []).map((form) => <Typography key={form.template_id}>
         {form.name} · {form.required ? "Obligatorio" : "Opcional"} · Versión {form.version}
       </Typography>)}
@@ -91,7 +98,7 @@ export default function OperationOrder({ branch, response, access, forms, busy, 
       </Stack>)}
       {forms && <Button component={Link} to={operationUrl(`orders/${id}/forms`, branch)}>Abrir capturas</Button>}
     </>)}
-    {section("Venta vinculada", row.sale_id ? <Typography>Venta #{row.sale_id} · {row.sale?.status} · {row.sale?.total_amount}</Typography> : <>
+    {section("Venta vinculada", row.sale_id ? <Typography>Venta ID {row.sale_id}{row.sale?.status && ` · Estado: ${row.sale.status}`}{!pos && row.sale?.total_amount != null && ` · Total: ${row.sale.total_amount}`}</Typography> : <>
       <TextField label="ID de la venta existente" value={sale} onChange={(e) => setSale(e.target.value)} disabled={busy} />
       <Button disabled={busy || !integerRange(sale, 1, Number.MAX_SAFE_INTEGER)} onClick={() => act("sale", Number(sale))}>Vincular venta</Button>
     </>)}
@@ -101,7 +108,7 @@ export default function OperationOrder({ branch, response, access, forms, busy, 
       {event.metadata?.technician_snapshot && <Typography variant="body2">{event.metadata.technician_snapshot}</Typography>}
       {event.metadata?.visit_mileage != null && <Typography variant="body2">{event.metadata.visit_mileage} km</Typography>}
       {event.metadata?.sale_id && <Typography variant="body2">Venta #{event.metadata.sale_id}</Typography>}
-      {event.metadata && <details><summary>Datos registrados</summary><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(event.metadata, null, 2)}</pre></details>}
+      {!pos && event.metadata && <details><summary>Datos registrados</summary><pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{JSON.stringify(event.metadata, null, 2)}</pre></details>}
     </Stack>) : <Typography>Sin eventos registrados.</Typography>)}
     {section("Documentos", <>
       <Button onClick={() => setPdf({ path: orderPdf(branch, id), name: `orden-${row.order_code}.pdf` })}>Vista previa y descarga PDF</Button>
@@ -117,7 +124,7 @@ export default function OperationOrder({ branch, response, access, forms, busy, 
     </>)}
     {section("Próxima visita", next ? <OperationIntake branch={branch} mode="booking" origin={row} access={access} onSaved={onBooking} />
       : <Button onClick={() => setNext(true)}>Programar próxima visita</Button>)}
-    {pdf && <ModalPDFPreview open privateDocument endpoint={pdf.path} nombreArchivo={pdf.name} onClose={() => setPdf(null)} />}
+    {pdf && <ModalPDFPreview open privateDocument httpClient={pos?.client} endpoint={pdf.path} nombreArchivo={pdf.name} onClose={() => setPdf(null)} />}
   </Stack>;
 }
 

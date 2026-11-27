@@ -1,3 +1,4 @@
+import { confirmedWarehouses } from "./posVehicle";
 import { scopePOSProduct } from "./productInventory";
 
 // my-products-by-pos1 is authenticated and scopes products to this POS.
@@ -7,12 +8,15 @@ export async function fetchPOSScope(client) {
   return Array.isArray(data?.warehouse_ids) ? data.warehouse_ids : null;
 }
 
-export async function fetchPOSProductPage(client, posLocationId, params = {}, allowedIds = null) {
+export async function fetchPOSProductPage(client, posLocationId, params = {}, allowedIds = null, terminal = null) {
   const { data } = await client.get("my-products-by-pos1", {
     params: { pos_location_id: Number(posLocationId), ...params },
   });
+  if (terminal && (Number(data.pos?.id) !== terminal.id || Number(data.branch_id) !== terminal.branch_id || Number(data.store_id) !== terminal.store_id)) {
+    throw new Error("Inventario fuera del contexto de la terminal.");
+  }
   const ids = Array.isArray(data?.warehouse_ids) ? data.warehouse_ids.filter(id => allowedIds == null || allowedIds.some(allowed => String(allowed) === String(id))) : allowedIds;
-  return { products: (Array.isArray(data?.products) ? data.products : []).map(product => scopePOSProduct(product, ids)), meta: data?.meta };
+  return { products: (Array.isArray(data?.products) ? data.products : []).map(product => scopePOSProduct(product, terminal ? confirmedWarehouses({ ...terminal, warehouse_ids: ids ?? terminal.warehouse_ids }, data, product) : ids)), meta: data?.meta };
 }
 
 export async function searchPOSProductField(client, posLocationId, { page, per_page, q, category_id, field }, allowedIds, isCurrent) {
@@ -37,14 +41,14 @@ export async function searchPOSProductField(client, posLocationId, { page, per_p
   };
 }
 
-export async function loadCartInventory(client, posLocationId, items) {
+export async function loadCartInventory(client, posLocationId, items, terminal) {
   if (!posLocationId) throw new Error("Selecciona un punto de venta.");
   const allowedIds = await fetchPOSScope(client);
   const wanted = new Set(items.map(item => String(item.product_id)));
   const found = [];
   // Use the existing paginated endpoint, including items no longer on the current page.
   for (let page = 1; wanted.size; page++) {
-    const result = await fetchPOSProductPage(client, posLocationId, { page, per_page: 100, q: "" }, allowedIds);
+    const result = await fetchPOSProductPage(client, posLocationId, { page, per_page: 100, q: "" }, allowedIds, terminal);
     result.products.forEach(product => {
       if (wanted.delete(String(product.id))) found.push(product);
     });

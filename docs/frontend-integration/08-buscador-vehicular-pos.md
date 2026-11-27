@@ -2,7 +2,7 @@
 
 ## Búsqueda tradicional y especializada
 
-`GET /products/search` conserva la búsqueda POS normal (middleware `api.auth:sanctum`, `store.access`). `GET /products/search-by-vehicle` amplía búsqueda usando el mismo producto/inventario; el grupo también usa autenticación y aislamiento comercial. Marcas/modelos: `GET /vehicle-brands`, `GET /vehicle-models?brand_id=…`, años y tipos de pieza según inventario endpoints.
+Corrección de alcance: `GET /products/search` es búsqueda privada de cuenta Store (middleware `api.auth:sanctum`, `store.access` y controlador exige Store); no es el contrato de búsqueda POS. El POS tradicional utiliza `GET /my-products-by-pos1?pos_location_id=...` (y existe un legacy `/my-products-by-pos`). El buscador vehicular privado `GET /products/search-by-vehicle` admite Store y está diseñado también para PosLocation en `VehicleCompatibilityService`/`CheckStoreAccess`, con scope de branch y módulos. La prueba POS retira `CheckStoreAccess`, por lo que falta verificación del middleware real con token POS, no evidencia de bloqueo. Consultar [43](43-contratos-exactos-buscador-pos.md) y no usar el catálogo público para inventario privado. Marcas/modelos/años/tipos se describen en [44](44-compatibilidades-contexto-vehicular.md).
 
 Filtros combinables opcionales: `q`, `name`, `sku`, `description`, `barcode`, `category_id`, `commercial_brand`, `brand_id`, `model_id`, `year`, `vehicle_id`, `service_order_id`, `warehouse_id`, `stock_status=all|in_stock|out_of_stock`, `include_compatible`, `include_universal`, `include_unknown`, `page`, `per_page` (máximo 100). Marca/modelo se validan; texto no se ejecuta como consulta separada que ignore compatibilidad. Contexto de expediente/orden es autoritativo y contradicciones producen 422.
 

@@ -1,3 +1,4 @@
+import { usePOSOperations } from "../../context/POSOperationsContext";
 import React, { useEffect, useState } from "react";
 import { Alert, Box, Button, Card, CircularProgress, Dialog, DialogContent, DialogTitle, MenuItem, Pagination, Stack,
   Table, TableBody, TableCell, TableHead, TableRow, TextField, Typography } from "@mui/material";
@@ -8,19 +9,15 @@ import useVehicleRecordsAccess from "../../hooks/useVehicleRecordsAccess";
 import useDynamicFormsAccess from "../../hooks/useDynamicFormsAccess";
 import { useVehicleMutation, useVehicleRequest, VehicleChoice } from "../../components/vehicles/VehicleRecordFields";
 import OperationIntake, { useOperationChoices } from "../../components/services/OperationIntake";
+import BookingEditor from "../../components/services/BookingEditor";
 import OperationOrder from "../../components/services/OperationOrder";
-import { bookingActions, operationError, operations, operationUrl, readOperationPeriod, statusLabels } from "../../services/admin/serviceOperations";
+import { bookingActions, bookingEditActions, defaultOperationTimezone, operationDay, operationError, operations as adminOperations, operationUrl as adminOperationUrl, readOperationPeriod, statusLabels } from "../../services/admin/serviceOperations";
 import { validVehicleId } from "../../services/admin/vehicleRecords";
 
 const bookingStates = ["pending", "confirmed", "arrived", "completed", "cancelled"];
 const orderStates = ["pending", "in_progress", "completed", "cancelled"];
-const timezone = "America/Mexico_City";
 const dateKey = (date) => date.toISOString().slice(0, 10);
-function today() {
-  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
-  const values = Object.fromEntries(parts.map(({ type, value }) => [type, value]));
-  return `${values.year}-${values.month}-${values.day}`;
-}
+
 function offset(day, days) {
   const date = new Date(`${day}T00:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -34,23 +31,33 @@ export default function ServiceOperationsPage({ mode }) {
   const { tiendaLoading } = useTienda();
   const { bookingId, orderId } = useParams();
   const id = bookingId ?? orderId;
+  const forms = useDynamicFormsAccess();
   if (tiendaLoading) return <CircularProgress aria-label="Cargando tienda" />;
   if (!access.storeId) return <Alert severity="warning">Necesitas una sesión administrativa para operar servicios.</Alert>;
   if (!access.branch) return <Alert severity="info" action={<Button component={Link} to="/admin/sucursales">Elegir sucursal</Button>}>Selecciona una sucursal.</Alert>;
   if (id && !validVehicleId(id)) return <Alert severity="error">Identificador inválido.</Alert>;
-  return <OperationsContext key={JSON.stringify([access.storeId, access.branch.id, mode, id])} access={access} mode={mode} id={id} />;
+  return <OperationsContext key={JSON.stringify([access.storeId, access.branch.id, mode, id])} access={access} mode={mode} id={id} forms={forms} />;
 }
 
-function OperationsContext({ access, mode, id }) {
+export function OperationsContext({ access, mode, id, forms }) {
+  const pos = usePOSOperations();
+  const operations = pos?.operations ?? adminOperations;
+  const operationUrl = pos?.operationUrl ?? adminOperationUrl;
   const branch = access.branch.id;
-  const forms = useDynamicFormsAccess();
   const navigate = useNavigate();
-  const orders = mode === "orders";
+  const orders = ["orders", "history", "intake"].includes(mode);
   const agenda = mode === "agenda";
   const entity = orders ? "service-orders" : "bookings";
   const [page, setPage] = useState(1);
   const [view, setView] = useState(agenda ? "week" : "list");
-  const [date, setDate] = useState(today);
+  const [timezone, setTimezone] = useState(defaultOperationTimezone);
+  const [chosenDate, setDate] = useState(null);
+  const date = chosenDate ?? operationDay(timezone);
+  const [editor, setEditor] = useState(null);
+  const learnTimezone = (zone) => {
+    if (!zone) return;
+    try { operationDay(zone); setTimezone(zone); } catch { /* Retain configured zone for an invalid response. */ }
+  };
   const [filters, setFilters] = useState({});
   const [intake, setIntake] = useState(null);
   const [failure, setFailure] = useState("");
@@ -62,17 +69,27 @@ function OperationsContext({ access, mode, id }) {
   const period = view !== "list" && weekStart;
   const query = { ...Object.fromEntries(Object.entries(filters).filter(([,value]) => value)),
     ...(period ? { date_from: weekStart, date_to: offset(weekStart, view === "week" ? 6 : 0) } : { page }) };
+  const matchesTerminal = (item) => Number(item.branch_id) === Number(branch) &&
+    (!pos || Number(item.store_id) === Number(access.storeId));
   const request = useVehicleRequest(async (signal) => {
     if (id) {
       const result = await operations[orders ? "order" : "booking"](branch, id, signal);
-      if (Number(result?.data?.id) !== Number(id) || Number(result.data.branch_id) !== Number(branch)) throw new Error("El detalle no coincide con la sucursal solicitada.");
+      if (Number(result?.data?.id) !== Number(id) || !matchesTerminal(result.data)) throw new Error("El detalle no coincide con la sucursal solicitada.");
       return result;
     }
-    if (period) return { data: await readOperationPeriod(branch, query, signal) };
-    const result = await operations.list(branch, entity, query, signal);
-    if (!Array.isArray(result.data) || !Number.isSafeInteger(result.last_page)) throw new Error("Listado paginado no reconocido.");
+    const result = period ? { data: await readOperationPeriod(branch, query, signal, operations) } :
+      await operations.list(branch, entity, query, signal);
+    if (!Array.isArray(result.data) || (!period && !Number.isSafeInteger(result.last_page))) throw new Error("Listado paginado no reconocido.");
+    if (pos && !result.data.every(matchesTerminal)) throw new Error("El listado no coincide con la sucursal de la terminal.");
     return result;
   }, blocked || (view !== "list" && !date) ? null : JSON.stringify([branch, entity, query, view, id, revision]));
+  const [receptionOpened, setReceptionOpened] = useState(false);
+  useEffect(() => {
+    if (mode === "intake" && request.data && !receptionOpened) {
+      setIntake("direct");
+      setReceptionOpened(true);
+    }
+  }, [mode, request.data, receptionOpened]);
   const refresh = () => revise((value) => value + 1);
   const mutate = (action, reload = true, after) => run(async (signal) => {
     setFailure("");
@@ -91,7 +108,7 @@ function OperationsContext({ access, mode, id }) {
   });
   const saved = (kind) => (row) => {
     setIntake(null);
-    if (validVehicleId(row?.id) && Number(row.branch_id) === Number(branch)) navigate(operationUrl(`${kind}/${row.id}`, branch));
+    if (validVehicleId(row?.id) && matchesTerminal(row)) navigate(operationUrl(`${kind}/${row.id}`, branch));
     else { setFailure("El servidor guardó la operación, pero el detalle devuelto no corresponde al contexto."); refresh(); }
   };
   const setFilter = (key, value) => {
@@ -101,6 +118,9 @@ function OperationsContext({ access, mode, id }) {
   const nav = (path, label) => <Button component={Link} to={operationUrl(path, branch)}>{label}</Button>;
   const row = id ? request.data?.data : null;
   const actions = row && !orders ? bookingActions(row.status) : null;
+  const editActions = row && !orders ? bookingEditActions(row.status) : {};
+  const editButtons = (item, allowed) => [["edit", "Editar cita"], ["reschedule", "Reprogramar cita"], ["cancel", "Cancelar cita"]].map(([action, label]) =>
+    allowed[action] && <Button key={action} size="small" disabled={busy} onClick={() => setEditor({ booking: item, mode: action })}>{label}</Button>);
   const rows = !id ? request.data?.data ?? [] : [];
   const rowPath = (item) => operationUrl(`${orders ? "orders" : "bookings"}/${item.id}`, branch);
 
@@ -108,11 +128,16 @@ function OperationsContext({ access, mode, id }) {
     <Stack spacing={2}>
       <Stack direction="row" useFlexGap flexWrap="wrap" spacing={1}>
         {nav("agenda", "Agenda")}{nav("bookings", "Citas")}{nav("orders", "Órdenes")}
-        <Button component={Link} to="/admin/sucursales">Cambiar sucursal</Button>
+        {pos ? <>{nav("intake", "Recepción sin cita")}{nav("history", "Historial operativo")}</> : <Button component={Link} to="/admin/sucursales">Cambiar sucursal</Button>}
       </Stack>
-      <Typography variant="h4">{orders ? "Órdenes de servicio" : agenda ? "Agenda de servicios" : "Citas"}</Typography>
+      <Typography variant="h4">{mode === "history" ? "Historial operativo de servicios" :
+        orders ? "Órdenes de servicio" : agenda ? "Agenda de servicios" : "Citas"}</Typography>
       <Typography variant="body2">Sucursal {access.branch.name ?? branch}</Typography>
-      {failure && <Alert severity="error">{failure}</Alert>}
+      {failure && <Alert severity="error" action={blocked ? <Button onClick={() => {
+        setBlocked(false);
+        setFailure("");
+        refresh();
+      }}>Volver a consultar</Button> : null}>{failure}</Alert>}
       {request.error && <Alert severity="error" action={<Button onClick={request.retry}>Reintentar</Button>}>{operationError(request.error)}</Alert>}
       {request.loading && <CircularProgress aria-label="Cargando operación" />}
       {!id && <>
@@ -140,7 +165,7 @@ function OperationsContext({ access, mode, id }) {
             value={filters[key] ?? ""} onChange={(e) => { if (!e.target.value || validVehicleId(e.target.value)) setFilter(key, e.target.value); }} />)}
         </Box>
         {period && <Typography variant="body2">{query.date_from} — {query.date_to} · {timezone}</Typography>}
-        {request.data && <Button variant="contained" sx={{ alignSelf: "start" }} onClick={() => setIntake(orders ? "direct" : "booking")}>
+        {request.data && mode !== "history" && <Button variant="contained" sx={{ alignSelf: "start" }} onClick={() => setIntake(orders ? "direct" : "booking")}>
           {orders ? "Recepción sin cita" : "Programar cita"}
         </Button>}
         {request.data && !rows.length && <Alert severity="info">Sin registros para los filtros seleccionados.</Alert>}
@@ -148,7 +173,7 @@ function OperationsContext({ access, mode, id }) {
           <Table size="small" sx={{ display: { xs: "none", md: "table" } }}>
             <TableHead><TableRow>{["Folio", orders ? "Creación" : "Fecha y hora", "Cliente", "Servicio", "Recurso", "Estado"].map((label) => <TableCell key={label}>{label}</TableCell>)}</TableRow></TableHead>
             <TableBody>{rows.map((item) => <TableRow key={item.id}>
-              <TableCell><Link to={rowPath(item)}>{item.order_code ?? item.booking_code}</Link></TableCell>
+              <TableCell><Link to={rowPath(item)}>{item.order_code ?? item.booking_code}</Link>{!orders && editButtons(item, bookingEditActions(item.status))}</TableCell>
               <TableCell>{orders ? item.created_at : `${item.booking_date} · ${item.start_time}`}</TableCell>
               <TableCell>{item.customer_snapshot?.name ?? item.customer?.nombre_alias ?? item.customer_id}</TableCell>
               <TableCell>{item.service?.name}</TableCell><TableCell>{item.resource?.name}</TableCell>
@@ -159,6 +184,7 @@ function OperationsContext({ access, mode, id }) {
             <Link to={rowPath(item)}>{item.order_code ?? item.booking_code}</Link>
             <Typography>{item.customer_snapshot?.name ?? item.customer?.nombre_alias ?? item.customer_id} · {item.service?.name}</Typography>
             <Typography>{statusLabels[orders ? item.status?.code : item.status]} {item.booking_date} {item.start_time}</Typography>
+            {!orders && editButtons(item, bookingEditActions(item.status))}
           </Card>)}</Stack>
         </>}
         {request.data?.last_page > 1 && <Pagination page={page} count={request.data.last_page} onChange={(_, value) => setPage(value)} />}
@@ -172,16 +198,20 @@ function OperationsContext({ access, mode, id }) {
         <Typography>Recurso: {row.resource?.name ?? row.resource_id ?? "Sin asignar"}</Typography>
         {row.vehicle_id && access.canRead && <Button component={Link} to={operationUrl(`vehicles/${row.vehicle_id}`, branch)}>Ver expediente</Button>}
         {row.notes && <Typography sx={{ whiteSpace: "pre-wrap" }}>{row.notes}</Typography>}
+        {row.status === "cancelled" && row.metadata?.cancellation_reason && <Typography>Motivo de cancelación: {row.metadata.cancellation_reason}</Typography>}
         <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
+          {editButtons(row, editActions)}
           {actions.confirm && <Button variant="contained" disabled={busy} onClick={() => mutate((signal) => operations.confirm(branch, id, signal))}>Confirmar cita</Button>}
           {actions.arrival && <Button variant="contained" disabled={busy} onClick={() => mutate((signal) => operations.arrival(branch, id, signal))}>Registrar llegada</Button>}
           {actions.convert && <Button variant="outlined" disabled={busy} onClick={() => mutate((signal) => operations.convert(branch, id, signal), false, saved("orders"))}>Abrir orden de servicio</Button>}
         </Stack>
       </>}
     </Stack>
+    {editor && <BookingEditor branch={branch} booking={editor.booking} mode={editor.mode} access={access} onTimezone={learnTimezone}
+      onClose={() => setEditor(null)} onConflict={refresh} onSaved={() => { setEditor(null); refresh(); }} />}
     {intake && <Dialog open fullWidth maxWidth="sm">
       <DialogTitle>{intake === "direct" ? "Recepción sin cita" : "Programar cita"}</DialogTitle>
-      <DialogContent dividers><OperationIntake branch={branch} mode={intake} access={access} onCancel={() => setIntake(null)} onSaved={saved(intake === "direct" ? "orders" : "bookings")} /></DialogContent>
+      <DialogContent dividers><OperationIntake branch={branch} mode={intake} access={access} onTimezone={learnTimezone} onCancel={() => setIntake(null)} onSaved={saved(intake === "direct" ? "orders" : "bookings")} /></DialogContent>
     </Dialog>}
   </Card>;
 }

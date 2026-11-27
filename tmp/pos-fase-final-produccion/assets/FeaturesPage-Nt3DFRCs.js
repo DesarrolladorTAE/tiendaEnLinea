@@ -1,0 +1,1 @@
+import{R as e}from"./index-n4c3GYPs.js";import{F as a}from"./Features-B9qih54P.js";import"./useScrollReveal-CLmCUiKh.js";function l(){return e.createElement("div",{className:"landing-page landing-page--features"},e.createElement(a,null))}export{l as default};
